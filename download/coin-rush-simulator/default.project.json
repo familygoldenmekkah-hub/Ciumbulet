@@ -1,0 +1,60 @@
+{
+        "name": "CoinRushSimulator",
+        "tree": {
+                "$className": "DataModel",
+                "ReplicatedStorage": {
+                        "$className": "ReplicatedStorage",
+                        "Shared": {
+                                "$path": "src/Shared"
+                        },
+                        "Remotes": {
+                                "$path": "src/Remotes"
+                        }
+                },
+                "ServerScriptService": {
+                        "$className": "ServerScriptService",
+                        "Server": {
+                                "$path": "src/Server"
+                        }
+                },
+                "StarterPlayer": {
+                        "$className": "StarterPlayer",
+                        "StarterPlayerScripts": {
+                                "$className": "StarterPlayerScripts",
+                                "Client": {
+                                        "$path": "src/Client"
+                                }
+                        }
+                },
+                "Workspace": {
+                        "$className": "Workspace",
+                        "$properties": {
+                                "Gravity": 150
+                        },
+                        "SpawnLocation": {
+                                "$className": "SpawnLocation",
+                                "$properties": {
+                                        "Anchored": true,
+                                        "Size": [12, 1, 12],
+                                        "Position": [0, 2.5, 34],
+                                        "Color": [0.15, 0.45, 0.9],
+                                        "Material": "SmoothPlastic",
+                                        "TopSurface": "Smooth",
+                                        "Duration": 0
+                                }
+                        }
+                },
+                "Lighting": {
+                        "$className": "Lighting",
+                        "$properties": {
+                                "Ambient": [0.3, 0.3, 0.36],
+                                "OutdoorAmbient": [0.55, 0.55, 0.6],
+                                "Brightness": 2.8,
+                                "ClockTime": 14.5,
+                                "GlobalShadows": true,
+                                "EnvironmentDiffuseScale": 0.5,
+                                "EnvironmentSpecularScale": 0.5
+                        }
+                }
+        }
+}
