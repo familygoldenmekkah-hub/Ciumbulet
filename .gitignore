@@ -1,2 +1,6 @@
 skills/
 node_modules/
+credentials.json
+.secrets/
+work/
+*.env

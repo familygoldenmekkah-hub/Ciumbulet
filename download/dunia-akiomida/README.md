@@ -4,7 +4,8 @@ Port original dari game browser **"Dunia Akiomida: Petualangan Matematika"**
 (akiomida.com / repo `akiomida/Io`) ke Roblox. Seluruh kode Luau ditulis dari
 nol (karya mandiri), soal digenerate prosedural, dialog & materi ditulis ulang.
 
-**File jadi:** `build/DuniaAkiomida.rbxlx` - siap publish.
+**Status: ✅ LIVE DI ROBLOX** - publish sukses via Open Cloud API
+(Universe `10774464946` / Place `77626159664192`, **versionNumber: 5**, 3 Nov 2026).
 
 ---
 
@@ -39,34 +40,42 @@ nol (karya mandiri), soal digenerate prosedural, dialog & materi ditulis ulang.
 - Universe ID: `10774464946` (AKIOMIDA, creator Akiomidaroblox)
 - Place ID (root): `77626159664192`
 
-## CARA PUBLISH
+## STATUS PUBLISH & CARA UPDATE
 
-### Opsi A - lewat API (perlu perbaikan 1 menit di dashboard)
+### ✅ Publish pertama - SUKSES (via Open Cloud API)
 
-Publish terakhir dari sisi kita gagal **HTTP 403 "Scope not authorized"**:
-API key yang diberikan belum punya izin untuk universe AKIOMIDA (universe ini
-dibuat SETELAH key, jadi belum ter-scope). Perbaikannya:
+Setelah owner menambahkan scope `universe-places: Write` untuk experience
+AKIOMIDA pada API key, publish berhasil:
 
-1. Buka <https://create.roblox.com/credentials> → edit API key lu (atau buat baru).
-2. **Access Permissions** → **Add API System** → pilih `universe-places` →
-   pilih experience **AKIOMIDA** → Operations: **Write**.
-3. (Opsional) Security: expiration date + IP restriction.
-4. Simpan, lalu jalankan:
-   ```bash
-   cd dunia-akiomida
-   python3 publish.py --api-key KEY_BARU --universe-id 10774464946 --place-id 77626159664192
-   ```
-5. Sukses = respons berisi `versionNumber`. Game langsung bisa dimainkan.
+```
+POST /universes/v1/10774464946/places/77626159664192/versions?versionType=Published
+Respons: HTTP 200  {"versionNumber": 5}
+```
 
-> Selama API key belum diperbaiki, bot tidak bisa publish - ini batasan
-> keamanan Roblox, bukan bug kode.
+### Cara update berikutnya (setelah ubah kode)
 
-### Opsi B - lewat Studio (tanpa API key)
+```bash
+cd dunia-akiomida
+rojo build --output build/DuniaAkiomida.rbxlx .
+python3 publish.py --api-key KEY_ANDA --universe-id 10774464946 \
+    --place-id 77626159664192 --file build/DuniaAkiomida.rbxlx
+```
+
+Respons berisi `versionNumber` baru = langsung live.
+
+### Catatan penting setelah publish (sekali saja, di Creator Dashboard)
+
+1. **API Services**: AKIOMIDA → Game Settings → Security → aktifkan
+   **"Studio Access to API Services"** supaya DataStore jalan
+   (progres pemain & Papan Penjelajah XP tersimpan).
+2. **Publik/Private**: game sekarang masih Private (hanya owner yang bisa main
+   via dashboard). Kalau mau dibuka untuk semua orang: Game Settings →
+   Permissions → **Public**.
+
+### Alternatif - lewat Studio (tanpa API key)
 
 1. Buka Roblox Studio → **File → Open from File** → `build/DuniaAkiomida.rbxlx`.
 2. **File → Publish to Roblox As...** → pilih experience **AKIOMIDA** → publish.
-3. (Sekali saja) **Home → Game Settings → Security** → aktifkan
-   **Studio Access to API Services** supaya DataStore (progres & leaderboard) jalan.
 
 ## Modifikasi & rebuild
 

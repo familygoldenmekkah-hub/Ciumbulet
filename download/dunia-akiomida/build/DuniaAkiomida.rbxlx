@@ -92,17 +92,17 @@ return Remotes
           <string name="Name">Config</string>
           <string name="Source"><![CDATA[--!nonstrict
 --[[
-	Config.luau - DUNIA AKIOMIDA (versi Roblox)
-	Port original dari game browser "Dunia Akiomida: Petualangan Matematika".
-	Fitur sengaja TIDAK dibawa ke Roblox: ads, donasi, share, toggle wawasan.
+        Config.luau - DUNIA AKIOMIDA (versi Roblox)
+        Port original dari game browser "Dunia Akiomida: Petualangan Matematika".
+        Fitur sengaja TIDAK dibawa ke Roblox: ads, donasi, share, toggle wawasan.
 ]]
 
 local Config = {}
 
 Config.Game = {
-	Name = "Dunia Akiomida",
-	Tagline = "Petualangan Matematika",
-	Version = "1.0.0",
+        Name = "Dunia Akiomida",
+        Tagline = "Petualangan Matematika",
+        Version = "1.0.0",
 }
 
 --------------------------------------------------------------------
@@ -110,57 +110,57 @@ Config.Game = {
 -- biome menentukan dekorasi prosedural di MapService.
 --------------------------------------------------------------------
 Config.Zones = {
-	{ id = "kamp",    name = "Kamp Angka",        slogan = "Wilayah permulaan perjalanan",    color = { 99, 200, 255 }, biome = "kamp" },
-	{ id = "hutan",   name = "Hutan Simbol",      slogan = "Wilayah bahasa dan tanda",        color = { 79, 227, 200 }, biome = "hutan" },
-	{ id = "gunung",  name = "Pegunungan Pola",   slogan = "Wilayah susunan dan bentuk",      color = { 255, 209, 102 }, biome = "gunung" },
-	{ id = "kota",    name = "Kota Bukti",        slogan = "Wilayah alasan dan pembuktian",   color = { 255, 157, 157 }, biome = "kota" },
-	{ id = "lembah",  name = "Lembah Kedalaman",  slogan = "Wilayah pemahaman yang dalam",    color = { 187, 143, 255 }, biome = "lembah" },
-	{ id = "salju",   name = "Puncak Riset",      slogan = "Wilayah para penjelajah terdepan", color = { 165, 216, 255 }, biome = "salju" },
+        { id = "kamp",    name = "Kamp Angka",        slogan = "Wilayah permulaan perjalanan",    color = { 99, 200, 255 }, biome = "kamp" },
+        { id = "hutan",   name = "Hutan Simbol",      slogan = "Wilayah bahasa dan tanda",        color = { 79, 227, 200 }, biome = "hutan" },
+        { id = "gunung",  name = "Pegunungan Pola",   slogan = "Wilayah susunan dan bentuk",      color = { 255, 209, 102 }, biome = "gunung" },
+        { id = "kota",    name = "Kota Bukti",        slogan = "Wilayah alasan dan pembuktian",   color = { 255, 157, 157 }, biome = "kota" },
+        { id = "lembah",  name = "Lembah Kedalaman",  slogan = "Wilayah pemahaman yang dalam",    color = { 187, 143, 255 }, biome = "lembah" },
+        { id = "salju",   name = "Puncak Riset",      slogan = "Wilayah para penjelajah terdepan", color = { 165, 216, 255 }, biome = "salju" },
 }
 
 --------------------------------------------------------------------
 -- PROGRES & KUIS
 --------------------------------------------------------------------
 Config.Progress = {
-	MasteryTarget = 10, -- jawaban benar per zona untuk menguasai
-	XpPerCorrect = 10,
-	CoinPerCorrect = 5, -- dikali indeks zona (zona makin jauh makin berharga)
-	StreakBonusMax = 5, -- bonus XP maksimum dari streak (XP tambahan = streak, dibatasi)
-	MasteryBonusXp = 50,
-	MasteryBonusCoins = 50,
-	UnlockNextOnMastery = true,
-	MaxActiveQuestionSeconds = 120, -- soal kedaluwarsa setelah 2 menit
-	AnswerCooldown = 0.4, -- anti-spam jawab (detik)
+        MasteryTarget = 10, -- jawaban benar per zona untuk menguasai
+        XpPerCorrect = 10,
+        CoinPerCorrect = 5, -- dikali indeks zona (zona makin jauh makin berharga)
+        StreakBonusMax = 5, -- bonus XP maksimum dari streak (XP tambahan = streak, dibatasi)
+        MasteryBonusXp = 50,
+        MasteryBonusCoins = 50,
+        UnlockNextOnMastery = true,
+        MaxActiveQuestionSeconds = 120, -- soal kedaluwarsa setelah 2 menit
+        AnswerCooldown = 0.4, -- anti-spam jawab (detik)
 }
 
 --------------------------------------------------------------------
--- KODE PENJELAJAH (fitur dev internal game Akiomida)
+-- KODE PENJELAJAH: dipindah ke SERVER-ONLY (Server/Modules/DevCodeVault)
+-- supaya tidak bisa dibaca client saat runtime. Jangan taruh nilainya di Shared.
 --------------------------------------------------------------------
-Config.DevCode = "CKZhwbrsRLjms6Da5h"
 
 --------------------------------------------------------------------
 -- DATA / LEADERBOARD
 --------------------------------------------------------------------
 Config.Data = {
-	StoreName = "AKM_Progress_v1",
-	OrderedStoreName = "AKM_XP_v1",
-	AutosaveInterval = 120,
-	LoadRetries = 3,
+        StoreName = "AKM_Progress_v1",
+        OrderedStoreName = "AKM_XP_v1",
+        AutosaveInterval = 120,
+        LoadRetries = 3,
 }
 
 Config.Leaderboard = {
-	RefreshInterval = 60,
-	Size = 10,
+        RefreshInterval = 60,
+        Size = 10,
 }
 
 --------------------------------------------------------------------
 -- WORLD LAYOUT: satu pulau panjang, 6 zona berjajar.
 --------------------------------------------------------------------
 Config.World = {
-	ZoneSpacing = 110, -- jarak antar pusat zona (stud, sumbu Z)
-	StartZ = 60, -- pusat zona pertama
-	IslandWidth = 90,
-	IslandHeight = 3,
+        ZoneSpacing = 110, -- jarak antar pusat zona (stud, sumbu Z)
+        StartZ = 60, -- pusat zona pertama
+        IslandWidth = 90,
+        IslandHeight = 3,
 }
 
 return Config
@@ -864,6 +864,26 @@ return DataService
         </Item>
         <Item class="ModuleScript" referent="12">
           <Properties>
+            <string name="Name">DevCodeVault</string>
+            <string name="Source"><![CDATA[--!strict
+--[[
+	DevCodeVault.luau
+	SERVER-ONLY: kode penjelajah (dev) milik owner AKIOMIDA.
+	Jangan pernah pindahkan nilai ini ke Shared/ReplicatedStorage -
+	client tidak boleh bisa membacanya saat runtime.
+]]
+
+local DevCodeVault = {}
+
+-- Kode internal pemilik dunia. Diverifikasi hanya di QuizService (server).
+DevCodeVault.CODE = "CKZhwbrsRLjms6Da5h"
+
+return DevCodeVault
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="13">
+          <Properties>
             <string name="Name">LeaderboardService</string>
             <string name="Source"><![CDATA[--!nonstrict
 --[[
@@ -1006,7 +1026,7 @@ return LeaderboardService
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="13">
+        <Item class="ModuleScript" referent="14">
           <Properties>
             <string name="Name">MapService</string>
             <string name="Source"><![CDATA[--!nonstrict
@@ -1420,7 +1440,7 @@ return MapService
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="14">
+        <Item class="ModuleScript" referent="15">
           <Properties>
             <string name="Name">QuizService</string>
             <string name="Source"><![CDATA[--!nonstrict
@@ -1440,6 +1460,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local MathGen = require(ReplicatedStorage.Shared.MathGen)
 local Remotes = require(ReplicatedStorage.Remotes)
 local DataService = require(script.Parent.DataService)
+local DevCodeVault = require(script.Parent.DevCodeVault)
 
 local QuizService = {}
 
@@ -1646,7 +1667,7 @@ local function onRedeemDevCode(player: Player, code: any)
         if type(code) ~= "string" or not DataService.has(player) then
                 return false
         end
-        if code ~= Config.DevCode then
+        if code ~= DevCodeVault.CODE then
                 return false, "Kode salah."
         end
         local data = DataService.get(player)
@@ -1718,15 +1739,15 @@ return QuizService
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="15">
+  <Item class="StarterPlayer" referent="16">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="16">
+    <Item class="StarterPlayerScripts" referent="17">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="17">
+      <Item class="LocalScript" referent="18">
         <Properties>
           <string name="Name">Client</string>
           <string name="Source"><![CDATA[--!nonstrict
@@ -1741,7 +1762,7 @@ UIController.new()
 print("[AKIOMIDA] Client siap.")
 ]]></string>
         </Properties>
-        <Item class="ModuleScript" referent="18">
+        <Item class="ModuleScript" referent="19">
           <Properties>
             <string name="Name">UIController</string>
             <string name="Source"><![CDATA[--!nonstrict
@@ -2632,12 +2653,12 @@ return UIController
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="19">
+  <Item class="Workspace" referent="20">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="NeedsPivotMigration">false</bool>
     </Properties>
-    <Item class="SpawnLocation" referent="20">
+    <Item class="SpawnLocation" referent="21">
       <Properties>
         <string name="Name">SpawnLocation</string>
         <bool name="Anchored">true</bool>

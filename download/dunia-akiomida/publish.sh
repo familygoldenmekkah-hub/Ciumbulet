@@ -7,7 +7,7 @@ set -euo pipefail
 API_KEY="${1:?Pemakaian: ./publish.sh <API_KEY> <UNIVERSE_ID> <PLACE_ID> [file]}"
 UNIVERSE_ID="${2:?Universe ID wajib}"
 PLACE_ID="${3:?Place ID wajib}"
-FILE="${4:-build/CoinRushSimulator.rbxlx}"
+FILE="${4:-build/DuniaAkiomida.rbxlx}"
 
 [ -f "$FILE" ] || { echo "File tidak ada: $FILE - jalankan 'rojo build' dulu." >&2; exit 2; }
 

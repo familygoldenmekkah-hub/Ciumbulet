@@ -15,6 +15,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local MathGen = require(ReplicatedStorage.Shared.MathGen)
 local Remotes = require(ReplicatedStorage.Remotes)
 local DataService = require(script.Parent.DataService)
+local DevCodeVault = require(script.Parent.DevCodeVault)
 
 local QuizService = {}
 
@@ -221,7 +222,7 @@ local function onRedeemDevCode(player: Player, code: any)
         if type(code) ~= "string" or not DataService.has(player) then
                 return false
         end
-        if code ~= Config.DevCode then
+        if code ~= DevCodeVault.CODE then
                 return false, "Kode salah."
         end
         local data = DataService.get(player)

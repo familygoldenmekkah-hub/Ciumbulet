@@ -8,7 +8,7 @@ Pemakaian:
     python3 publish.py --api-key XXXX --universe-id 1234567890 --place-id 9876543210
 
     atau pakai environment variable:
-    ROBLOX_API_KEY=xxxx python3 publish.py --universe-id 123 --place-id 456
+    ROBLOX_API_KEY=KUNCI_ANDA python3 publish.py --universe-id 123 --place-id 456
 
 Opsi:
     --file           path file place (default: build/CoinRushSimulator.rbxlx)
