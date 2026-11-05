@@ -40,7 +40,7 @@ local function buildBoard(position: Vector3, lookAt: Vector3)
                 Font = Enum.Font.GothamBlack,
                 TextScaled = true,
                 TextColor3 = Color3.fromRGB(255, 209, 102),
-                Text = "PAPAN PENJELAJAH (XP)",
+                Text = "PAPAN JUARA DUNIA (XP)",
         }, gui)
 
         local list = Util.create("Frame", {
@@ -123,8 +123,8 @@ function LeaderboardService.init()
                 return latestRows
         end
 
-        buildBoard(Vector3.new(-14, 8, 26), Vector3.new(0, 7, 0))
-        buildBoard(Vector3.new(14, 8, 26), Vector3.new(0, 7, 0))
+        buildBoard(Vector3.new(-14, 8, -14), Vector3.new(0, 7, 24))
+        buildBoard(Vector3.new(14, 8, -14), Vector3.new(0, 7, 24))
 
         task.spawn(function()
                 task.wait(5)

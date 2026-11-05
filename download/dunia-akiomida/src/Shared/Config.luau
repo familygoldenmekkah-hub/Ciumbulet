@@ -1,74 +1,114 @@
 --!nonstrict
 --[[
-        Config.luau - DUNIA AKIOMIDA (versi Roblox) - v1.0.1
-        Port original dari game browser "Dunia Akiomida: Petualangan Matematika".
-        Fitur sengaja TIDAK dibawa ke Roblox: ads, donasi, share, toggle wawasan.
+	Config.luau - DUNIA AKIOMIDA v2 "Ekonomi Hidup"
+	Rombakan total: dari game kuis menjadi dunia MMO petualangan dengan
+	ekonomi nyata - bertani, memanen, mengumpulkan sumber daya, memancing,
+	berdagang, peliharaan, dan ladang pribadi yang bisa dibangun.
+	Seluruh konten karya original, tanpa aset pihak ketiga.
 ]]
 
 local Config = {}
 
 Config.Game = {
-        Name = "Dunia Akiomida",
-        Tagline = "Petualangan Matematika",
-        Version = "1.0.0",
+	Name = "Dunia Akiomida",
+	Tagline = "Petualangan & Ekonomi",
+	Version = "2.0.0",
 }
 
 --------------------------------------------------------------------
--- ZONA (identitas & urutan dari game browser)
--- biome menentukan dekorasi prosedural di MapService.
+-- EKONOMI DASAR
 --------------------------------------------------------------------
-Config.Zones = {
-        { id = "kamp",    name = "Kamp Angka",        slogan = "Wilayah permulaan perjalanan",    color = { 99, 200, 255 }, biome = "kamp" },
-        { id = "hutan",   name = "Hutan Simbol",      slogan = "Wilayah bahasa dan tanda",        color = { 79, 227, 200 }, biome = "hutan" },
-        { id = "gunung",  name = "Pegunungan Pola",   slogan = "Wilayah susunan dan bentuk",      color = { 255, 209, 102 }, biome = "gunung" },
-        { id = "kota",    name = "Kota Bukti",        slogan = "Wilayah alasan dan pembuktian",   color = { 255, 157, 157 }, biome = "kota" },
-        { id = "lembah",  name = "Lembah Kedalaman",  slogan = "Wilayah pemahaman yang dalam",    color = { 187, 143, 255 }, biome = "lembah" },
-        { id = "salju",   name = "Puncak Riset",      slogan = "Wilayah para penjelajah terdepan", color = { 165, 216, 255 }, biome = "salju" },
+Config.Economy = {
+	StartCoins = 50,
+	StartSeeds = { wortel = 3 },
+	DailyBonus = 100, -- koin bonus login per hari
+	WaterBoost = 0.25, -- siraman memangkas 25% sisa waktu tanaman
+	MarketPeriod = 600, -- permintaan pasar berganti tiap 10 menit
+	QuizRewardCoins = 20,
+	QuizRewardXp = 8,
+	QuizCooldown = 20,
 }
 
 --------------------------------------------------------------------
--- PROGRES & KUIS
+-- LEVEL (XP dari aktivitas: panen, tebang, tambang, mancing, jual)
 --------------------------------------------------------------------
-Config.Progress = {
-        MasteryTarget = 10, -- jawaban benar per zona untuk menguasai
-        XpPerCorrect = 10,
-        CoinPerCorrect = 5, -- dikali indeks zona (zona makin jauh makin berharga)
-        StreakBonusMax = 5, -- bonus XP maksimum dari streak (XP tambahan = streak, dibatasi)
-        MasteryBonusXp = 50,
-        MasteryBonusCoins = 50,
-        UnlockNextOnMastery = true,
-        MaxActiveQuestionSeconds = 120, -- soal kedaluwarsa setelah 2 menit
-        AnswerCooldown = 0.4, -- anti-spam jawab (detik)
+Config.Level = {
+	Base = 60, -- syarat XP naik level: Base * (level-1)^2
+}
+
+function Config.Level.levelFromXp(xp: number): number
+	return math.floor(math.sqrt(math.max(0, xp) / Config.Level.Base)) + 1
+end
+
+function Config.Level.thresholdOf(level: number): number
+	return Config.Level.Base * math.max(0, level - 1) * (level - 1)
+end
+
+--------------------------------------------------------------------
+-- BIBIT & HASIL PANEN (harga = koin; grow = detik; level = syarat)
+--------------------------------------------------------------------
+Config.Crops = {
+	{ id = "wortel", name = "Wortel", cost = 5, grow = 25, sell = 12, level = 1, color = { 255, 152, 60 } },
+	{ id = "jagung", name = "Jagung", cost = 14, grow = 50, sell = 32, level = 2, color = { 255, 221, 80 } },
+	{ id = "tomat", name = "Tomat", cost = 32, grow = 100, sell = 70, level = 3, color = { 235, 70, 70 } },
+	{ id = "labu", name = "Labu Raksasa", cost = 80, grow = 200, sell = 170, level = 4, color = { 230, 130, 40 } },
+	{ id = "bintang", name = "Melon Bintang", cost = 220, grow = 400, sell = 480, level = 6, color = { 255, 235, 120 } },
 }
 
 --------------------------------------------------------------------
--- KODE PENJELAJAH: dipindah ke SERVER-ONLY (Server/Modules/DevCodeVault)
--- supaya tidak bisa dibaca client saat runtime. Jangan taruh nilainya di Shared.
+-- SUMBER DAYA DARI ALAM
 --------------------------------------------------------------------
+Config.Resources = {
+	{ id = "kayu", name = "Kayu", sell = 6 },
+	{ id = "apel", name = "Apel", sell = 8 },
+	{ id = "batu", name = "Batu", sell = 7 },
+	{ id = "besi", name = "Besi", sell = 18 },
+	{ id = "kristal", name = "Kristal", sell = 45 },
+}
+
+--------------------------------------------------------------------
+-- IKAN (chance = peluang saat memancing)
+--------------------------------------------------------------------
+Config.Fish = {
+	{ id = "ikan_kecil", name = "Ikan Kecil", sell = 10, chance = 0.55 },
+	{ id = "ikan_besar", name = "Ikan Besar", sell = 28, chance = 0.30 },
+	{ id = "ikan_langka", name = "Ikan Langka", sell = 65, chance = 0.10 },
+	{ id = "sepatu", name = "Sepatu Bot Tua", sell = 3, chance = 0.05 },
+}
+
+--------------------------------------------------------------------
+-- ALAT (tier belik menentukan bijih yang bisa ditambang)
+--------------------------------------------------------------------
+Config.Tools = {
+	{ id = "can", name = "Kaleng Siram", cost = 150, desc = "Siram tanaman agar tumbuh 25% lebih cepat" },
+	{ id = "rod", name = "Pancing Ajaib", cost = 250, desc = "Membuka aksi memancing di Danau Tenang" },
+	{ id = "pick2", name = "Belik Batu", cost = 350, desc = "Tambang bijih Besi", tier = 2 },
+	{ id = "bike", name = "Sepeda Angin", cost = 900, desc = "Berjalan +60% lebih cepat menjelajah dunia" },
+	{ id = "pick3", name = "Belik Baja", cost = 1600, desc = "Tambang Kristal langka", tier = 3 },
+}
+
+--------------------------------------------------------------------
+-- PELIHARAAN (bonus harga jual, satu yang aktif)
+--------------------------------------------------------------------
+Config.Pets = {
+	{ id = "kucing", name = "Kucing Koin", cost = 500, bonus = 0.10, color = { 255, 190, 90 }, desc = "Bonus jual +10%" },
+	{ id = "panda", name = "Panda Martabak", cost = 2500, bonus = 0.25, color = { 240, 240, 245 }, desc = "Bonus jual +25%" },
+	{ id = "naga", name = "Naga Emas", cost = 10000, bonus = 0.50, color = { 255, 215, 0 }, desc = "Bonus jual +50%" },
+}
 
 --------------------------------------------------------------------
 -- DATA / LEADERBOARD
 --------------------------------------------------------------------
 Config.Data = {
-        StoreName = "AKM_Progress_v1",
-        OrderedStoreName = "AKM_XP_v1",
-        AutosaveInterval = 120,
-        LoadRetries = 3,
+	StoreName = "AKM_World_v2",
+	OrderedStoreName = "AKM_XP_v2",
+	AutosaveInterval = 120,
+	LoadRetries = 3,
 }
 
 Config.Leaderboard = {
-        RefreshInterval = 60,
-        Size = 10,
-}
-
---------------------------------------------------------------------
--- WORLD LAYOUT: satu pulau panjang, 6 zona berjajar.
---------------------------------------------------------------------
-Config.World = {
-        ZoneSpacing = 110, -- jarak antar pusat zona (stud, sumbu Z)
-        StartZ = 60, -- pusat zona pertama
-        IslandWidth = 90,
-        IslandHeight = 3,
+	RefreshInterval = 60,
+	Size = 8,
 }
 
 return Config

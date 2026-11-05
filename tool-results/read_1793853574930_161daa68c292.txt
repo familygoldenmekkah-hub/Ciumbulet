@@ -1,0 +1,885 @@
+     1→--!nonstrict
+     2→--[[
+     3→        UIController.luau - seluruh UI Dunia Akiomida (dibangun lewat kode):
+     4→          - HUD XP/koin/streak + chip zona saat menjelajah
+     5→          - panel cerita NPC -> kuis pilihan ganda + feedback edukatif
+     6→          - panel Bahasan (baca materi) + papan penjelajah + kode penjelajah
+     7→          - toast notifikasi
+     8→]]
+     9→
+    10→local Players = game:GetService("Players")
+    11→local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    12→local SoundService = game:GetService("SoundService")
+    13→local TweenService = game:GetService("TweenService")
+    14→
+    15→local Config = require(ReplicatedStorage.Shared.Config)
+    16→local LessonData = require(ReplicatedStorage.Shared.LessonData)
+    17→local Remotes = require(ReplicatedStorage.Remotes)
+    18→local Util = require(ReplicatedStorage.Shared.Util)
+    19→
+    20→local UIController = {}
+    21→UIController.__index = UIController
+    22→
+    23→local T = {
+    24→        Bg = Color3.fromRGB(16, 19, 28),
+    25→        Panel = Color3.fromRGB(30, 34, 48),
+    26→        PanelLight = Color3.fromRGB(44, 49, 66),
+    27→        Gold = Color3.fromRGB(255, 209, 102),
+    28→        Green = Color3.fromRGB(88, 200, 130),
+    29→        Red = Color3.fromRGB(235, 100, 100),
+    30→        Blue = Color3.fromRGB(99, 200, 255),
+    31→        Text = Color3.fromRGB(238, 238, 246),
+    32→        TextDim = Color3.fromRGB(165, 170, 185),
+    33→        Disabled = Color3.fromRGB(70, 74, 88),
+    34→}
+    35→
+    36→local player = Players.LocalPlayer
+    37→
+    38→local function corner(parent, radius)
+    39→        return Util.create("UICorner", { CornerRadius = UDim.new(0, radius or 10) }, parent)
+    40→end
+    41→
+    42→local function makeSound()
+    43→        return Util.create("Sound", {
+    44→                SoundId = "rbxasset://sounds/electronicpingshort.wav",
+    45→                Volume = 0.35,
+    46→        }, SoundService)
+    47→end
+    48→
+    49→function UIController.new()
+    50→        local self = setmetatable({}, UIController)
+    51→        self.state = nil
+    52→        self.zoneIndex = 0
+    53→        self.sound = makeSound()
+    54→
+    55→        self:buildRoot()
+    56→        self:buildHUD()
+    57→        self:buildZoneChip()
+    58→        self:buildDialog()
+    59→        self:buildQuiz()
+    60→        self:buildBahasan()
+    61→        self:buildLeaderboardPanel()
+    62→        self:buildDevPanel()
+    63→        self:buildNotify()
+    64→        self:wire()
+    65→
+    66→        return self
+    67→end
+    68→
+    69→--------------------------------------------------------------------
+    70→-- ROOT & HUD
+    71→--------------------------------------------------------------------
+    72→
+    73→function UIController:buildRoot()
+    74→        self.gui = Util.create("ScreenGui", {
+    75→                Name = "AkiomidaUI",
+    76→                ResetOnSpawn = false,
+    77→                IgnoreGuiInset = true,
+    78→                ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+    79→        }, player:WaitForChild("PlayerGui"))
+    80→end
+    81→
+    82→function UIController:buildHUD()
+    83→        local panel = Util.create("Frame", {
+    84→                Position = UDim2.new(0, 14, 0, 12),
+    85→                Size = UDim2.new(0, 300, 0, 40),
+    86→                BackgroundColor3 = T.Panel,
+    87→                Parent = self.gui,
+    88→        })
+    89→        corner(panel, 12)
+    90→        Util.create("UIListLayout", {
+    91→                FillDirection = Enum.FillDirection.Horizontal,
+    92→                Padding = UDim.new(0, 12),
+    93→                VerticalAlignment = Enum.VerticalAlignment.Center,
+    94→        }, panel)
+    95→        local function chip(text0: string, color: Color3)
+    96→                local l = Util.create("TextLabel", {
+    97→                        Size = UDim2.new(0, 92, 0, 26),
+    98→                        BackgroundTransparency = 1,
+    99→                        Font = Enum.Font.GothamBold,
+   100→                        Text = text0,
+   101→                        TextSize = 15,
+   102→                        TextColor3 = color,
+   103→                        Parent = panel,
+   104→                })
+   105→                return l
+   106→        end
+   107→        self.xpLabel = chip("XP 0", T.Gold)
+   108→        self.coinLabel = chip("Koin 0", T.Blue)
+   109→        self.streakLabel = chip("Runtun 0", T.Green)
+   110→
+   111→        local lbBtn = Util.create("TextButton", {
+   112→                Position = UDim2.new(1, -134, 0, 12),
+   113→                Size = UDim2.new(0, 120, 0, 40),
+   114→                BackgroundColor3 = T.Panel,
+   115→                Font = Enum.Font.GothamBlack,
+   116→                Text = "PAPAN XP",
+   117→                TextSize = 16,
+   118→                TextColor3 = T.Text,
+   119→                Parent = self.gui,
+   120→        })
+   121→        corner(lbBtn, 12)
+   122→        lbBtn.Activated:Connect(function()
+   123→                self:setLBOpen(not self.lbOpen)
+   124→        end)
+   125→
+   126→        local devBtn = Util.create("TextButton", {
+   127→                Position = UDim2.new(1, -168, 0, 12),
+   128→                Size = UDim2.new(0, 30, 0, 40),
+   129→                BackgroundColor3 = T.Panel,
+   130→                Font = Enum.Font.GothamBlack,
+   131→                Text = "*",
+   132→                TextSize = 22,
+   133→                TextColor3 = T.TextDim,
+   134→                Parent = self.gui,
+   135→        })
+   136→        corner(devBtn, 12)
+   137→        devBtn.Activated:Connect(function()
+   138→                self.devFrame.Visible = not self.devFrame.Visible
+   139→        end)
+   140→end
+   141→
+   142→function UIController:buildZoneChip()
+   143→        local chip = Util.create("Frame", {
+   144→                AnchorPoint = Vector2.new(0.5, 0),
+   145→                Position = UDim2.new(0.5, 0, 0, 12),
+   146→                Size = UDim2.new(0, 320, 0, 56),
+   147→                BackgroundColor3 = T.Bg,
+   148→                BackgroundTransparency = 0.1,
+   149→                Parent = self.gui,
+   150→        })
+   151→        corner(chip, 14)
+   152→        Util.create("UIStroke", { Color = T.PanelLight, Thickness = 2 }, chip)
+   153→        self.zoneChip = chip
+   154→
+   155→        self.zoneName = Util.create("TextLabel", {
+   156→                Position = UDim2.new(0, 12, 0, 8),
+   157→                Size = UDim2.new(1, -24, 0, 22),
+   158→                BackgroundTransparency = 1,
+   159→                Font = Enum.Font.GothamBlack,
+   160→                Text = "",
+   161→                TextScaled = true,
+   162→                TextColor3 = T.Text,
+   163→                Parent = chip,
+   164→        })
+   165→        self.zoneSlogan = Util.create("TextLabel", {
+   166→                Position = UDim2.new(0, 12, 0, 32),
+   167→                Size = UDim2.new(1, -24, 0, 16),
+   168→                BackgroundTransparency = 1,
+   169→                Font = Enum.Font.Gotham,
+   170→                Text = "",
+   171→                TextScaled = true,
+   172→                TextColor3 = T.TextDim,
+   173→                Parent = chip,
+   174→        })
+   175→        self.zoneProgress = Util.create("TextLabel", {
+   176→                AnchorPoint = Vector2.new(1, 0),
+   177→                Position = UDim2.new(1, -10, 0, 8),
+   178→                Size = UDim2.new(0, 80, 0, 16),
+   179→                BackgroundTransparency = 1,
+   180→                Font = Enum.Font.GothamBold,
+   181→                Text = "",
+   182→                TextSize = 13,
+   183→                TextColor3 = T.Gold,
+   184→                TextXAlignment = Enum.TextXAlignment.Right,
+   185→                Parent = chip,
+   186→        })
+   187→end
+   188→
+   189→--------------------------------------------------------------------
+   190→-- DIALOG CERITA NPC
+   191→--------------------------------------------------------------------
+   192→
+   193→function UIController:buildDialog()
+   194→        local frame = Util.create("Frame", {
+   195→                Visible = false,
+   196→                AnchorPoint = Vector2.new(0.5, 1),
+   197→                Position = UDim2.new(0.5, 0, 1, -20),
+   198→                Size = UDim2.new(0, 520, 0, 190),
+   199→                BackgroundColor3 = T.Bg,
+   200→                BackgroundTransparency = 0.05,
+   201→                Parent = self.gui,
+   202→        })
+   203→        corner(frame, 16)
+   204→        Util.create("UIStroke", { Color = T.PanelLight, Thickness = 2 }, frame)
+   205→        self.dialogFrame = frame
+   206→
+   207→        self.dlgName = Util.create("TextLabel", {
+   208→                Position = UDim2.new(0, 16, 0, 10),
+   209→                Size = UDim2.new(1, -32, 0, 22),
+   210→                BackgroundTransparency = 1,
+   211→                Font = Enum.Font.GothamBlack,
+   212→                Text = "NPC",
+   213→                TextXAlignment = Enum.TextXAlignment.Left,
+   214→                TextSize = 18,
+   215→                TextColor3 = T.Gold,
+   216→                Parent = frame,
+   217→        })
+   218→        self.dlgText = Util.create("TextLabel", {
+   219→                Position = UDim2.new(0, 16, 0, 38),
+   220→                Size = UDim2.new(1, -32, 0, 96),
+   221→                BackgroundTransparency = 1,
+   222→                Font = Enum.Font.Gotham,
+   223→                Text = "",
+   224→                TextWrapped = true,
+   225→                TextXAlignment = Enum.TextXAlignment.Left,
+   226→                TextYAlignment = Enum.TextYAlignment.Top,
+   227→                TextSize = 16,
+   228→                TextColor3 = T.Text,
+   229→                Parent = frame,
+   230→        })
+   231→        local nextBtn = Util.create("TextButton", {
+   232→                AnchorPoint = Vector2.new(1, 1),
+   233→                Position = UDim2.new(1, -14, 1, -12),
+   234→                Size = UDim2.new(0, 140, 0, 34),
+   235→                BackgroundColor3 = T.Blue,
+   236→                Font = Enum.Font.GothamBlack,
+   237→                Text = "Lanjut",
+   238→                TextSize = 15,
+   239→                TextColor3 = T.Text,
+   240→                Parent = frame,
+   241→        })
+   242→        corner(nextBtn, 10)
+   243→        nextBtn.Activated:Connect(function()
+   244→                self:advanceDialog()
+   245→        end)
+   246→        self.dlgNext = nextBtn
+   247→
+   248→        local closeBtn = Util.create("TextButton", {
+   249→                AnchorPoint = Vector2.new(0, 1),
+   250→                Position = UDim2.new(0, 14, 1, -12),
+   251→                Size = UDim2.new(0, 90, 0, 34),
+   252→                BackgroundColor3 = T.PanelLight,
+   253→                Font = Enum.Font.GothamBold,
+   254→                Text = "Tutup",
+   255→                TextSize = 14,
+   256→                TextColor3 = T.TextDim,
+   257→                Parent = frame,
+   258→        })
+   259→        corner(closeBtn, 10)
+   260→        closeBtn.Activated:Connect(function()
+   261→                self.dialogFrame.Visible = false
+   262→        end)
+   263→end
+   264→
+   265→function UIController:openStory(zoneIndex: number)
+   266→        task.spawn(function()
+   267→                local ok, story = pcall(function()
+   268→                        return Remotes.get("RequestStory"):InvokeServer(zoneIndex)
+   269→                end)
+   270→                if not ok or not story then
+   271→                        return
+   272→                end
+   273→                if story.locked then
+   274→                        self:toast("Zona Terkunci", "Kuasai zona sebelumnya dulu, penjelajah!")
+   275→                        return
+   276→                end
+   277→                self.story = { zone = zoneIndex, pages = story.pages, page = 1 }
+   278→                self.dlgName.Text = story.npc
+   279→                self.dialogFrame.Visible = true
+   280→                self:showStoryPage()
+   281→        end)
+   282→end
+   283→
+   284→function UIController:showStoryPage()
+   285→        local story = self.story
+   286→        if not story then
+   287→                return
+   288→        end
+   289→        self.dlgText.Text = story.pages[story.page]
+   290→        self.dlgNext.Text = story.page >= #story.pages and "Mulai Tantangan!" or "Lanjut"
+   291→end
+   292→
+   293→function UIController:advanceDialog()
+   294→        local story = self.story
+   295→        if not story then
+   296→                return
+   297→        end
+   298→        if story.page < #story.pages then
+   299→                story.page += 1
+   300→                self:showStoryPage()
+   301→        else
+   302→                self.dialogFrame.Visible = false
+   303→                self:startQuiz(story.zone)
+   304→        end
+   305→end
+   306→
+   307→--------------------------------------------------------------------
+   308→-- KUIS
+   309→--------------------------------------------------------------------
+   310→
+   311→function UIController:buildQuiz()
+   312→        local frame = Util.create("Frame", {
+   313→                Visible = false,
+   314→                AnchorPoint = Vector2.new(0.5, 0.5),
+   315→                Position = UDim2.fromScale(0.5, 0.5),
+   316→                Size = UDim2.new(0, 560, 0, 360),
+   317→                BackgroundColor3 = T.Bg,
+   318→                BackgroundTransparency = 0.04,
+   319→                Parent = self.gui,
+   320→        })
+   321→        corner(frame, 18)
+   322→        Util.create("UIStroke", { Color = T.PanelLight, Thickness = 2 }, frame)
+   323→        self.quizFrame = frame
+   324→
+   325→        self.quizTitle = Util.create("TextLabel", {
+   326→                Position = UDim2.new(0, 16, 0, 12),
+   327→                Size = UDim2.new(1, -32, 0, 22),
+   328→                BackgroundTransparency = 1,
+   329→                Font = Enum.Font.GothamBlack,
+   330→                Text = "TANTANGAN",
+   331→                TextXAlignment = Enum.TextXAlignment.Left,
+   332→                TextSize = 17,
+   333→                TextColor3 = T.Gold,
+   334→                Parent = frame,
+   335→        })
+   336→
+   337→        self.quizQuestion = Util.create("TextLabel", {
+   338→                Position = UDim2.new(0, 16, 0, 44),
+   339→                Size = UDim2.new(1, -32, 0, 64),
+   340→                BackgroundTransparency = 1,
+   341→                Font = Enum.Font.GothamBold,
+   342→                Text = "",
+   343→                TextWrapped = true,
+   344→                TextXAlignment = Enum.TextXAlignment.Left,
+   345→                TextYAlignment = Enum.TextYAlignment.Top,
+   346→                TextSize = 18,
+   347→                TextColor3 = T.Text,
+   348→                Parent = frame,
+   349→        })
+   350→
+   351→        self.quizFeedback = Util.create("TextLabel", {
+   352→                Position = UDim2.new(0, 16, 1, -56),
+   353→                Size = UDim2.new(1, -32, 0, 44),
+   354→                BackgroundTransparency = 1,
+   355→                Font = Enum.Font.Gotham,
+   356→                Text = "",
+   357→                TextWrapped = true,
+   358→                TextXAlignment = Enum.TextXAlignment.Left,
+   359→                TextSize = 15,
+   360→                TextColor3 = T.TextDim,
+   361→                Parent = frame,
+   362→        })
+   363→
+   364→        self.optionButtons = {}
+   365→        for i = 1, 3 do
+   366→                local btn = Util.create("TextButton", {
+   367→                        Position = UDim2.new(0, 16, 0, 118 + (i - 1) * 52),
+   368→                        Size = UDim2.new(1, -32, 0, 44),
+   369→                        BackgroundColor3 = T.PanelLight,
+   370→                        Font = Enum.Font.GothamBold,
+   371→                        Text = "",
+   372→                        TextSize = 17,
+   373→                        TextColor3 = T.Text,
+   374→                        Parent = frame,
+   375→                })
+   376→                corner(btn, 10)
+   377→                btn.Activated:Connect(function()
+   378→                        self:answer(i)
+   379→                end)
+   380→                self.optionButtons[i] = btn
+   381→        end
+   382→end
+   383→
+   384→function UIController:startQuiz(zoneIndex: number)
+   385→        task.spawn(function()
+   386→                local ok, q = pcall(function()
+   387→                        return Remotes.get("StartQuiz"):InvokeServer(zoneIndex)
+   388→                end)
+   389→                if not ok or not q then
+   390→                        return
+   391→                end
+   392→                if q.locked then
+   393→                        self:toast("Zona Terkunci", "Kuasai zona sebelumnya dulu!")
+   394→                        return
+   395→                end
+   396→                self.activeQuiz = { qid = q.qid, zone = zoneIndex }
+   397→                local zone = Config.Zones[zoneIndex]
+   398→                self.quizTitle.Text = string.upper(zone.name) .. "  -  TANTANGAN " .. self:zoneCorrect(zoneIndex) .. "/" .. self:masteryTarget()
+   399→                self.quizQuestion.Text = q.t
+   400→                self.quizFeedback.Text = ""
+   401→                for i, btn in self.optionButtons do
+   402→                        btn.Text = q.opsi[i]
+   403→                        btn.BackgroundColor3 = T.PanelLight
+   404→                end
+   405→                self.quizFrame.Visible = true
+   406→        end)
+   407→end
+   408→
+   409→function UIController:answer(choice: number)
+   410→        local quiz = self.activeQuiz
+   411→        if not quiz then
+   412→                return
+   413→        end
+   414→        task.spawn(function()
+   415→                local ok, result = pcall(function()
+   416→                        return Remotes.get("AnswerQuiz"):InvokeServer(quiz.qid, choice)
+   417→                end)
+   418→                if not ok or not result then
+   419→                        return
+   420→                end
+   421→                if result.expired then
+   422→                        self.quizFrame.Visible = false
+   423→                        self.activeQuiz = nil
+   424→                        self:toast("Soal kedaluwarsa", "Coba tantangan lagi ya!")
+   425→                        return
+   426→                end
+   427→                if result.correct then
+   428→                        self.sound.PlaybackSpeed = 1.1
+   429→                        self.sound:Play()
+   430→                        self.optionButtons[choice].BackgroundColor3 = T.Green
+   431→                        self.quizFeedback.TextColor3 = T.Green
+   432→                        if result.justMastered then
+   433→                                self.quizFeedback.Text = result.feedback .. "  ZONA DIKUASAI!"
+   434→                        else
+   435→                                self.quizFeedback.Text = result.feedback
+   436→                        end
+   437→                else
+   438→                        self.sound.PlaybackSpeed = 0.7
+   439→                        self.sound:Play()
+   440→                        self.quizFeedback.TextColor3 = T.TextDim
+   441→                        self.quizFeedback.Text = result.feedback
+   442→                end
+   443→                task.delay(1.6, function()
+   444→                        if self.quizFrame.Visible then
+   445→                                self.activeQuiz = nil
+   446→                                self.quizFrame.Visible = false
+   447→                                -- soal berikutnya otomatis kalau masih di depan NPC
+   448→                                if result.correct then
+   449→                                        self:startQuiz(quiz.zone)
+   450→                                end
+   451→                        end
+   452→                end)
+   453→        end)
+   454→end
+   455→
+   456→--------------------------------------------------------------------
+   457→-- BAHASAN
+   458→--------------------------------------------------------------------
+   459→
+   460→function UIController:buildBahasan()
+   461→        local frame = Util.create("Frame", {
+   462→                Visible = false,
+   463→                AnchorPoint = Vector2.new(0.5, 0.5),
+   464→                Position = UDim2.fromScale(0.5, 0.5),
+   465→                Size = UDim2.new(0, 520, 0, 380),
+   466→                BackgroundColor3 = T.Bg,
+   467→                BackgroundTransparency = 0.04,
+   468→                Parent = self.gui,
+   469→        })
+   470→        corner(frame, 18)
+   471→        Util.create("UIStroke", { Color = T.PanelLight, Thickness = 2 }, frame)
+   472→        self.bahasanFrame = frame
+   473→
+   474→        self.bahasanTitle = Util.create("TextLabel", {
+   475→                Position = UDim2.new(0, 16, 0, 10),
+   476→                Size = UDim2.new(1, -60, 0, 24),
+   477→                BackgroundTransparency = 1,
+   478→                Font = Enum.Font.GothamBlack,
+   479→                Text = "BAHASAN",
+   480→                TextXAlignment = Enum.TextXAlignment.Left,
+   481→                TextSize = 18,
+   482→                TextColor3 = T.Gold,
+   483→                Parent = frame,
+   484→        })
+   485→        local close = Util.create("TextButton", {
+   486→                AnchorPoint = Vector2.new(1, 0),
+   487→                Position = UDim2.new(1, -12, 0, 10),
+   488→                Size = UDim2.new(0, 30, 0, 30),
+   489→                BackgroundColor3 = T.Red,
+   490→                Font = Enum.Font.GothamBlack,
+   491→                Text = "X",
+   492→                TextSize = 15,
+   493→                TextColor3 = T.Text,
+   494→                Parent = frame,
+   495→        })
+   496→        corner(close, 8)
+   497→        close.Activated:Connect(function()
+   498→                self.bahasanFrame.Visible = false
+   499→        end)
+   500→
+   501→        local scroll = Util.create("ScrollingFrame", {
+   502→                Position = UDim2.new(0, 12, 0, 44),
+   503→                Size = UDim2.new(1, -24, 1, -56),
+   504→                BackgroundTransparency = 1,
+   505→                ScrollBarThickness = 4,
+   506→                CanvasSize = UDim2.new(0, 0, 0, 0),
+   507→                AutomaticCanvasSize = Enum.AutomaticSize.Y,
+   508→                Parent = frame,
+   509→        })
+   510→        Util.create("UIListLayout", { Padding = UDim.new(0, 8) }, scroll)
+   511→        self.bahasanScroll = scroll
+   512→end
+   513→
+   514→function UIController:openBahasan(zoneIndex: number)
+   515→        for _, child in self.bahasanScroll:GetChildren() do
+   516→                if child:IsA("Frame") then
+   517→                        child:Destroy()
+   518→                end
+   519→        end
+   520→        local zone = Config.Zones[zoneIndex]
+   521→        self.bahasanTitle.Text = "BAHASAN  -  " .. string.upper(zone.name)
+   522→
+   523→        for i, lesson in LessonData.forZone(zoneIndex) do
+   524→                local read = self.state and self.state.Read and table.find(self.state.Read, lesson.id) ~= nil
+   525→                local row = Util.create("Frame", {
+   526→                        Size = UDim2.new(1, -8, 0, 76),
+   527→                        BackgroundColor3 = T.Panel,
+   528→                        Parent = self.bahasanScroll,
+   529→                })
+   530→                corner(row, 10)
+   531→                Util.create("TextLabel", {
+   532→                        Position = UDim2.new(0, 10, 0, 6),
+   533→                        Size = UDim2.new(1, -120, 0, 20),
+   534→                        BackgroundTransparency = 1,
+   535→                        Font = Enum.Font.GothamBold,
+   536→                        Text = lesson.title,
+   537→                        TextXAlignment = Enum.TextXAlignment.Left,
+   538→                        TextSize = 15,
+   539→                        TextColor3 = read and T.Green or T.Text,
+   540→                        Parent = row,
+   541→                })
+   542→                Util.create("TextLabel", {
+   543→                        Position = UDim2.new(0, 10, 0, 27),
+   544→                        Size = UDim2.new(1, -120, 0, 44),
+   545→                        BackgroundTransparency = 1,
+   546→                        Font = Enum.Font.Gotham,
+   547→                        Text = lesson.text,
+   548→                        TextWrapped = true,
+   549→                        TextXAlignment = Enum.TextXAlignment.Left,
+   550→                        TextYAlignment = Enum.TextYAlignment.Top,
+   551→                        TextSize = 12,
+   552→                        TextColor3 = T.TextDim,
+   553→                        Parent = row,
+   554→                })
+   555→                local mark = Util.create("TextButton", {
+   556→                        AnchorPoint = Vector2.new(1, 0.5),
+   557→                        Position = UDim2.new(1, -10, 0.5, 0),
+   558→                        Size = UDim2.new(0, 92, 0, 34),
+   559→                        BackgroundColor3 = read and T.Disabled or T.Green,
+   560→                        Font = Enum.Font.GothamBlack,
+   561→                        Text = read and "Dibaca" or "Tandai",
+   562→                        TextSize = 13,
+   563→                        TextColor3 = T.Text,
+   564→                        Parent = row,
+   565→                })
+   566→                corner(mark, 8)
+   567→                if not read then
+   568→                        mark.Activated:Connect(function()
+   569→                                task.spawn(function()
+   570→                                        local ok, res = pcall(function()
+   571→                                                return Remotes.get("ReadTopic"):InvokeServer(lesson.id)
+   572→                                        end)
+   573→                                        if ok and res and not res.already then
+   574→                                                self:toast("Bahasan dibaca", "+" .. (res.xp or 5) .. " XP. Makin dalam pemahamanmu!")
+   575→                                                mark.Text = "Dibaca"
+   576→                                                mark.BackgroundColor3 = T.Disabled
+   577→                                        end
+   578→                                end)
+   579→                        end)
+   580→                end
+   581→                row.LayoutOrder = i
+   582→        end
+   583→        self.bahasanFrame.Visible = true
+   584→end
+   585→
+   586→--------------------------------------------------------------------
+   587→-- PAPAN XP + KODE DEV + NOTIFY
+   588→--------------------------------------------------------------------
+   589→
+   590→function UIController:buildLeaderboardPanel()
+   591→        local frame = Util.create("Frame", {
+   592→                Visible = false,
+   593→                AnchorPoint = Vector2.new(1, 0),
+   594→                Position = UDim2.new(1, -14, 0, 60),
+   595→                Size = UDim2.new(0, 250, 0, 300),
+   596→                BackgroundColor3 = T.Bg,
+   597→                BackgroundTransparency = 0.06,
+   598→                Parent = self.gui,
+   599→        })
+   600→        corner(frame, 14)
+   601→        Util.create("UIStroke", { Color = T.PanelLight, Thickness = 2 }, frame)
+   602→        self.lbFrame = frame
+   603→        Util.create("TextLabel", {
+   604→                Position = UDim2.new(0, 12, 0, 8),
+   605→                Size = UDim2.new(1, -24, 0, 24),
+   606→                BackgroundTransparency = 1,
+   607→                Font = Enum.Font.GothamBlack,
+   608→                Text = "PENJELAJAH TERATAS",
+   609→                TextXAlignment = Enum.TextXAlignment.Left,
+   610→                TextSize = 14,
+   611→                TextColor3 = T.Gold,
+   612→                Parent = frame,
+   613→        })
+   614→        self.lbList = Util.create("Frame", {
+   615→                Position = UDim2.new(0, 12, 0, 38),
+   616→                Size = UDim2.new(1, -24, 1, -50),
+   617→                BackgroundTransparency = 1,
+   618→                Parent = frame,
+   619→        })
+   620→        Util.create("UIListLayout", { Padding = UDim.new(0, 4) }, self.lbList)
+   621→end
+   622→
+   623→function UIController:buildDevPanel()
+   624→        local frame = Util.create("Frame", {
+   625→                Visible = false,
+   626→                AnchorPoint = Vector2.new(1, 0),
+   627→                Position = UDim2.new(1, -150, 0, 58),
+   628→                Size = UDim2.new(0, 240, 0, 96),
+   629→                BackgroundColor3 = T.Bg,
+   630→                BackgroundTransparency = 0.06,
+   631→                Parent = self.gui,
+   632→        })
+   633→        corner(frame, 12)
+   634→        Util.create("UIStroke", { Color = T.PanelLight, Thickness = 2 }, frame)
+   635→        self.devFrame = frame
+   636→        Util.create("TextLabel", {
+   637→                Position = UDim2.new(0, 10, 0, 6),
+   638→                Size = UDim2.new(1, -20, 0, 18),
+   639→                BackgroundTransparency = 1,
+   640→                Font = Enum.Font.GothamBold,
+   641→                Text = "Kode Penjelajah",
+   642→                TextXAlignment = Enum.TextXAlignment.Left,
+   643→                TextSize = 13,
+   644→                TextColor3 = T.TextDim,
+   645→                Parent = frame,
+   646→        })
+   647→        local input = Util.create("TextBox", {
+   648→                Position = UDim2.new(0, 10, 0, 28),
+   649→                Size = UDim2.new(1, -20, 0, 30),
+   650→                BackgroundColor3 = T.Panel,
+   651→                Font = Enum.Font.Gotham,
+   652→                Text = "",
+   653→                PlaceholderText = "Masukkan kode...",
+   654→                TextSize = 14,
+   655→                TextColor3 = T.Text,
+   656→                ClearTextOnFocus = false,
+   657→                Parent = frame,
+   658→        })
+   659→        corner(input, 8)
+   660→        local submit = Util.create("TextButton", {
+   661→                Position = UDim2.new(0, 10, 0, 64),
+   662→                Size = UDim2.new(1, -20, 0, 26),
+   663→                BackgroundColor3 = T.Blue,
+   664→                Font = Enum.Font.GothamBlack,
+   665→                Text = "Kirim",
+   666→                TextSize = 13,
+   667→                TextColor3 = T.Text,
+   668→                Parent = frame,
+   669→        })
+   670→        corner(submit, 8)
+   671→        submit.Activated:Connect(function()
+   672→                local code = input.Text
+   673→                task.spawn(function()
+   674→                        local ok, res = pcall(function()
+   675→                                return Remotes.get("RedeemDevCode"):InvokeServer(code)
+   676→                        end)
+   677→                        if ok and res == true then
+   678→                                input.Text = ""
+   679→                                self.devFrame.Visible = false
+   680→                        elseif ok then
+   681→                                self:toast("Kode", tostring(res))
+   682→                        end
+   683→                end)
+   684→        end)
+   685→end
+   686→
+   687→function UIController:buildNotify()
+   688→        self.notifyFrame = Util.create("Frame", {
+   689→                AnchorPoint = Vector2.new(1, 1),
+   690→                Position = UDim2.new(1, -16, 1, -16),
+   691→                Size = UDim2.new(0, 260, 0, 140),
+   692→                BackgroundTransparency = 1,
+   693→                Parent = self.gui,
+   694→        })
+   695→        Util.create("UIListLayout", {
+   696→                Padding = UDim.new(0, 6),
+   697→                SortOrder = Enum.SortOrder.LayoutOrder,
+   698→                VerticalAlignment = Enum.VerticalAlignment.Bottom,
+   699→        }, self.notifyFrame)
+   700→end
+   701→
+   702→--------------------------------------------------------------------
+   703→-- LOGIKA
+   704→--------------------------------------------------------------------
+   705→
+   706→function UIController:zoneCorrect(zoneIndex: number): number
+   707→        if not self.state then
+   708→                return 0
+   709→        end
+   710→        local zone = Config.Zones[zoneIndex]
+   711→        return self.state.Correct[zone.id] or 0
+   712→end
+   713→
+   714→function UIController:masteryTarget(): number
+   715→        return self.state and self.state.MasteryTarget or 10
+   716→end
+   717→
+   718→function UIController:setLBOpen(open: boolean)
+   719→        self.lbOpen = open
+   720→        self.lbFrame.Visible = open
+   721→        if open then
+   722→                self:refreshLB()
+   723→        end
+   724→end
+   725→
+   726→function UIController:refreshLB()
+   727→        task.spawn(function()
+   728→                local ok, rows = pcall(function()
+   729→                        return Remotes.get("GetLeaderboard"):InvokeServer()
+   730→                end)
+   731→                if not ok or not rows then
+   732→                        return
+   733→                end
+   734→                for _, child in self.lbList:GetChildren() do
+   735→                        if child:IsA("TextLabel") then
+   736→                                child:Destroy()
+   737→                        end
+   738→                end
+   739→                if #rows == 0 then
+   740→                        Util.create("TextLabel", {
+   741→                                Size = UDim2.new(1, 0, 0, 22),
+   742→                                BackgroundTransparency = 1,
+   743→                                Font = Enum.Font.Gotham,
+   744→                                Text = "Belum ada penjelajah - jadilah yang pertama!",
+   745→                                TextSize = 13,
+   746→                                TextColor3 = T.TextDim,
+   747→                                Parent = self.lbList,
+   748→                        })
+   749→                        return
+   750→                end
+   751→                for i, entry in rows do
+   752→                        Util.create("TextLabel", {
+   753→                                Size = UDim2.new(1, 0, 0, 22),
+   754→                                BackgroundTransparency = 1,
+   755→                                Font = Enum.Font.GothamBold,
+   756→                                Text = i .. ". " .. entry.name .. " - " .. Util.formatNumber(entry.value) .. " XP",
+   757→                                TextXAlignment = Enum.TextXAlignment.Left,
+   758→                                TextSize = 14,
+   759→                                TextColor3 = i <= 3 and T.Gold or T.Text,
+   760→                                Parent = self.lbList,
+   761→                        })
+   762→                end
+   763→        end)
+   764→end
+   765→
+   766→function UIController:toast(title: string, message: string)
+   767→        local card = Util.create("Frame", {
+   768→                Size = UDim2.new(1, 0, 0, 52),
+   769→                BackgroundColor3 = T.Panel,
+   770→                BackgroundTransparency = 0.1,
+   771→                Parent = self.notifyFrame,
+   772→        })
+   773→        corner(card, 10)
+   774→        Util.create("TextLabel", {
+   775→                Position = UDim2.new(0, 10, 0, 6),
+   776→                Size = UDim2.new(1, -20, 0, 18),
+   777→                BackgroundTransparency = 1,
+   778→                Font = Enum.Font.GothamBlack,
+   779→                Text = title,
+   780→                TextXAlignment = Enum.TextXAlignment.Left,
+   781→                TextSize = 14,
+   782→                TextColor3 = T.Gold,
+   783→                Parent = card,
+   784→        })
+   785→        Util.create("TextLabel", {
+   786→                Position = UDim2.new(0, 10, 0, 26),
+   787→                Size = UDim2.new(1, -20, 0, 20),
+   788→                BackgroundTransparency = 1,
+   789→                Font = Enum.Font.Gotham,
+   790→                Text = message,
+   791→                TextXAlignment = Enum.TextXAlignment.Left,
+   792→                TextScaled = true,
+   793→                TextColor3 = T.Text,
+   794→                Parent = card,
+   795→        })
+   796→        task.delay(3.2, function()
+   797→                local tween = TweenService:Create(card, TweenInfo.new(0.4), { BackgroundTransparency = 1 })
+   798→                tween:Play()
+   799→                tween.Completed:Wait()
+   800→                card:Destroy()
+   801→        end)
+   802→end
+   803→
+   804→function UIController:detectZone()
+   805→        local char = player.Character
+   806→        local root = char and char:FindFirstChild("HumanoidRootPart")
+   807→        if not root then
+   808→                return
+   809→        end
+   810→        local z = root.Position.Z
+   811→        local idx = math.floor((z - Config.World.StartZ + Config.World.ZoneSpacing / 2) / Config.World.ZoneSpacing) + 1
+   812→        idx = math.clamp(idx, 1, #Config.Zones)
+   813→        if idx ~= self.zoneIndex then
+   814→                self.zoneIndex = idx
+   815→                local zone = Config.Zones[idx]
+   816→                local color = Util.zoneColor(zone.color)
+   817→                self.zoneName.Text = zone.name
+   818→                self.zoneName.TextColor3 = color
+   819→                self.zoneSlogan.Text = zone.slogan
+   820→        end
+   821→        -- progres zona di chip
+   822→        if self.state then
+   823→                local zone = Config.Zones[self.zoneIndex]
+   824→                local done = self.state.Correct[zone.id] or 0
+   825→                local mastered = self.state.Mastered[zone.id]
+   826→                local unlocked = self.zoneIndex <= (self.state.Unlocked or 1)
+   827→                if not unlocked then
+   828→                        self.zoneProgress.Text = "TERKUNCI"
+   829→                        self.zoneProgress.TextColor3 = T.Red
+   830→                elseif mastered then
+   831→                        self.zoneProgress.Text = "DIKUASAI"
+   832→                        self.zoneProgress.TextColor3 = T.Green
+   833→                else
+   834→                        self.zoneProgress.Text = done .. "/" .. self:masteryTarget()
+   835→                        self.zoneProgress.TextColor3 = T.Gold
+   836→                end
+   837→        end
+   838→end
+   839→
+   840→function UIController:applyState(state)
+   841→        self.state = state
+   842→        self.xpLabel.Text = "XP " .. Util.formatNumber(state.XP)
+   843→        self.coinLabel.Text = "Koin " .. Util.formatNumber(state.Coins)
+   844→        self.streakLabel.Text = "Runtun " .. tostring(state.Streak)
+   845→        if state.Dev then
+   846→                self.streakLabel.TextColor3 = T.Gold
+   847→        end
+   848→end
+   849→
+   850→function UIController:wire()
+   851→        Remotes.get("StateSync").OnClientEvent:Connect(function(state)
+   852→                self:applyState(state)
+   853→        end)
+   854→
+   855→        Remotes.get("Notify").OnClientEvent:Connect(function(title, message)
+   856→                self:toast(title, message)
+   857→        end)
+   858→
+   859→        Remotes.get("ZoneEntered").OnClientEvent:Connect(function(info)
+   860→                if info.type == "npc" then
+   861→                        self:openStory(info.zone)
+   862→                elseif info.type == "board" then
+   863→                        self:openBahasan(info.zone)
+   864→                end
+   865→        end)
+   866→
+   867→        task.spawn(function()
+   868→                while true do
+   869→                        task.wait(0.4)
+   870→                        self:detectZone()
+   871→                end
+   872→        end)
+   873→
+   874→        task.spawn(function()
+   875→                while true do
+   876→                        task.wait(20)
+   877→                        if self.lbOpen then
+   878→                                self:refreshLB()
+   879→                        end
+   880→                end
+   881→        end)
+   882→end
+   883→
+   884→return UIController
+   885→

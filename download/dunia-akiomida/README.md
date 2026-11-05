@@ -1,108 +1,36 @@
-# DUNIA AKIOMIDA - Versi Roblox (v1.0.1)
+# DUNIA AKIOMIDA v2 — "Ekonomi Hidup" (Roblox)
 
-Port original dari game browser **"Dunia Akiomida: Petualangan Matematika"**
-(akiomida.com / repo `akiomida/Io`) ke Roblox. Seluruh kode Luau ditulis dari
-nol (karya mandiri), soal digenerate prosedural, dialog & materi ditulis ulang.
+Status: ✅ LIVE di Roblox (versionNumber 9, 5 Nov 2026)
+Universe: 10774464946 · Place: 77626159664192
+Build: rojo build --output build/DuniaAkiomida.rbxlx . (189 KB, 14 modul, luau-lsp 0 error)
 
-**Status: ✅ LIVE DI ROBLOX** - publish sukses via Open Cloud API
-(Universe `10774464946` / Place `77626159664192`, **versionNumber: 5**, 3 Nov 2026).
-Patch v1.0.1 (versionNumber 8): perbaikan dunia & keamanan - lihat di bawah.
+## Rombakan v2 (dari game kuis → dunia MMO ekonomi)
+- **Ladang pribadi** ala Grow a Garden: klaim gratis 1 dari 6 ladang (4x4 petak),
+  tanam 5 jenis bibit (wortel→melon bintang), tumbuh nyata waktu (25s-400s),
+  siram (+25% kecepatan), panen bercahaya, auto-panen saat keluar server.
+- **Ekonomi hidup**: harga pasar naik-turun tiap 10 menit (x0.8-x1.35),
+  4 toko (Bibit, Pengepul, Alat, Peliharaan), tombol "Jual Semua".
+- **Kumpulkan sumber daya**: tebang 12 pohon (kayu+apel), tambang batu/besi/kristal
+  (butuh Belik Batu/Baja), memancing di Danau Tenang (4 jenis tangkapan).
+- **Alat**: Kaleng Siram, Pancing Ajaib, Belik tier 2-3, Sepeda Angin (kecepatan+60%).
+- **Peliharaan**: Kucing Koin (+10% jual), Panda Martabak (+25%), Naga Emas (+50%)
+  - melayang mengikuti pemain.
+- **Level & XP**: semua aktivitas memberi XP; level membuka bibit mahal.
+- **Kuis BUKAN lagi inti**: hanya Kak Pintar di alun-alun, opsional penuh,
+  +20 koin per jawaban benar. Tidak ada popup paksa, tidak ada zona terkunci.
+- **Kota hidup**: alun-alun + air mancur, gerbang judul, jalan beton, 36 lampu,
+  bangku, bunga, kincir angin, orang-orangan sawah, papan juara XP global.
+- Fitur browser versi lama yang sengaja tidak dibawa: ads, donasi, share,
+  toggle wawasan (sesuai aturan owner).
 
----
+## Update versi berikutnya
+export ROBLOX_API_KEY="$(grep -E '^ROBLOX_API_KEY=' /home/z/my-project/.secrets/akiomida.env | cut -d= -f2-)"
+python3 publish.py --universe-id 10774464946 --place-id 77626159664192 --file build/DuniaAkiomida.rbxlx
 
+## Pasca-publish (dashboard owner)
+1. Game Settings → Security → aktifkan "Studio Access to API Services" (DataStore wajib).
+2. Jika masih Private, set Public bila ingin pemain lain masuk.
 
-## Patch v1.0.1 (perbaikan bug tampilan)
-
-| Masalah | Perbaikan |
-|---|---|
-| Pulau dirender salah sumbu 90° - 4 dari 6 zona melayang di kehampaan | Sumbu panjang pulau kini sejajar barisan zona (sumbu Z) |
-| Pemain di-kick saat DataStore gagal (API Services belum aktif) | Fallback "Mode Sesi": game tetap main, progres sementara di memori |
-| Pemain bisa jatuh ke kehampaan dari tepi pulau | Samudra lebar 3000 stud mengelilingi pulau |
-| Langit polos, dunia terasa kosong | Atmosphere + 8 awan dekoratif |
-| Spawn melayang 1 stud, suara kuis tak pernah bunyi, teks soal Puncak Riset tidak cocok dgn 3 tombol | Dibereskan semua |
-
-## Yang dibawa ke Roblox (identitas dipertahankan)
-
-| Elemen | Status |
-|---|---|
-| 6 zona: Kamp Angka, Hutan Simbol, Pegunungan Pola, Kota Bukti, Lembah Kedalaman, Puncak Riset | ✅ nama + slogan + warna asli |
-| NPC cerita per zona (Kak Satu, dll) | ✅ dialog ditulis ulang original |
-| Kuis matematika pilihan 3 opsi + feedback edukatif | ✅ generator prosedural per zona |
-| Progres membaca bahasan/topik | ✅ jadi Papan Bahasan tiap zona |
-| Progresif zona (kuasai -> buka berikutnya) | ✅ 10 jawaban benar per zona |
-| Leaderboard | ✅ Papan Penjelajah XP (OrderedDataStore) + leaderstats Roblox |
-| Dunia eksplorasi | ✅ pulau panjang 6 bioma prosedural + gerbang zona |
-
-## Yang SENGAJA TIDAK dibawa (sesuai instruksi owner)
-
-- ❌ `ads.js` / iklan apa pun
-- ❌ Donasi
-- ❌ Share / "Kartu Niaga" (salin ke grup)
-- ❌ Toggle wawasan (insight)
-- ❌ Minigame karavan/niaga & pasar (bisa jadi roadmap v1.1)
-
-## Fitur khusus
-
-- **Kode Penjelajah** (tombol `*` kiri atas): masukkan kode dev internal
-  game Akiomida untuk status pembuat dunia.
-- Kuis 100% server-authoritative: kunci jawaban tidak pernah dikirim ke client.
-
-## Target publish (milik owner)
-
-- Universe ID: `10774464946` (AKIOMIDA, creator Akiomidaroblox)
-- Place ID (root): `77626159664192`
-
-## STATUS PUBLISH & CARA UPDATE
-
-### ✅ Publish pertama - SUKSES (via Open Cloud API)
-
-Setelah owner menambahkan scope `universe-places: Write` untuk experience
-AKIOMIDA pada API key, publish berhasil:
-
-```
-POST /universes/v1/10774464946/places/77626159664192/versions?versionType=Published
-Respons: HTTP 200  {"versionNumber": 5}
-```
-
-### Cara update berikutnya (setelah ubah kode)
-
-```bash
-cd dunia-akiomida
-rojo build --output build/DuniaAkiomida.rbxlx .
-python3 publish.py --api-key KEY_ANDA --universe-id 10774464946 \
-    --place-id 77626159664192 --file build/DuniaAkiomida.rbxlx
-```
-
-Respons berisi `versionNumber` baru = langsung live.
-
-### Catatan penting setelah publish (sekali saja, di Creator Dashboard)
-
-1. **API Services**: AKIOMIDA → Game Settings → Security → aktifkan
-   **"Studio Access to API Services"** supaya DataStore jalan
-   (progres pemain & Papan Penjelajah XP tersimpan).
-2. **Publik/Private**: game sekarang masih Private (hanya owner yang bisa main
-   via dashboard). Kalau mau dibuka untuk semua orang: Game Settings →
-   Permissions → **Public**.
-
-### Alternatif - lewat Studio (tanpa API key)
-
-1. Buka Roblox Studio → **File → Open from File** → `build/DuniaAkiomida.rbxlx`.
-2. **File → Publish to Roblox As...** → pilih experience **AKIOMIDA** → publish.
-
-## Modifikasi & rebuild
-
-```bash
-rojo build --output build/DuniaAkiomida.rbxlx .
-```
-
-Semua angka tuning (target penguasaan, XP, koin, jarak zona) ada di
-`src/Shared/Config.luau`. Bank soal per zona ada di `src/Shared/MathGen.luau`
-(prosedural - tambah pola soal = tambah variasi tanpa batas). Materi bahasan
-ada di `src/Shared/LessonData.luau`.
-
-## Roadmap sarankan (v1.1)
-
-1. Bahasa Inggris (i18n seperti versi browser)
-2. Minigame karavan versi Roblox (tanpa share)
-3. Badge Roblox: "Penjelajah Pertama", "Kuasa Kamp Angka", dst.
-4. Visual pet/karakter NPC lebih hidup (animasi procedural)
+## Keamanan
+Kredensial (API key, kode dev) disimpan di /home/z/my-project/.secrets/akiomida.env
+(server-only DevCodeVault untuk kode). Jangan commit / bagikan. Rotate bila bocor.

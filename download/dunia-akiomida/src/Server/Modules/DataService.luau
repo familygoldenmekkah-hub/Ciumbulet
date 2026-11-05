@@ -1,7 +1,8 @@
 --!nonstrict
 --[[
-        DataService.luau - progres pemain: XP, koin, jawaban benar per zona,
-        bahasan dibaca, streak, status dev. DataStore + autosave + sanitize.
+        DataService.luau - data pemain v2 "Ekonomi Hidup":
+        koin, XP, bibit, hasil panen, sumber daya, ikan, alat, peliharaan.
+        DataStore + autosave + snapshot state untuk client.
 ]]
 
 local Players = game:GetService("Players")
@@ -10,6 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Util = require(ReplicatedStorage.Shared.Util)
+local Remotes = require(ReplicatedStorage.Remotes)
 
 local DataService = {}
 
@@ -17,26 +19,45 @@ local store = DataStoreService:GetDataStore(Config.Data.StoreName)
 
 local sessions: { [Player]: { data: { [string]: any }, dirty: boolean, fallback: boolean } } = {}
 
+-- provider state tambahan dari layanan lain (didftar lewat init, tanpa siklus require)
+local providers: { [string]: (Player) -> any } = {}
+
+function DataService.registerProvider(name: string, fn: (Player) -> any)
+        providers[name] = fn
+end
+
+-- kind -> nama tabel inventaris
+local KIND_FIELD = {
+        seed = "Seeds",
+        crop = "Crops",
+        bag = "Bag",
+        fish = "Fish",
+}
+
+function DataService.kindField(kind: string): string?
+        return KIND_FIELD[kind]
+end
+
 local function defaultData(): { [string]: any }
-        local correct: { [string]: number } = {}
-        for _, zone in Config.Zones do
-                correct[zone.id] = 0
-        end
-        local mastered: { [string]: boolean } = {}
-        for _, zone in Config.Zones do
-                mastered[zone.id] = false
-        end
         return {
+                Coins = Config.Economy.StartCoins,
                 XP = 0,
-                Coins = 0,
-                Correct = correct,
-                Mastered = mastered,
-                Read = {}, -- topic ids
-                Streak = 0,
-                BestStreak = 0,
+                Seeds = Util.deepCopy(Config.Economy.StartSeeds),
+                Crops = {},
+                Bag = {},
+                Fish = {},
+                Tools = { pickTier = 1, can = false, rod = false, bike = false },
+                Pets = {},
+                ActivePet = "",
+                TotalEarned = 0,
+                LastLoginDay = 0,
                 Dev = false,
                 LastSeen = 0,
         }
+end
+
+local function sanitizeCount(v: any): number
+        return math.max(0, math.floor(tonumber(v) or 0))
 end
 
 local function sanitize(raw: any): { [string]: any }
@@ -44,28 +65,35 @@ local function sanitize(raw: any): { [string]: any }
         if type(raw) ~= "table" then
                 return out
         end
-        out.XP = tonumber(raw.XP) or 0
-        out.Coins = tonumber(raw.Coins) or 0
-        out.Streak = tonumber(raw.Streak) or 0
-        out.BestStreak = tonumber(raw.BestStreak) or 0
-        out.Dev = raw.Dev == true
-        if type(raw.Correct) == "table" then
-                for _, zone in Config.Zones do
-                        out.Correct[zone.id] = math.max(0, math.floor(tonumber(raw.Correct[zone.id]) or 0))
-                end
-        end
-        if type(raw.Mastered) == "table" then
-                for _, zone in Config.Zones do
-                        out.Mastered[zone.id] = raw.Mastered[zone.id] == true
-                end
-        end
-        if type(raw.Read) == "table" then
-                for _, id in raw.Read do
-                        if type(id) == "string" then
-                                table.insert(out.Read, id)
+        out.Coins = sanitizeCount(raw.Coins)
+        out.XP = sanitizeCount(raw.XP)
+        for kind, field in KIND_FIELD do
+                if type(raw[field]) == "table" then
+                        out[field] = {} -- timpa default supaya inventaris lama dihormati
+                        for id, count in raw[field] do
+                                if type(id) == "string" then
+                                        out[field][id] = sanitizeCount(count)
+                                end
                         end
                 end
         end
+        if type(raw.Tools) == "table" then
+                out.Tools.pickTier = math.clamp(math.floor(tonumber(raw.Tools.pickTier) or 1), 1, 3)
+                out.Tools.can = raw.Tools.can == true
+                out.Tools.rod = raw.Tools.rod == true
+                out.Tools.bike = raw.Tools.bike == true
+        end
+        if type(raw.Pets) == "table" then
+                for id, owned in raw.Pets do
+                        if type(id) == "string" and owned == true then
+                                out.Pets[id] = true
+                        end
+                end
+        end
+        out.ActivePet = type(raw.ActivePet) == "string" and raw.ActivePet or ""
+        out.TotalEarned = sanitizeCount(raw.TotalEarned)
+        out.LastLoginDay = sanitizeCount(raw.LastLoginDay)
+        out.Dev = raw.Dev == true
         out.LastSeen = tonumber(raw.LastSeen) or 0
         return out
 end
@@ -85,6 +113,145 @@ function DataService.markDirty(player: Player)
                 s.dirty = true
         end
 end
+
+function DataService.levelOf(player: Player): number
+        return Config.Level.levelFromXp(DataService.get(player).XP)
+end
+
+--------------------------------------------------------------------
+-- PERUBAHAN EKONOMI
+--------------------------------------------------------------------
+
+function DataService.addCoins(player: Player, amount: number, countAsEarned: boolean?)
+        local data = DataService.get(player)
+        data.Coins = math.max(0, math.floor(data.Coins + amount))
+        if countAsEarned and amount > 0 then
+                data.TotalEarned += math.floor(amount)
+        end
+        DataService.markDirty(player)
+end
+
+function DataService.spend(player: Player, amount: number): boolean
+        local data = DataService.get(player)
+        if data.Coins < amount then
+                return false
+        end
+        data.Coins -= amount
+        DataService.markDirty(player)
+        return true
+end
+
+function DataService.addXP(player: Player, amount: number)
+        local data = DataService.get(player)
+        data.XP = math.max(0, math.floor(data.XP + amount))
+        DataService.markDirty(player)
+end
+
+function DataService.giveItem(player: Player, kind: string, id: string, count: number)
+        local field = KIND_FIELD[kind]
+        if not field then
+                return
+        end
+        local data = DataService.get(player)
+        data[field][id] = (data[field][id] or 0) + count
+        if data[field][id] <= 0 then
+                data[field][id] = nil
+        end
+        DataService.markDirty(player)
+end
+
+function DataService.takeItem(player: Player, kind: string, id: string, count: number): boolean
+        local field = KIND_FIELD[kind]
+        if not field then
+                return false
+        end
+        local data = DataService.get(player)
+        local have = data[field][id] or 0
+        if have < count then
+                return false
+        end
+        data[field][id] = have - count
+        if data[field][id] <= 0 then
+                data[field][id] = nil
+        end
+        DataService.markDirty(player)
+        return true
+end
+
+function DataService.countItem(player: Player, kind: string, id: string): number
+        local field = KIND_FIELD[kind]
+        if not field then
+                return 0
+        end
+        local data = DataService.get(player)
+        return data[field][id] or 0
+end
+
+--------------------------------------------------------------------
+-- SNAPSHOT STATE -> CLIENT
+--------------------------------------------------------------------
+
+function DataService.push(player: Player)
+        if not DataService.has(player) then
+                return
+        end
+        local data = DataService.get(player)
+
+        -- sinkronkan leaderstats Roblox (Koin + XP)
+        local stats = player:FindFirstChild("leaderstats")
+        if stats then
+                local koin = stats:FindFirstChild("Koin")
+                if koin and koin:IsA("IntValue") then
+                        koin.Value = math.floor(data.Coins)
+                end
+                local xp = stats:FindFirstChild("XP")
+                if xp and xp:IsA("IntValue") then
+                        xp.Value = math.floor(data.XP)
+                end
+        end
+
+        -- snapshot dari provider lain (FarmService = ladang, ShopService = pasar)
+        local okPlot, plotState = pcall(function()
+                local fn = providers["plot"]
+                if not fn then
+                        return { claimed = false, tiles = {} }
+                end
+                return fn(player)
+        end)
+        local okDemand, demand = pcall(function()
+                local fn = providers["demand"]
+                if not fn then
+                        return {}
+                end
+                return fn(player)
+        end)
+
+        local level = Config.Level.levelFromXp(data.XP)
+        local prev = Config.Level.thresholdOf(level)
+        local next = Config.Level.thresholdOf(level + 1)
+        local pct = (data.XP - prev) / math.max(1, next - prev)
+
+        Remotes.get("StateSync"):FireClient(player, {
+                Coins = math.floor(data.Coins),
+                XP = math.floor(data.XP),
+                Level = level,
+                LevelPct = math.clamp(pct, 0, 1),
+                Seeds = Util.deepCopy(data.Seeds),
+                Crops = Util.deepCopy(data.Crops),
+                Bag = Util.deepCopy(data.Bag),
+                Fish = Util.deepCopy(data.Fish),
+                Tools = Util.deepCopy(data.Tools),
+                Pets = Util.deepCopy(data.Pets),
+                ActivePet = data.ActivePet,
+                Plot = okPlot and plotState or { claimed = false, tiles = {} },
+                Demand = okDemand and demand or {},
+                Dev = data.Dev,
+        })
+end
+
+--------------------------------------------------------------------
+-- LOAD / SAVE / LOOPS
+--------------------------------------------------------------------
 
 function DataService.load(player: Player): boolean
         local key = "p_" .. player.UserId
@@ -133,6 +300,16 @@ function DataService.startLoops()
                                 if s.dirty then
                                         task.spawn(DataService.save, player)
                                 end
+                        end
+                end
+        end)
+
+        -- push state berkala (progres tanaman & harga pasar)
+        task.spawn(function()
+                while true do
+                        task.wait(15)
+                        for player in sessions do
+                                task.spawn(DataService.push, player)
                         end
                 end
         end)

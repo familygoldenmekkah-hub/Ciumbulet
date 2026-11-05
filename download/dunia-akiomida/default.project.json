@@ -33,7 +33,7 @@
                                 "$properties": {
                                         "Anchored": true,
                                         "Size": [12, 1, 12],
-                                        "Position": [0, 0.5, 44],
+                                        "Position": [0, 0.5, 28],
                                         "Color": [1, 0.82, 0.4],
                                         "Material": "SmoothPlastic",
                                         "TopSurface": "Smooth",
