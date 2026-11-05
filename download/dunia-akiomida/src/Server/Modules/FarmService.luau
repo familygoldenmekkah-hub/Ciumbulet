@@ -14,6 +14,7 @@ local Remotes = require(ReplicatedStorage.Remotes)
 local Util = require(ReplicatedStorage.Shared.Util)
 
 local DataService = require(script.Parent.DataService)
+local QuestService = require(script.Parent.QuestService)
 
 local FarmService = {}
 
@@ -229,6 +230,7 @@ local function onTileTriggered(player: Player, tile)
                 end
                 DataService.giveItem(player, "crop", crop.id, 1)
                 DataService.addXP(player, 4)
+                QuestService.progress(player, "harvest", 1)
                 tile.state = "empty"
                 tile.seed = nil
                 tile.plantedAt = 0

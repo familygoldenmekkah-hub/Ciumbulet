@@ -1,8 +1,8 @@
 --!nonstrict
 --[[
-        init.server.luau - bootstrap DUNIA AKIOMIDA v2 "Ekonomi Hidup".
-        Dunia MMO: bertani, memanen, mengumpulkan, memancing, berdagang,
-        peliharaan, ladang pribadi. Kuis opsional di Kak Pintar.
+        init.server.luau - bootstrap DUNIA AKIOMIDA v3 "Toram-grade".
+        Ekonomi hidup + KOMBAT, TEMPAA (crafting), STAT & PERALATAN,
+        TUGAS HARIAN, BOSS RAID, DAGANG ANTAR PEMAIN. Kuis opsional.
 ]]
 
 local Players = game:GetService("Players")
@@ -21,6 +21,11 @@ local ShopService = require(Modules.ShopService)
 local PetService = require(Modules.PetService)
 local QuizService = require(Modules.QuizService)
 local LeaderboardService = require(Modules.LeaderboardService)
+local EquipService = require(Modules.EquipService)
+local QuestService = require(Modules.QuestService)
+local CraftService = require(Modules.CraftService)
+local CombatService = require(Modules.CombatService)
+local TradeService = require(Modules.TradeService)
 local MapService = require(Modules.MapService)
 
 -- bangun dunia (butuh referensi layanan untuk menghubungkan NPC)
@@ -29,6 +34,8 @@ MapService.init({
         Gather = GatherService,
         Shop = ShopService,
         Quiz = QuizService,
+        Craft = CraftService,
+        Quest = QuestService,
 })
 
 FarmService.init()
@@ -38,6 +45,12 @@ ShopService.init()
 PetService.init()
 QuizService.init()
 LeaderboardService.init()
+EquipService.init()
+QuestService.init()
+CraftService.init()
+TradeService.init()
+CombatService.init()
+CombatService.spawnMonsters()
 DataService.startLoops()
 
 --------------------------------------------------------------------
@@ -45,14 +58,9 @@ DataService.startLoops()
 --------------------------------------------------------------------
 
 local function applySpeed(player: Player)
-        local character = player.Character
-        if not character then
-                return
-        end
-        local humanoid = character:FindFirstChildOfClass("Humanoid")
-        if humanoid then
-                humanoid.WalkSpeed = DataService.get(player).Tools.bike and 26 or 16
-        end
+        -- v3: semua perhitungan laju/HP/senjata ada di EquipService.apply
+        local EquipService = require(script.Modules.EquipService)
+        EquipService.apply(player)
 end
 
 local function onPlayerAdded(player: Player)
@@ -111,7 +119,7 @@ local function onPlayerAdded(player: Player)
                 end
                 DataService.push(player)
                 Remotes.get("Notify"):FireClient(player, "Selamat Datang di Dunia Akiomida!",
-                        "Kamu dapat 3 Bibit Wortel & koin awal. Beli bibit di Pasar Timur, klaim ladang gratis di Utara, tanam, panen, lalu jual!")
+                        "Tanam, tebang, tambang, mancing, lawan monster, tempa senjata, kalahkan Raja Golem, dan berdagang dengan pemain lain!")
         end)
 end
 
@@ -131,4 +139,4 @@ Remotes.get("GetState").OnServerInvoke = function(player)
         return true
 end
 
-print("[AKIOMIDA] Server v2 siap: ekonomi hidup - ladang, hutan, tambang, danau, pasar, peliharaan.")
+print("[AKIOMIDA] Server v3 siap: kombat, tempa, stat & peralatan, tugas, boss raid, dagang - di atas fondasi ekonomi hidup.")

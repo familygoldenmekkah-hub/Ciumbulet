@@ -1,10 +1,9 @@
 --!nonstrict
 --[[
-	Config.luau - DUNIA AKIOMIDA v2 "Ekonomi Hidup"
-	Rombakan total: dari game kuis menjadi dunia MMO petualangan dengan
-	ekonomi nyata - bertani, memanen, mengumpulkan sumber daya, memancing,
-	berdagang, peliharaan, dan ladang pribadi yang bisa dibangun.
-	Seluruh konten karya original, tanpa aset pihak ketiga.
+	Config.luau - DUNIA AKIOMIDA v3 "Toram-grade Economy World"
+	MMO petualangan: bertani, mengumpulkan, memancing, KOMBAT, MEMADAI
+	(crafting dari material), STAT & PERALATAN, TUGAS, BOSS RAID,
+	dagang antar pemain. Seluruh konten karya original, tanpa aset pihak ketiga.
 ]]
 
 local Config = {}
@@ -12,7 +11,7 @@ local Config = {}
 Config.Game = {
 	Name = "Dunia Akiomida",
 	Tagline = "Petualangan & Ekonomi",
-	Version = "2.0.0",
+	Version = "3.0.0",
 }
 
 --------------------------------------------------------------------
@@ -30,10 +29,11 @@ Config.Economy = {
 }
 
 --------------------------------------------------------------------
--- LEVEL (XP dari aktivitas: panen, tebang, tambang, mancing, jual)
+-- LEVEL (XP dari aktivitas: panen, tebang, tambang, mancing, kombat, craft)
 --------------------------------------------------------------------
 Config.Level = {
 	Base = 60, -- syarat XP naik level: Base * (level-1)^2
+	StatPointsPerLevel = 2, -- poin stat gratis tiap naik level
 }
 
 function Config.Level.levelFromXp(xp: number): number
@@ -56,7 +56,7 @@ Config.Crops = {
 }
 
 --------------------------------------------------------------------
--- SUMBER DAYA DARI ALAM
+-- SUMBER DAYA & MATERIAL (semua bisa dijual; beberapa jadi bahan craft)
 --------------------------------------------------------------------
 Config.Resources = {
 	{ id = "kayu", name = "Kayu", sell = 6 },
@@ -64,6 +64,13 @@ Config.Resources = {
 	{ id = "batu", name = "Batu", sell = 7 },
 	{ id = "besi", name = "Besi", sell = 18 },
 	{ id = "kristal", name = "Kristal", sell = 45 },
+	-- drop monster (bahan craft & jualan)
+	{ id = "gel", name = "Gelatin", sell = 9, color = { 130, 220, 120 } },
+	{ id = "taring", name = "Taring Serigala", sell = 16, color = { 240, 240, 235 } },
+	{ id = "inti", name = "Inti Golem", sell = 38, color = { 255, 160, 80 } },
+	-- hasil tempa (ingot) untuk senjata & zirah
+	{ id = "balok_besi", name = "Balok Besi", sell = 55, color = { 200, 200, 210 } },
+	{ id = "balok_kristal", name = "Balok Kristal", sell = 145, color = { 190, 120, 255 } },
 }
 
 --------------------------------------------------------------------

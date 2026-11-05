@@ -13,6 +13,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Remotes)
 
 local DataService = require(script.Parent.DataService)
+local QuestService = require(script.Parent.QuestService)
 
 local GatherService = {}
 
@@ -107,6 +108,7 @@ function GatherService.buildTree(position: Vector3, seed: number?)
                 local amount = rng:NextInteger(1, 2)
                 DataService.giveItem(player, "bag", "kayu", amount)
                 DataService.addXP(player, 3)
+                QuestService.progress(player, "chop", 1)
                 if rng:NextNumber() < 0.2 then
                         DataService.giveItem(player, "bag", "apel", 1)
                         notify(player, "Keberuntungan!", "Apel jatuh dari pohon! +" .. amount .. " Kayu, +1 Apel")
@@ -209,6 +211,7 @@ function GatherService.buildRock(position: Vector3, resourceId: string, seed: nu
                 local amount = rng:NextInteger(1, tier == 1 and 2 or 1)
                 DataService.giveItem(player, "bag", resourceId, amount)
                 DataService.addXP(player, 4)
+                QuestService.progress(player, "mine", 1)
                 notify(player, "Menambang", "+" .. amount .. " " .. (res and res.name or resourceId))
                 DataService.push(player)
 
@@ -287,6 +290,9 @@ function GatherService.buildPier(basePosition: Vector3, direction: Vector3)
 
                 DataService.giveItem(player, "fish", caught.id, 1)
                 DataService.addXP(player, 5)
+                if caught.id ~= "sepatu" then
+                        QuestService.progress(player, "fish", 1)
+                end
                 if caught.id == "sepatu" then
                         notify(player, "Tidak Nyangka...", "Kamu menarik Sepatu Bot Tua?! Tetap dijual saja.")
                 else

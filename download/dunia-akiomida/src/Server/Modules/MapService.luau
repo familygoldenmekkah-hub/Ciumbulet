@@ -636,7 +636,205 @@ function MapService.init(svc)
         svc.Gather.buildPier(Vector3.new(-90, 0, 95), Vector3.new(-1, 0, 0))
         buildSign("DANAU TENANG", Vector3.new(-72, 0, 82), 90, Color3.fromRGB(60, 110, 130))
 
-        print("[AKIOMIDA] Dunia siap: alun-alun, pasar, ladang, hutan, tambang, danau.")
+        ---------------------------------------------------------------- pandai besi (tempa) - timur laut pasar
+        local forgeX, forgeZ = 102, -58
+        part({
+                Name = "TempaBadan",
+                Size = Vector3.new(13, 8, 12),
+                CFrame = CFrame.new(forgeX, 4, forgeZ),
+                Color = Color3.fromRGB(90, 96, 110),
+                Material = Enum.Material.Brick,
+        })
+        part({
+                Name = "TempaAtap",
+                Size = Vector3.new(15.5, 1.2, 14.5),
+                CFrame = CFrame.new(forgeX, 8.6, forgeZ),
+                Color = Color3.fromRGB(50, 54, 64),
+                Material = Enum.Material.Slate,
+        })
+        local forgeSign = part({
+                Name = "TempaPapanNama",
+                Size = Vector3.new(0.5, 2.4, 10),
+                CFrame = CFrame.new(forgeX - 6.8, 6.6, forgeZ),
+                Color = Color3.fromRGB(34, 38, 52),
+                Material = Enum.Material.SmoothPlastic,
+        })
+        local forgeGui = Instance.new("SurfaceGui")
+        forgeGui.Face = Enum.NormalId.Left
+        forgeGui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+        forgeGui.PixelsPerStud = 50
+        forgeGui.Parent = forgeSign
+        Util.create("TextLabel", {
+                Size = UDim2.fromScale(1, 1),
+                BackgroundTransparency = 1,
+                Font = Enum.Font.GothamBlack,
+                TextScaled = true,
+                TextColor3 = Color3.fromRGB(255, 150, 90),
+                Text = "PANDAI BESI",
+        }, forgeGui)
+
+        -- perapian (anvil) + tukul + api tempa
+        local anvil = part({
+                Name = "Perapian",
+                Size = Vector3.new(3, 1.6, 1.6),
+                CFrame = CFrame.new(forgeX - 10.5, 1.8, forgeZ) * CFrame.Angles(0, math.rad(20), 0),
+                Color = Color3.fromRGB(60, 62, 72),
+                Material = Enum.Material.Metal,
+        })
+        part({
+                Name = "PerapianKaki",
+                Size = Vector3.new(1.4, 1.2, 1.4),
+                CFrame = CFrame.new(forgeX - 10.5, 0.6, forgeZ),
+                Color = Color3.fromRGB(50, 52, 60),
+                Material = Enum.Material.Metal,
+        })
+        local forgeFire = part({
+                Name = "ApiTempa",
+                Shape = Enum.PartType.Ball,
+                Size = Vector3.new(1.8, 1.8, 1.8),
+                CFrame = CFrame.new(forgeX - 14, 1.6, forgeZ + 4),
+                Color = Color3.fromRGB(255, 130, 60),
+                Material = Enum.Material.Neon,
+        })
+        do
+                local light = Instance.new("PointLight")
+                light.Color = Color3.fromRGB(255, 130, 60)
+                light.Range = 16
+                light.Brightness = 1.5
+                light.Parent = forgeFire
+        end
+        local forgePrompt = buildNPC("PAK TEMPA", Vector3.new(forgeX - 14, 0, forgeZ - 3), Color3.fromRGB(255, 150, 90))
+        local anvilPrompt = Instance.new("ProximityPrompt")
+        anvilPrompt.Parent = anvil
+        svc.Craft.bindStation(anvilPrompt, "tempa")
+        -- sambungkan juga prompt NPC (dua cara akses)
+        svc.Craft.bindStation(forgePrompt, "tempa")
+
+        ---------------------------------------------------------------- dapur alam (api unggun) - tenggara alun-alun
+        part({
+                Name = "ApiUnggunBatu",
+                Shape = Enum.PartType.Cylinder,
+                Size = Vector3.new(0.8, 6, 6),
+                CFrame = CFrame.new(26, 0.4, 26) * CFrame.Angles(0, 0, math.rad(90)),
+                Color = Color3.fromRGB(120, 118, 124),
+                Material = Enum.Material.Slate,
+        })
+        for i = 1, 4 do
+                part({
+                        Name = "ApiUnggunKayu" .. i,
+                        Size = Vector3.new(0.7, 3.4, 0.7),
+                        CFrame = CFrame.new(26, 1.4, 26) * CFrame.Angles(math.rad(24), math.rad(i * 90), 0) * CFrame.new(0, 1.2, 0),
+                        Color = Color3.fromRGB(110, 76, 46),
+                        Material = Enum.Material.Wood,
+                })
+        end
+        local kitchenFire = part({
+                Name = "ApiUnggunApi",
+                Shape = Enum.PartType.Ball,
+                Size = Vector3.new(2.4, 2.4, 2.4),
+                CFrame = CFrame.new(26, 1.8, 26),
+                Color = Color3.fromRGB(255, 160, 70),
+                Material = Enum.Material.Neon,
+        })
+        do
+                local light = Instance.new("PointLight")
+                light.Color = Color3.fromRGB(255, 160, 70)
+                light.Range = 18
+                light.Brightness = 1.4
+                light.Parent = kitchenFire
+        end
+        -- kuali & rak rempah
+        part({
+                Name = "Kuali",
+                Shape = Enum.PartType.Cylinder,
+                Size = Vector3.new(0.9, 3, 3),
+                CFrame = CFrame.new(29, 1.1, 28) * CFrame.Angles(0, 0, math.rad(90)),
+                Color = Color3.fromRGB(40, 42, 50),
+                Material = Enum.Material.Metal,
+        })
+        buildNPC("BU MASAK", Vector3.new(23, 0, 29), Color3.fromRGB(240, 130, 150))
+        local cookPrompt = buildNPC("KUALI AJAIB", Vector3.new(29, 0, 24), Color3.fromRGB(240, 130, 150))
+        svc.Craft.bindStation(cookPrompt, "dapur")
+
+        ---------------------------------------------------------------- papan tugas harian - barat laut alun-alun
+        part({
+                Name = "PapanTugasTiang",
+                Size = Vector3.new(0.8, 6, 0.8),
+                CFrame = CFrame.new(-16, 3, -18),
+                Color = Color3.fromRGB(96, 66, 42),
+                Material = Enum.Material.Wood,
+        })
+        local questBoard = part({
+                Name = "PapanTugasPapan",
+                Size = Vector3.new(8, 5, 0.7),
+                CFrame = CFrame.new(-16, 6.4, -18) * CFrame.Angles(0, math.rad(35), 0),
+                Color = Color3.fromRGB(178, 140, 90),
+                Material = Enum.Material.WoodPlanks,
+        })
+        do
+                local gui = Instance.new("SurfaceGui")
+                gui.Face = Enum.NormalId.Back
+                gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+                gui.PixelsPerStud = 40
+                gui.Parent = questBoard
+                Util.create("TextLabel", {
+                        Size = UDim2.fromScale(1, 1),
+                        BackgroundTransparency = 1,
+                        Font = Enum.Font.GothamBlack,
+                        TextScaled = true,
+                        TextColor3 = Color3.fromRGB(90, 60, 30),
+                        Text = "TUGAS HARIAN",
+                }, gui)
+        end
+        buildNPC("KAK TUGAS", Vector3.new(-14, 0, -15), Color3.fromRGB(255, 209, 102))
+        local questPrompt = buildNPC("PAPAN TUGAS", Vector3.new(-18, 0, -21), Color3.fromRGB(255, 209, 102))
+        svc.Quest.bindBoard(questPrompt)
+
+        ---------------------------------------------------------------- arena timur (koloseum boss)
+        do
+                local ax, az = 150, 92
+                part({
+                        Name = "ArenaLantai",
+                        Shape = Enum.PartType.Cylinder,
+                        Size = Vector3.new(0.3, 76, 76),
+                        CFrame = CFrame.new(ax, 0.16, az) * CFrame.Angles(0, 0, math.rad(90)),
+                        Color = Color3.fromRGB(196, 176, 150),
+                        Material = Enum.Material.Sand,
+                })
+                -- dinding cincin (12 segmen)
+                for i = 1, 12 do
+                        local ang = (i / 12) * math.pi * 2
+                        part({
+                                Name = "ArenaDinding" .. i,
+                                Size = Vector3.new(20, 9, 2.6),
+                                CFrame = CFrame.new(ax + math.cos(ang) * 38, 4.5, az + math.sin(ang) * 38)
+                                        * CFrame.Angles(0, -math.deg(ang) + 90, 0),
+                                Color = Color3.fromRGB(150, 132, 110),
+                                Material = Enum.Material.Slate,
+                        })
+                end
+                -- obor arena
+                for i = 1, 6 do
+                        local ang = (i / 6) * math.pi * 2
+                        local torch = part({
+                                Name = "ArenaObor" .. i,
+                                Shape = Enum.PartType.Ball,
+                                Size = Vector3.new(1.6, 1.6, 1.6),
+                                CFrame = CFrame.new(ax + math.cos(ang) * 32, 8.6, az + math.sin(ang) * 32),
+                                Color = Color3.fromRGB(255, 140, 70),
+                                Material = Enum.Material.Neon,
+                        })
+                        local light = Instance.new("PointLight")
+                        light.Color = Color3.fromRGB(255, 140, 70)
+                        light.Range = 22
+                        light.Brightness = 1.5
+                        light.Parent = torch
+                end
+                buildSign("ARENA TIMUR - PUNCAK GOLEM", Vector3.new(ax - 46, 0, az), 90, Color3.fromRGB(150, 90, 60))
+                buildSign("PADANG TIMUR >", Vector3.new(52, 0, 16), -90, Color3.fromRGB(120, 150, 90))
+        end
+
+        print("[AKIOMIDA] Dunia siap: alun-alun, pasar, ladang, hutan, tambang, danau, pandai besi, dapur, papan tugas, arena boss.")
 end
 
 return MapService

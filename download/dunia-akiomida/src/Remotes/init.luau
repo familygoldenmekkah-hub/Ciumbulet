@@ -26,6 +26,20 @@ local DEFINITIONS = {
         QuizAnswer = "RemoteFunction", -- client -> server: jawab soal
         RedeemDevCode = "RemoteFunction", -- client -> server: kode penjelajah
         GetLeaderboard = "RemoteFunction", -- client -> server: papan juara
+        -- v3: kombat, craft, peralatan, tugas, dagang
+        Attack = "RemoteFunction", -- client -> server: serang monster (monsterId)
+        Craft = "RemoteFunction", -- client -> server: buat item dari resep
+        Equip = "RemoteFunction", -- client -> server: pakai/lepas senjata-zirah
+        UseItem = "RemoteFunction", -- client -> server: makan makanan/ramuan
+        AllocStat = "RemoteFunction", -- client -> server: tambah poin stat
+        QuestAction = "RemoteFunction", -- client -> server: list/accept/claim tugas
+        TradeAction = "RemoteFunction", -- client -> server: invite/offer/coin/ready/cancel
+        OpenCraft = "RemoteEvent", -- server -> client: buka panel tempa/dapur
+        OpenQuest = "RemoteEvent", -- server -> client: buka papan tugas
+        OpenTrade = "RemoteEvent", -- server -> client: buka panel dagang
+        OpenChar = "RemoteEvent", -- server -> client: buka panel karakter
+        BossState = "RemoteEvent", -- server -> semua: status boss raid
+        TradeSync = "RemoteEvent", -- server -> kedua pihak: snapshot dagang
 }
 
 local function folder(): Folder

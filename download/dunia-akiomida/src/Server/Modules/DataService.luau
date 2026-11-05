@@ -32,6 +32,8 @@ local KIND_FIELD = {
         crop = "Crops",
         bag = "Bag",
         fish = "Fish",
+        equip = "Equips", -- v3: senjata & zirah tempaan
+        use = "Usables", -- v3: makanan & ramuan
 }
 
 function DataService.kindField(kind: string): string?
@@ -49,6 +51,14 @@ local function defaultData(): { [string]: any }
                 Tools = { pickTier = 1, can = false, rod = false, bike = false },
                 Pets = {},
                 ActivePet = "",
+                -- v3: Toram-grade progression
+                Stats = { str = 0, vit = 0, agi = 0, int = 0, dex = 0 },
+                StatPoints = 0, -- poin gratis dari naik level
+                Equips = {},
+                Usables = {},
+                Equipped = { weapon = "", armor = "" },
+                Buff = { kind = "", expiry = 0 },
+                Quest = { id = "", prog = 0, acceptedAt = 0, done = false },
                 TotalEarned = 0,
                 LastLoginDay = 0,
                 Dev = false,
@@ -89,6 +99,27 @@ local function sanitize(raw: any): { [string]: any }
                                 out.Pets[id] = true
                         end
                 end
+        end
+        -- v3: stat & poin
+        if type(raw.Stats) == "table" then
+                for _, key in { "str", "vit", "agi", "int", "dex" } do
+                        out.Stats[key] = math.clamp(math.floor(tonumber(raw.Stats[key]) or 0), 0, 60)
+                end
+        end
+        out.StatPoints = math.clamp(math.floor(tonumber(raw.StatPoints) or 0), 0, 400)
+        if type(raw.Equipped) == "table" then
+                out.Equipped.weapon = type(raw.Equipped.weapon) == "string" and raw.Equipped.weapon or ""
+                out.Equipped.armor = type(raw.Equipped.armor) == "string" and raw.Equipped.armor or ""
+        end
+        if type(raw.Buff) == "table" then
+                out.Buff.kind = type(raw.Buff.kind) == "string" and raw.Buff.kind or ""
+                out.Buff.expiry = math.floor(tonumber(raw.Buff.expiry) or 0)
+        end
+        if type(raw.Quest) == "table" then
+                out.Quest.id = type(raw.Quest.id) == "string" and raw.Quest.id or ""
+                out.Quest.prog = sanitizeCount(raw.Quest.prog)
+                out.Quest.acceptedAt = sanitizeCount(raw.Quest.acceptedAt)
+                out.Quest.done = raw.Quest.done == true
         end
         out.ActivePet = type(raw.ActivePet) == "string" and raw.ActivePet or ""
         out.TotalEarned = sanitizeCount(raw.TotalEarned)
@@ -143,7 +174,13 @@ end
 
 function DataService.addXP(player: Player, amount: number)
         local data = DataService.get(player)
+        local before = Config.Level.levelFromXp(data.XP)
         data.XP = math.max(0, math.floor(data.XP + amount))
+        local after = Config.Level.levelFromXp(data.XP)
+        if after > before then
+                -- v3: naik level memberi poin stat gratis (gaya Toram)
+                data.StatPoints += (after - before) * Config.Level.StatPointsPerLevel
+        end
         DataService.markDirty(player)
 end
 
@@ -243,6 +280,14 @@ function DataService.push(player: Player)
                 Tools = Util.deepCopy(data.Tools),
                 Pets = Util.deepCopy(data.Pets),
                 ActivePet = data.ActivePet,
+                -- v3
+                Stats = Util.deepCopy(data.Stats),
+                StatPoints = data.StatPoints,
+                Equips = Util.deepCopy(data.Equips),
+                Usables = Util.deepCopy(data.Usables),
+                Equipped = Util.deepCopy(data.Equipped),
+                Buff = Util.deepCopy(data.Buff),
+                Quest = Util.deepCopy(data.Quest),
                 Plot = okPlot and plotState or { claimed = false, tiles = {} },
                 Demand = okDemand and demand or {},
                 Dev = data.Dev,

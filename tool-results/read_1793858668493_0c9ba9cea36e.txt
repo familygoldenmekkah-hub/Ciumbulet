@@ -1,0 +1,662 @@
+     1→--!nonstrict
+     2→--[[
+     3→        UIController.luau - seluruh UI Dunia Akiomida v2 (dibangun lewat kode):
+     4→          HUD   : koin, level + bar XP, tombol Tas / Kode / Bantuan, tips, toast
+     5→          Toko  : tab Beli (bibit/alat/pet) & Jual (harga pasar dinamis)
+     6→          Tas   : bibit, hasil panen, sumber daya, ikan, alat, peliharaan
+     7→          Tanam : pilih bibit untuk petak ladang
+     8→          Kuis  : OPSIONAL - hanya muncul jika pemain menemui Kak Pintar
+     9→        Tidak ada popup paksa. Semua panel tertutup saat pemain menjelajah.
+    10→]]
+    11→
+    12→local Players = game:GetService("Players")
+    13→local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    14→local SoundService = game:GetService("SoundService")
+    15→
+    16→local Config = require(ReplicatedStorage.Shared.Config)
+    17→local Remotes = require(ReplicatedStorage.Remotes)
+    18→local Util = require(ReplicatedStorage.Shared.Util)
+    19→
+    20→local UIController = {}
+    21→UIController.__index = UIController
+    22→
+    23→local T = {
+    24→        Bg = Color3.fromRGB(20, 24, 34),
+    25→        Panel = Color3.fromRGB(30, 36, 50),
+    26→        PanelLight = Color3.fromRGB(44, 52, 70),
+    27→        Gold = Color3.fromRGB(255, 209, 102),
+    28→        Green = Color3.fromRGB(88, 200, 130),
+    29→        Red = Color3.fromRGB(235, 100, 100),
+    30→        Blue = Color3.fromRGB(99, 200, 255),
+    31→        Text = Color3.fromRGB(238, 238, 246),
+    32→        TextDim = Color3.fromRGB(170, 176, 192),
+    33→        Disabled = Color3.fromRGB(80, 86, 100),
+    34→}
+    35→
+    36→local player = Players.LocalPlayer
+    37→
+    38→local function corner(parent, radius)
+    39→        return Util.create("UICorner", { CornerRadius = UDim.new(0, radius or 10) }, parent)
+    40→end
+    41→
+    42→local function makeSound(pitch: number?): Sound
+    43→        local s = Util.create("Sound", {
+    44→                SoundId = "rbxasset://sounds/electronicpingshort.wav",
+    45→                Volume = 0.3,
+    46→                PlaybackSpeed = pitch or 1,
+    47→        }, SoundService)
+    48→        return s :: Sound
+    49→end
+    50→
+    51→local function btn(props): TextButton
+    52→        local b = Util.create("TextButton", {
+    53→                Font = Enum.Font.GothamBold,
+    54→                TextColor3 = T.Text,
+    55→                TextScaled = true,
+    56→                AutoButtonColor = true,
+    57→                BackgroundColor3 = T.PanelLight,
+    58→                BorderSizePixel = 0,
+    59→        }, props.parent)
+    60→        for k, v in props do
+    61→                if k ~= "parent" and k ~= "_radius" then
+    62→                        (b :: any)[k] = v
+    63→                end
+    64→        end
+    65→        corner(b, props._radius or 8)
+    66→        return b
+    67→end
+    68→
+    69→function UIController.new()
+    70→        local self = setmetatable({}, UIController)
+    71→
+    72→        self.state = nil
+    73→        self.activePanel = nil
+    74→        self.shopId = nil
+    75→        self.shopTab = "beli"
+    76→        self.pendingPlant = nil
+    77→
+    78→        self:buildGui()
+    79→        self:buildHud()
+    80→        self:buildShopPanel()
+    81→        self:buildPlantPanel()
+    82→        self:buildInvPanel()
+    83→        self:buildQuizPanel()
+    84→        self:buildCodePanel()
+    85→        self:buildHelpPanel()
+    86→        self:wireRemotes()
+    87→        self:startTips()
+    88→
+    89→        return self
+    90→end
+    91→
+    92→--------------------------------------------------------------------
+    93→-- GUI DASAR
+    94→--------------------------------------------------------------------
+    95→
+    96→function UIController:buildGui()
+    97→        self.gui = Util.create("ScreenGui", {
+    98→                Name = "AKM_HUD",
+    99→                ResetOnSpawn = false,
+   100→                IgnoreGuiInset = true,
+   101→                ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+   102→        }, player:WaitForChild("PlayerGui"))
+   103→end
+   104→
+   105→function UIController:panelFrame(name: string, sizeScale: number, heightScale: number): Frame
+   106→        local frame = Util.create("Frame", {
+   107→                Name = name,
+   108→                AnchorPoint = Vector2.new(0.5, 0.5),
+   109→                Position = UDim2.fromScale(0.5, 0.5),
+   110→                Size = UDim2.fromScale(sizeScale, heightScale),
+   111→                BackgroundColor3 = T.Panel,
+   112→                BorderSizePixel = 0,
+   113→                Visible = false,
+   114→        }, self.gui)
+   115→        corner(frame, 14)
+   116→        Util.create("UISizeConstraint", { MinSize = Vector2.new(430, 360) }, frame)
+   117→        return frame
+   118→end
+   119→
+   120→function UIController:showPanel(name: string?)
+   121→        for _, n in { "Shop", "Plant", "Inv", "Quiz", "Code", "Help" } do
+   122→                local f = self.gui:FindFirstChild(n)
+   123→                if f then
+   124→                        (f :: Frame).Visible = (n == name)
+   125→                end
+   126→        end
+   127→        self.activePanel = name
+   128→end
+   129→
+   130→--------------------------------------------------------------------
+   131→-- HUD
+   132→--------------------------------------------------------------------
+   133→
+   134→function UIController:buildHud()
+   135→        ---------------------------------------------------------------- chip koin
+   136→        local coinChip = Util.create("Frame", {
+   137→                Name = "KoinChip",
+   138→                Position = UDim2.fromOffset(16, 14),
+   139→                Size = UDim2.fromOffset(170, 46),
+   140→                BackgroundColor3 = T.Bg,
+   141→                BackgroundTransparency = 0.15,
+   142→                BorderSizePixel = 0,
+   143→        }, self.gui)
+   144→        corner(coinChip, 12)
+   145→        local coinIcon = Util.create("Frame", {
+   146→                Position = UDim2.fromOffset(7, 7),
+   147→                Size = UDim2.fromOffset(32, 32),
+   148→                BackgroundColor3 = T.Gold,
+   149→                BorderSizePixel = 0,
+   150→        }, coinChip)
+   151→        corner(coinIcon, 16)
+   152→        Util.create("TextLabel", {
+   153→                Size = UDim2.fromScale(1, 1),
+   154→                BackgroundTransparency = 1,
+   155→                Font = Enum.Font.GothamBlack,
+   156→                TextScaled = true,
+   157→                TextColor3 = Color3.fromRGB(120, 86, 20),
+   158→                Text = "$",
+   159→        }, coinIcon)
+   160→        self.coinText = Util.create("TextLabel", {
+   161→                Position = UDim2.fromOffset(44, 0),
+   162→                Size = UDim2.new(1, -50, 1, 0),
+   163→                BackgroundTransparency = 1,
+   164→                Font = Enum.Font.GothamBlack,
+   165→                TextScaled = true,
+   166→                TextColor3 = T.Gold,
+   167→                TextXAlignment = Enum.TextXAlignment.Left,
+   168→                Text = "0",
+   169→        }, coinChip)
+   170→
+   171→        ---------------------------------------------------------------- chip level + XP
+   172→        local levelChip = Util.create("Frame", {
+   173→                Name = "LevelChip",
+   174→                Position = UDim2.fromOffset(16, 66),
+   175→                Size = UDim2.fromOffset(170, 58),
+   176→                BackgroundColor3 = T.Bg,
+   177→                BackgroundTransparency = 0.15,
+   178→                BorderSizePixel = 0,
+   179→        }, self.gui)
+   180→        corner(levelChip, 12)
+   181→        self.levelText = Util.create("TextLabel", {
+   182→                Position = UDim2.fromOffset(10, 4),
+   183→                Size = UDim2.new(1, -20, 0, 26),
+   184→                BackgroundTransparency = 1,
+   185→                Font = Enum.Font.GothamBold,
+   186→                TextScaled = true,
+   187→                TextColor3 = T.Blue,
+   188→                TextXAlignment = Enum.TextXAlignment.Left,
+   189→                Text = "Level 1",
+   190→        }, levelChip)
+   191→        local barBg = Util.create("Frame", {
+   192→                Position = UDim2.fromOffset(10, 34),
+   193→                Size = UDim2.new(1, -20, 0, 14),
+   194→                BackgroundColor3 = T.PanelLight,
+   195→                BorderSizePixel = 0,
+   196→        }, levelChip)
+   197→        corner(barBg, 7)
+   198→        self.xpBar = Util.create("Frame", {
+   199→                Size = UDim2.fromScale(0, 1),
+   200→                BackgroundColor3 = T.Blue,
+   201→                BorderSizePixel = 0,
+   202→        }, barBg)
+   203→        corner(self.xpBar, 7)
+   204→
+   205→        ---------------------------------------------------------------- tombol kanan atas
+   206→        local actions = {
+   207→                { name = "Tas", label = "Tas", color = T.Gold, cb = function()
+   208→                        self:renderInv()
+   209→                        self:showPanel("Inv")
+   210→                end },
+   211→                { name = "Kode", label = "Kode", color = T.Blue, cb = function()
+   212→                        self:showPanel("Code")
+   213→                end },
+   214→                { name = "Bantuan", label = "?", color = T.Green, cb = function()
+   215→                        self:showPanel("Help")
+   216→                end },
+   217→        }
+   218→        local i = 0
+   219→        for _, act in actions do
+   220→                i += 1
+   221→                btn({
+   222→                        parent = self.gui,
+   223→                        Name = "Btn" .. act.name,
+   224→                        AnchorPoint = Vector2.new(1, 0),
+   225→                        Position = UDim2.new(1, -16 - (i - 1) * 92, 0, 14),
+   226→                        Size = UDim2.fromOffset(84, 42),
+   227→                        BackgroundColor3 = act.color,
+   228→                        TextColor3 = Color3.fromRGB(30, 30, 36),
+   229→                        Text = act.label,
+   230→                        _radius = 12,
+   231→                }).Activated:Connect(act.cb)
+   232→        end
+   233→
+   234→        ---------------------------------------------------------------- tips bawah
+   235→        self.tipLabel = Util.create("TextLabel", {
+   236→                Name = "Tips",
+   237→                AnchorPoint = Vector2.new(0.5, 1),
+   238→                Position = UDim2.new(0.5, 0, 1, -14),
+   239→                Size = UDim2.fromOffset(640, 34),
+   240→                BackgroundTransparency = 1,
+   241→                Font = Enum.Font.GothamBold,
+   242→                TextScaled = true,
+   243→                TextColor3 = T.TextDim,
+   244→                TextStrokeTransparency = 0.7,
+   245→                Text = "",
+   246→        }, self.gui)
+   247→
+   248→        ---------------------------------------------------------------- kontainer toast
+   249→        self.toastHolder = Util.create("Frame", {
+   250→                Name = "Toasts",
+   251→                AnchorPoint = Vector2.new(0.5, 1),
+   252→                Position = UDim2.new(0.5, 0, 1, -56),
+   253→                Size = UDim2.fromOffset(460, 150),
+   254→                BackgroundTransparency = 1,
+   255→        }, self.gui)
+   256→        Util.create("UIListLayout", {
+   257→                Padding = UDim.new(0, 6),
+   258→                VerticalAlignment = Enum.VerticalAlignment.Bottom,
+   259→                HorizontalAlignment = Enum.HorizontalAlignment.Center,
+   260→        }, self.toastHolder)
+   261→end
+   262→
+   263→local TIPS = {
+   264→        "Klaim ladang GRATIS di Kawasan Ladang (Utara), lalu tanami bibit!",
+   265→        "Jual hasil panen ke Bu Laris di Pasar Pengepul - harga pasar berubah tiap 10 menit!",
+   266→        "Tebang pohon di Hutan Kayu untuk Kayu, dan tambang bijih di Tambang Selatan.",
+   267→        "Kucing Koin memberi +10% harga jual. Lihat Toko Peliharaan!",
+   268→        "Crops tumbuh nyata waktu - tanam lalu jelajahi dunia sambil menunggu.",
+   269→        "Pakai Kaleng Siram supaya tanaman tumbuh 25% lebih cepat.",
+   270→        "Bonus login harian 100 koin. Datang lagi besok!",
+   271→        "Kuis Kak Pintar di alun-alun memberi koin bonus - sepenuhnya opsional.",
+   272→}
+   273→
+   274→function UIController:startTips()
+   275→        task.spawn(function()
+   276→                local idx = 0
+   277→                while true do
+   278→                        idx += 1
+   279→                        local tip = TIPS[(idx - 1) % #TIPS + 1]
+   280→                        if self.tipLabel then
+   281→                                self.tipLabel.Text = tip
+   282→                        end
+   283→                        task.wait(14)
+   284→                end
+   285→        end)
+   286→end
+   287→
+   288→function UIController:toast(title: string, text: string, color: Color3?)
+   289→        local c = color or T.Gold
+   290→        local toast = Util.create("Frame", {
+   291→                Size = UDim2.new(1, 0, 0, 52),
+   292→                BackgroundColor3 = T.Bg,
+   293→                BackgroundTransparency = 0.12,
+   294→                BorderSizePixel = 0,
+   295→        }, self.toastHolder)
+   296→        corner(toast, 10)
+   297→        Util.create("Frame", {
+   298→                Size = UDim2.fromOffset(6, 36),
+   299→                Position = UDim2.fromOffset(8, 8),
+   300→                BackgroundColor3 = c,
+   301→                BorderSizePixel = 0,
+   302→        }, toast)
+   303→        Util.create("TextLabel", {
+   304→                Position = UDim2.fromOffset(22, 3),
+   305→                Size = UDim2.new(1, -30, 0, 20),
+   306→                BackgroundTransparency = 1,
+   307→                Font = Enum.Font.GothamBold,
+   308→                TextScaled = true,
+   309→                TextColor3 = c,
+   310→                TextXAlignment = Enum.TextXAlignment.Left,
+   311→                Text = title,
+   312→        }, toast)
+   313→        Util.create("TextLabel", {
+   314→                Position = UDim2.fromOffset(22, 24),
+   315→                Size = UDim2.new(1, -30, 0, 26),
+   316→                BackgroundTransparency = 1,
+   317→                Font = Enum.Font.Gotham,
+   318→                TextScaled = true,
+   319→                TextColor3 = T.Text,
+   320→                TextXAlignment = Enum.TextXAlignment.Left,
+   321→                Text = text,
+   322→        }, toast)
+   323→
+   324→        task.delay(4.5, function()
+   325→                if toast.Parent then
+   326→                        toast:Destroy()
+   327→                end
+   328→        end)
+   329→end
+   330→
+   331→--------------------------------------------------------------------
+   332→-- STATE -> HUD
+   333→--------------------------------------------------------------------
+   334→
+   335→function UIController:renderState()
+   336→        local s = self.state
+   337→        if not s then
+   338→                return
+   339→        end
+   340→        self.coinText.Text = Util.formatNumber(s.Coins)
+   341→        self.levelText.Text = "Level " .. s.Level .. (s.Dev and "  [DEV]" or "")
+   342→        self.xpBar.Size = UDim2.fromScale(math.clamp(s.LevelPct, 0.02, 1), 1)
+   343→
+   344→        -- refresh panel terbuka supaya harga/inv tetap segar
+   345→        if self.activePanel == "Shop" and self.shopId then
+   346→                self:renderShop()
+   347→        elseif self.activePanel == "Plant" and self.pendingPlant then
+   348→                self:renderPlantPanel()
+   349→        elseif self.activePanel == "Inv" then
+   350→                self:renderInv()
+   351→        end
+   352→end
+   353→
+   354→--------------------------------------------------------------------
+   355→-- PANEL TOKO
+   356→--------------------------------------------------------------------
+   357→
+   358→function UIController:buildShopPanel()
+   359→        local frame = self:panelFrame("Shop", 0.46, 0.62)
+   360→        self.shopFrame = frame
+   361→
+   362→        Util.create("TextLabel", {
+   363→                Name = "Judul",
+   364→                Size = UDim2.new(1, -60, 0, 40),
+   365→                Position = UDim2.fromOffset(18, 10),
+   366→                BackgroundTransparency = 1,
+   367→                Font = Enum.Font.GothamBlack,
+   368→                TextScaled = true,
+   369→                TextColor3 = T.Gold,
+   370→                TextXAlignment = Enum.TextXAlignment.Left,
+   371→                Text = "Toko",
+   372→        }, frame)
+   373→
+   374→        btn({
+   375→                parent = frame,
+   376→                Name = "Tutup",
+   377→                AnchorPoint = Vector2.new(1, 0),
+   378→                Position = UDim2.new(1, -12, 0, 10),
+   379→                Size = UDim2.fromOffset(40, 34),
+   380→                BackgroundColor3 = T.Red,
+   381→                TextColor3 = Color3.new(1, 1, 1),
+   382→                Text = "X",
+   383→                _radius = 8,
+   384→        }).Activated:Connect(function()
+   385→                self:showPanel(nil)
+   386→        end)
+   387→
+   388→        local tabBeli = btn({
+   389→                parent = frame,
+   390→                Name = "TabBeli",
+   391→                Position = UDim2.fromOffset(18, 56),
+   392→                Size = UDim2.fromOffset(110, 34),
+   393→                BackgroundColor3 = T.Green,
+   394→                TextColor3 = Color3.fromRGB(24, 30, 26),
+   395→                Text = "Beli",
+   396→                _radius = 8,
+   397→        })
+   398→        local tabJual = btn({
+   399→                parent = frame,
+   400→                Name = "TabJual",
+   401→                Position = UDim2.fromOffset(134, 56),
+   402→                Size = UDim2.fromOffset(110, 34),
+   403→                BackgroundColor3 = T.PanelLight,
+   404→                TextColor3 = T.Text,
+   405→                Text = "Jual",
+   406→                _radius = 8,
+   407→        })
+   408→        tabBeli.Activated:Connect(function()
+   409→                self.shopTab = "beli"
+   410→                self:renderShop()
+   411→        end)
+   412→        tabJual.Activated:Connect(function()
+   413→                self.shopTab = "jual"
+   414→                self:renderShop()
+   415→        end)
+   416→        self.tabBeliBtn = tabBeli
+   417→        self.tabJualBtn = tabJual
+   418→
+   419→        local scroll = Util.create("ScrollingFrame", {
+   420→                Name = "List",
+   421→                Position = UDim2.fromOffset(18, 98),
+   422→                Size = UDim2.new(1, -36, 1, -116),
+   423→                BackgroundTransparency = 1,
+   424→                BorderSizePixel = 0,
+   425→                CanvasSize = UDim2.new(),
+   426→                AutomaticCanvasSize = Enum.AutomaticSize.Y,
+   427→                ScrollBarThickness = 6,
+   428→        }, frame)
+   429→        Util.create("UIListLayout", { Padding = UDim.new(0, 8) }, scroll)
+   430→        self.shopList = scroll
+   431→end
+   432→
+   433→local function row(parent, height: number): Frame
+   434→        local r = Util.create("Frame", {
+   435→                Size = UDim2.new(1, -8, 0, height),
+   436→                BackgroundColor3 = T.PanelLight,
+   437→                BorderSizePixel = 0,
+   438→        }, parent)
+   439→        corner(r, 10)
+   440→        return r
+   441→end
+   442→
+   443→local function swatch(parent: Frame, color: Color3, label: string?)
+   444→        local icon = Util.create("Frame", {
+   445→                Position = UDim2.fromOffset(10, 10),
+   446→                Size = UDim2.fromOffset(44, 44),
+   447→                BackgroundColor3 = color,
+   448→                BorderSizePixel = 0,
+   449→        }, parent)
+   450→        corner(icon, 10)
+   451→        if label then
+   452→                Util.create("TextLabel", {
+   453→                        Size = UDim2.fromScale(1, 1),
+   454→                        BackgroundTransparency = 1,
+   455→                        Font = Enum.Font.GothamBlack,
+   456→                        TextScaled = true,
+   457→                        TextColor3 = Color3.fromRGB(40, 36, 26),
+   458→                        Text = label,
+   459→                }, icon)
+   460→        end
+   461→        return icon
+   462→end
+   463→
+   464→function UIController:shopItemsFor(shopId: string)
+   465→        if shopId == "bibit" then
+   466→                return Config.Crops
+   467→        elseif shopId == "alat" then
+   468→                return Config.Tools
+   469→        elseif shopId == "pet" then
+   470→                return Config.Pets
+   471→        end
+   472→        return {}
+   473→end
+   474→
+   475→function UIController:petBonus(): number
+   476→        local s = self.state
+   477→        if not s or s.ActivePet == "" then
+   478→                return 0
+   479→        end
+   480→        for _, pet in Config.Pets do
+   481→                if pet.id == s.ActivePet then
+   482→                        return pet.bonus
+   483→                end
+   484→        end
+   485→        return 0
+   486→end
+   487→
+   488→function UIController:clientPrice(baseSell: number, itemId: string): number
+   489→        local s = self.state
+   490→        local demand = (s and s.Demand and s.Demand[itemId]) or 1
+   491→        local price = baseSell * demand * (1 + self:petBonus())
+   492→        return math.max(1, math.floor(price + 0.5))
+   493→end
+   494→
+   495→function UIController:renderShop()
+   496→        local s = self.state
+   497→        local list = self.shopList
+   498→        for _, child in list:GetChildren() do
+   499→                if child:IsA("Frame") then
+   500→                        child:Destroy()
+   501→                end
+   502→        end
+   503→        if not s then
+   504→                return
+   505→        end
+   506→
+   507→        local titles = { bibit = "Toko Bibit - Kak Tani", alat = "Toko Alat - Pak Bang", pet = "Toko Peliharaan - Mbah Sekar", jual = "Pasar Pengepul - Bu Laris" }
+   508→        local judul = self.shopFrame:FindFirstChild("Judul") :: TextLabel?
+   509→        if judul then
+   510→                judul.Text = titles[self.shopId] or "Toko"
+   511→        end
+   512→
+   513→        self.tabBeliBtn.Visible = self.shopId ~= "jual"
+   514→        self.tabJualBtn.Visible = self.shopId == "jual"
+   515→        self.tabBeliBtn.BackgroundColor3 = self.shopTab == "beli" and T.Green or T.PanelLight
+   516→        self.tabJualBtn.BackgroundColor3 = self.shopTab == "jual" and T.Green or T.PanelLight
+   517→
+   518→        ---------------------------------------------------------------- tab jual
+   519→        if self.shopId == "jual" then
+   520→                local any = false
+   521→                local sections = {
+   522→                        { kind = "crop", data = s.Crops, lookup = Config.Crops, label = "PANEN" },
+   523→                        { kind = "bag", data = s.Bag, lookup = Config.Resources, label = "SUMBER DAYA" },
+   524→                        { kind = "fish", data = s.Fish, lookup = Config.Fish, label = "IKAN" },
+   525→                }
+   526→                for _, section in sections do
+   527→                        for id, count in section.data do
+   528→                                if count <= 0 then
+   529→                                        continue
+   530→                                end
+   531→                                local def = nil
+   532→                                for _, d in section.lookup do
+   533→                                        if d.id == id then
+   534→                                                def = d
+   535→                                                break
+   536→                                        end
+   537→                                end
+   538→                                if not def then
+   539→                                        continue
+   540→                                end
+   541→                                any = true
+   542→                                local unit = self:clientPrice(def.sell, id)
+   543→                                local r = row(list, 66)
+   544→                                local color = (def.color and Color3.fromRGB(def.color[1], def.color[2], def.color[3])) or T.Blue
+   545→                                swatch(r, color)
+   546→                                Util.create("TextLabel", {
+   547→                                        Position = UDim2.fromOffset(62, 6),
+   548→                                        Size = UDim2.new(1, -240, 0, 28),
+   549→                                        BackgroundTransparency = 1,
+   550→                                        Font = Enum.Font.GothamBold,
+   551→                                        TextScaled = true,
+   552→                                        TextColor3 = T.Text,
+   553→                                        TextXAlignment = Enum.TextXAlignment.Left,
+   554→                                        Text = def.name .. " x" .. count .. "  (@" .. unit .. " koin)",
+   555→                                }, r)
+   556→                                Util.create("TextLabel", {
+   557→                                        Position = UDim2.fromOffset(62, 36),
+   558→                                        Size = UDim2.new(1, -240, 0, 22),
+   559→                                        BackgroundTransparency = 1,
+   560→                                        Font = Enum.Font.Gotham,
+   561→                                        TextScaled = true,
+   562→                                        TextColor3 = T.TextDim,
+   563→                                        TextXAlignment = Enum.TextXAlignment.Left,
+   564→                                        Text = section.label .. " - permintaan pasar x" .. ((s.Demand and s.Demand[id]) or 1),
+   565→                                }, r)
+   566→                                btn({
+   567→                                        parent = r,
+   568→                                        AnchorPoint = Vector2.new(1, 0),
+   569→                                        Position = UDim2.new(1, -66, 0, 14),
+   570→                                        Size = UDim2.fromOffset(56, 38),
+   571→                                        BackgroundColor3 = T.Gold,
+   572→                                        TextColor3 = Color3.fromRGB(40, 30, 10),
+   573→                                        Text = "1x",
+   574→                                        _radius = 8,
+   575→                                }).Activated:Connect(function()
+   576→                                        local res = Remotes.get("SellItem"):InvokeServer(section.kind, id, false)
+   577→                                        self:handleResult(res)
+   578→                                end)
+   579→                                btn({
+   580→                                        parent = r,
+   581→                                        AnchorPoint = Vector2.new(1, 0),
+   582→                                        Position = UDim2.new(1, -8, 0, 14),
+   583→                                        Size = UDim2.fromOffset(52, 38),
+   584→                                        BackgroundColor3 = T.Green,
+   585→                                        TextColor3 = Color3.fromRGB(24, 30, 26),
+   586→                                        Text = "Semua",
+   587→                                        _radius = 8,
+   588→                                }).Activated:Connect(function()
+   589→                                        local res = Remotes.get("SellItem"):InvokeServer(section.kind, id, true)
+   590→                                        self:handleResult(res)
+   591→                                end)
+   592→                        end
+   593→                end
+   594→                if not any then
+   595→                        local r = row(list, 60)
+   596→                        Util.create("TextLabel", {
+   597→                                Size = UDim2.fromScale(1, 1),
+   598→                                BackgroundTransparency = 1,
+   599→                                Font = Enum.Font.GothamBold,
+   600→                                TextScaled = true,
+   601→                                TextColor3 = T.TextDim,
+   602→                                Text = "Tasmu masih kosong - tanam, tebang, atau mancing dulu!",
+   603→                        }, r)
+   604→                end
+   605→                -- tombol jual semua
+   606→                local sellAll = btn({
+   607→                        parent = list,
+   608→                        Size = UDim2.new(1, -8, 0, 44),
+   609→                        BackgroundColor3 = T.Gold,
+   610→                        TextColor3 = Color3.fromRGB(40, 30, 10),
+   611→                        Text = "JUAL SEMUA ISI TAS",
+   612→                        _radius = 10,
+   613→                })
+   614→                sellAll.Activated:Connect(function()
+   615→                        local res = Remotes.get("SellAll"):InvokeServer()
+   616→                        self:handleResult(res)
+   617→                end)
+   618→                return
+   619→        end
+   620→
+   621→        ---------------------------------------------------------------- tab beli
+   622→        for _, item in self:shopItemsFor(self.shopId) do
+   623→                local isCrop = self.shopId == "bibit"
+   624→                local isTool = self.shopId == "alat"
+   625→                local isPet = self.shopId == "pet"
+   626→                local owned = false
+   627→                if isTool then
+   628→                        local t = s.Tools
+   629→                        if item.id == "pick2" then
+   630→                                owned = t.pickTier >= 2
+   631→                        elseif item.id == "pick3" then
+   632→                                owned = t.pickTier >= 3
+   633→                        else
+   634→                                owned = t[item.id] == true
+   635→                        end
+   636→                elseif isPet then
+   637→                        owned = s.Pets[item.id] == true
+   638→                end
+   639→                local locked = isCrop and s.Level < item.level
+   640→                local r = row(list, 66)
+   641→                local color = (item.color and Color3.fromRGB(item.color[1], item.color[2], item.color[3])) or T.Blue
+   642→                swatch(r, color, isCrop and "B" or nil)
+   643→                Util.create("TextLabel", {
+   644→                        Position = UDim2.fromOffset(62, 6),
+   645→                        Size = UDim2.new(1, -240, 0, 28),
+   646→                        BackgroundTransparency = 1,
+   647→                        Font = Enum.Font.GothamBold,
+   648→                        TextScaled = true,
+   649→                        TextColor3 = T.Text,
+   650→                        TextXAlignment = Enum.TextXAlignment.Left,
+   651→                        Text = (isCrop and "Bibit " or "") .. item.name .. (owned and "  [DIMILIKI]" or ""),
+   652→                }, r)
+   653→                Util.create("TextLabel", {
+   654→                        Position = UDim2.fromOffset(62, 36),
+   655→                        Size = UDim2.new(1, -240, 0, 22),
+   656→                        BackgroundTransparency = 1,
+   657→                        Font = Enum.Font.Gotham,
+   658→                        TextScaled = true,
+   659→                        TextColor3 = T.TextDim,
+   660→                        TextXAlignment = Enum.TextXAlignment.Left,
+
+[showing lines 1-660 of 1292; use offset=661 with limit to continue reading]
