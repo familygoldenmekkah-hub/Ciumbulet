@@ -54,6 +54,32 @@ Balance.StarBonus = 0.12
 Balance.CraftMasterySteps = 10
 Balance.CraftMasteryXpMult = 1.5
 
+--------------------------------------------------------------------
+-- KIOS VENDING PEMAIN (v20, ala stand jualan dunia terbuka):
+--   Pemilik lahan memasang KIOS di ladangnya, mengisi barang + harga,
+--   pemain lain membeli langsung di kios walau pemilik sedang di ladang lain.
+--   Syariah: bayar lunas per transaksi, jasa 2% (min 1) TRANSPARAN,
+--   tanpa escrow bunga, tanpa gharar (barang & harga terlihat jelas).
+--------------------------------------------------------------------
+Balance.Kios = {
+        price = 250, -- harga pasang kios (lunas di muka, sewa spot sesi ini)
+        feeRate = 0.02, -- jasa layanan kios 2% - transparan (ujr, bukan riba)
+        feeMin = 1,
+        maxSlots = 6, -- 6 jenis barang per kios
+        maxStock = 99, -- maks stok per jenis
+        maxPrice = 999999,
+}
+
+--- Jasa kios untuk transaksi senilai `total` Micda (murni - diuji offline).
+function Balance.kiosFee(total: number): number
+        return math.max(Balance.Kios.feeMin, math.floor((total or 0) * Balance.Kios.feeRate + 0.5))
+end
+
+--- Hasil bersih penjual setelah jasa (murni - diuji offline).
+function Balance.kiosProceeds(total: number): number
+        return math.max(0, math.floor(total or 0) - Balance.kiosFee(total))
+end
+
 function Balance.craftMasteryLevel(count: number): number
         return math.floor(math.max(0, count) / Balance.CraftMasterySteps)
 end
@@ -190,6 +216,11 @@ Balance.Boss = {
         participationCoin = 40,
         participationXp = 30,
         topBonusCoin = 150,
+        -- v20 FASE MURKA: pada HP <= 50% sang raja mengamuk (gaya mekanik bos MMO)
+        enrageAt = 0.5,
+        enrageSpeed = 1.35,
+        enrageAtk = 1.3,
+        enrageAura = { 255, 60, 50 },
 }
 
 --------------------------------------------------------------------
@@ -213,6 +244,8 @@ Balance.Skills = {
                 desc = "Tebasan 220% ke angka terdekat. Butuh pedang." },
         { id = "sabetan_putar", name = "Sabetan Putar", mult = 1.5, cooldown = 15, level = 5, aoe = true,
                 desc = "Putaran 150% ke SEMUA angka di sekitar. Butuh pedang." },
+        { id = "tusukan_kilat", name = "Tusukan Kilat", mult = 3.0, cooldown = 14, level = 8,
+                desc = "Tusukan kilat 300% ke angka terdekat. Butuh pedang." },
 }
 
 --------------------------------------------------------------------

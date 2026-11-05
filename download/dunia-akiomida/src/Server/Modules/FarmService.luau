@@ -230,6 +230,8 @@ local function onTileTriggered(player: Player, tile)
                 if not crop then
                         return
                 end
+                -- v20: percikan panen (sekali pakai, ringan untuk mobile)
+                Util.burst(tile.part, Color3.fromRGB(crop.color[1], crop.color[2], crop.color[3]), 10, 6)
                 DataService.giveItem(player, "crop", crop.id, 1)
                 DataService.addXP(player, 4)
                 QuestService.progress(player, "harvest", 1)
@@ -438,9 +440,41 @@ function FarmService.buildPlot(index: number, center: Vector3)
         plot.tiles = tiles
         plot.signText = signText
         plot.claimPrompt = claimPrompt
+
+        -- v20 PAD KIOS: spot stand jualan milik pemilik di pojok ladang
+        local pad = part({
+                Name = "PadKios_" .. index,
+                Size = Vector3.new(4, 0.5, 4),
+                CFrame = CFrame.new(center + Vector3.new(-11, 0.75, 10.5)),
+                Color = Color3.fromRGB(70, 60, 52),
+                Material = Enum.Material.Concrete,
+        })
+        local kiosPrompt = Instance.new("ProximityPrompt")
+        kiosPrompt.ActionText = "Kios Jual"
+        kiosPrompt.ObjectText = "Pad Kios Pemain"
+        kiosPrompt.MaxActivationDistance = 8
+        kiosPrompt.HoldDuration = 0
+        kiosPrompt.RequiresLineOfSight = false
+        kiosPrompt.Parent = pad
+
+        plot.kiosPad = pad
+        plot.kiosPrompt = kiosPrompt
+
         plots[index] = plot
         updateSign(plot)
         return plot
+end
+
+--------------------------------------------------------------------
+-- AKSES PLOT (dipakai KiosService; tanpa siklus require)
+--------------------------------------------------------------------
+
+function FarmService.getPlot(index: number)
+        return plots[index]
+end
+
+function FarmService.plotCount(): number
+        return PLOT_COUNT
 end
 
 --------------------------------------------------------------------

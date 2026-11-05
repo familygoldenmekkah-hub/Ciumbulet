@@ -47,6 +47,10 @@ local DEFINITIONS = {
         MarketAction = "RemoteFunction", -- client -> server: browse/list/cancel/buy
         MarketSync = "RemoteEvent", -- server -> client: snapshot papan jual
         OpenMarket = "RemoteEvent", -- server -> client: buka panel papan jual
+        -- v20: kios vending pemain di lahan (ala stand jualan dunia terbuka)
+        KiosAction = "RemoteFunction", -- client -> server: place/stock/take/price/browse/buy/close
+        KiosSync = "RemoteEvent", -- server -> client: snapshot kios
+        OpenKios = "RemoteEvent", -- server -> client: buka panel kios (mode kelola/belanja)
 }
 
 local function folder(): Folder

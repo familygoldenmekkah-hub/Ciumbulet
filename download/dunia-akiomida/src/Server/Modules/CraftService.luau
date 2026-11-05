@@ -13,6 +13,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Remotes = require(ReplicatedStorage.Remotes)
 local Balance = require(ReplicatedStorage.Shared.Balance)
 local Config = require(ReplicatedStorage.Shared.Config)
+local Util = require(ReplicatedStorage.Shared.Util)
 
 local DataService = require(script.Parent.DataService)
 local QuestService = require(script.Parent.QuestService)
@@ -118,6 +119,16 @@ local function onCraft(player: Player, recipeId: any)
 
         local hook = recipe.station == "tempa" and "craft" or "cook"
         QuestService.progress(player, hook, 1)
+
+        -- v20: percikan tempa di tangan pembuat (sekali pakai, ringan mobile)
+        local char = player.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if root then
+                local sparkColor = recipe.station == "tempa"
+                        and Color3.fromRGB(255, 170, 90)
+                        or Color3.fromRGB(250, 140, 150)
+                Util.burst(root, sparkColor, 12, 7)
+        end
 
         DataService.push(player)
         return {

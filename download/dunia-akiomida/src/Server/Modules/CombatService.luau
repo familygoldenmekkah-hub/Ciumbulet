@@ -221,6 +221,42 @@ local function playSound(root: BasePart, soundName: string, pitch: number?, volu
         end)
 end
 
+--------------------------------------------------------------------
+-- v20 FASE MURKA BOSS: pada HP <= 50% sang raja mengamuk
+--   (gaya mekanik bos MMO: aura merah, gerak & serangan naik, diumumkan)
+--------------------------------------------------------------------
+
+local function maybeEnrage(entity: any)
+        if not entity.isBoss or entity.enraged or not entity.alive then
+                return
+        end
+        if entity.hp > entity.maxHp * (Balance.Boss.enrageAt or 0.5) then
+                return
+        end
+        entity.enraged = true
+        local aura = Balance.Boss.enrageAura or { 255, 60, 50 }
+        local c = Color3.fromRGB(aura[1], aura[2], aura[3])
+        for _, p in entity.model:GetDescendants() do
+                if p:IsA("BasePart") and (string.sub(p.Name, 1, 4) == "Aura" or p.Name == "CincinAura") then
+                        p.Color = c
+                elseif p:IsA("ParticleEmitter") then
+                        p.Color = ColorSequence.new(c)
+                elseif p:IsA("PointLight") then
+                        p.Color = c
+                end
+        end
+        Util.burst(entity.body, c, 24, 12)
+        playSound(entity.body, "impact_water.mp3", 0.55, 0.8)
+        Remotes.get("BossState"):FireAllClients({
+                active = true, name = Balance.Boss.name,
+                hp = math.max(1, entity.hp), maxHp = entity.maxHp,
+                zone = "Arena Timur", enraged = true,
+        })
+        for _, player in Players:GetPlayers() do
+                notify(player, "MURKA!", Balance.Boss.name .. " mengamuk! Gerak & serangannya menguat - berhati-hatilah!")
+        end
+end
+
 local function hpBillboard(body: Part, name: string, hp: number, maxHp: number, isBoss: boolean)
         local gui = Instance.new("BillboardGui")
         gui.Name = "HPBar"
@@ -469,6 +505,12 @@ local function hitEntity(player: Player, entity: any, mult: number, stats: any, 
         local def = entity.def.def or 0
         local dmg = math.max(1, math.floor(atk * (1 - def / (def + 60)) + 0.5))
         entity.hp -= dmg
+        -- v20: partikel tebasan skill + cek fase murka boss
+        if mult > 1.6 and entity.body.Parent then
+                local aura = entity.def.body and entity.def.body.aura
+                Util.burst(entity.body, aura and Color3.fromRGB(aura[1], aura[2], aura[3]) or Color3.fromRGB(255, 230, 120), 8, 8)
+        end
+        maybeEnrage(entity)
         local bb = entity.bb
         bb.bar.Size = UDim2.fromScale(math.clamp(entity.hp / entity.maxHp, 0, 1), 1)
         bb.label.Text = math.max(0, entity.hp) .. " / " .. entity.maxHp
@@ -601,6 +643,7 @@ function CombatService.playerAttack(player: Player, entity: any)
         local dmg = math.max(1, math.floor(atk * (1 - def / (def + 60)) + 0.5))
 
         entity.hp -= dmg
+        maybeEnrage(entity) -- v20: boss bisa memasuki fase murka dari serangan biasa
         local bb = entity.bb
         bb.bar.Size = UDim2.fromScale(math.clamp(entity.hp / entity.maxHp, 0, 1), 1)
         bb.label.Text = math.max(0, entity.hp) .. " / " .. entity.maxHp
@@ -733,7 +776,8 @@ local function stepMonster(entity: any, dt: number)
 
         local bodyPos = entity.body.Position
         local goal: Vector3
-        local speed = def.speed
+        -- v20: fase murka mempercepat gerak boss
+        local speed = def.speed * (entity.enraged and (Balance.Boss.enrageSpeed or 1) or 1)
 
         if entity.target then
                 local root = entity.target.Character.PrimaryPart
@@ -748,7 +792,9 @@ local function stepMonster(entity: any, dt: number)
                                 -- damage ke pemain dengan pertahanan zirah + VIT
                                 local pstats = statsOf(entity.target)
                                 local defense = Balance.playerDefense(EquipService.armorDef(entity.target), pstats.vit)
-                                local taken = Balance.damageTaken(def.atk, defense)
+                                -- v20: serangan boss menguat saat murka
+                                local rawAtk = def.atk * (entity.enraged and (Balance.Boss.enrageAtk or 1) or 1)
+                                local taken = Balance.damageTaken(rawAtk, defense)
                                 local humanoid = entity.target.Character:FindFirstChildOfClass("Humanoid")
                                 if humanoid then
                                         humanoid:TakeDamage(taken)
@@ -894,7 +940,7 @@ local function bossLoop()
                                 Remotes.get("BossState"):FireAllClients({
                                         active = true, name = Balance.Boss.name,
                                         hp = math.max(0, boss.hp), maxHp = boss.maxHp,
-                                        zone = "Arena Timur",
+                                        zone = "Arena Timur", enraged = boss.enraged == true,
                                 })
                         end
                 end

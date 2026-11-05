@@ -17,6 +17,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Balance = require(ReplicatedStorage.Shared.Balance)
 local Remotes = require(ReplicatedStorage.Remotes)
 local Util = require(ReplicatedStorage.Shared.Util)
+local Ambience = require(script.Parent.Ambience)
 
 local UIController = {}
 UIController.__index = UIController
@@ -82,6 +83,8 @@ function UIController.new()
         self.bossInfo = nil
         self.marketTab = "papan"
         self.marketSnap = nil
+        self.kiosMode = nil
+        self.kiosSnap = nil
 
         self:buildGui()
         self:buildHud()
@@ -96,8 +99,10 @@ function UIController.new()
         self:buildQuestPanel()
         self:buildTradePanel()
         self:buildMarketPanel()
+        self:buildKiosPanel()
         self:wireRemotes()
         self:startTips()
+        Ambience.start() -- v20: BGM pentatonik sintesis kode
 
         return self
 end
@@ -132,7 +137,7 @@ end
 
 function UIController:showPanel(name: string?)
         local TweenService = game:GetService("TweenService")
-        for _, n in { "Shop", "Plant", "Inv", "Quiz", "Code", "Help", "Char", "Craft", "Quest", "Trade", "Market" } do
+        for _, n in { "Shop", "Plant", "Inv", "Quiz", "Code", "Help", "Char", "Craft", "Quest", "Trade", "Market", "Kios" } do
                 local f = self.gui:FindFirstChild(n)
                 if f then
                         (f :: Frame).Visible = (n == name)
@@ -336,6 +341,10 @@ function UIController:buildHud()
                         self:showPanel("Market")
                         self:refreshMarket()
                 end },
+                { name = "Musik", label = "Musik", cb = function()
+                        local on = Ambience.toggle()
+                        self:toast("Musik Latar", on and "Musik dinyalakan." or "Musik dimatikan.", T.Gold)
+                end },
                 { name = "Kode", label = "Kode", cb = function()
                         self:showPanel("Code")
                 end },
@@ -521,6 +530,7 @@ local TIPS = {
         "Makan Roti Aktif dari Bu Masak untuk lari lebih cepat 12%!",
         "Dagang aman antar pemain: tombol Dagang, dekati partner, undang & SIAP!",
         "PAPAN JUAL di alun-alun: pasang barang, pemain lain beli - Micda masuk walau kamu offline!",
+        "Punya ladang? Pasang KIOS di pad dekat papan ladangmu - pemain lain belanja langsung ke kiosmu!",
         "Papan Tugas Harian di alun-alun memberi Micda & XP besar - ambil tiap hari!",
         "Kucing Micda memberi +10% harga jual. Lihat Toko Peliharaan!",
         "Bonus login harian 100 Micda. Datang lagi besok!",
@@ -1640,6 +1650,26 @@ function UIController:wireRemotes()
                 self:refreshMarket()
         end)
 
+        -- v20: kios vending pemain di lahan
+        Remotes.get("OpenKios").OnClientEvent:Connect(function(mode)
+                self.kiosMode = mode
+                if self.kiosSnap then
+                        self:renderKios()
+                end
+                self:showPanel("Kios")
+        end)
+
+        Remotes.get("KiosSync").OnClientEvent:Connect(function(mode, snap)
+                if type(snap) ~= "table" then
+                        return
+                end
+                self.kiosMode = mode
+                self.kiosSnap = snap
+                if self.activePanel == "Kios" then
+                        self:renderKios()
+                end
+        end)
+
         Remotes.get("EventState").OnClientEvent:Connect(function(info)
                 if info.active then
                         self.eventChip.Visible = true
@@ -1671,7 +1701,7 @@ function UIController:wireRemotes()
         Remotes.get("BossState").OnClientEvent:Connect(function(info)
                 if info.active then
                         self.bossBar.Visible = true
-                        self.bossTitle.Text = info.name .. " - " .. (info.zone or "Arena")
+                        self.bossTitle.Text = info.name .. " - " .. (info.zone or "Arena") .. (info.enraged and " - MURKA!" or "")
                         self.bossHp.Size = UDim2.fromScale(math.clamp((info.hp or 1) / (info.maxHp or 1), 0.02, 1), 1)
                 else
                         self.bossBar.Visible = false
@@ -2313,300 +2343,300 @@ end
 --------------------------------------------------------------------
 
 function UIController:buildMarketPanel()
-	local frame = self:panelFrame("Market", 0.62, 0.74)
-	Util.create("TextLabel", {
-		Name = "Judul",
-		Size = UDim2.new(1, -60, 0, 36),
-		Position = UDim2.fromOffset(18, 10),
-		BackgroundTransparency = 1,
-		Font = Enum.Font.GothamBlack,
-		TextScaled = true,
-		TextColor3 = T.Gold,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Text = "Papan Jual - Micda",
-	}, frame)
-	btn({
-		parent = frame,
-		Name = "Tutup",
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -12, 0, 10),
-		Size = UDim2.fromOffset(40, 34),
-		BackgroundColor3 = T.Red,
-		TextColor3 = Color3.new(1, 1, 1),
-		Text = "X",
-		_radius = 8,
-	}).Activated:Connect(function()
-		self:showPanel(nil)
-	end)
+        local frame = self:panelFrame("Market", 0.62, 0.74)
+        Util.create("TextLabel", {
+                Name = "Judul",
+                Size = UDim2.new(1, -60, 0, 36),
+                Position = UDim2.fromOffset(18, 10),
+                BackgroundTransparency = 1,
+                Font = Enum.Font.GothamBlack,
+                TextScaled = true,
+                TextColor3 = T.Gold,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                Text = "Papan Jual - Micda",
+        }, frame)
+        btn({
+                parent = frame,
+                Name = "Tutup",
+                AnchorPoint = Vector2.new(1, 0),
+                Position = UDim2.new(1, -12, 0, 10),
+                Size = UDim2.fromOffset(40, 34),
+                BackgroundColor3 = T.Red,
+                TextColor3 = Color3.new(1, 1, 1),
+                Text = "X",
+                _radius = 8,
+        }).Activated:Connect(function()
+                self:showPanel(nil)
+        end)
 
-	-- tab strip minimal
-	local strip = Util.create("Frame", {
-		Position = UDim2.fromOffset(18, 52),
-		Size = UDim2.new(1, -36, 0, 34),
-		BackgroundTransparency = 1,
-	}, frame)
-	Util.create("UIListLayout", {
-		FillDirection = Enum.FillDirection.Horizontal,
-		Padding = UDim.new(0, 8),
-	}, strip)
-	self.marketTabBtns = {}
-	for _, tb in { { id = "papan", label = "Papan" }, { id = "jual", label = "Jual Barang" }, { id = "ku", label = "Lelanganku" } } do
-		self.marketTabBtns[tb.id] = btn({
-			parent = strip,
-			Size = UDim2.fromOffset(116, 32),
-			BackgroundColor3 = T.PanelLight,
-			TextColor3 = T.TextDim,
-			Text = tb.label,
-			_radius = 8,
-		})
-		self.marketTabBtns[tb.id].Activated:Connect(function()
-			self.marketTab = tb.id
-			self:renderMarket()
-		end)
-	end
+        -- tab strip minimal
+        local strip = Util.create("Frame", {
+                Position = UDim2.fromOffset(18, 52),
+                Size = UDim2.new(1, -36, 0, 34),
+                BackgroundTransparency = 1,
+        }, frame)
+        Util.create("UIListLayout", {
+                FillDirection = Enum.FillDirection.Horizontal,
+                Padding = UDim.new(0, 8),
+        }, strip)
+        self.marketTabBtns = {}
+        for _, tb in { { id = "papan", label = "Papan" }, { id = "jual", label = "Jual Barang" }, { id = "ku", label = "Lelanganku" } } do
+                self.marketTabBtns[tb.id] = btn({
+                        parent = strip,
+                        Size = UDim2.fromOffset(116, 32),
+                        BackgroundColor3 = T.PanelLight,
+                        TextColor3 = T.TextDim,
+                        Text = tb.label,
+                        _radius = 8,
+                })
+                self.marketTabBtns[tb.id].Activated:Connect(function()
+                        self.marketTab = tb.id
+                        self:renderMarket()
+                end)
+        end
 
-	local scroll = Util.create("ScrollingFrame", {
-		Name = "List",
-		Position = UDim2.fromOffset(18, 94),
-		Size = UDim2.new(1, -36, 1, -112),
-		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
-		CanvasSize = UDim2.new(),
-		AutomaticCanvasSize = Enum.AutomaticSize.Y,
-		ScrollBarThickness = 6,
-	}, frame)
-	Util.create("UIListLayout", { Padding = UDim.new(0, 8) }, scroll)
-	self.marketList = scroll
+        local scroll = Util.create("ScrollingFrame", {
+                Name = "List",
+                Position = UDim2.fromOffset(18, 94),
+                Size = UDim2.new(1, -36, 1, -112),
+                BackgroundTransparency = 1,
+                BorderSizePixel = 0,
+                CanvasSize = UDim2.new(),
+                AutomaticCanvasSize = Enum.AutomaticSize.Y,
+                ScrollBarThickness = 6,
+        }, frame)
+        Util.create("UIListLayout", { Padding = UDim.new(0, 8) }, scroll)
+        self.marketList = scroll
 end
 
 function UIController:refreshMarket()
-	task.spawn(function()
-		local ok, res = pcall(function()
-			return Remotes.get("MarketAction"):InvokeServer({ action = "browse" })
-		end)
-		if ok and type(res) == "table" and res.ok then
-			self.marketSnap = res
-			if self.activePanel == "Market" then
-				self:renderMarket()
-			end
-		end
-	end)
+        task.spawn(function()
+                local ok, res = pcall(function()
+                        return Remotes.get("MarketAction"):InvokeServer({ action = "browse" })
+                end)
+                if ok and type(res) == "table" and res.ok then
+                        self.marketSnap = res
+                        if self.activePanel == "Market" then
+                                self:renderMarket()
+                        end
+                end
+        end)
 end
 
 function UIController:renderMarket()
-	local list = self.marketList
-	for _, child in list:GetChildren() do
-		if child:IsA("Frame") then
-			child:Destroy()
-		end
-	end
-	for id, b in pairs(self.marketTabBtns or {}) do
-		b.BackgroundColor3 = (self.marketTab == id) and T.PanelLight or T.Panel
-		b.TextColor3 = (self.marketTab == id) and T.Gold or T.TextDim
-	end
-	local snap = self.marketSnap or { listings = {}, mine = {}, feeRate = 0.02, feeMin = 1 }
+        local list = self.marketList
+        for _, child in list:GetChildren() do
+                if child:IsA("Frame") then
+                        child:Destroy()
+                end
+        end
+        for id, b in pairs(self.marketTabBtns or {}) do
+                b.BackgroundColor3 = (self.marketTab == id) and T.PanelLight or T.Panel
+                b.TextColor3 = (self.marketTab == id) and T.Gold or T.TextDim
+        end
+        local snap = self.marketSnap or { listings = {}, mine = {}, feeRate = 0.02, feeMin = 1 }
 
-	if self.marketTab == "papan" then
-		Util.create("TextLabel", {
-			Size = UDim2.new(1, -8, 0, 30),
-			BackgroundTransparency = 1,
-			Font = Enum.Font.Gotham,
-			TextScaled = true,
-			TextColor3 = T.TextDim,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			Text = "Barang pemain lain. Bayar penuh sekali - tanpa biaya tersembunyi.",
-		}, list)
-		local any = false
-		for _, l in ipairs(snap.listings or {}) do
-			any = true
-			local r = row(list, 56)
-			Util.create("TextLabel", {
-				Position = UDim2.fromOffset(12, 8),
-				Size = UDim2.new(1, -230, 0, 40),
-				BackgroundTransparency = 1,
-				Font = Enum.Font.GothamBold,
-				TextScaled = true,
-				TextColor3 = T.Text,
-				TextXAlignment = Enum.TextXAlignment.Left,
-				Text = itemNameOf(l.kind, l.id) .. " x" .. l.count .. "  -  " .. l.sellerName,
-			}, r)
-			Util.create("TextLabel", {
-				AnchorPoint = Vector2.new(1, 0),
-				Position = UDim2.new(1, -118, 0, 8),
-				Size = UDim2.fromOffset(100, 40),
-				BackgroundTransparency = 1,
-				Font = Enum.Font.GothamBlack,
-				TextScaled = true,
-				TextColor3 = T.Gold,
-				TextXAlignment = Enum.TextXAlignment.Right,
-				Text = Util.formatNumber(l.price),
-			}, r)
-			btn({
-				parent = r,
-				AnchorPoint = Vector2.new(1, 0),
-				Position = UDim2.new(1, -8, 0, 10),
-				Size = UDim2.fromOffset(96, 36),
-				BackgroundColor3 = T.Green,
-				TextColor3 = Color3.fromRGB(20, 32, 26),
-				Text = "Beli",
-				_radius = 8,
-			}).Activated:Connect(function()
-				local res = Remotes.get("MarketAction"):InvokeServer({ action = "buy", lid = l.lid })
-				self:handleResult(res)
-				self:refreshMarket()
-			end)
-		end
-		if not any then
-			local r = row(list, 60)
-			Util.create("TextLabel", {
-				Size = UDim2.fromScale(1, 1),
-				BackgroundTransparency = 1,
-				Font = Enum.Font.Gotham,
-				TextScaled = true,
-				TextColor3 = T.TextDim,
-				Text = "Papan masih kosong - jadilah penjual pertama di tab Jual Barang!",
-			}, r)
-		end
-		return
-	end
+        if self.marketTab == "papan" then
+                Util.create("TextLabel", {
+                        Size = UDim2.new(1, -8, 0, 30),
+                        BackgroundTransparency = 1,
+                        Font = Enum.Font.Gotham,
+                        TextScaled = true,
+                        TextColor3 = T.TextDim,
+                        TextXAlignment = Enum.TextXAlignment.Left,
+                        Text = "Barang pemain lain. Bayar penuh sekali - tanpa biaya tersembunyi.",
+                }, list)
+                local any = false
+                for _, l in ipairs(snap.listings or {}) do
+                        any = true
+                        local r = row(list, 56)
+                        Util.create("TextLabel", {
+                                Position = UDim2.fromOffset(12, 8),
+                                Size = UDim2.new(1, -230, 0, 40),
+                                BackgroundTransparency = 1,
+                                Font = Enum.Font.GothamBold,
+                                TextScaled = true,
+                                TextColor3 = T.Text,
+                                TextXAlignment = Enum.TextXAlignment.Left,
+                                Text = itemNameOf(l.kind, l.id) .. " x" .. l.count .. "  -  " .. l.sellerName,
+                        }, r)
+                        Util.create("TextLabel", {
+                                AnchorPoint = Vector2.new(1, 0),
+                                Position = UDim2.new(1, -118, 0, 8),
+                                Size = UDim2.fromOffset(100, 40),
+                                BackgroundTransparency = 1,
+                                Font = Enum.Font.GothamBlack,
+                                TextScaled = true,
+                                TextColor3 = T.Gold,
+                                TextXAlignment = Enum.TextXAlignment.Right,
+                                Text = Util.formatNumber(l.price),
+                        }, r)
+                        btn({
+                                parent = r,
+                                AnchorPoint = Vector2.new(1, 0),
+                                Position = UDim2.new(1, -8, 0, 10),
+                                Size = UDim2.fromOffset(96, 36),
+                                BackgroundColor3 = T.Green,
+                                TextColor3 = Color3.fromRGB(20, 32, 26),
+                                Text = "Beli",
+                                _radius = 8,
+                        }).Activated:Connect(function()
+                                local res = Remotes.get("MarketAction"):InvokeServer({ action = "buy", lid = l.lid })
+                                self:handleResult(res)
+                                self:refreshMarket()
+                        end)
+                end
+                if not any then
+                        local r = row(list, 60)
+                        Util.create("TextLabel", {
+                                Size = UDim2.fromScale(1, 1),
+                                BackgroundTransparency = 1,
+                                Font = Enum.Font.Gotham,
+                                TextScaled = true,
+                                TextColor3 = T.TextDim,
+                                Text = "Papan masih kosong - jadilah penjual pertama di tab Jual Barang!",
+                        }, r)
+                end
+                return
+        end
 
-	if self.marketTab == "jual" then
-		Util.create("TextLabel", {
-			Size = UDim2.new(1, -8, 0, 30),
-			BackgroundTransparency = 1,
-			Font = Enum.Font.Gotham,
-			TextScaled = true,
-			TextColor3 = T.TextDim,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			Text = "Tentukan harga (Micda). Jasa pasar " .. math.floor((snap.feeRate or 0.02) * 100) .. "% dipotong dari hasil jualmu.",
-		}, list)
-		local s = self.state
-		if s then
-			local sections = {
-				{ kind = "seed", data = s.Seeds },
-				{ kind = "crop", data = s.Crops },
-				{ kind = "bag", data = s.Bag },
-				{ kind = "fish", data = s.Fish },
-				{ kind = "equip", data = s.Equips },
-				{ kind = "use", data = s.Usables },
-			}
-			local any = false
-			for _, section in sections do
-				for id, count in section.data do
-					if count <= 0 then
-						continue
-					end
-					any = true
-					local r = row(list, 56)
-					Util.create("TextLabel", {
-						Position = UDim2.fromOffset(12, 8),
-						Size = UDim2.new(1, -300, 0, 40),
-						BackgroundTransparency = 1,
-						Font = Enum.Font.GothamBold,
-						TextScaled = true,
-						TextColor3 = T.Text,
-						TextXAlignment = Enum.TextXAlignment.Left,
-						Text = itemNameOf(section.kind, id) .. " x" .. count,
-					}, r)
-					local priceBox = Util.create("TextBox", {
-						AnchorPoint = Vector2.new(1, 0),
-						Position = UDim2.new(1, -118, 0, 10),
-						Size = UDim2.fromOffset(110, 36),
-						BackgroundColor3 = T.PanelLight,
-						TextColor3 = T.Gold,
-						Font = Enum.Font.GothamBold,
-						TextScaled = true,
-						PlaceholderText = "Harga",
-						ClearTextOnFocus = true,
-						Text = "",
-					}, r)
-					corner(priceBox, 8)
-					btn({
-						parent = r,
-						AnchorPoint = Vector2.new(1, 0),
-						Position = UDim2.new(1, -8, 0, 10),
-						Size = UDim2.fromOffset(100, 36),
-						BackgroundColor3 = T.Gold,
-						TextColor3 = Color3.fromRGB(40, 30, 10),
-						Text = "Pasang",
-						_radius = 8,
-					}).Activated:Connect(function()
-						local price = tonumber(priceBox.Text)
-						if not price or price < 1 then
-							self:toast("Papan Jual", "Tulis harga dulu (Micda).", T.Red)
-							return
-						end
-						local res = Remotes.get("MarketAction"):InvokeServer({ action = "list", kind = section.kind, id = id, count = count, price = math.floor(price) })
-						self:handleResult(res)
-						self:refreshMarket()
-					end)
-				end
-			end
-			if not any then
-				local r = row(list, 60)
-				Util.create("TextLabel", {
-					Size = UDim2.fromScale(1, 1),
-					BackgroundTransparency = 1,
-					Font = Enum.Font.Gotham,
-					TextScaled = true,
-					TextColor3 = T.TextDim,
-					Text = "Tasmu kosong. Panen, tambang, memancing, atau kalahkan monster dulu!",
-				}, r)
-			end
-		end
-		return
-	end
+        if self.marketTab == "jual" then
+                Util.create("TextLabel", {
+                        Size = UDim2.new(1, -8, 0, 30),
+                        BackgroundTransparency = 1,
+                        Font = Enum.Font.Gotham,
+                        TextScaled = true,
+                        TextColor3 = T.TextDim,
+                        TextXAlignment = Enum.TextXAlignment.Left,
+                        Text = "Tentukan harga (Micda). Jasa pasar " .. math.floor((snap.feeRate or 0.02) * 100) .. "% dipotong dari hasil jualmu.",
+                }, list)
+                local s = self.state
+                if s then
+                        local sections = {
+                                { kind = "seed", data = s.Seeds },
+                                { kind = "crop", data = s.Crops },
+                                { kind = "bag", data = s.Bag },
+                                { kind = "fish", data = s.Fish },
+                                { kind = "equip", data = s.Equips },
+                                { kind = "use", data = s.Usables },
+                        }
+                        local any = false
+                        for _, section in sections do
+                                for id, count in section.data do
+                                        if count <= 0 then
+                                                continue
+                                        end
+                                        any = true
+                                        local r = row(list, 56)
+                                        Util.create("TextLabel", {
+                                                Position = UDim2.fromOffset(12, 8),
+                                                Size = UDim2.new(1, -300, 0, 40),
+                                                BackgroundTransparency = 1,
+                                                Font = Enum.Font.GothamBold,
+                                                TextScaled = true,
+                                                TextColor3 = T.Text,
+                                                TextXAlignment = Enum.TextXAlignment.Left,
+                                                Text = itemNameOf(section.kind, id) .. " x" .. count,
+                                        }, r)
+                                        local priceBox = Util.create("TextBox", {
+                                                AnchorPoint = Vector2.new(1, 0),
+                                                Position = UDim2.new(1, -118, 0, 10),
+                                                Size = UDim2.fromOffset(110, 36),
+                                                BackgroundColor3 = T.PanelLight,
+                                                TextColor3 = T.Gold,
+                                                Font = Enum.Font.GothamBold,
+                                                TextScaled = true,
+                                                PlaceholderText = "Harga",
+                                                ClearTextOnFocus = true,
+                                                Text = "",
+                                        }, r)
+                                        corner(priceBox, 8)
+                                        btn({
+                                                parent = r,
+                                                AnchorPoint = Vector2.new(1, 0),
+                                                Position = UDim2.new(1, -8, 0, 10),
+                                                Size = UDim2.fromOffset(100, 36),
+                                                BackgroundColor3 = T.Gold,
+                                                TextColor3 = Color3.fromRGB(40, 30, 10),
+                                                Text = "Pasang",
+                                                _radius = 8,
+                                        }).Activated:Connect(function()
+                                                local price = tonumber(priceBox.Text)
+                                                if not price or price < 1 then
+                                                        self:toast("Papan Jual", "Tulis harga dulu (Micda).", T.Red)
+                                                        return
+                                                end
+                                                local res = Remotes.get("MarketAction"):InvokeServer({ action = "list", kind = section.kind, id = id, count = count, price = math.floor(price) })
+                                                self:handleResult(res)
+                                                self:refreshMarket()
+                                        end)
+                                end
+                        end
+                        if not any then
+                                local r = row(list, 60)
+                                Util.create("TextLabel", {
+                                        Size = UDim2.fromScale(1, 1),
+                                        BackgroundTransparency = 1,
+                                        Font = Enum.Font.Gotham,
+                                        TextScaled = true,
+                                        TextColor3 = T.TextDim,
+                                        Text = "Tasmu kosong. Panen, tambang, memancing, atau kalahkan monster dulu!",
+                                }, r)
+                        end
+                end
+                return
+        end
 
-	-- LELANGANKU
-	Util.create("TextLabel", {
-		Size = UDim2.new(1, -8, 0, 30),
-		BackgroundTransparency = 1,
-		Font = Enum.Font.Gotham,
-		TextScaled = true,
-		TextColor3 = T.TextDim,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Text = "Barangmu yang sedang dipajang:",
-	}, list)
-	local any = false
-	for _, l in ipairs(snap.mine or {}) do
-		any = true
-		local r = row(list, 56)
-		Util.create("TextLabel", {
-			Position = UDim2.fromOffset(12, 8),
-			Size = UDim2.new(1, -220, 0, 40),
-			BackgroundTransparency = 1,
-			Font = Enum.Font.GothamBold,
-			TextScaled = true,
-			TextColor3 = T.Text,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			Text = itemNameOf(l.kind, l.id) .. " x" .. l.count .. "  @  " .. Util.formatNumber(l.price),
-		}, r)
-		btn({
-			parent = r,
-			AnchorPoint = Vector2.new(1, 0),
-			Position = UDim2.new(1, -8, 0, 10),
-			Size = UDim2.fromOffset(120, 36),
-			BackgroundColor3 = T.Red,
-			TextColor3 = Color3.new(1, 1, 1),
-			Text = "Tarik",
-			_radius = 8,
-		}).Activated:Connect(function()
-			local res = Remotes.get("MarketAction"):InvokeServer({ action = "cancel", lid = l.lid })
-			self:handleResult(res)
-			self:refreshMarket()
-		end)
-	end
-	if not any then
-		local r = row(list, 60)
-		Util.create("TextLabel", {
-			Size = UDim2.fromScale(1, 1),
-			BackgroundTransparency = 1,
-			Font = Enum.Font.Gotham,
-			TextScaled = true,
-			TextColor3 = T.TextDim,
-			Text = "Belum ada barang dipajang. Hasil jual diantar walau kamu offline!",
-		}, r)
-	end
+        -- LELANGANKU
+        Util.create("TextLabel", {
+                Size = UDim2.new(1, -8, 0, 30),
+                BackgroundTransparency = 1,
+                Font = Enum.Font.Gotham,
+                TextScaled = true,
+                TextColor3 = T.TextDim,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                Text = "Barangmu yang sedang dipajang:",
+        }, list)
+        local any = false
+        for _, l in ipairs(snap.mine or {}) do
+                any = true
+                local r = row(list, 56)
+                Util.create("TextLabel", {
+                        Position = UDim2.fromOffset(12, 8),
+                        Size = UDim2.new(1, -220, 0, 40),
+                        BackgroundTransparency = 1,
+                        Font = Enum.Font.GothamBold,
+                        TextScaled = true,
+                        TextColor3 = T.Text,
+                        TextXAlignment = Enum.TextXAlignment.Left,
+                        Text = itemNameOf(l.kind, l.id) .. " x" .. l.count .. "  @  " .. Util.formatNumber(l.price),
+                }, r)
+                btn({
+                        parent = r,
+                        AnchorPoint = Vector2.new(1, 0),
+                        Position = UDim2.new(1, -8, 0, 10),
+                        Size = UDim2.fromOffset(120, 36),
+                        BackgroundColor3 = T.Red,
+                        TextColor3 = Color3.new(1, 1, 1),
+                        Text = "Tarik",
+                        _radius = 8,
+                }).Activated:Connect(function()
+                        local res = Remotes.get("MarketAction"):InvokeServer({ action = "cancel", lid = l.lid })
+                        self:handleResult(res)
+                        self:refreshMarket()
+                end)
+        end
+        if not any then
+                local r = row(list, 60)
+                Util.create("TextLabel", {
+                        Size = UDim2.fromScale(1, 1),
+                        BackgroundTransparency = 1,
+                        Font = Enum.Font.Gotham,
+                        TextScaled = true,
+                        TextColor3 = T.TextDim,
+                        Text = "Belum ada barang dipajang. Hasil jual diantar walau kamu offline!",
+                }, r)
+        end
 end
 
 function UIController:renderTrade()
@@ -2915,6 +2945,342 @@ function UIController:renderTrade()
                         end)
                 end
         end
+end
+
+--------------------------------------------------------------------
+-- PANEL KIOS (v20): kelola kios jualanmu / belanja di kios pemain lain
+--   Bayar penuh sekali, jasa 2% (min 1) transparan - tanpa biaya tersembunyi.
+--------------------------------------------------------------------
+
+function UIController:buildKiosPanel()
+        local frame = self:panelFrame("Kios", 0.56, 0.7)
+        Util.create("TextLabel", {
+                Name = "Judul",
+                Size = UDim2.new(1, -60, 0, 36),
+                Position = UDim2.fromOffset(18, 10),
+                BackgroundTransparency = 1,
+                Font = Enum.Font.GothamBlack,
+                TextScaled = true,
+                TextColor3 = T.Gold,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                Text = "Kios Jualan",
+        }, frame)
+        btn({
+                parent = frame,
+                Name = "Tutup",
+                AnchorPoint = Vector2.new(1, 0),
+                Position = UDim2.new(1, -12, 0, 10),
+                Size = UDim2.fromOffset(40, 34),
+                BackgroundColor3 = T.Red,
+                TextColor3 = Color3.new(1, 1, 1),
+                Text = "X",
+                _radius = 8,
+        }).Activated:Connect(function()
+                self:showPanel(nil)
+        end)
+
+        local scroll = Util.create("ScrollingFrame", {
+                Name = "List",
+                Position = UDim2.fromOffset(18, 56),
+                Size = UDim2.new(1, -36, 1, -74),
+                BackgroundTransparency = 1,
+                BorderSizePixel = 0,
+                CanvasSize = UDim2.new(),
+                AutomaticCanvasSize = Enum.AutomaticSize.Y,
+                ScrollBarThickness = 6,
+        }, frame)
+        Util.create("UIListLayout", { Padding = UDim.new(0, 8) }, scroll)
+        self.kiosList = scroll
+end
+
+function UIController:renderKios()
+        local list = self.kiosList
+        for _, child in list:GetChildren() do
+                if child:IsA("Frame") then
+                        child:Destroy()
+                end
+        end
+        local snap = self.kiosSnap or { slots = {}, feeRate = Balance.Kios.feeRate, feeMin = Balance.Kios.feeMin }
+
+        if self.kiosMode == "belanja" then
+                Util.create("TextLabel", {
+                        Size = UDim2.new(1, -8, 0, 30),
+                        BackgroundTransparency = 1,
+                        Font = Enum.Font.Gotham,
+                        TextScaled = true,
+                        TextColor3 = T.TextDim,
+                        TextXAlignment = Enum.TextXAlignment.Left,
+                        Text = "Kios milik " .. (snap.ownerName or "pemain") .. ". Bayar penuh sekali - tanpa biaya tambahan bagimu.",
+                }, list)
+                local any = false
+                for _, s in ipairs(snap.slots or {}) do
+                        any = true
+                        local r = row(list, 56)
+                        Util.create("TextLabel", {
+                                Position = UDim2.fromOffset(12, 8),
+                                Size = UDim2.new(1, -300, 0, 40),
+                                BackgroundTransparency = 1,
+                                Font = Enum.Font.GothamBold,
+                                TextScaled = true,
+                                TextColor3 = T.Text,
+                                TextXAlignment = Enum.TextXAlignment.Left,
+                                Text = itemNameOf(s.kind, s.id) .. " x" .. s.qty,
+                        }, r)
+                        Util.create("TextLabel", {
+                                AnchorPoint = Vector2.new(1, 0),
+                                Position = UDim2.new(1, -228, 0, 8),
+                                Size = UDim2.fromOffset(100, 40),
+                                BackgroundTransparency = 1,
+                                Font = Enum.Font.GothamBlack,
+                                TextScaled = true,
+                                TextColor3 = T.Gold,
+                                TextXAlignment = Enum.TextXAlignment.Right,
+                                Text = Util.formatNumber(s.price) .. "/unit",
+                        }, r)
+                        btn({
+                                parent = r,
+                                AnchorPoint = Vector2.new(1, 0),
+                                Position = UDim2.new(1, -118, 0, 10),
+                                Size = UDim2.fromOffset(100, 36),
+                                BackgroundColor3 = T.Green,
+                                TextColor3 = Color3.fromRGB(20, 32, 26),
+                                Text = "Beli 1",
+                                _radius = 8,
+                        }).Activated:Connect(function()
+                                local res = Remotes.get("KiosAction"):InvokeServer({ action = "buy", plot = snap.plot, slot = s.slot, qty = 1 })
+                                self:handleResult(res)
+                        end)
+                        btn({
+                                parent = r,
+                                AnchorPoint = Vector2.new(1, 0),
+                                Position = UDim2.new(1, -8, 0, 10),
+                                Size = UDim2.fromOffset(100, 36),
+                                BackgroundColor3 = T.Gold,
+                                TextColor3 = Color3.fromRGB(40, 30, 10),
+                                Text = "Semua",
+                                _radius = 8,
+                        }).Activated:Connect(function()
+                                local res = Remotes.get("KiosAction"):InvokeServer({ action = "buy", plot = snap.plot, slot = s.slot, qty = s.qty })
+                                self:handleResult(res)
+                        end)
+                end
+                if not any then
+                        local r = row(list, 60)
+                        Util.create("TextLabel", {
+                                Size = UDim2.fromScale(1, 1),
+                                BackgroundTransparency = 1,
+                                Font = Enum.Font.Gotham,
+                                TextScaled = true,
+                                TextColor3 = T.TextDim,
+                                Text = "Kios ini sedang kosong.",
+                        }, r)
+                end
+                return
+        end
+
+        -- mode KELOLA
+        if not snap.placed then
+                Util.create("TextLabel", {
+                        Size = UDim2.new(1, -8, 0, 44),
+                        BackgroundTransparency = 1,
+                        Font = Enum.Font.Gotham,
+                        TextScaled = true,
+                        TextColor3 = T.TextDim,
+                        TextXAlignment = Enum.TextXAlignment.Left,
+                        Text = "Pad kios di ladangmu masih kosong. Pasang kios untuk berjualan langsung ke pemain lain (lunas, tanpa biaya bulanan).",
+                }, list)
+                btn({
+                        parent = list,
+                        Size = UDim2.new(1, -8, 0, 54),
+                        BackgroundColor3 = T.Gold,
+                        TextColor3 = Color3.fromRGB(40, 30, 10),
+                        Text = "Pasang Kios (" .. Util.formatNumber(Balance.Kios.price) .. " Micda)",
+                        _radius = 10,
+                }).Activated:Connect(function()
+                        local res = Remotes.get("KiosAction"):InvokeServer({ action = "place" })
+                        self:handleResult(res)
+                end)
+                return
+        end
+
+        Util.create("TextLabel", {
+                Size = UDim2.new(1, -8, 0, 30),
+                BackgroundTransparency = 1,
+                Font = Enum.Font.Gotham,
+                TextScaled = true,
+                TextColor3 = T.TextDim,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                Text = "Ladang " .. (snap.plot or "-") .. "  -  jasa " .. math.floor((snap.feeRate or 0.02) * 100) .. "% (min " .. (snap.feeMin or 1) .. ") dipotong dari hasil jualmu.",
+        }, list)
+
+        local slotCount = 0
+        for _, s in ipairs(snap.slots or {}) do
+                slotCount += 1
+                local r = row(list, 56)
+                Util.create("TextLabel", {
+                        Position = UDim2.fromOffset(12, 8),
+                        Size = UDim2.new(1, -360, 0, 40),
+                        BackgroundTransparency = 1,
+                        Font = Enum.Font.GothamBold,
+                        TextScaled = true,
+                        TextColor3 = T.Text,
+                        TextXAlignment = Enum.TextXAlignment.Left,
+                        Text = itemNameOf(s.kind, s.id) .. " x" .. s.qty .. "  @  " .. Util.formatNumber(s.price),
+                }, r)
+                local priceBox = Util.create("TextBox", {
+                        AnchorPoint = Vector2.new(1, 0),
+                        Position = UDim2.new(1, -238, 0, 10),
+                        Size = UDim2.fromOffset(100, 36),
+                        BackgroundColor3 = T.PanelLight,
+                        TextColor3 = T.Gold,
+                        Font = Enum.Font.GothamBold,
+                        TextScaled = true,
+                        PlaceholderText = "Harga",
+                        ClearTextOnFocus = true,
+                        Text = tostring(s.price),
+                }, r)
+                corner(priceBox, 8)
+                btn({
+                        parent = r,
+                        AnchorPoint = Vector2.new(1, 0),
+                        Position = UDim2.new(1, -128, 0, 10),
+                        Size = UDim2.fromOffset(100, 36),
+                        BackgroundColor3 = T.Blue,
+                        TextColor3 = Color3.fromRGB(16, 26, 38),
+                        Text = "Ubah Harga",
+                        _radius = 8,
+                }).Activated:Connect(function()
+                        local price = tonumber(priceBox.Text)
+                        if not price or price < 1 then
+                                self:toast("Kios", "Tulis harga baru dulu (Micda).", T.Red)
+                                return
+                        end
+                        local res = Remotes.get("KiosAction"):InvokeServer({ action = "price", slot = s.slot, price = math.floor(price) })
+                        self:handleResult(res)
+                end)
+                btn({
+                        parent = r,
+                        AnchorPoint = Vector2.new(1, 0),
+                        Position = UDim2.new(1, -8, 0, 10),
+                        Size = UDim2.fromOffset(110, 36),
+                        BackgroundColor3 = T.Red,
+                        TextColor3 = Color3.new(1, 1, 1),
+                        Text = "Tarik",
+                        _radius = 8,
+                }).Activated:Connect(function()
+                        local res = Remotes.get("KiosAction"):InvokeServer({ action = "take", slot = s.slot, qty = 0 })
+                        self:handleResult(res)
+                end)
+        end
+        if slotCount == 0 then
+                local r = row(list, 44)
+                Util.create("TextLabel", {
+                        Size = UDim2.fromScale(1, 1),
+                        BackgroundTransparency = 1,
+                        Font = Enum.Font.Gotham,
+                        TextScaled = true,
+                        TextColor3 = T.TextDim,
+                        Text = "Belum ada barang dipajang - isi dari tasmu di bawah!",
+                }, r)
+        end
+
+        Util.create("TextLabel", {
+                Size = UDim2.new(1, -8, 0, 30),
+                BackgroundTransparency = 1,
+                Font = Enum.Font.GothamBold,
+                TextScaled = true,
+                TextColor3 = T.TextDim,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                Text = "Isi kios dari tas (tulis harga per unit):",
+        }, list)
+        local s = self.state
+        if s then
+                local sections = {
+                        { kind = "seed", data = s.Seeds },
+                        { kind = "crop", data = s.Crops },
+                        { kind = "bag", data = s.Bag },
+                        { kind = "fish", data = s.Fish },
+                        { kind = "equip", data = s.Equips },
+                        { kind = "use", data = s.Usables },
+                }
+                local any = false
+                for _, section in sections do
+                        for id, count in section.data do
+                                if count <= 0 then
+                                        continue
+                                end
+                                any = true
+                                local r = row(list, 56)
+                                Util.create("TextLabel", {
+                                        Position = UDim2.fromOffset(12, 8),
+                                        Size = UDim2.new(1, -240, 0, 40),
+                                        BackgroundTransparency = 1,
+                                        Font = Enum.Font.GothamBold,
+                                        TextScaled = true,
+                                        TextColor3 = T.Text,
+                                        TextXAlignment = Enum.TextXAlignment.Left,
+                                        Text = itemNameOf(section.kind, id) .. " x" .. count,
+                                }, r)
+                                local priceBox = Util.create("TextBox", {
+                                        AnchorPoint = Vector2.new(1, 0),
+                                        Position = UDim2.new(1, -118, 0, 10),
+                                        Size = UDim2.fromOffset(110, 36),
+                                        BackgroundColor3 = T.PanelLight,
+                                        TextColor3 = T.Gold,
+                                        Font = Enum.Font.GothamBold,
+                                        TextScaled = true,
+                                        PlaceholderText = "Harga",
+                                        ClearTextOnFocus = true,
+                                        Text = "",
+                                }, r)
+                                corner(priceBox, 8)
+                                btn({
+                                        parent = r,
+                                        AnchorPoint = Vector2.new(1, 0),
+                                        Position = UDim2.new(1, -8, 0, 10),
+                                        Size = UDim2.fromOffset(100, 36),
+                                        BackgroundColor3 = T.Gold,
+                                        TextColor3 = Color3.fromRGB(40, 30, 10),
+                                        Text = "Isi",
+                                        _radius = 8,
+                                }).Activated:Connect(function()
+                                        local price = tonumber(priceBox.Text)
+                                        if not price or price < 1 then
+                                                self:toast("Kios", "Tulis harga dulu (Micda).", T.Red)
+                                                return
+                                        end
+                                        local res = Remotes.get("KiosAction"):InvokeServer({ action = "stock", kind = section.kind, id = id, qty = count, price = math.floor(price) })
+                                        self:handleResult(res)
+                                end)
+                        end
+                end
+                if not any then
+                        local r = row(list, 44)
+                        Util.create("TextLabel", {
+                                Size = UDim2.fromScale(1, 1),
+                                BackgroundTransparency = 1,
+                                Font = Enum.Font.Gotham,
+                                TextScaled = true,
+                                TextColor3 = T.TextDim,
+                                Text = "Tasmu kosong - panen, tambang, atau kalahkan monster dulu!",
+                        }, r)
+                end
+        end
+
+        btn({
+                parent = list,
+                Size = UDim2.new(1, -8, 0, 46),
+                BackgroundColor3 = T.Red,
+                TextColor3 = Color3.new(1, 1, 1),
+                Text = "Bongkar Kios (barang kembali ke tas)",
+                _radius = 10,
+        }).Activated:Connect(function()
+                local res = Remotes.get("KiosAction"):InvokeServer({ action = "close" })
+                self:handleResult(res)
+                if res and res.ok then
+                        self:showPanel(nil)
+                end
+        end)
 end
 
 return UIController

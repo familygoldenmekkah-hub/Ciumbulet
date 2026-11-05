@@ -27,6 +27,7 @@ local CraftService = require(Modules.CraftService)
 local CombatService = require(Modules.CombatService)
 local TradeService = require(Modules.TradeService)
 local MarketService = require(Modules.MarketService)
+local KiosService = require(Modules.KiosService)
 local MapService = require(Modules.MapService)
 
 -- bangun dunia (butuh referensi layanan untuk menghubungkan NPC)
@@ -52,6 +53,7 @@ QuestService.init()
 CraftService.init()
 TradeService.init()
 MarketService.init()
+KiosService.init() -- v20: kios vending pemain (butuh ladang sudah dibangun)
 CombatService.init()
 CombatService.spawnMonsters()
 DataService.startLoops()
@@ -160,4 +162,4 @@ Remotes.get("GetState").OnServerInvoke = function(player)
         return true
 end
 
-print("[AKIOMIDA] Server v4 siap: monster angka bersaura, papan jual Micda, lahan dibeli lunas, UI minimal, hemat part untuk mobile.")
+print("[AKIOMIDA] Server v6.1 siap: kios vending pemain, BGM sintesis, fase murka boss, monster angka bersaura, papan jual Micda, lahan dibeli lunas, UI minimal, hemat part untuk mobile.")

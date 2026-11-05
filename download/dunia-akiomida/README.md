@@ -1,12 +1,12 @@
-# DUNIA AKIOMIDA v6.0 — "MICDA Economy World" (Roblox)
+# DUNIA AKIOMIDA v6.1 — "MICDA Economy World" (Roblox)
 
-Status: LIVE di Roblox (versionNumber 19, 5 Nov 2026 — 8 publish dalam satu siklus mandiri)
-Universe: 10774464946 · Place: 77626159664192
-Build: `tools/rojo build --output build/DuniaAkiomida.rbxlx .` (luau-lsp 0 TypeError, tes offline 25 PASS, 0 FAIL)
+Status: LIVE di Roblox (versionNumber 20, 5 Nov 2026 — siklus mandiri v20)
+Universe: 10774464946 · Place: 77626159664192 · Versi game: 6.1.0
+Build: `tools/rojo build --output build/DuniaAkiomida.rbxlx .` (luau-lsp 0 TypeError & 0 lint, tes offline 107 PASS, 0 FAIL)
 
-Skor banding Toram/Growtopia: **76/100** — lihat `RUBRIC.md`.
+Skor banding Toram/Growtopia: **79/100** — lihat `RUBRIC.md`.
 
-## Riwayat siklus mandiri (tanpa menunggu owner, v12→v19)
+## Riwayat siklus mandiri (tanpa menunggu owner, v12→v20)
 
 | Ver | Isi |
 |-----|-----|
@@ -18,12 +18,13 @@ Skor banding Toram/Growtopia: **76/100** — lihat `RUBRIC.md`.
 | v17 | KOMPAS ZONA (jarak ke Papan Jual/Ladang/Hutan/Tambang/Gua/Arena), STREAK LOGIN (bonus naik sampai 250 Micda). |
 | v18 | MASTERY CRAFTING (10x resep = M1..M3, XP craft +50% maks). |
 | v19 | Konsistensi dunia angka (papan arena, tips, bahan "Pecahan Angka 2"/"Inti Angka"), versi 6.0.0. |
+| v20 | **KIOS VENDING PEMAIN** di pad ladang (pasang 250 Micda lunas, 6 slot, harga bebas, jasa 2% transparan, hasil langsung ke pemilik, panel kelola/belanja) · skill ke-3 **Tusukan Kilat** (300%, Lv8) · **FASE MURKA** boss (HP ≤50%: aura merah, gerak +35%, serang +30%, diumumkan semua) · **BGM pentatonik** original disintesis kode + tombol Musik · partikel panen/tempa/kios/skill/murka (burst sekali-pakai, hemat mobile) · SFX jual. Versi 6.1.0. |
 
 ## Kepatuhan syariah (tetap)
 
-Tanpa riba (semua pembelian LUNAS di muka), tanpa maysir (tidak ada undian/lotre),
-tanpa gharar (harga & biaya jasa 2% transparan sebelum konfirmasi), tanpa syirik
-(tidak ada pemujaan; NPC hanyalah saudagar). Uang: MICDA.
+Tanpa riba (semua pembelian LUNAS di muka — lahan & kios), tanpa maysir (tidak ada undian/lotre),
+tanpa gharar (harga & biaya jasa 2% transparan sebelum konfirmasi di Papan Jual maupun Kios),
+tanpa syirik (tidak ada pemujaan; NPC hanyalah saudagar). Uang: MICDA.
 
 ## Isi v3 (fondasi, tetap aktif di v4)
 

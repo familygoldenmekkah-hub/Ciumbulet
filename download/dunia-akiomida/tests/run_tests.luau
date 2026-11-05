@@ -365,4 +365,52 @@ do
         check("Level mastery naik tiap 10", Balance.craftMasteryLevel(19) == 1 and Balance.craftMasteryLevel(20) == 2, tostring(Balance.craftMasteryLevel(20)))
 end
 
+
+-- ===== v20: KIOS VENDING PEMAIN + SKILL BARU + FASE MURKA BOSS =====
+do
+        local K = Balance.Kios
+        check("Kios: harga pasang positif", K.price > 0, tostring(K.price))
+        check("Kios: jasa 2% (ujr transparan)", K.feeRate == 0.02, tostring(K.feeRate))
+        check("Kios: maks slot & stok wajar", K.maxSlots >= 3 and K.maxStock >= 10,
+                K.maxSlots .. "/" .. K.maxStock)
+        check("Kios: harga atas terbatas", K.maxPrice >= 1000 and K.maxPrice <= 999999, tostring(K.maxPrice))
+
+        -- jasa kios: murni & transparan
+        check("KiosFee 100 = 2", Balance.kiosFee(100) == 2, tostring(Balance.kiosFee(100)))
+        check("KiosFee 10 = min 1", Balance.kiosFee(10) == 1, tostring(Balance.kiosFee(10)))
+        check("KiosFee 0 = min 1", Balance.kiosFee(0) == 1, tostring(Balance.kiosFee(0)))
+        check("KiosFee 999999 = 20000", Balance.kiosFee(999999) == 20000, tostring(Balance.kiosFee(999999)))
+        check("Proceeds = total - fee", Balance.kiosProceeds(100) == 98 and Balance.kiosProceeds(10) == 9,
+                tostring(Balance.kiosProceeds(100)) .. "/" .. tostring(Balance.kiosProceeds(10)))
+        local konsisten = true
+        for total = 1, 5000, 37 do
+                if Balance.kiosProceeds(total) + Balance.kiosFee(total) ~= total then
+                        konsisten = false
+                end
+        end
+        check("Kios: proceeds + fee = total (tanpa Micda menghilang)", konsisten)
+
+        -- skill tusukan kilat
+        local tusuk = nil
+        for _, s in ipairs(Balance.Skills) do
+                if s.id == "tusukan_kilat" then
+                        tusuk = s
+                end
+        end
+        check("Skill Tusukan Kilat ada", tusuk ~= nil, "-")
+        if tusuk then
+                check("Skill Tusukan Kilat: mult 3.0 & level 8", tusuk.mult == 3.0 and tusuk.level == 8,
+                        tostring(tusuk.mult) .. "/" .. tostring(tusuk.level))
+                check("Skill Tusukan Kilat: cooldown wajar", tusuk.cooldown >= 10, tostring(tusuk.cooldown))
+        end
+
+        -- fase murka boss
+        local B = Balance.Boss
+        check("Boss enrage: ambang 50%", B.enrageAt == 0.5, tostring(B.enrageAt))
+        check("Boss enrage: speed & atk naik wajar",
+                B.enrageSpeed >= 1.1 and B.enrageSpeed <= 1.8 and B.enrageAtk >= 1.1 and B.enrageAtk <= 1.8,
+                tostring(B.enrageSpeed) .. "/" .. tostring(B.enrageAtk))
+        check("Boss enrage: warna aura murka ada", B.enrageAura ~= nil, "-")
+end
+
 print("SEMUA TES LULUS - siap publish.")

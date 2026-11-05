@@ -210,7 +210,7 @@ local function baseSellOf(kind: string, id: string): number?
         return nil
 end
 
-local function kindLabel(kind: string): string
+local function _kindLabel(kind: string): string
         if kind == "crop" then
                 return "Hasil Panen"
         elseif kind == "bag" then

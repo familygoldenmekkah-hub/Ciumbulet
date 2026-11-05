@@ -1,0 +1,980 @@
+     1→     1→--!nonstrict
+     2→     2→--[[
+     3→     3→        CombatService.luau - v3 "Toram-grade" kombat dunia terbuka:
+     4→     4→          - 4 makhluk original: Gelatin Hijau, Serigala Bayang, Golem Batu,
+     5→     5→            Gelatin Raksasa (elite) + BOSS RAID "Raja Golem" di Arena Timur
+     6→     6→          - AI: berkeliaran, mengejar pemain dalam radius aggro, menyerang balik
+     7→     7→          - Serang lewat ProximityPrompt "Serang" + validasi jarak di server
+     8→     8→          - Damage dari STR/DEX/INT/level + senjata tempaan (EquipService)
+     9→     9→          - Drop material -> bahan tempa (objek jadi bahan!)
+    10→    10→          - Boss raid kooperatif: semua pemain memukul bersama, hadiah
+    11→    11→            dibagi menurut kontribusi damage. Broadcast BossState ke UI.
+    12→    12→]]
+    13→    13→
+    14→    14→local Players = game:GetService("Players")
+    15→    15→local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    16→    16→local RunService = game:GetService("RunService")
+    17→    17→
+    18→    18→local Remotes = require(ReplicatedStorage.Remotes)
+    19→    19→local Balance = require(ReplicatedStorage.Shared.Balance)
+    20→    20→local Util = require(ReplicatedStorage.Shared.Util)
+    21→    21→
+    22→    22→local DataService = require(script.Parent.DataService)
+    23→    23→local EquipService = require(script.Parent.EquipService)
+    24→    24→local QuestService = require(script.Parent.QuestService)
+    25→    25→
+    26→    26→local CombatService = {}
+    27→    27→
+    28→    28→--------------------------------------------------------------------
+    29→    29→-- STATE
+    30→    30→--------------------------------------------------------------------
+    31→    31→
+    32→    32→local monsterFolder: Folder? = nil
+    33→    33→local monsters: { [string]: any } = {} -- id unik -> entitas
+    34→    34→local monsterSeq = 0
+    35→    35→local lastAttack: { [Player]: number } = {}
+    36→    36→local rng = Random.new(tick() * 1000)
+    37→    37→
+    38→    38→local boss: any = nil
+    39→    39→local bossCredits: { [Player]: number } = {}
+    40→    40→local bossNextSpawn = 0
+    41→    41→
+    42→    42→-- v6 event dunia
+    43→    43→local eventActive = false
+    44→    44→local eventEndsAt = 0
+    45→    45→
+    46→    46→--------------------------------------------------------------------
+    47→    47→-- HELPERS
+    48→    48→--------------------------------------------------------------------
+    49→    49→
+    50→    50→local function notify(player: Player, title: string, text: string)
+    51→    51→        Remotes.get("Notify"):FireClient(player, title, text)
+    52→    52→end
+    53→    53→
+    54→    54→local function statsOf(player: Player)
+    55→    55→        return EquipService.statsOf(player)
+    56→    56→end
+    57→    57→
+    58→    58→local function isAliveCharacter(player: Player): boolean
+    59→    59→        local character = player.Character
+    60→    60→        if not character or not character.Parent then
+    61→    61→                return false
+    62→    62→        end
+    63→    63→        local humanoid = character:FindFirstChildOfClass("Humanoid")
+    64→    64→        return humanoid ~= nil and humanoid.Health > 0 and character.PrimaryPart ~= nil
+    65→    65→end
+    66→    66→
+    67→    67→--------------------------------------------------------------------
+    68→    68→-- MODEL MONSTER "ANGKA BERSAURA" (karya original Dunia Akiomida)
+    69→    69→--   Monster berwujud ANGKA raksasa (susunan balok gaya tujuh-segmen)
+    70→    70→--   dikelilingi AURA bercahaya + cincin lantai + percikan halus.
+    71→    71→--   Angka-angka ini PUNYA DAMAGE: mereka mengejar & menyerang pemain.
+    72→    72→--------------------------------------------------------------------
+    73→    73→
+    74→    74→local function part(props): Part
+    75→    75→        local p = Instance.new("Part")
+    76→    76→        p.Anchored = true
+    77→    77→        p.TopSurface = Enum.SurfaceType.Smooth
+    78→    78→        p.BottomSurface = Enum.SurfaceType.Smooth
+    79→    79→        for k, v in props do
+    80→    80→                (p :: any)[k] = v
+    81→    81→        end
+    82→    82→        p.Parent = monsterFolder
+    83→    83→        return p
+    84→    84→end
+    85→    85→
+    86→    86→-- layout segmen angka (gaya tujuh-segmen): tiap segmen balok original
+    87→    87→local SEG = {
+    88→    88→        a = { horiz = true, x = 0, y = 0.5 },
+    89→    89→        g = { horiz = true, x = 0, y = 0 },
+    90→    90→        d = { horiz = true, x = 0, y = -0.5 },
+    91→    91→        f = { horiz = false, x = -0.5, y = 0.25 },
+    92→    92→        b = { horiz = false, x = 0.5, y = 0.25 },
+    93→    93→        e = { horiz = false, x = -0.5, y = -0.25 },
+    94→    94→        c = { horiz = false, x = 0.5, y = -0.25 },
+    95→    95→}
+    96→    96→
+    97→    97→local DIGIT_SEGMENTS: { [string]: string } = {
+    98→    98→        ["1"] = "bc", ["2"] = "abged", ["3"] = "abgcd", ["4"] = "fgbc",
+    99→    99→        ["5"] = "afgcd", ["6"] = "afgecd", ["7"] = "abc", ["9"] = "abcdfg",
+   100→   100→}
+   101→   101→
+   102→   102→local function buildMonsterModel(def: any, position: Vector3, isBoss: boolean): (Model, Part)
+   103→   103→        local model = Instance.new("Model")
+   104→   104→        model.Name = isBoss and "AngkaRaja" or ("Angka_" .. tostring(def.body.digit or "1"))
+   105→   105→
+   106→   106→        local bodyColor = Color3.fromRGB(def.body.color[1], def.body.color[2], def.body.color[3])
+   107→   107→        local auraColor = Color3.fromRGB(def.body.aura[1], def.body.aura[2], def.body.aura[3])
+   108→   108→        local size = def.body.size
+   109→   109→        local digit = tostring(def.body.digit or "1")
+   110→   110→
+   111→   111→        -- dimensi angka: tinggi = size, lebar = 62%, tebal balok = 18%
+   112→   112→        local H = size
+   113→   113→        local W = H * 0.62
+   114→   114→        local t = math.max(0.5, H * 0.18)
+   115→   115→        local depth = math.max(0.6, t * 0.9)
+   116→   116→
+   117→   117→        -- AKAR: part tak terlihat sebagai acuan gerak & penempel prompt/HP
+   118→   118→        local root = part({
+   119→   119→                Name = "Badan",
+   120→   120→                Size = Vector3.new(W + 2, H + 2, depth + 2),
+   121→   121→                CFrame = CFrame.new(position + Vector3.new(0, H / 2, 0)),
+   122→   122→                Transparency = 1,
+   123→   123→                CanCollide = true,
+   124→   124→        })
+   125→   125→        root.Parent = model
+   126→   126→        model.PrimaryPart = root
+   127→   127→
+   128→   128→        -- segmen angka + aura neon mengelilingi tiap balok
+   129→   129→        local segs = DIGIT_SEGMENTS[digit] or "bc"
+   130→   130→        for i = 1, #segs do
+   131→   131→                local s = SEG[string.sub(segs, i, i)]
+   132→   132→                local barSize = s.horiz and Vector3.new(W, t, depth) or Vector3.new(t, H / 2, depth)
+   133→   133→                local offset = Vector3.new(s.x * W, s.y * H, 0)
+   134→   134→                part({
+   135→   135→                        Name = "Angka" .. i,
+   136→   136→                        Size = barSize,
+   137→   137→                        CFrame = root.CFrame * CFrame.new(offset),
+   138→   138→                        Color = bodyColor,
+   139→   139→                        Material = isBoss and Enum.Material.Neon or Enum.Material.SmoothPlastic,
+   140→   140→                        CanCollide = false,
+   141→   141→                }).Parent = model
+   142→   142→                part({
+   143→   143→                        Name = "Aura" .. i,
+   144→   144→                        Size = s.horiz and Vector3.new(W + t * 1.2, t * 2.1, depth * 0.8) or Vector3.new(t * 2.1, H / 2 + t * 1.2, depth * 0.8),
+   145→   145→                        CFrame = root.CFrame * CFrame.new(offset),
+   146→   146→                        Color = auraColor,
+   147→   147→                        Material = Enum.Material.Neon,
+   148→   148→                        Transparency = 0.68,
+   149→   149→                        CanCollide = false,
+   150→   150→                }).Parent = model
+   151→   151→        end
+   152→   152→
+   153→   153→        -- mata kecil di atas angka supaya terlihat hidup
+   154→   154→        local eyeZ = -(depth / 2 + 0.05)
+   155→   155→        local eyeSize = math.max(0.35, t * 0.5)
+   156→   156→        for side = -1, 1, 2 do
+   157→   157→                part({
+   158→   158→                        Name = "Mata" .. side,
+   159→   159→                        Shape = Enum.PartType.Ball,
+   160→   160→                        Size = Vector3.new(1, 1, 1) * eyeSize,
+   161→   161→                        CFrame = root.CFrame * CFrame.new(Vector3.new(side * W * 0.18, H * 0.36, eyeZ)),
+   162→   162→                        Color = isBoss and Color3.fromRGB(255, 80, 60) or Color3.fromRGB(26, 26, 32),
+   163→   163→                        Material = Enum.Material.Neon,
+   164→   164→                        CanCollide = false,
+   165→   165→                }).Parent = model
+   166→   166→        end
+   167→   167→
+   168→   168→        -- cincin aura di tanah + percikan halus (ringan untuk mobile)
+   169→   169→        part({
+   170→   170→                Name = "CincinAura",
+   171→   171→                Shape = Enum.PartType.Cylinder,
+   172→   172→                Size = Vector3.new(0.18, W * 2.6, W * 2.6),
+   173→   173→                CFrame = CFrame.new(position + Vector3.new(0, 0.12, 0)) * CFrame.Angles(0, 0, math.rad(90)),
+   174→   174→                Color = auraColor,
+   175→   175→                Material = Enum.Material.Neon,
+   176→   176→                Transparency = 0.55,
+   177→   177→                CanCollide = false,
+   178→   178→        }).Parent = model
+   179→   179→
+   180→   180→        local spark = Instance.new("ParticleEmitter")
+   181→   181→        spark.Rate = isBoss and 8 or 3
+   182→   182→        spark.Lifetime = NumberRange.new(0.5, 0.9)
+   183→   183→        spark.Speed = NumberRange.new(0.6, 1.6)
+   184→   184→        spark.Size = NumberSequence.new(0.28)
+   185→   185→        spark.Color = ColorSequence.new(auraColor)
+   186→   186→        spark.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.25), NumberSequenceKeypoint.new(1, 1) })
+   187→   187→        spark.Enabled = true
+   188→   188→        spark.Parent = root
+   189→   189→
+   190→   190→        if isBoss then
+   191→   191→                local light = Instance.new("PointLight")
+   192→   192→                light.Color = auraColor
+   193→   193→                light.Range = 30
+   194→   194→                light.Brightness = 1.4
+   195→   195→                light.Parent = root
+   196→   196→        end
+   197→   197→
+   198→   198→        local prompt = Instance.new("ProximityPrompt")
+   199→   199→        prompt.ActionText = "Serang"
+   200→   200→        prompt.ObjectText = def.name
+   201→   201→        prompt.MaxActivationDistance = 9
+   202→   202→        prompt.HoldDuration = 0
+   203→   203→        prompt.RequiresLineOfSight = false
+   204→   204→        prompt.Parent = root
+   205→   205→
+   206→   206→        return model, root
+   207→   207→end
+   208→   208→
+   209→   209→-- v5: suara posisional bawaan platform (original, ringan)
+   210→   210→local function playSound(root: BasePart, soundName: string, pitch: number?, volume: number?)
+   211→   211→        local s = Instance.new("Sound")
+   212→   212→        s.SoundId = "rbxasset://sounds/" .. soundName
+   213→   213→        s.Volume = volume or 0.5
+   214→   214→        s.PlaybackSpeed = pitch or 1
+   215→   215→        s.Parent = root
+   216→   216→        s:Play()
+   217→   217→        task.delay(3, function()
+   218→   218→                if s.Parent then
+   219→   219→                        s:Destroy()
+   220→   220→                end
+   221→   221→        end)
+   222→   222→end
+   223→   223→
+   224→   224→local function hpBillboard(body: Part, name: string, hp: number, maxHp: number, isBoss: boolean)
+   225→   225→        local gui = Instance.new("BillboardGui")
+   226→   226→        gui.Name = "HPBar"
+   227→   227→        gui.Size = isBoss and UDim2.new(0, 260, 0, 54) or UDim2.new(0, 150, 0, 40)
+   228→   228→        gui.StudsOffset = Vector3.new(0, (isBoss and 12 or 7), 0)
+   229→   229→        gui.AlwaysOnTop = true
+   230→   230→        gui.MaxDistance = 140
+   231→   231→        gui.Parent = body
+   232→   232→
+   233→   233→        local nameLabel = Util.create("TextLabel", {
+   234→   234→                Size = UDim2.new(1, 0, 0, isBoss and 26 or 18),
+   235→   235→                BackgroundTransparency = 1,
+   236→   236→                Font = Enum.Font.GothamBlack,
+   237→   237→                TextScaled = true,
+   238→   238→                TextColor3 = isBoss and Color3.fromRGB(255, 90, 90) or Color3.fromRGB(255, 230, 160),
+   239→   239→                TextStrokeTransparency = 0.4,
+   240→   240→                Text = name,
+   241→   241→        }, gui)
+   242→   242→
+   243→   243→        local barBg = Util.create("Frame", {
+   244→   244→                Position = UDim2.new(0, 8, 0, isBoss and 28 or 20),
+   245→   245→                Size = UDim2.new(1, -16, 0, isBoss and 16 or 12),
+   246→   246→                BackgroundColor3 = Color3.fromRGB(40, 20, 20),
+   247→   247→                BorderSizePixel = 0,
+   248→   248→        }, gui)
+   249→   249→        Util.create("UICorner", { CornerRadius = UDim.new(0, 6) }, barBg)
+   250→   250→        local bar = Util.create("Frame", {
+   251→   251→                Size = UDim2.fromScale(1, 1),
+   252→   252→                BackgroundColor3 = isBoss and Color3.fromRGB(255, 80, 80) or Color3.fromRGB(90, 220, 120),
+   253→   253→                BorderSizePixel = 0,
+   254→   254→        }, barBg)
+   255→   255→        Util.create("UICorner", { CornerRadius = UDim.new(0, 6) }, bar)
+   256→   256→
+   257→   257→        local hpLabel = Util.create("TextLabel", {
+   258→   258→                Position = UDim2.new(0, 0, 0, isBoss and 44 or 32),
+   259→   259→                Size = UDim2.new(1, 0, 0, 10),
+   260→   260→                BackgroundTransparency = 1,
+   261→   261→                Font = Enum.Font.Gotham,
+   262→   262→                TextScaled = true,
+   263→   263→                TextColor3 = Color3.fromRGB(230, 230, 235),
+   264→   264→                Text = hp .. " / " .. maxHp,
+   265→   265→        }, gui)
+   266→   266→
+   267→   267→        return { gui = gui, bar = bar, label = hpLabel, name = nameLabel }
+   268→   268→end
+   269→   269→
+   270→   270→--------------------------------------------------------------------
+   271→   271→-- SPAWN & AI
+   272→   272→--------------------------------------------------------------------
+   273→   273→
+   274→   274→local function zoneCenter(zoneId: string): Vector3
+   275→   275→        for _, zone in ipairs(Balance.Zones) do
+   276→   276→                if zone.id == zoneId then
+   277→   277→                        return Vector3.new(zone.center[1], zone.center[2], zone.center[3])
+   278→   278→                end
+   279→   279→        end
+   280→   280→        return Vector3.new(0, 0, 0)
+   281→   281→end
+   282→   282→
+   283→   283→local function spawnMonster(def: any, zoneId: string, isBoss: boolean?)
+   284→   284→        local center = zoneCenter(zoneId)
+   285→   285→        local offset = Vector3.new(rng:NextNumber(-1, 1) * 12, 0, rng:NextNumber(-1, 1) * 12)
+   286→   286→        local position = center + offset
+   287→   287→        local model, body = buildMonsterModel(def, position, isBoss == true)
+   288→   288→
+   289→   289→        local maxHp = def.hp
+   290→   290→        local bb = hpBillboard(body, def.name, maxHp, maxHp, isBoss == true)
+   291→   291→
+   292→   292→        local entity = {
+   293→   293→                def = def,
+   294→   294→                zone = zoneId,
+   295→   295→                model = model,
+   296→   296→                body = body,
+   297→   297→                bb = bb,
+   298→   298→                hp = maxHp,
+   299→   299→                maxHp = maxHp,
+   300→   300→                alive = true,
+   301→   301→                home = position,
+   302→   302→                target = nil :: Player?,
+   303→   303→                lastHit = 0,
+   304→   304→                lastMove = 0,
+   305→   305→                wanderTo = position,
+   306→   306→                isBoss = isBoss == true,
+   307→   307→                unique = 0,
+   308→   308→        }
+   309→   309→        monsterSeq += 1
+   310→   310→        entity.unique = monsterSeq
+   311→   311→
+   312→   312→        local prompt = body:FindFirstChildOfClass("ProximityPrompt")
+   313→   313→        if prompt then
+   314→   314→                prompt.Triggered:Connect(function(player)
+   315→   315→                        if entity.alive then
+   316→   316→                                task.spawn(CombatService.playerAttack, player, entity)
+   317→   317→                        end
+   318→   318→                end)
+   319→   319→        end
+   320→   320→
+   321→   321→        monsters["m" .. entity.unique] = entity
+   322→   322→        return entity
+   323→   323→end
+   324→   324→
+   325→   325→local function disablePrompt(p: Part)
+   326→   326→        local pr = p:FindFirstChildOfClass("ProximityPrompt")
+   327→   327→        if pr then
+   328→   328→                pr.Enabled = false
+   329→   329→        end
+   330→   330→end
+   331→   331→
+   332→   332→local function monsterDie(entity: any, byPlayer: Player?)
+   333→   333→        entity.alive = false
+   334→   334→        local def = entity.def
+   335→   335→
+   336→   336→        -- animasi kematian sederhana: tenggelam & hilang
+   337→   337→        for _, p in entity.model:GetChildren() do
+   338→   338→                if p:IsA("BasePart") then
+   339→   339→                        p.CanCollide = false
+   340→   340→                        disablePrompt(p)
+   341→   341→                end
+   342→   342→        end
+   343→   343→        local model = entity.model
+   344→   344→        do
+   345→   345→                -- ledakan aura saat tumbang
+   346→   346→                local root = entity.body
+   347→   347→                if root and root.Parent then
+   348→   348→                        local burst = Instance.new("ParticleEmitter")
+   349→   349→                        burst.Rate = 0
+   350→   350→                        burst.Speed = NumberRange.new(8, 14)
+   351→   351→                        burst.Lifetime = NumberRange.new(0.4, 0.8)
+   352→   352→                        burst.SpreadAngle = Vector2.new(180, 180)
+   353→   353→                        local c = Color3.fromRGB(def.body.aura[1], def.body.aura[2], def.body.aura[3])
+   354→   354→                        burst.Color = ColorSequence.new(c)
+   355→   355→                        burst.Size = NumberSequence.new(0.4)
+   356→   356→                        burst.Parent = root
+   357→   357→                        burst:Emit(20)
+   358→   358→                end
+   359→   359→        end
+   360→   360→        task.spawn(function()
+   361→   361→                for t = 1, 10 do
+   362→   362→                        if model.Parent then
+   363→   363→                                model:PivotTo(model:GetPivot() - Vector3.new(0, 0.25, 0))
+   364→   364→                                for _, p in model:GetDescendants() do
+   365→   365→                                        if p:IsA("BasePart") and p.Transparency < 1 then
+   366→   366→                                                p.Transparency = math.min(1, t / 8)
+   367→   367→                                        end
+   368→   368→                                end
+   369→   369→                        end
+   370→   370→                        task.wait(0.05)
+   371→   371→                end
+   372→   372→                if entity.model.Parent then
+   373→   373→                        entity.model:Destroy()
+   374→   374→                end
+   375→   375→        end)
+   376→   376→
+   377→   377→        monsters["m" .. entity.unique] = nil
+   378→   378→
+   379→   379→        if entity.isBoss then
+   380→   380→                boss = nil
+   381→   381→                return -- boss tidak respawn otomatis (diatur bossLoop)
+   382→   382→        end
+   383→   383→
+   384→   384→        -- respawn di zona setelah jeda
+   385→   385→        task.delay(def.respawn, function()
+   386→   386→                if monsterFolder and monsterFolder.Parent then
+   387→   387→                        spawnMonster(def, entity.zone)
+   388→   388→                end
+   389→   389→        end)
+   390→   390→end
+   391→   391→
+   392→   392→--------------------------------------------------------------------
+   393→   393→-- ANGKA DAMAGE MELAYANG (biar serangan terasa "sakit")
+   394→   394→--------------------------------------------------------------------
+   395→   395→
+   396→   396→local function damageTag(entity: any, dmg: number, crit: boolean, killed: boolean)
+   397→   397→        local root = entity.body
+   398→   398→        if not root or not root.Parent then
+   399→   399→                return
+   400→   400→        end
+   401→   401→        local gui = Instance.new("BillboardGui")
+   402→   402→        gui.Size = UDim2.new(0, 130, 0, 46)
+   403→   403→        gui.StudsOffset = Vector3.new(rng:NextNumber(-1.4, 1.4), rng:NextNumber(3.4, 5.4), 0)
+   404→   404→        gui.AlwaysOnTop = true
+   405→   405→        gui.MaxDistance = 130
+   406→   406→        gui.Parent = root
+   407→   407→        local label = Util.create("TextLabel", {
+   408→   408→                Size = UDim2.fromScale(1, 1),
+   409→   409→                BackgroundTransparency = 1,
+   410→   410→                Font = Enum.Font.GothamBlack,
+   411→   411→                TextScaled = true,
+   412→   412→                TextColor3 = killed and Color3.fromRGB(255, 120, 90)
+   413→   413→                        or (crit and Color3.fromRGB(255, 214, 90) or Color3.fromRGB(255, 255, 255)),
+   414→   414→                TextStrokeTransparency = 0.35,
+   415→   415→                Text = (crit and "KRITIS -" or "-") .. dmg,
+   416→   416→        }, gui)
+   417→   417→        playSound(root, "swordslash.wav", crit and 1.15 or 1, 0.45)
+   418→   418→        if killed then
+   419→   419→                playSound(root, "impact_water.mp3", 0.8, 0.6)
+   420→   420→        end
+   421→   421→        task.spawn(function()
+   422→   422→                for i = 1, 14 do
+   423→   423→                        if gui.Parent then
+   424→   424→                                gui.StudsOffset += Vector3.new(0, 0.16, 0)
+   425→   425→                                label.TextTransparency = i / 14
+   426→   426→                                label.TextStrokeTransparency = math.min(1, 0.35 + i / 14)
+   427→   427→                        end
+   428→   428→                        task.wait(0.05)
+   429→   429→                end
+   430→   430→                gui:Destroy()
+   431→   431→        end)
+   432→   432→end
+   433→   433→
+   434→   434→--------------------------------------------------------------------
+   435→   435→-- SKILL SENJATA (v5)
+   436→   436→--------------------------------------------------------------------
+   437→   437→
+   438→   438→local lastSkill: { [Player]: { [string]: number } } = {}
+   439→   439→
+   440→   440→local function findNearestMonster(player: Player, maxDist: number)
+   441→   441→        local root = player.Character and player.Character.PrimaryPart
+   442→   442→        if not root then
+   443→   443→                return nil
+   444→   444→        end
+   445→   445→        local best, bestDist = nil, maxDist
+   446→   446→        for _, e in monsters do
+   447→   447→                if e.alive and e.body.Parent then
+   448→   448→                        local d = (e.body.Position - root.Position).Magnitude
+   449→   449→                        if d < bestDist then
+   450→   450→                                best, bestDist = e, d
+   451→   451→                        end
+   452→   452→                end
+   453→   453→        end
+   454→   454→        return best
+   455→   455→end
+   456→   456→
+   457→   457→local function hitEntity(player: Player, entity: any, mult: number, stats: any, level: number): number
+   458→   458→        local atk = Balance.playerAttack({
+   459→   459→                weaponAtk = EquipService.weaponAtk(player),
+   460→   460→                str = stats.str,
+   461→   461→                dex = stats.dex,
+   462→   462→                int = stats.int,
+   463→   463→                level = level,
+   464→   464→        })
+   465→   465→        atk = math.floor(atk * mult)
+   466→   466→        if rng:NextNumber() < Balance.critChance(stats.dex) then
+   467→   467→                atk = math.floor(atk * Balance.CritMult + 0.5)
+   468→   468→        end
+   469→   469→        local def = entity.def.def or 0
+   470→   470→        local dmg = math.max(1, math.floor(atk * (1 - def / (def + 60)) + 0.5))
+   471→   471→        entity.hp -= dmg
+   472→   472→        local bb = entity.bb
+   473→   473→        bb.bar.Size = UDim2.fromScale(math.clamp(entity.hp / entity.maxHp, 0, 1), 1)
+   474→   474→        bb.label.Text = math.max(0, entity.hp) .. " / " .. entity.maxHp
+   475→   475→        if entity.isBoss then
+   476→   476→                bossCredits[player] = (bossCredits[player] or 0) + dmg
+   477→   477→        end
+   478→   478→        local killed = entity.hp <= 0
+   479→   479→        damageTag(entity, dmg, mult > 1.6, killed)
+   480→   480→        if killed then
+   481→   481→                CombatService.onKill(player, entity)
+   482→   482→                if entity.isBoss then
+   483→   483→                        CombatService.finishBoss()
+   484→   484→                end
+   485→   485→                monsterDie(entity, player)
+   486→   486→        else
+   487→   487→                entity.target = player
+   488→   488→        end
+   489→   489→        return dmg
+   490→   490→end
+   491→   491→
+   492→   492→function CombatService.useSkill(player: Player, payload: any)
+   493→   493→        if not DataService.has(player) or type(payload) ~= "table" then
+   494→   494→                return { ok = false, msg = "Tidak valid." }
+   495→   495→        end
+   496→   496→        if not isAliveCharacter(player) then
+   497→   497→                return { ok = false, msg = "Kamu tidak bisa bertarung sekarang." }
+   498→   498→        end
+   499→   499→        local skill = nil
+   500→   500→        for _, s in ipairs(Balance.Skills) do
+   501→   501→                if s.id == payload.skillId then
+   502→   502→                        skill = s
+   503→   503→                        break
+   504→   504→                end
+   505→   505→        end
+   506→   506→        if not skill then
+   507→   507→                return { ok = false, msg = "Skill tidak dikenal." }
+   508→   508→        end
+   509→   509→        if DataService.levelOf(player) < skill.level then
+   510→   510→                return { ok = false, msg = "Skill terbuka di level " .. skill.level .. "." }
+   511→   511→        end
+   512→   512→        if EquipService.weaponAtk(player) <= 0 then
+   513→   513→                return { ok = false, msg = skill.name .. " butuh PEDANG - tempa dulu di Pak Tempa!" }
+   514→   514→        end
+   515→   515→        local now = os.clock()
+   516→   516→        lastSkill[player] = lastSkill[player] or {}
+   517→   517→        local readyAt = lastSkill[player][skill.id] or 0
+   518→   518→        if now < readyAt then
+   519→   519→                return { ok = false, msg = skill.name .. " belum siap (" .. math.ceil(readyAt - now) .. "s).", cd = math.ceil(readyAt - now) }
+   520→   520→        end
+   521→   521→        local stats = statsOf(player)
+   522→   522→        local level = DataService.levelOf(player)
+   523→   523→        local char = player.Character
+   524→   524→        if not char or not char.PrimaryPart then
+   525→   525→                return { ok = false, msg = "Karakter belum siap." }
+   526→   526→        end
+   527→   527→
+   528→   528→        if skill.aoe then
+   529→   529→                local root = char.PrimaryPart
+   530→   530→                local hits = 0
+   531→   531→                local total = 0
+   532→   532→                for _, e in monsters do
+   533→   533→                        if e.alive and e.body.Parent and (e.body.Position - root.Position).Magnitude <= 16 then
+   534→   534→                                total += hitEntity(player, e, skill.mult, stats, level)
+   535→   535→                                hits += 1
+   536→   536→                        end
+   537→   537→                end
+   538→   538→                if hits == 0 then
+   539→   539→                        return { ok = false, msg = "Tidak ada angka di sekitarmu." }
+   540→   540→                end
+   541→   541→                lastSkill[player][skill.id] = now + skill.cooldown
+   542→   542→                playSound(char.PrimaryPart, "swordlunge.wav", 1, 0.6)
+   543→   543→                DataService.push(player)
+   544→   544→                return { ok = true, msg = skill.name .. " menghantam " .. hits .. " angka! Total " .. total .. " damage." }
+   545→   545→        end
+   546→   546→
+   547→   547→        local target = findNearestMonster(player, 16)
+   548→   548→        if not target then
+   549→   549→                return { ok = false, msg = "Tidak ada angka di dekatmu." }
+   550→   550→        end
+   551→   551→        local dmg = hitEntity(player, target, skill.mult, stats, level)
+   552→   552→        lastSkill[player][skill.id] = now + skill.cooldown
+   553→   553→        playSound(char.PrimaryPart, "swordlunge.wav", 1.1, 0.55)
+   554→   554→        DataService.push(player)
+   555→   555→        return { ok = true, msg = skill.name .. "! " .. dmg .. " damage ke " .. target.def.name .. "." }
+   556→   556→end
+   557→   557→
+   558→   558→Players.PlayerRemoving:Connect(function(player)
+   559→   559→        lastSkill[player] = nil
+   560→   560→end)
+   561→   561→
+   562→   562→--------------------------------------------------------------------
+   563→   563→-- SERANGAN PEMAIN
+   564→   564→--------------------------------------------------------------------
+   565→   565→
+   566→   566→function CombatService.playerAttack(player: Player, entity: any)
+   567→   567→        if not entity or not entity.alive or not DataService.has(player) then
+   568→   568→                return { ok = false, msg = "Target tidak valid." }
+   569→   569→        end
+   570→   570→        if not isAliveCharacter(player) then
+   571→   571→                return { ok = false, msg = "Kamu tidak bisa menyerang sekarang." }
+   572→   572→        end
+   573→   573→        -- jarak server-side
+   574→   574→        local root = player.Character and player.Character.PrimaryPart
+   575→   575→        if not root or (root.Position - entity.body.Position).Magnitude > 14 then
+   576→   576→                return { ok = false, msg = "Terlalu jauh!" }
+   577→   577→        end
+   578→   578→        -- jeda serangan (AGI mempercepat)
+   579→   579→        local now = os.clock()
+   580→   580→        local cd = Balance.attackCooldown(statsOf(player).agi)
+   581→   581→        if lastAttack[player] and now - lastAttack[player] < cd then
+   582→   582→                return { ok = false, msg = "Serangan belum siap." }
+   583→   583→        end
+   584→   584→        lastAttack[player] = now
+   585→   585→
+   586→   586→        local stats = statsOf(player)
+   587→   587→        local level = DataService.levelOf(player)
+   588→   588→        local atk = Balance.playerAttack({
+   589→   589→                weaponAtk = EquipService.weaponAtk(player),
+   590→   590→                str = stats.str,
+   591→   591→                dex = stats.dex,
+   592→   592→                int = stats.int,
+   593→   593→                level = level,
+   594→   594→        })
+   595→   595→        local crit = rng:NextNumber() < Balance.critChance(stats.dex)
+   596→   596→        if crit then
+   597→   597→                atk = math.floor(atk * Balance.CritMult + 0.5)
+   598→   598→        end
+   599→   599→        -- kurva pelunakan dengan pertahanan monster
+   600→   600→        local def = entity.def.def or 0
+   601→   601→        local dmg = math.max(1, math.floor(atk * (1 - def / (def + 60)) + 0.5))
+   602→   602→
+   603→   603→        entity.hp -= dmg
+   604→   604→        local bb = entity.bb
+   605→   605→        bb.bar.Size = UDim2.fromScale(math.clamp(entity.hp / entity.maxHp, 0, 1), 1)
+   606→   606→        bb.label.Text = math.max(0, entity.hp) .. " / " .. entity.maxHp
+   607→   607→
+   608→   608→        -- krediting boss raid
+   609→   609→        if entity.isBoss then
+   610→   610→                bossCredits[player] = (bossCredits[player] or 0) + dmg
+   611→   611→        end
+   612→   612→
+   613→   613→        local killed = entity.hp <= 0
+   614→   614→        damageTag(entity, dmg, crit, killed)
+   615→   615→
+   616→   616→        -- recoil visual: angka tersentak sedikit (juice)
+   617→   617→        do
+   618→   618→                local rootPart = entity.body
+   619→   619→                if rootPart and rootPart.Parent and not killed then
+   620→   620→                        local dir = (rootPart.Position - root.Position)
+   621→   621→                        dir = Vector3.new(dir.X, 0, dir.Z)
+   622→   622→                        if dir.Magnitude > 0.1 then
+   623→   623→                                dir = dir.Unit
+   624→   624→                        else
+   625→   625→                                dir = root.CFrame.LookVector * -1
+   626→   626→                        end
+   627→   627→                        local base = rootPart.Position
+   628→   628→                        entity.model:PivotTo(CFrame.new(base + dir * 1.1))
+   629→   629→                        task.delay(0.12, function()
+   630→   630→                                if entity.alive and entity.model.Parent and entity.body.Parent then
+   631→   631→                                        entity.model:PivotTo(CFrame.new(base))
+   632→   632→                                end
+   633→   633→                        end)
+   634→   634→                end
+   635→   635→        end
+   636→   636→
+   637→   637→        if killed then
+   638→   638→                CombatService.onKill(player, entity)
+   639→   639→                if entity.isBoss then
+   640→   640→                        -- bagi hadiah raid SEBELUM boss dibersihkan
+   641→   641→                        CombatService.finishBoss()
+   642→   642→                end
+   643→   643→                monsterDie(entity, player)
+   644→   644→        else
+   645→   645→                -- monster berbalik mengejar penyerang
+   646→   646→                entity.target = player
+   647→   647→        end
+   648→   648→
+   649→   649→        DataService.push(player)
+   650→   650→        return { ok = true, dmg = dmg, crit = crit, killed = killed, name = entity.def.name }
+   651→   651→end
+   652→   652→
+   653→   653→function CombatService.onKill(player: Player, entity: any)
+   654→   654→        local def = entity.def
+   655→   655→
+   656→   656→        -- XP & Micda (ganda saat PESTA PANEN)
+   657→   657→        local xpGain, coinGain = def.xp, rng:NextInteger(def.coin[1], def.coin[2])
+   658→   658→        if eventActive then
+   659→   659→                xpGain = math.floor(xpGain * Balance.Event.xpMult)
+   660→   660→                coinGain = math.floor(coinGain * Balance.Event.coinMult)
+   661→   661→        end
+   662→   662→        local before = DataService.levelOf(player)
+   663→   663→        DataService.addXP(player, xpGain)
+   664→   664→        DataService.addCoins(player, coinGain, true)
+   665→   665→        if DataService.levelOf(player) > before then
+   666→   666→                Remotes.get("Notify"):FireClient(player, "LEVEL NAIK!",
+   667→   667→                        "Level " .. DataService.levelOf(player) .. "! Dapat 2 poin stat - bagikan di panel Kar.")
+   668→   668→        end
+   669→   669→
+   670→   670→        -- progres tugas "kalahkan monster"
+   671→   671→        QuestService.progress(player, "kill", 1)
+   672→   672→
+   673→   673→        -- drop material -> bahan craft
+   674→   674→        local dropTexts = {}
+   675→   675→        for _, drop in ipairs(def.drops) do
+   676→   676→                if rng:NextNumber() <= drop.chance then
+   677→   677→                        local n = rng:NextInteger(drop.min, drop.max)
+   678→   678→                        DataService.giveItem(player, "bag", drop.id, n)
+   679→   679→                        table.insert(dropTexts, "+" .. n .. " " .. drop.id)
+   680→   680→                end
+   681→   681→        end
+   682→   682→
+   683→   683→        local msg = def.name .. " dikalahkan! +" .. xpGain .. " XP, +" .. coinGain .. " Micda"
+   684→   684→        if #dropTexts > 0 then
+   685→   685→                msg = msg .. " (" .. table.concat(dropTexts, ", ") .. ")"
+   686→   686→        end
+   687→   687→        notify(player, "KOMBAT!", msg)
+   688→   688→
+   689→   689→        -- boss raid: broadcast peristiwa
+   690→   690→        if entity.isBoss then
+   691→   691→                Remotes.get("BossState"):FireAllClients({ active = false, killed = true, name = def.name })
+   692→   692→        end
+   693→   693→end
+   694→   694→
+   695→   695→--------------------------------------------------------------------
+   696→   696→-- AI LOOP (wander / chase / attack)
+   697→   697→--------------------------------------------------------------------
+   698→   698→
+   699→   699→local function stepMonster(entity: any, dt: number)
+   700→   700→        if not entity.alive or not entity.body.Parent then
+   701→   701→                return
+   702→   702→        end
+   703→   703→        local def = entity.def
+   704→   704→
+   705→   705→        -- validasi target
+   706→   706→        local targetPlayer = entity.target
+   707→   707→        if targetPlayer then
+   708→   708→                local valid = targetPlayer.Parent ~= nil and isAliveCharacter(targetPlayer)
+   709→   709→                if valid then
+   710→   710→                        local root = targetPlayer.Character.PrimaryPart
+   711→   711→                        local dist = (root.Position - entity.home).Magnitude
+   712→   712→                        if dist > def.aggro * 2.2 then
+   713→   713→                                valid = false -- terlalu jauh dari rumahnya, pulang
+   714→   714→                        end
+   715→   715→                end
+   716→   716→                if not valid then
+   717→   717→                        entity.target = nil
+   718→   718→                end
+   719→   719→        end
+   720→   720→
+   721→   721→        -- cari target baru dalam radius aggro
+   722→   722→        if not entity.target then
+   723→   723→                for _, player in Players:GetPlayers() do
+   724→   724→                        if isAliveCharacter(player) and DataService.has(player) then
+   725→   725→                                local root = player.Character.PrimaryPart
+   726→   726→                                if (root.Position - entity.body.Position).Magnitude <= def.aggro then
+   727→   727→                                        entity.target = player
+   728→   728→                                        break
+   729→   729→                                end
+   730→   730→                        end
+   731→   731→                end
+   732→   732→        end
+   733→   733→
+   734→   734→        local bodyPos = entity.body.Position
+   735→   735→        local goal: Vector3
+   736→   736→        local speed = def.speed
+   737→   737→
+   738→   738→        if entity.target then
+   739→   739→                local root = entity.target.Character.PrimaryPart
+   740→   740→                local dist = (root.Position - bodyPos).Magnitude
+   741→   741→                if dist > 5 then
+   742→   742→                        goal = root.Position
+   743→   743→                else
+   744→   744→                        goal = bodyPos -- dekat: berhenti & serang
+   745→   745→                        local now = os.clock()
+   746→   746→                        if now - entity.lastHit >= 1.5 then
+   747→   747→                                entity.lastHit = now
+   748→   748→                                -- damage ke pemain dengan pertahanan zirah + VIT
+   749→   749→                                local pstats = statsOf(entity.target)
+   750→   750→                                local defense = Balance.playerDefense(EquipService.armorDef(entity.target), pstats.vit)
+   751→   751→                                local taken = Balance.damageTaken(def.atk, defense)
+   752→   752→                                local humanoid = entity.target.Character:FindFirstChildOfClass("Humanoid")
+   753→   753→                                if humanoid then
+   754→   754→                                        humanoid:TakeDamage(taken)
+   755→   755→                                end
+   756→   756→                        end
+   757→   757→                end
+   758→   758→        else
+   759→   759→                -- berkeliaran di sekitar rumah
+   760→   760→                if (bodyPos - entity.wanderTo).Magnitude < 3 then
+   761→   761→                        entity.wanderTo = entity.home + Vector3.new(rng:NextNumber(-12, 12), 0, rng:NextNumber(-12, 12))
+   762→   762→                        return
+   763→   763→                end
+   764→   764→                goal = entity.wanderTo
+   765→   765→                speed = def.speed * 0.45
+   766→   766→        end
+   767→   767→
+   768→   768→        local dir = (goal - bodyPos) * Vector3.new(1, 0, 1)
+   769→   769→        if dir.Magnitude > 0.4 then
+   770→   770→                dir = dir.Unit
+   771→   771→                local step = math.min(speed * dt, dir.Magnitude * 99)
+   772→   772→                local newPos = bodyPos + dir * step
+   773→   773→                -- v4: pindahkan SELURUH model (angka, aura, mata) supaya tidak
+   774→   774→                -- ada part tertinggal berserakan (penyebab dunia terlihat kotor)
+   775→   775→                entity.model:PivotTo(CFrame.lookAt(newPos, newPos + dir))
+   776→   776→        end
+   777→   777→end
+   778→   778→
+   779→   779→RunService.Heartbeat:Connect(function(dt)
+   780→   780→        for _, entity in monsters do
+   781→   781→                pcall(stepMonster, entity, dt)
+   782→   782→        end
+   783→   783→end)
+   784→   784→
+   785→   785→--------------------------------------------------------------------
+   786→   786→-- BOSS RAID (kooperatif - kegiatan multiplayer terancang)
+   787→   787→--------------------------------------------------------------------
+   788→   788→
+   789→   789→function CombatService.startBoss()
+   790→   790→        if boss then
+   791→   791→                return
+   792→   792→        end
+   793→   793→        local def = Balance.Boss
+   794→   794→        local center = zoneCenter("arena")
+   795→   795→        local model, body = buildMonsterModel({ id = def.id, name = def.name, body = def.body }, center + Vector3.new(0, 2, 0), true)
+   796→   796→        local maxHp = def.hp
+   797→   797→        local bb = hpBillboard(body, def.name, maxHp, maxHp, true)
+   798→   798→
+   799→   799→        boss = {
+   800→   800→                def = def,
+   801→   801→                zone = "arena",
+   802→   802→                model = model,
+   803→   803→                body = body,
+   804→   804→                bb = bb,
+   805→   805→                hp = maxHp,
+   806→   806→                maxHp = maxHp,
+   807→   807→                alive = true,
+   808→   808→                home = center,
+   809→   809→                target = nil,
+   810→   810→                lastHit = 0,
+   811→   811→                wanderTo = center,
+   812→   812→                isBoss = true,
+   813→   813→                unique = 0,
+   814→   814→                spawnedAt = os.clock(),
+   815→   815→        }
+   816→   816→        monsterSeq += 1
+   817→   817→        boss.unique = monsterSeq
+   818→   818→        bossCredits = {}
+   819→   819→
+   820→   820→        local prompt = body:FindFirstChildOfClass("ProximityPrompt")
+   821→   821→        if prompt then
+   822→   822→                prompt.Triggered:Connect(function(player)
+   823→   823→                        if boss and boss.alive then
+   824→   824→                                task.spawn(CombatService.playerAttack, player, boss)
+   825→   825→                        end
+   826→   826→                end)
+   827→   827→        end
+   828→   828→        monsters["m" .. boss.unique] = boss
+   829→   829→
+   830→   830→        Remotes.get("BossState"):FireAllClients({
+   831→   831→                active = true, name = def.name, hp = maxHp, maxHp = maxHp,
+   832→   832→                zone = "Arena Timur",
+   833→   833→        })
+   834→   834→        for _, player in Players:GetPlayers() do
+   835→   835→                notify(player, "BOSS RAID!", def.name .. " muncul di Arena Timur! Serang bersama untuk hadiah besar!")
+   836→   836→        end
+   837→   837→end
+   838→   838→
+   839→   839→function CombatService.finishBoss()
+   840→   840→        if not boss then
+   841→   841→                return
+   842→   842→        end
+   843→   843→        local def = Balance.Boss
+   844→   844→        local participants = {}
+   845→   845→        local totalDmg = 0
+   846→   846→        for player, dmg in bossCredits do
+   847→   847→                if player.Parent then
+   848→   848→                        table.insert(participants, { player = player, dmg = dmg })
+   849→   849→                        totalDmg += dmg
+   850→   850→                end
+   851→   851→        end
+   852→   852→        table.sort(participants, function(a, b)
+   853→   853→                return a.dmg > b.dmg
+   854→   854→        end)
+   855→   855→
+   856→   856→        for rank, entry in participants do
+   857→   857→                local share = entry.dmg / math.max(1, totalDmg)
+   858→   858→                local coin = math.floor(def.participationCoin + share * (rng:NextInteger(def.coin[1], def.coin[2])))
+   859→   859→                local xp = math.max(def.participationXp, math.floor(def.xp * share))
+   860→   860→                DataService.addCoins(entry.player, coin, true)
+   861→   861→                DataService.addXP(entry.player, xp)
+   862→   862→                local extra = ""
+   863→   863→                if rank == 1 then
+   864→   864→                        DataService.addCoins(entry.player, def.topBonusCoin, true)
+   865→   865→                        for _, drop in ipairs(def.drops) do
+   866→   866→                                local n = rng:NextInteger(drop.min, drop.max)
+   867→   867→                                DataService.giveItem(entry.player, "bag", drop.id, n)
+   868→   868→                                extra = extra .. " +" .. n .. " " .. drop.id
+   869→   869→                        end
+   870→   870→                end
+   871→   871→                notify(entry.player, "BOSS DIKALAHKAN!", rank == 1 and ("KAU PENYERANG TERAKHIR/TERBESAR! +" .. coin .. " Micda" .. extra)
+   872→   872→                        or ("Kontribusi " .. math.floor(share * 100) .. "% - +" .. coin .. " Micda, +" .. xp .. " XP"))
+   873→   873→                DataService.push(entry.player)
+   874→   874→        end
+   875→   875→        bossCredits = {}
+   876→   876→end
+   877→   877→
+   878→   878→local function bossLoop()
+   879→   879→        while true do
+   880→   880→                task.wait(5)
+   881→   881→                local now = os.clock()
+   882→   882→                if not boss and now >= bossNextSpawn then
+   883→   883→                        CombatService.startBoss()
+   884→   884→                end
+   885→   885→                if boss and boss.alive then
+   886→   886→                        -- despawn kalau terlalu lama tak dibunuh
+   887→   887→                        if now - boss.spawnedAt > Balance.Boss.despawn then
+   888→   888→                                bossCredits = {}
+   889→   889→                                monsterDie(boss)
+   890→   890→                                boss = nil
+   891→   891→                                Remotes.get("BossState"):FireAllClients({ active = false, name = Balance.Boss.name })
+   892→   892→                                Remotes.get("Notify"):FireAllClients("Boss Pergi", "Angka Sang Raja kembali ke tanah. Hati-hati, ia akan bangkit lagi!")
+   893→   893→                        else
+   894→   894→                                Remotes.get("BossState"):FireAllClients({
+   895→   895→                                        active = true, name = Balance.Boss.name,
+   896→   896→                                        hp = math.max(0, boss.hp), maxHp = boss.maxHp,
+   897→   897→                                        zone = "Arena Timur",
+   898→   898→                                })
+   899→   899→                        end
+   900→   900→                end
+   901→   901→                if not boss then
+   902→   902→                        bossNextSpawn = math.max(bossNextSpawn, now + Balance.Boss.respawn)
+   903→   903→                end
+   904→   904→        end
+   905→   905→end
+   906→   906→
+   907→   907→--------------------------------------------------------------------
+   908→   908→-- INIT
+   909→   909→--------------------------------------------------------------------
+   910→   910→
+   911→   911→function CombatService.spawnMonsters()
+   912→   912→        for _, zone in ipairs(Balance.Zones) do
+   913→   913→                for _, spec in ipairs(zone.monsters) do
+   914→   914→                        local def = nil
+   915→   915→                        for _, m in ipairs(Balance.Monsters) do
+   916→   916→                                if m.id == spec.id then
+   917→   917→                                        def = m
+   918→   918→                                        break
+   919→   919→                                end
+   920→   920→                        end
+   921→   921→                        if def then
+   922→   922→                                for _ = 1, spec.count do
+   923→   923→                                        spawnMonster(def, zone.id)
+   924→   924→                                end
+   925→   925→                        end
+   926→   926→                end
+   927→   927→        end
+   928→   928→        print("[AKIOMIDA] Monster dikerahkan di 4 zona.")
+   929→   929→end
+   930→   930→
+   931→   931→-- v6: loop event PESTA PANEN (aktivitas multiplayer terjadwal & terumumkan)
+   932→   932→local function eventLoop()
+   933→   933→        while true do
+   934→   934→                task.wait(Balance.Event.period)
+   935→   935→                eventActive = true
+   936→   936→                eventEndsAt = os.time() + Balance.Event.duration
+   937→   937→                Remotes.get("EventState"):FireAllClients({
+   938→   938→                        active = true, name = Balance.Event.name,
+   939→   939→                        endsAt = eventEndsAt,
+   940→   940→                        note = "Micda & XP dari monster x" .. Balance.Event.coinMult .. "!",
+   941→   941→                })
+   942→   942→                Remotes.get("Notify"):FireAllClients(Balance.Event.name,
+   943→   943→                        "Dimulai! " .. Balance.Event.coinMult .. "x Micda & XP dari semua angka selama " .. math.floor(Balance.Event.duration / 60) .. " menit - kumpulkan semuanya!")
+   944→   944→                task.wait(Balance.Event.duration)
+   945→   945→                eventActive = false
+   946→   946→                Remotes.get("EventState"):FireAllClients({ active = false, name = Balance.Event.name })
+   947→   947→                Remotes.get("Notify"):FireAllClients("Pesta Usai", "Pesta Panen selesai. Sampai pesta berikutnya!")
+   948→   948→        end
+   949→   949→end
+   950→   950→
+   951→   951→function CombatService.init()
+   952→   952→        local newFolder = Instance.new("Folder")
+   953→   953→        newFolder.Name = "AKM_Monster"
+   954→   954→        newFolder.Parent = workspace
+   955→   955→        monsterFolder = newFolder
+   956→   956→
+   957→   957→        Remotes.get("Attack").OnServerInvoke = function(player, monsterId)
+   958→   958→                if type(monsterId) ~= "string" then
+   959→   959→                        return { ok = false, msg = "Tidak valid." }
+   960→   960→                end
+   961→   961→                local entity = monsters[monsterId] or boss
+   962→   962→                if not entity or not entity.alive or ("m" .. entity.unique) ~= monsterId then
+   963→   963→                        return { ok = false, msg = "Target tidak ada." }
+   964→   964→                end
+   965→   965→                return CombatService.playerAttack(player, entity)
+   966→   966→        end
+   967→   967→
+   968→   968→        Players.PlayerRemoving:Connect(function(player)
+   969→   969→                lastAttack[player] = nil
+   970→   970→                bossCredits[player] = nil
+   971→   971→        end)
+   972→   972→
+   973→   973→        -- boss pertama muncul 6 menit setelah server hidup (biar pemain sempat latihan)
+   974→   974→        bossNextSpawn = os.clock() + 360
+   975→   975→        task.spawn(bossLoop)
+   976→   976→        task.spawn(eventLoop)
+   977→   977→end
+   978→   978→
+   979→   979→return CombatService
+   980→   980→
