@@ -3,13 +3,7 @@
     "tree": {
         "$className": "DataModel",
         "ReplicatedStorage": {
-            "$className": "ReplicatedStorage",
-            "Shared": {
-                "$path": "src/Shared"
-            },
-            "Remotes": {
-                "$path": "src/Remotes"
-            }
+            "$className": "ReplicatedStorage"
         },
         "ServerScriptService": {
             "$className": "ServerScriptService",
@@ -28,25 +22,25 @@
         },
         "Workspace": {
             "$className": "Workspace",
+            "Baseplate": {
+                "$className": "Part",
+                "$properties": {
+                    "Anchored": true,
+                    "Size": [2048, 16, 2048],
+                    "Position": [0, -8, 0],
+                    "Color": [0.392, 0.392, 0.404],
+                    "Material": "Slate",
+                    "TopSurface": "Smooth",
+                    "BottomSurface": "Smooth"
+                }
+            },
             "SpawnLocation": {
                 "$className": "SpawnLocation",
                 "$properties": {
                     "Anchored": true,
-                    "Size": [
-                        12,
-                        1,
-                        12
-                    ],
-                    "Position": [
-                        0,
-                        0.5,
-                        28
-                    ],
-                    "Color": [
-                        1,
-                        0.82,
-                        0.4
-                    ],
+                    "Size": [12, 1, 12],
+                    "Position": [0, 0.5, 28],
+                    "Color": [1, 0.82, 0.4],
                     "Material": "SmoothPlastic",
                     "TopSurface": "Smooth",
                     "Duration": 0
@@ -59,16 +53,8 @@
         "Lighting": {
             "$className": "Lighting",
             "$properties": {
-                "Ambient": [
-                    0.3,
-                    0.3,
-                    0.36
-                ],
-                "OutdoorAmbient": [
-                    0.55,
-                    0.55,
-                    0.6
-                ],
+                "Ambient": [0.3, 0.3, 0.36],
+                "OutdoorAmbient": [0.55, 0.55, 0.6],
                 "Brightness": 2.8,
                 "ClockTime": 14.5,
                 "GlobalShadows": true

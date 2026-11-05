@@ -19,51 +19,43 @@ Skor per kriteria 0-10, dikali bobot. Total dihitung dari (skor x bobot) / 10.
 | 8 | Polish & UX (UI, suara, animasi, efek) | 10 | animasi kombat, BGM, partikel | UI rapi & responsif |
 | 9 | Originalitas 100% & aman hak cipta | 5 | - | - |
 
-## Skor v25 (versi LIVE #25, 5 Nov 2026) - PANEN BARU (permintaan pemilik)
+## Skor v26 (versi LIVE #26, 6 Nov 2026) - RESET TOTAL (permintaan pemilik)
+
+Pemilik meminta reset total: semua map dan semua sistem lama dihapus, dunia kembali
+dari nol ("semuanya kembali dari nol, jangan ada apa-apa dulu"). Penurunan skor
+di bawah ini adalah keadaan yang DIMINTA, bukan kemunduran tak sengaja. Nilai
+masa lalu (puncak 83 di #25) disimpan di riwayat sebagai acuan membangun ulang.
 
 | Kriteria | Skor | Catatan |
 |----------|------|---------|
-| 1 Kombat | 9/10 | 8 monster ANGKA (1-8) + boss "Angka Sang Raja" (9) dengan FASE MURKA (HP <=50%: aura merah, gerak +35%, serang +30%); 3 skill senjata aktif; damage melayang + partikel; SFX. Monster kini TERKURUNG di pulau monster (tidak menyebar ke wilayah umum). |
-| 2 Crafting | 7/10 | 12 resep + MASTERY (M1..M3, XP craft sampai +50%). |
-| 3 Stat | 7/10 | 5 stat + poin/level + UPGRADE PERALATAN +1..+5. |
-| 4 Ekonomi | 9/10 | KIOS VENDING pemain (di ladang pulau rumah sendiri), Papan Jual persisten, pasar dinamis, sink kuat. + KLAIM PULAU RUMAH PERSISTEN (HomeId tersimpan; pulau 1 gratis, 2-6 dibeli LUNAS Micda - tanpa riba). |
-| 5 Dunia | 8/10 | Pulau Panen lama dihapus (ekonomi baru); Pusat Kota kini berisi TOKO BENIH interior profesional (rak kemasan, konter kasir, planter demo, papan harga); semua pintu 2x karakter & buka-tutup (DoorKit), lantai bangunan 4x karakter; rumah 3 lantai + rooftop terrace berinterior penuh + ruang Bedah/Sains/Startopia/Pancing. Pusat kota sisanya kosong menunggu bahasan. | **ARSITEKTUR WILAYAH BARU (permintaan pemilik)**: dunia pulau-pulau di LAUT AIR SUNGUHAN terrain, dihubungkan GERBANG PORTAL. PULAU RUMAH pribadi x6 (rumah 2 lantai interior, LAHAN TANI pribadi, KOLAM AIR SUNGUHAN bergelombang & bisa berenang, RUANG BEDAH / RUANG SAINS / RUANG STARTOPIA, gerbang ke kota), Pusat Kota (hub sementara), Pulau Panen BEBAS MONSTER (hutan kayu, tambang bijih, Danau Tenang air sungguhan), 3 pulau monster terpisah bertingkat (Padang Liar LV1-3, Hutan Bayang LV3-5, Negeri Baja & Kristal LV5+ berisi Tambang Baja, Gua Kristal, Arena koloseum). Belum: dungeon instanced per-party, pusat kota final (menunggu bahasan pemilik). |
-| 6 Multiplayer | 7/10 | Boss raid kooperatif, kompas zona, kunjungan lahan pemain lain. Papan jual/kios/trade lama dihapus bersama ekonomi lama - koperasi antar-pemain jadi penggantinya (roadmap). |
-| 7 Bertani | 10/10 | **VERSI BARU sesuai spek pemilik**: 34 tanaman (12/14/8 Common-Rare-Epic, harga jual tetap), tumbuh 3 detik, panen 1-4 acak, KEBUN 500 PETAK per lahan, pack benih 400/1.500/3.500 (3 benih acak per kategori), 8 resep gabung benih, tas 50 slot x 250, koperasi harga tetap. |
-| 8 Polish | 8/10 | BGM pentatonik original, partikel hemat mobile, SFX, kompas, kolam & danau air terrain bergelombang, tata ruang pulau rapi (jalan batu, lampu taman, pagar rambate, bunga). Tanpa animasi karakter. |
-| 9 Originalitas | 10/10 | 100% karya sendiri; tidak ada aset/konten pihak ketiga. |
+| 1 Kombat | 0/10 | Dihapus bersama reset. Monster/skill/boss akan dibangun ulang dari nol. |
+| 2 Crafting | 0/10 | Dihapus bersama reset. |
+| 3 Stat & Progresi | 0/10 | Dihapus bersama reset (tanpa sistem level, sesuai arah terakhir pemilik). |
+| 4 Ekonomi | 0/10 | Dihapus bersama reset. Rancangan ekonomi tani (34 tanaman, pack benih, 8 resep gabung, tas 50x250, dana awal 900.000 Micda) sudah disepakati dan menunggu giliran dibangun. |
+| 5 Dunia & Peta | 1/10 | Dunia kosong: baseplate 2048x2048 + satu titik lahir + pencahayaan dasar. StreamingEnabled aktif. |
+| 6 Multiplayer | 1/10 | Pemain bisa bergabung, lahir, dan berjalan bersama di dunia kosong. Tidak ada aktivitas lain. |
+| 7 Bertani | 0/10 | Dihapus bersama reset. |
+| 8 Polish & UX | 2/10 | Pencahayaan bersih, dunia ringan (build hanya 3,5 KB), loading instan. Tidak ada UI, suara, atau animasi. |
+| 9 Originalitas | 10/10 | 100% karya sendiri; reset justru memastikan tidak ada sisa apa pun dari luar. |
 
-**TOTAL: 83/100** (bobot: 9x15+7x15+7x10+9x15+8x10+7x10+10x10+8x10+10x5 = 825/10)
+**TOTAL: 9/100** (bobot: 0+0+0+0+10+10+0+20+50 = 90/10)
 
-Riwayat: v10 = 56 -> v11 = 64 (penilaian owner) -> v20 = 79 -> v21 = 80 -> v25 = 83.
-Celah utama menuju 100: pusat kota final & dungeon instanced (8), party/guild (8),
-animasi karakter (8), skill tree & progesi (7).
+Riwayat: v10 = 56 -> v11 = 64 (penilaian owner) -> v20 = 79 -> v21 = 80 -> v25 = 83 -> v26 = 9 (RESET TOTAL diminta pemilik; titik nol membangun ulang).
 
-## Catatan arsitektur wilayah (v21, dasar desain MMORPG)
+## Catatan kepatuhan syariah (permintaan pemilik, tetap berlaku)
 
-- Wilayah = pulau; pindah wilayah HANYA lewat gerbang portal (ProximityPrompt, server-side).
-- kind hub (pusat kota) & civil (pulau panen) DIJAMIN bebas monster oleh tes offline
-  (Balance.validateRegions: zona monster wajib di pulau combat & tak menembus wilayah peradaban).
-- Pulau rumah = wilayah pribadi pemain: klaim persisten (DataStore HomeId), pulau 1 gratis,
-  2-6 dibeli lunas Micda (syariah), ladang + kios ikut pulau pemiliknya.
-
-## Catatan kepatuhan syariah (permintaan pemilik, diperbarui v20)
-
-- TANPA RIBA: tidak ada bunga, cicilan, atau "tabungan berbunga". Lahan & kios dibeli lunas di muka.
-- TANPA MAYSIR: tidak ada undian/lotre/gacha berbayar. Peluang ikan = hasil usaha memancing, tarif transparan.
-- TANPA GHARAR: pembeli Papan Jual & KIOS melihat barang, jumlah, harga, dan biaya jasa (2%, min 1 Micda) sebelum konfirmasi.
-- TANPA SYIRIK: tidak ada pemujaan/dewa; NPC hanyalah saudagar biasa; hiasan netral.
+- TANPA RIBA: tidak ada bunga, cicilan, atau "tabungan berbunga". Segala pembelian lunas di muka.
+- TANPA MAYSIR: tidak ada undian/lotre/gacha berbayar. Peluang berbasis hasil usaha, tarif transparan.
+- TANPA GHARAR: pembeli melihat barang, jumlah, dan harga sebelum konfirmasi.
+- TANPA SYIRIK: tidak ada pemujaan/dewa; hiasan netral.
 - Mata uang: MICDA (nama milik sendiri).
 
-## Roadmap menuju 100 (dikerjakan sesi mandiri berikutnya, tanpa menunggu owner)
+## Urutan membangun ulang (menunggu arah pemilik; daftar ini bukan janji otomatis)
 
-- **v21 (LIVE #21)**: ARSITEKTUR WILAYAH per permintaan pemilik: dunia pulau-pulau + gerbang
-  portal, pulau rumah pribadi x6 (rumah/ladang/kolam air sungguhan/ruang Bedah-Sains-Startopia),
-  pulau monster terpisah bertingkat, pulau panen bebas monster, klaim pulau persisten. (selesai)
-- **v22 (target ~85)**: PUSAT KOTA final (menunggu bahasan pemilik), party + guild dasar,
-  dungeon "Gua Kristal" instanced per-party, animasi serang karakter sederhana, pet ikut kombat.
-- **v23 (target ~95)**: guild + territory, event musiman, minimap, quest rantai NPC,
-  cuaca & siang-malam, tutorial questline, fungsi nyata ruang Bedah/Sains/Startopia.
+1. Tata dunia dasar dari nol: wilayah, lahan, pusat kota (pintu 2x karakter, bangunan 4x karakter, pintu benar-benar buka-tutup, air terrain sungguhan).
+2. Ekonomi tani baru sesuai spek pemilik: 34 tanaman (3 detik, panen 1-4), tas 50 slot x 250, pack benih 400/1.500/3.500, 8 resep gabung benih, dana awal 900.000 Micda, tanpa level.
+3. Toko benih profesional di pusat kota + koperasi per lahan.
+4. Setelah fondasi oke: kombat, craft, progresi, multiplayer, polish.
 
 ## Aturan tetap setiap sesi (WAJIB)
 
