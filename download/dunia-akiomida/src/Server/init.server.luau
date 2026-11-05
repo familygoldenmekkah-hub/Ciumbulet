@@ -26,6 +26,7 @@ local QuestService = require(Modules.QuestService)
 local CraftService = require(Modules.CraftService)
 local CombatService = require(Modules.CombatService)
 local TradeService = require(Modules.TradeService)
+local MarketService = require(Modules.MarketService)
 local MapService = require(Modules.MapService)
 
 -- bangun dunia (butuh referensi layanan untuk menghubungkan NPC)
@@ -36,6 +37,7 @@ MapService.init({
         Quiz = QuizService,
         Craft = CraftService,
         Quest = QuestService,
+        Market = MarketService,
 })
 
 FarmService.init()
@@ -49,6 +51,7 @@ EquipService.init()
 QuestService.init()
 CraftService.init()
 TradeService.init()
+MarketService.init()
 CombatService.init()
 CombatService.spawnMonsters()
 DataService.startLoops()
@@ -80,27 +83,33 @@ local function onPlayerAdded(player: Player)
         -- leaderstats standar Roblox
         local leaderstats = Instance.new("Folder")
         leaderstats.Name = "leaderstats"
-        local koin = Instance.new("IntValue")
-        koin.Name = "Koin"
-        koin.Value = math.floor(DataService.get(player).Coins)
-        koin.Parent = leaderstats
+        local Micda = Instance.new("IntValue")
+        Micda.Name = "Micda"
+        Micda.Value = math.floor(DataService.get(player).Coins)
+        Micda.Parent = leaderstats
         local xp = Instance.new("IntValue")
         xp.Name = "XP"
         xp.Value = math.floor(DataService.get(player).XP)
         xp.Parent = leaderstats
         leaderstats.Parent = player
 
-        -- bonus login harian
+        -- kotak pos pasar: hasil jual di Papan Jual saat pemain offline
+        MarketService.claimMail(player)
+
+        -- bonus login harian + rantai streak (v9, hadiah langsung tanpa syarat)
         local today = tonumber(os.date("!%Y%m%d")) or 0
         local data = DataService.get(player)
         if data.LastLoginDay ~= today then
+                local yesterday = tonumber(os.date("!%Y%m%d", os.time() - 86400)) or 0
+                data.Streak = (data.LastLoginDay == yesterday) and (data.Streak + 1) or 1
                 data.LastLoginDay = today
                 DataService.markDirty(player)
-                DataService.addCoins(player, Config.Economy.DailyBonus, false)
+                local bonus = Config.Economy.DailyBonus + 25 * math.min(data.Streak - 1, 6)
+                DataService.addCoins(player, bonus, false)
                 task.delay(5, function()
                         if player.Parent then
                                 Remotes.get("Notify"):FireClient(player, "Bonus Harian",
-                                        "+" .. Config.Economy.DailyBonus .. " koin untuk petualangan hari ini!")
+                                        "+" .. bonus .. " Micda! Rantai login: " .. data.Streak .. " hari.")
                         end
                 end)
         end
@@ -119,7 +128,7 @@ local function onPlayerAdded(player: Player)
                 end
                 DataService.push(player)
                 Remotes.get("Notify"):FireClient(player, "Selamat Datang di Dunia Akiomida!",
-                        "Tanam, tebang, tambang, mancing, lawan monster, tempa senjata, kalahkan Raja Golem, dan berdagang dengan pemain lain!")
+                        "Tanam, tebang, tambang, mancing, lawan MONSTER ANGKA, tempa senjata, kalahkan Angka Sang Raja, dan jual barangmu di PAPAN JUAL dengan MICDA!")
         end)
 end
 
@@ -133,10 +142,22 @@ Players.PlayerRemoving:Connect(function(player)
         PetService.cleanup(player)
 end)
 
+-- v8: upgrade peralatan
+Remotes.get("EquipUpgrade").OnServerInvoke = function(player, equipId)
+        local EquipService = require(script.Modules.EquipService)
+        return EquipService.upgrade(player, equipId)
+end
+
+-- v5: skill senjata
+Remotes.get("Skill").OnServerInvoke = function(player, payload)
+        local CombatService = require(script.Modules.CombatService)
+        return CombatService.useSkill(player, payload)
+end
+
 -- client bisa minta refresh state (fallback kalau StateSync terlewat)
 Remotes.get("GetState").OnServerInvoke = function(player)
         DataService.push(player)
         return true
 end
 
-print("[AKIOMIDA] Server v3 siap: kombat, tempa, stat & peralatan, tugas, boss raid, dagang - di atas fondasi ekonomi hidup.")
+print("[AKIOMIDA] Server v4 siap: monster angka bersaura, papan jual Micda, lahan dibeli lunas, UI minimal, hemat part untuk mobile.")

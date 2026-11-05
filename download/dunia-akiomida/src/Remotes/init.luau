@@ -40,6 +40,13 @@ local DEFINITIONS = {
         OpenChar = "RemoteEvent", -- server -> client: buka panel karakter
         BossState = "RemoteEvent", -- server -> semua: status boss raid
         TradeSync = "RemoteEvent", -- server -> kedua pihak: snapshot dagang
+        -- v4: papan jual antar pemain (Micda)
+        Skill = "RemoteFunction", -- client -> server: skill senjata (skillId)
+        EquipUpgrade = "RemoteFunction", -- client -> server: upgrade peralatan (+1..+5)
+        EventState = "RemoteEvent", -- server -> semua: event dunia (Pesta Panen)
+        MarketAction = "RemoteFunction", -- client -> server: browse/list/cancel/buy
+        MarketSync = "RemoteEvent", -- server -> client: snapshot papan jual
+        OpenMarket = "RemoteEvent", -- server -> client: buka panel papan jual
 }
 
 local function folder(): Folder

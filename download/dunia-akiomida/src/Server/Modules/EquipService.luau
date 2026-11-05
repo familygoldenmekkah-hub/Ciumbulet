@@ -43,7 +43,11 @@ function EquipService.weaponAtk(player: Player): number
 		return 0
 	end
 	local eq = equipById[id]
-	return eq and eq.atk or 0
+	if not eq then
+		return 0
+	end
+	local star = (data.EquipStars and data.EquipStars[id]) or 0
+	return Balance.starScaled(eq.atk, star)
 end
 
 function EquipService.armorDef(player: Player): number
@@ -53,7 +57,43 @@ function EquipService.armorDef(player: Player): number
 		return 0
 	end
 	local eq = equipById[id]
-	return eq and eq.def or 0
+	if not eq then
+		return 0
+	end
+	local star = (data.EquipStars and data.EquipStars[id]) or 0
+	return Balance.starScaled(eq.def, star)
+end
+
+-- v8: naikkan bintang peralatan (Micda + balok, lunas di muka)
+function EquipService.upgrade(player: Player, equipId: unknown): { [string]: any }
+	if type(equipId) ~= "string" then
+		return { ok = false, msg = "Tidak valid." }
+	end
+	local eq = equipById[equipId]
+	if not eq then
+		return { ok = false, msg = "Peralatan tidak dikenal." }
+	end
+	local data = DataService.get(player)
+	if (data.Equips[equipId] or 0) < 1 then
+		return { ok = false, msg = "Kamu tidak punya " .. eq.name .. ". Tempa dulu!" }
+	end
+	local star = (data.EquipStars and data.EquipStars[equipId]) or 0
+	if star >= Balance.MaxStar then
+		return { ok = false, msg = eq.name .. " sudah maksimal (+" .. Balance.MaxStar .. ")." }
+	end
+	local micda, mat, matCount = Balance.upgradeCost(star)
+	if data.Coins < micda then
+		return { ok = false, msg = "Butuh " .. micda .. " Micda. Micdamu: " .. data.Coins .. "." }
+	end
+	if DataService.countItem(player, "bag", mat) < matCount then
+		return { ok = false, msg = "Butuh " .. matCount .. "x " .. mat .. " dari tambang." }
+	end
+	DataService.addCoins(player, -micda, false)
+	DataService.takeItem(player, "bag", mat, matCount)
+	data.EquipStars[equipId] = star + 1
+	DataService.push(player)
+	local stat = eq.kind == "weapon" and ("ATK " .. Balance.starScaled(eq.atk, star + 1)) or ("DEF " .. Balance.starScaled(eq.def, star + 1))
+	return { ok = true, msg = eq.name .. " naik ke +" .. (star + 1) .. "! " .. stat .. "." }
 end
 
 --------------------------------------------------------------------
@@ -163,7 +203,8 @@ function EquipService.apply(player: Player)
 	if weaponId ~= "" and equipById[weaponId] and backpack then
 		local tool = buildWeaponTool(weaponId)
 		tool.Name = "AKM_Senjata"
-		tool.ToolTip = equipById[weaponId].name
+		local wstar = (data.EquipStars and data.EquipStars[weaponId]) or 0
+		tool.ToolTip = equipById[weaponId].name .. (wstar > 0 and " +" .. wstar or "")
 		tool.Parent = backpack
 	end
 end

@@ -127,7 +127,7 @@ local function onBuyItem(player: Player, shopId: any, itemId: any)
                         return { ok = false, msg = "Butuh level " .. crop.level .. ". Kumpulkan XP dari panen & aktivitas!" }
                 end
                 if not DataService.spend(player, crop.cost) then
-                        return { ok = false, msg = "Koin kurang! Jual hasil panenmu di Pasar Pengepul." }
+                        return { ok = false, msg = "Micda kurang! Jual hasil panenmu di Pasar Pengepul." }
                 end
                 DataService.giveItem(player, "seed", itemId, 1)
                 DataService.push(player)
@@ -147,7 +147,7 @@ local function onBuyItem(player: Player, shopId: any, itemId: any)
                         return { ok = false, msg = "Alat ini sudah kamu miliki." }
                 end
                 if not DataService.spend(player, tool.cost) then
-                        return { ok = false, msg = "Koin kurang! Jual dulu hasil panenmu." }
+                        return { ok = false, msg = "Micda kurang! Jual dulu hasil panenmu." }
                 end
                 if tool.tier then
                         data.Tools.pickTier = tool.tier
@@ -178,7 +178,7 @@ local function onBuyItem(player: Player, shopId: any, itemId: any)
                         return { ok = true, msg = pet.name .. " kembali menemanimu!" }
                 end
                 if not DataService.spend(player, pet.cost) then
-                        return { ok = false, msg = "Koin kurang! Peliharaan ini mahal - kumpulkan hasil panen dulu." }
+                        return { ok = false, msg = "Micda kurang! Peliharaan ini mahal - kumpulkan hasil panen dulu." }
                 end
                 data.Pets[itemId] = true
                 data.ActivePet = itemId
@@ -241,7 +241,7 @@ local function onSellItem(player: Player, kind: any, itemId: any, all: any)
         DataService.addCoins(player, total, true)
         DataService.addXP(player, count)
         DataService.push(player)
-        return { ok = true, msg = "Terjual " .. count .. "x - +" .. Util.formatNumber(total) .. " koin!", total = total }
+        return { ok = true, msg = "Terjual " .. count .. "x - +" .. Util.formatNumber(total) .. " Micda!", total = total }
 end
 
 --------------------------------------------------------------------
@@ -277,7 +277,7 @@ local function onSellAll(player: Player)
         DataService.addCoins(player, total, true)
         DataService.addXP(player, items)
         DataService.push(player)
-        return { ok = true, msg = items .. " barang terjual - +" .. Util.formatNumber(total) .. " koin!", total = total }
+        return { ok = true, msg = items .. " barang terjual - +" .. Util.formatNumber(total) .. " Micda!", total = total }
 end
 
 --------------------------------------------------------------------

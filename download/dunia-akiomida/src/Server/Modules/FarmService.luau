@@ -16,6 +16,8 @@ local Util = require(ReplicatedStorage.Shared.Util)
 local DataService = require(script.Parent.DataService)
 local QuestService = require(script.Parent.QuestService)
 
+local Balance = require(ReplicatedStorage.Shared.Balance)
+
 local FarmService = {}
 
 local PLOT_COUNT = 6
@@ -247,6 +249,10 @@ end
 -- KLAIM LADANG
 --------------------------------------------------------------------
 
+local function priceOfPlot(index: number): number
+        return Balance.LandPrices[index] or 0
+end
+
 local function updateSign(plot)
         local signText = plot.signText
         if not signText then
@@ -256,7 +262,10 @@ local function updateSign(plot)
                 signText.Text = "LADANG " .. plot.index .. " - MILIK " .. string.upper(plot.owner.DisplayName)
                 plot.claimPrompt.Enabled = false
         else
-                signText.Text = "LADANG " .. plot.index .. " - AMBIL ALIH (GRATIS)"
+                local price = priceOfPlot(plot.index)
+                signText.Text = price <= 0
+                        and "LADANG " .. plot.index .. " - AMBIL ALIH (GRATIS)"
+                        or "LADANG " .. plot.index .. " - BELI " .. price .. " MICDA"
                 plot.claimPrompt.Enabled = true
         end
 end
@@ -268,13 +277,27 @@ local function onClaimTriggered(player: Player, plot)
                 end
                 return
         end
+        -- v4 EKONOMI SYARIAH: ladang 1 GRATIS; ladang lain DIBELI dengan Micda
+        -- (bayar penuh di muka - tanpa cicilan, tanpa bunga, tanpa riba)
+        local price = priceOfPlot(plot.index)
+        if price > 0 then
+                local data = DataService.get(player)
+                if data.Coins < price then
+                        Remotes.get("Notify"):FireClient(player, "Micda Kurang",
+                                "Ladang " .. plot.index .. " dijual " .. price .. " Micda (bayar penuh, tanpa bunga). Micdamu: " .. data.Coins .. ".")
+                        return
+                end
+                DataService.addCoins(player, -price, false)
+        end
         plot.owner = player
         updateSign(plot)
         for _, tile in plot.tiles do
                 updateTilePrompt(tile)
         end
-        Remotes.get("Notify"):FireClient(player, "Ladang Baru!",
-                "Ladang " .. plot.index .. " jadi milikmu! Beli bibit di Toko Bibit (Pasar Timur), lalu dekati petak tanah untuk menanam.")
+        local msg = price > 0
+                and "Ladang " .. plot.index .. " kini milikmu (dibeli " .. price .. " Micda, lunas)! Beli bibit di Toko Bibit, lalu dekati petak tanah untuk menanam."
+                or "Ladang " .. plot.index .. " kini milikmu (GRATIS)! Beli bibit di Toko Bibit (Pasar Timur), lalu dekati petak tanah untuk menanam."
+        Remotes.get("Notify"):FireClient(player, "Ladang Baru!", msg)
         DataService.push(player)
 end
 
@@ -357,8 +380,10 @@ function FarmService.buildPlot(index: number, center: Vector3)
         }, gui)
 
         local claimPrompt = Instance.new("ProximityPrompt")
-        claimPrompt.ActionText = "Ambil Alih Ladang"
-        claimPrompt.ObjectText = "Ladang " .. index .. " (gratis)"
+        claimPrompt.ActionText = priceOfPlot(index) > 0 and "Beli Ladang (Micda)" or "Ambil Alih Ladang"
+        claimPrompt.ObjectText = priceOfPlot(index) > 0
+                and ("Ladang " .. index .. " - " .. priceOfPlot(index) .. " Micda (lunas di muka)")
+                or ("Ladang " .. index .. " (gratis)")
         claimPrompt.MaxActivationDistance = 12
         claimPrompt.HoldDuration = 0.3
         claimPrompt.Parent = board

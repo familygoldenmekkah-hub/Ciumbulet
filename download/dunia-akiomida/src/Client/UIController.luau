@@ -1,7 +1,7 @@
 --!nonstrict
 --[[
         UIController.luau - seluruh UI Dunia Akiomida v2 (dibangun lewat kode):
-          HUD   : koin, level + bar XP, tombol Tas / Kode / Bantuan, tips, toast
+          HUD   : Micda, level + bar XP, tombol Tas / Kode / Bantuan, tips, toast
           Toko  : tab Beli (bibit/alat/pet) & Jual (harga pasar dinamis)
           Tas   : bibit, hasil panen, sumber daya, ikan, alat, peliharaan
           Tanam : pilih bibit untuk petak ladang
@@ -21,17 +21,18 @@ local Util = require(ReplicatedStorage.Shared.Util)
 local UIController = {}
 UIController.__index = UIController
 
+-- v4 TEMMINIMAL: satu aksen emas, panel gelap flat, tanpa warna-warni pelangi
 local T = {
-        Bg = Color3.fromRGB(20, 24, 34),
-        Panel = Color3.fromRGB(30, 36, 50),
-        PanelLight = Color3.fromRGB(44, 52, 70),
-        Gold = Color3.fromRGB(255, 209, 102),
-        Green = Color3.fromRGB(88, 200, 130),
-        Red = Color3.fromRGB(235, 100, 100),
-        Blue = Color3.fromRGB(99, 200, 255),
-        Text = Color3.fromRGB(238, 238, 246),
-        TextDim = Color3.fromRGB(170, 176, 192),
-        Disabled = Color3.fromRGB(80, 86, 100),
+        Bg = Color3.fromRGB(14, 16, 20),
+        Panel = Color3.fromRGB(22, 25, 32),
+        PanelLight = Color3.fromRGB(36, 40, 50),
+        Gold = Color3.fromRGB(233, 196, 106),
+        Green = Color3.fromRGB(96, 200, 140),
+        Red = Color3.fromRGB(228, 104, 104),
+        Blue = Color3.fromRGB(122, 168, 226),
+        Text = Color3.fromRGB(232, 234, 240),
+        TextDim = Color3.fromRGB(138, 144, 158),
+        Disabled = Color3.fromRGB(70, 75, 88),
 }
 
 local player = Players.LocalPlayer
@@ -79,6 +80,8 @@ function UIController.new()
         self.tradeSnap = nil
         self.inviteFrom = nil
         self.bossInfo = nil
+        self.marketTab = "papan"
+        self.marketSnap = nil
 
         self:buildGui()
         self:buildHud()
@@ -92,6 +95,7 @@ function UIController.new()
         self:buildCraftPanel()
         self:buildQuestPanel()
         self:buildTradePanel()
+        self:buildMarketPanel()
         self:wireRemotes()
         self:startTips()
 
@@ -127,10 +131,24 @@ function UIController:panelFrame(name: string, sizeScale: number, heightScale: n
 end
 
 function UIController:showPanel(name: string?)
-        for _, n in { "Shop", "Plant", "Inv", "Quiz", "Code", "Help", "Char", "Craft", "Quest", "Trade" } do
+        local TweenService = game:GetService("TweenService")
+        for _, n in { "Shop", "Plant", "Inv", "Quiz", "Code", "Help", "Char", "Craft", "Quest", "Trade", "Market" } do
                 local f = self.gui:FindFirstChild(n)
                 if f then
                         (f :: Frame).Visible = (n == name)
+                end
+        end
+        if self.navHolder then
+                self.navHolder.Visible = (name == nil)
+        end
+        if name then
+                -- v7 pop-in halus (rasa premium, bukan pop-up kasar)
+                local f = self.gui:FindFirstChild(name)
+                if f and f:IsA("Frame") then
+                        f.Size = UDim2.fromScale(f.Size.X.Scale * 0.94, f.Size.Y.Scale * 0.94)
+                        TweenService:Create(f, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                                Size = UDim2.fromScale(f.Size.X.Scale / 0.94, f.Size.Y.Scale / 0.94),
+                        }):Play()
                 end
         end
         self.activePanel = name
@@ -141,9 +159,9 @@ end
 --------------------------------------------------------------------
 
 function UIController:buildHud()
-        ---------------------------------------------------------------- chip koin
+        ---------------------------------------------------------------- chip Micda
         local coinChip = Util.create("Frame", {
-                Name = "KoinChip",
+                Name = "MicdaChip",
                 Position = UDim2.fromOffset(16, 14),
                 Size = UDim2.fromOffset(170, 46),
                 BackgroundColor3 = T.Bg,
@@ -164,7 +182,7 @@ function UIController:buildHud()
                 Font = Enum.Font.GothamBlack,
                 TextScaled = true,
                 TextColor3 = Color3.fromRGB(120, 86, 20),
-                Text = "$",
+                Text = "M",
         }, coinIcon)
         self.coinText = Util.create("TextLabel", {
                 Position = UDim2.fromOffset(44, 0),
@@ -298,45 +316,51 @@ function UIController:buildHud()
 
         ---------------------------------------------------------------- tombol kanan atas
         local actions = {
-                { name = "Tas", label = "Tas", color = T.Gold, cb = function()
+                { name = "Tas", label = "Tas", cb = function()
                         self:renderInv()
                         self:showPanel("Inv")
                 end },
-                { name = "Kar", label = "Kar", color = T.Blue, cb = function()
+                { name = "Kar", label = "Kar", cb = function()
                         self:renderChar()
                         self:showPanel("Char")
                 end },
-                { name = "Tugas", label = "Tugas", color = T.Green, cb = function()
+                { name = "Tugas", label = "Tugas", cb = function()
                         self:renderQuest()
                         self:showPanel("Quest")
                 end },
-                { name = "Dagang", label = "Dagang", color = Color3.fromRGB(224, 140, 190), cb = function()
+                { name = "Dagang", label = "Dagang", cb = function()
                         self:renderTrade()
                         self:showPanel("Trade")
                 end },
-                { name = "Kode", label = "Kode", color = T.Blue, cb = function()
+                { name = "Pasar", label = "Pasar", cb = function()
+                        self:showPanel("Market")
+                        self:refreshMarket()
+                end },
+                { name = "Kode", label = "Kode", cb = function()
                         self:showPanel("Code")
                 end },
-                { name = "Bantuan", label = "?", color = T.Green, cb = function()
+                { name = "Bantuan", label = "?", cb = function()
                         self:showPanel("Help")
                 end },
         }
         local i = 0
         for _, act in actions do
                 i += 1
-                local rowIdx = math.floor((i - 1) / 3)
-                local colIdx = (i - 1) % 3
-                btn({
+                local rowIdx = math.floor((i - 1) / 4)
+                local colIdx = (i - 1) % 4
+                local b = btn({
                         parent = self.gui,
                         Name = "Btn" .. act.name,
                         AnchorPoint = Vector2.new(1, 0),
-                        Position = UDim2.new(1, -16 - colIdx * 92, 0, 14 + rowIdx * 50),
-                        Size = UDim2.fromOffset(84, 42),
-                        BackgroundColor3 = act.color,
-                        TextColor3 = Color3.fromRGB(30, 30, 36),
+                        Position = UDim2.new(1, -16 - colIdx * 84, 0, 14 + rowIdx * 50),
+                        Size = UDim2.fromOffset(76, 42),
+                        BackgroundColor3 = T.Panel,
+                        BackgroundTransparency = 0.12,
+                        TextColor3 = T.Text,
                         Text = act.label,
-                        _radius = 12,
-                }).Activated:Connect(act.cb)
+                        _radius = 8,
+                })
+                b.Activated:Connect(act.cb)
         end
 
         ---------------------------------------------------------------- tips bawah
@@ -352,6 +376,125 @@ function UIController:buildHud()
                 TextStrokeTransparency = 0.7,
                 Text = "",
         }, self.gui)
+
+        ---------------------------------------------------------------- kompas zona (v9)
+        self.navRows = {}
+        local navTargets = {
+                { name = "Papan Jual", pos = Vector3.new(-10, 0, 16) },
+                { name = "Ladang", pos = Vector3.new(0, 0, -97) },
+                { name = "Hutan", pos = Vector3.new(-122, 0, -8) },
+                { name = "Tambang", pos = Vector3.new(0, 0, 136) },
+                { name = "Gua Kristal", pos = Vector3.new(-170, 0, -175) },
+                { name = "Arena Boss", pos = Vector3.new(150, 0, 92) },
+        }
+        local navHolder = Util.create("Frame", {
+                Name = "Kompas",
+                AnchorPoint = Vector2.new(0, 1),
+                Position = UDim2.new(0, 12, 1, -150),
+                Size = UDim2.fromOffset(170, 6 * 30),
+                BackgroundTransparency = 1,
+                Visible = false,
+        }, self.gui)
+        Util.create("UIListLayout", { Padding = UDim.new(0, 4) }, navHolder)
+        for _, nt in navTargets do
+                local chip = Util.create("Frame", {
+                        Size = UDim2.new(1, 0, 0, 26),
+                        BackgroundColor3 = T.Panel,
+                        BackgroundTransparency = 0.25,
+                        BorderSizePixel = 0,
+                }, navHolder)
+                corner(chip, 6)
+                Util.create("TextLabel", {
+                        Position = UDim2.fromOffset(8, 0),
+                        Size = UDim2.new(0.55, 0, 1, 0),
+                        BackgroundTransparency = 1,
+                        Font = Enum.Font.GothamBold,
+                        TextScaled = true,
+                        TextColor3 = T.TextDim,
+                        TextXAlignment = Enum.TextXAlignment.Left,
+                        Text = nt.name,
+                }, chip)
+                local dist = Util.create("TextLabel", {
+                        AnchorPoint = Vector2.new(1, 0),
+                        Position = UDim2.new(1, -8, 0, 0),
+                        Size = UDim2.new(0.4, 0, 1, 0),
+                        BackgroundTransparency = 1,
+                        Font = Enum.Font.GothamBold,
+                        TextScaled = true,
+                        TextColor3 = T.Gold,
+                        TextXAlignment = Enum.TextXAlignment.Right,
+                        Text = "-",
+                }, chip)
+                self.navRows[nt.name] = { label = dist, pos = nt.pos }
+        end
+        self.navHolder = navHolder
+
+        task.spawn(function()
+                while true do
+                        local char = player.Character
+                        local root = char and char.PrimaryPart
+                        if root then
+                                for name, nav in pairs(self.navRows or {}) do
+                                        nav.label.Text = math.floor((nav.pos - root.Position).Magnitude) .. "m"
+                                end
+                        end
+                        task.wait(0.5)
+                end
+            end)
+        ---------------------------------------------------------------- chip event dunia (v6)
+        self.eventChip = Util.create("TextLabel", {
+                Name = "EventChip",
+                AnchorPoint = Vector2.new(0.5, 0),
+                Position = UDim2.new(0.5, 0, 0, 84),
+                Size = UDim2.fromOffset(360, 40),
+                BackgroundColor3 = T.Panel,
+                BackgroundTransparency = 0.15,
+                Font = Enum.Font.GothamBlack,
+                TextScaled = true,
+                TextColor3 = T.Gold,
+                Text = "",
+                Visible = false,
+        }, self.gui)
+        corner(self.eventChip, 8)
+
+        ---------------------------------------------------------------- tombol skill senjata (v5)
+        self.skillBtns = {}
+        for idx, sk in ipairs(Balance.Skills) do
+                local b = btn({
+                        parent = self.gui,
+                        Name = "Skill" .. sk.id,
+                        AnchorPoint = Vector2.new(1, 1),
+                        Position = UDim2.new(1, -16, 1, -108 - (idx - 1) * 56),
+                        Size = UDim2.fromOffset(200, 46),
+                        BackgroundColor3 = T.Panel,
+                        BackgroundTransparency = 0.12,
+                        TextColor3 = T.Gold,
+                        Text = sk.name,
+                        _radius = 8,
+                        Visible = false,
+                })
+                b.Activated:Connect(function()
+                        local res = Remotes.get("Skill"):InvokeServer({ skillId = sk.id })
+                        self:handleResult(res)
+                        if res and res.ok then
+                                b.TextColor3 = T.Disabled
+                                task.spawn(function()
+                                        for t = sk.cooldown, 1, -1 do
+                                                if not b.Parent then
+                                                        return
+                                                end
+                                                b.Text = sk.name .. " (" .. t .. "s)"
+                                                task.wait(1)
+                                        end
+                                        if b.Parent then
+                                                b.Text = sk.name
+                                                b.TextColor3 = T.Gold
+                                        end
+                                end)
+                        end
+                end)
+                self.skillBtns[sk.id] = b
+        end
 
         ---------------------------------------------------------------- kontainer toast
         self.toastHolder = Util.create("Frame", {
@@ -369,18 +512,19 @@ function UIController:buildHud()
 end
 
 local TIPS = {
-        "Klaim ladang GRATIS di Kawasan Ladang (Utara), lalu tanami bibit!",
+        "Ladang pertama GRATIS! Ladang lain dibeli lunas pakai Micda di Kawasan Ladang (Utara).",
         "Jual hasil panen ke Bu Laris di Pasar Pengepul - harga pasar berubah tiap 10 menit!",
         "Tempa balok besi dari bijih di PAK TEMPA, lalu buat Pedang Besi & Zirah!",
-        "Serang Gelatin Hijau di Padang Timur untuk Gelatin - bahan Zirah Kulit!",
-        "BOSS RAID: Raja Golem muncul di Arena Timur - serang bersama semua pemain!",
+        "Monster berwujud ANGKA dengan AURA berkeliaran - lawan Angka Satu di Padang Timur!",
+        "BOSS RAID: Angka Sang Raja (9) muncul di Arena Timur - serang bersama semua pemain!",
         "Naik level dapat 2 poin stat - buka panel Kar dan bagikan ke STR/VIT/AGI!",
         "Makan Roti Aktif dari Bu Masak untuk lari lebih cepat 12%!",
         "Dagang aman antar pemain: tombol Dagang, dekati partner, undang & SIAP!",
-        "Papan Tugas Harian di alun-alun memberi koin & XP besar - ambil tiap hari!",
-        "Kucing Koin memberi +10% harga jual. Lihat Toko Peliharaan!",
-        "Bonus login harian 100 koin. Datang lagi besok!",
-        "Kuis Kak Pintar di alun-alun memberi koin bonus - sepenuhnya opsional.",
+        "PAPAN JUAL di alun-alun: pasang barang, pemain lain beli - Micda masuk walau kamu offline!",
+        "Papan Tugas Harian di alun-alun memberi Micda & XP besar - ambil tiap hari!",
+        "Kucing Micda memberi +10% harga jual. Lihat Toko Peliharaan!",
+        "Bonus login harian 100 Micda. Datang lagi besok!",
+        "Kuis Kak Pintar di alun-alun memberi Micda bonus - sepenuhnya opsional.",
 }
 
 function UIController:startTips()
@@ -454,6 +598,14 @@ function UIController:renderState()
         self.xpBar.Size = UDim2.fromScale(math.clamp(s.LevelPct, 0.02, 1), 1)
 
         self:renderHudExtras()
+
+        -- v5: tombol skill muncul sesuai level
+        for _, sk in ipairs(Balance.Skills) do
+                local b = self.skillBtns[sk.id]
+                if b then
+                        b.Visible = s.Level >= sk.level
+                end
+        end
 
         -- refresh panel terbuka supaya harga/inv tetap segar
         if self.activePanel == "Shop" and self.shopId then
@@ -702,7 +854,7 @@ function UIController:renderShop()
                                         TextScaled = true,
                                         TextColor3 = T.Text,
                                         TextXAlignment = Enum.TextXAlignment.Left,
-                                        Text = def.name .. " x" .. count .. "  (@" .. unit .. " koin)",
+                                        Text = def.name .. " x" .. count .. "  (@" .. unit .. " Micda)",
                                 }, r)
                                 Util.create("TextLabel", {
                                         Position = UDim2.fromOffset(62, 36),
@@ -809,7 +961,7 @@ function UIController:renderShop()
                         TextScaled = true,
                         TextColor3 = T.TextDim,
                         TextXAlignment = Enum.TextXAlignment.Left,
-                        Text = isCrop and ("Tumbuh " .. item.grow .. "s - jual " .. self:clientPrice(item.sell, item.id) .. " koin")
+                        Text = isCrop and ("Tumbuh " .. item.grow .. "s - jual " .. self:clientPrice(item.sell, item.id) .. " Micda")
                                 or (item.desc or ""),
                 }, r)
                 local buyBtn = btn({
@@ -819,7 +971,7 @@ function UIController:renderShop()
                         Size = UDim2.fromOffset(96, 38),
                         BackgroundColor3 = owned and T.Disabled or T.Gold,
                         TextColor3 = owned and T.Text or Color3.fromRGB(40, 30, 10),
-                        Text = owned and "Milikmu" or (locked and "Lv " .. item.level or item.cost .. " koin"),
+                        Text = owned and "Milikmu" or (locked and "Lv " .. item.level or item.cost .. " Micda"),
                         _radius = 8,
                 })
                 buyBtn.Activated:Connect(function()
@@ -922,7 +1074,7 @@ function UIController:renderPlantPanel()
                         TextScaled = true,
                         TextColor3 = T.TextDim,
                         TextXAlignment = Enum.TextXAlignment.Left,
-                        Text = "Tumbuh " .. crop.grow .. "s - jual " .. self:clientPrice(crop.sell, crop.id) .. " koin",
+                        Text = "Tumbuh " .. crop.grow .. "s - jual " .. self:clientPrice(crop.sell, crop.id) .. " Micda",
                 }, r)
                 btn({
                         parent = r,
@@ -1137,7 +1289,7 @@ function UIController:renderInv()
         for _, u in ipairs(Balance.Usables) do
                 local count = s.Usables[u.id] or 0
                 if count > 0 then
-                        invRow(u.name .. " x" .. count, u.desc .. " - jual @" .. self:clientPrice(u.sell, u.id) .. " koin",
+                        invRow(u.name .. " x" .. count, u.desc .. " - jual @" .. self:clientPrice(u.sell, u.id) .. " Micda",
                                 Color3.fromRGB(u.color[1], u.color[2], u.color[3]),
                                 "Makan",
                                 function()
@@ -1164,7 +1316,7 @@ function UIController:renderInv()
                                 any = true
                                 local color = (def.color and Color3.fromRGB(def.color[1], def.color[2], def.color[3])) or T.Blue
                                 invRow(def.name .. " x" .. count,
-                                        section.title .. " - jual @" .. self:clientPrice(def.sell, id) .. " koin",
+                                        section.title .. " - jual @" .. self:clientPrice(def.sell, id) .. " Micda",
                                         color)
                         end
                 end
@@ -1278,7 +1430,7 @@ function UIController:requestQuiz()
                         end
                         if result.correct then
                                 self.quizFeedback.Text = "BENAR! " .. result.msg
-                                self:toast("Kuis Bonus", "+" .. result.reward .. " koin!", T.Green)
+                                self:toast("Kuis Bonus", "+" .. result.reward .. " Micda!", T.Green)
                                 makeSound(1.3):Play()
                         else
                                 self.quizFeedback.Text = result.msg or "Belum tepat - coba lagi nanti."
@@ -1402,15 +1554,15 @@ function UIController:buildHelpPanel()
                 Text = table.concat({
                         "1. KUMPUL: tanam & panen (Ladang Utara), tebang pohon (Hutan), tambang bijih (Tambang, perlu Belik), mancing (Danau, perlu Pancing).",
                         "2. JUAL: Bu Laris di Pasar Pengepul - harga naik-turun tiap 10 menit, jual saat permintaan tinggi!",
-                        "3. KOMBAT: dekati monster (Gelatin/Serigala/Golem) lalu tekan E untuk menyerang. Monster membalas - makan ramuan bila HP tipis!",
+                        "3. KOMBAT: dekati MONSTER ANGKA (1/2/3/4...) lalu tekan E untuk menyerang. Pukulan lemah - tempa PEDANG supaya sakit!",
                         "4. TEMPAA: kumpulkan bahan, buat Balok Besi di PAK TEMPA, lalu tempa Pedang & Zirah. Pakai di panel Kar.",
                         "5. STAT: tiap naik level = 2 poin. Panel Kar: STR (serangan), VIT (HP), AGI (lari), INT (ramuan), DEX (kritikal).",
                         "6. MASAK: Bu Masak menjual resep - Roti Aktif (lari cepat), Sate Ikan & Ramuan (pulihkan HP).",
-                        "7. BOSS: Raja Golem muncul di Arena Timur tiap ±15 menit. Serang bersama - hadiah sesuai kontribusi, teratas dapat bonus besar!",
-                        "8. TUGAS: Papan Tugas di alun-alun - rotasi harian, hadiah koin+XP besar.",
-                        "9. DAGANG: tombol Dagang, dekati pemain lain, undang, tawar barang/koin, keduanya SIAP -> tukar aman.",
+                        "7. BOSS: ANGKA SANG RAJA (9) muncul di Arena Timur tiap ±15 menit. Serang bersama - hadiah sesuai kontribusi!",
+                        "8. TUGAS: Papan Tugas di alun-alun - rotasi harian, hadiah Micda+XP besar.",
+                        "9. DAGANG: tombol Dagang, dekati pemain lain, undang, tawar barang/Micda, keduanya SIAP -> tukar aman.",
                         "10. LEVEL membuka bibit mahal & resep tempaa. Semua aktivitas memberi XP!",
-                        "11. KUIS Kak Pintar opsional: +20 koin per jawaban benar. Diabaikan juga tidak apa-apa.",
+                        "11. KUIS Kak Pintar opsional: +20 Micda per jawaban benar. Diabaikan juga tidak apa-apa.",
                 }, "\n"),
         }, frame)
 end
@@ -1480,6 +1632,40 @@ function UIController:wireRemotes()
         Remotes.get("OpenTrade").OnClientEvent:Connect(function()
                 self:renderTrade()
                 self:showPanel("Trade")
+        end)
+
+        -- v4: papan jual antar pemain
+        Remotes.get("OpenMarket").OnClientEvent:Connect(function()
+                self:showPanel("Market")
+                self:refreshMarket()
+        end)
+
+        Remotes.get("EventState").OnClientEvent:Connect(function(info)
+                if info.active then
+                        self.eventChip.Visible = true
+                        self.eventChip.Text = "PESTA PANEN - Micda & XP x2!"
+                        task.spawn(function()
+                                while self.eventChip.Visible do
+                                        local left = (info.endsAt or 0) - os.time()
+                                        if left <= 0 then
+                                                break
+                                        end
+                                        self.eventChip.Text = "PESTA PANEN - Micda & XP x2  (" .. math.floor(left / 60) .. ":" .. string.format("%02d", left % 60) .. ")"
+                                        task.wait(1)
+                                end
+                        end)
+                else
+                        self.eventChip.Visible = false
+                end
+        end)
+
+        Remotes.get("MarketSync").OnClientEvent:Connect(function(snap)
+                if type(snap) == "table" then
+                        self.marketSnap = snap
+                        if self.activePanel == "Market" then
+                                self:renderMarket()
+                        end
+                end
         end)
 
         Remotes.get("BossState").OnClientEvent:Connect(function(info)
@@ -1671,13 +1857,16 @@ function UIController:renderChar()
                 swatch(r, eq and Color3.fromRGB(eq.color[1], eq.color[2], eq.color[3]) or T.Disabled,
                         kind == "weapon" and "S" or "Z")
                 local label = kind == "weapon" and "Senjata: " or "Zirah: "
+                local star = (s.EquipStars and s.EquipStars[eqId]) or 0
                 local statText = ""
                 if eq then
-                        statText = kind == "weapon" and ("ATK +" .. eq.atk) or ("DEF +" .. eq.def)
+                        local base = kind == "weapon" and eq.atk or eq.def
+                        statText = (kind == "weapon" and "ATK +" or "DEF +") .. Balance.starScaled(base, star)
+                                .. (star > 0 and ("  +" .. star) or "")
                 end
                 Util.create("TextLabel", {
                         Position = UDim2.fromOffset(62, 8),
-                        Size = UDim2.new(1, -170, 0, 40),
+                        Size = UDim2.new(1, -250, 0, 40),
                         BackgroundTransparency = 1,
                         Font = Enum.Font.GothamBold,
                         TextScaled = true,
@@ -1699,6 +1888,34 @@ function UIController:renderChar()
                                 local res = Remotes.get("Equip"):InvokeServer(kind, "")
                                 self:handleResult(res)
                         end)
+                        -- v8: naikkan bintang (Micda + balok, server yang hitung)
+                        if star < Balance.MaxStar then
+                                local micda = select(1, Balance.upgradeCost(star))
+                                btn({
+                                        parent = r,
+                                        AnchorPoint = Vector2.new(1, 0),
+                                        Position = UDim2.new(1, -96, 0, 10),
+                                        Size = UDim2.fromOffset(84, 34),
+                                        BackgroundColor3 = T.Gold,
+                                        TextColor3 = Color3.fromRGB(40, 30, 10),
+                                        Text = "Naik +" .. (star + 1),
+                                        _radius = 8,
+                                }).Activated:Connect(function()
+                                        local res = Remotes.get("EquipUpgrade"):InvokeServer(eqId)
+                                        self:handleResult(res)
+                                        self:renderChar()
+                                end)
+                                Util.create("TextLabel", {
+                                        AnchorPoint = Vector2.new(1, 1),
+                                        Position = UDim2.new(1, -96, 1, 0),
+                                        Size = UDim2.fromOffset(84, 14),
+                                        BackgroundTransparency = 1,
+                                        Font = Enum.Font.Gotham,
+                                        TextScaled = true,
+                                        TextColor3 = T.TextDim,
+                                        Text = micda .. " Micda + balok",
+                                }, r)
+                        end
                 end
         end
 end
@@ -1839,7 +2056,10 @@ function UIController:renderCraft()
                         TextScaled = true,
                         TextColor3 = canCraft and T.Green or T.TextDim,
                         TextXAlignment = Enum.TextXAlignment.Left,
-                        Text = "Bahan: " .. table.concat(mats, ", ") .. " | Lv " .. recipe.level .. " | +" .. recipe.xp .. " XP",
+                        Text = "Bahan: " .. table.concat(mats, ", ") .. " | Lv " .. recipe.level .. " | +"
+                        .. Balance.craftXpWithMastery(recipe.xp, (s.CraftCount and s.CraftCount[recipe.id]) or 0) .. " XP"
+                        .. (((s.CraftCount and s.CraftCount[recipe.id]) or 0) >= Balance.CraftMasterySteps
+                                and ("  M" .. Balance.craftMasteryLevel((s.CraftCount and s.CraftCount[recipe.id]) or 0)) or ""),
                 }, r)
                 btn({
                         parent = r,
@@ -1946,7 +2166,7 @@ function UIController:renderQuest()
                                 TextColor3 = T.Text,
                                 TextXAlignment = Enum.TextXAlignment.Left,
                                 Text = def.desc .. " - " .. math.min(q.prog, def.goal.count) .. "/" .. def.goal.count
-                                        .. " | hadiah " .. def.reward.coins .. " koin +" .. def.reward.xp .. " XP",
+                                        .. " | hadiah " .. def.reward.coins .. " Micda +" .. def.reward.xp .. " XP",
                         }, r)
                         if q.done then
                                 btn({
@@ -2000,7 +2220,7 @@ function UIController:renderQuest()
                                 TextScaled = true,
                                 TextColor3 = T.TextDim,
                                 TextXAlignment = Enum.TextXAlignment.Left,
-                                Text = def.desc .. " | hadiah " .. def.reward.coins .. " koin +" .. def.reward.xp .. " XP",
+                                Text = def.desc .. " | hadiah " .. def.reward.coins .. " Micda +" .. def.reward.xp .. " XP",
                         }, r)
                         btn({
                                 parent = r,
@@ -2085,6 +2305,308 @@ local function itemNameOf(kind: string, id: string): string
                 end
         end
         return id
+end
+
+--------------------------------------------------------------------
+-- PANEL PAPAN JUAL (v4): pasar antar pemain, mata uang MICDA
+--   Harga pasang bebas; biaya jasa pasar 2% (min 1 Micda) transparan.
+--------------------------------------------------------------------
+
+function UIController:buildMarketPanel()
+	local frame = self:panelFrame("Market", 0.62, 0.74)
+	Util.create("TextLabel", {
+		Name = "Judul",
+		Size = UDim2.new(1, -60, 0, 36),
+		Position = UDim2.fromOffset(18, 10),
+		BackgroundTransparency = 1,
+		Font = Enum.Font.GothamBlack,
+		TextScaled = true,
+		TextColor3 = T.Gold,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Text = "Papan Jual - Micda",
+	}, frame)
+	btn({
+		parent = frame,
+		Name = "Tutup",
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -12, 0, 10),
+		Size = UDim2.fromOffset(40, 34),
+		BackgroundColor3 = T.Red,
+		TextColor3 = Color3.new(1, 1, 1),
+		Text = "X",
+		_radius = 8,
+	}).Activated:Connect(function()
+		self:showPanel(nil)
+	end)
+
+	-- tab strip minimal
+	local strip = Util.create("Frame", {
+		Position = UDim2.fromOffset(18, 52),
+		Size = UDim2.new(1, -36, 0, 34),
+		BackgroundTransparency = 1,
+	}, frame)
+	Util.create("UIListLayout", {
+		FillDirection = Enum.FillDirection.Horizontal,
+		Padding = UDim.new(0, 8),
+	}, strip)
+	self.marketTabBtns = {}
+	for _, tb in { { id = "papan", label = "Papan" }, { id = "jual", label = "Jual Barang" }, { id = "ku", label = "Lelanganku" } } do
+		self.marketTabBtns[tb.id] = btn({
+			parent = strip,
+			Size = UDim2.fromOffset(116, 32),
+			BackgroundColor3 = T.PanelLight,
+			TextColor3 = T.TextDim,
+			Text = tb.label,
+			_radius = 8,
+		})
+		self.marketTabBtns[tb.id].Activated:Connect(function()
+			self.marketTab = tb.id
+			self:renderMarket()
+		end)
+	end
+
+	local scroll = Util.create("ScrollingFrame", {
+		Name = "List",
+		Position = UDim2.fromOffset(18, 94),
+		Size = UDim2.new(1, -36, 1, -112),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		CanvasSize = UDim2.new(),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		ScrollBarThickness = 6,
+	}, frame)
+	Util.create("UIListLayout", { Padding = UDim.new(0, 8) }, scroll)
+	self.marketList = scroll
+end
+
+function UIController:refreshMarket()
+	task.spawn(function()
+		local ok, res = pcall(function()
+			return Remotes.get("MarketAction"):InvokeServer({ action = "browse" })
+		end)
+		if ok and type(res) == "table" and res.ok then
+			self.marketSnap = res
+			if self.activePanel == "Market" then
+				self:renderMarket()
+			end
+		end
+	end)
+end
+
+function UIController:renderMarket()
+	local list = self.marketList
+	for _, child in list:GetChildren() do
+		if child:IsA("Frame") then
+			child:Destroy()
+		end
+	end
+	for id, b in pairs(self.marketTabBtns or {}) do
+		b.BackgroundColor3 = (self.marketTab == id) and T.PanelLight or T.Panel
+		b.TextColor3 = (self.marketTab == id) and T.Gold or T.TextDim
+	end
+	local snap = self.marketSnap or { listings = {}, mine = {}, feeRate = 0.02, feeMin = 1 }
+
+	if self.marketTab == "papan" then
+		Util.create("TextLabel", {
+			Size = UDim2.new(1, -8, 0, 30),
+			BackgroundTransparency = 1,
+			Font = Enum.Font.Gotham,
+			TextScaled = true,
+			TextColor3 = T.TextDim,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Text = "Barang pemain lain. Bayar penuh sekali - tanpa biaya tersembunyi.",
+		}, list)
+		local any = false
+		for _, l in ipairs(snap.listings or {}) do
+			any = true
+			local r = row(list, 56)
+			Util.create("TextLabel", {
+				Position = UDim2.fromOffset(12, 8),
+				Size = UDim2.new(1, -230, 0, 40),
+				BackgroundTransparency = 1,
+				Font = Enum.Font.GothamBold,
+				TextScaled = true,
+				TextColor3 = T.Text,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				Text = itemNameOf(l.kind, l.id) .. " x" .. l.count .. "  -  " .. l.sellerName,
+			}, r)
+			Util.create("TextLabel", {
+				AnchorPoint = Vector2.new(1, 0),
+				Position = UDim2.new(1, -118, 0, 8),
+				Size = UDim2.fromOffset(100, 40),
+				BackgroundTransparency = 1,
+				Font = Enum.Font.GothamBlack,
+				TextScaled = true,
+				TextColor3 = T.Gold,
+				TextXAlignment = Enum.TextXAlignment.Right,
+				Text = Util.formatNumber(l.price),
+			}, r)
+			btn({
+				parent = r,
+				AnchorPoint = Vector2.new(1, 0),
+				Position = UDim2.new(1, -8, 0, 10),
+				Size = UDim2.fromOffset(96, 36),
+				BackgroundColor3 = T.Green,
+				TextColor3 = Color3.fromRGB(20, 32, 26),
+				Text = "Beli",
+				_radius = 8,
+			}).Activated:Connect(function()
+				local res = Remotes.get("MarketAction"):InvokeServer({ action = "buy", lid = l.lid })
+				self:handleResult(res)
+				self:refreshMarket()
+			end)
+		end
+		if not any then
+			local r = row(list, 60)
+			Util.create("TextLabel", {
+				Size = UDim2.fromScale(1, 1),
+				BackgroundTransparency = 1,
+				Font = Enum.Font.Gotham,
+				TextScaled = true,
+				TextColor3 = T.TextDim,
+				Text = "Papan masih kosong - jadilah penjual pertama di tab Jual Barang!",
+			}, r)
+		end
+		return
+	end
+
+	if self.marketTab == "jual" then
+		Util.create("TextLabel", {
+			Size = UDim2.new(1, -8, 0, 30),
+			BackgroundTransparency = 1,
+			Font = Enum.Font.Gotham,
+			TextScaled = true,
+			TextColor3 = T.TextDim,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Text = "Tentukan harga (Micda). Jasa pasar " .. math.floor((snap.feeRate or 0.02) * 100) .. "% dipotong dari hasil jualmu.",
+		}, list)
+		local s = self.state
+		if s then
+			local sections = {
+				{ kind = "seed", data = s.Seeds },
+				{ kind = "crop", data = s.Crops },
+				{ kind = "bag", data = s.Bag },
+				{ kind = "fish", data = s.Fish },
+				{ kind = "equip", data = s.Equips },
+				{ kind = "use", data = s.Usables },
+			}
+			local any = false
+			for _, section in sections do
+				for id, count in section.data do
+					if count <= 0 then
+						continue
+					end
+					any = true
+					local r = row(list, 56)
+					Util.create("TextLabel", {
+						Position = UDim2.fromOffset(12, 8),
+						Size = UDim2.new(1, -300, 0, 40),
+						BackgroundTransparency = 1,
+						Font = Enum.Font.GothamBold,
+						TextScaled = true,
+						TextColor3 = T.Text,
+						TextXAlignment = Enum.TextXAlignment.Left,
+						Text = itemNameOf(section.kind, id) .. " x" .. count,
+					}, r)
+					local priceBox = Util.create("TextBox", {
+						AnchorPoint = Vector2.new(1, 0),
+						Position = UDim2.new(1, -118, 0, 10),
+						Size = UDim2.fromOffset(110, 36),
+						BackgroundColor3 = T.PanelLight,
+						TextColor3 = T.Gold,
+						Font = Enum.Font.GothamBold,
+						TextScaled = true,
+						PlaceholderText = "Harga",
+						ClearTextOnFocus = true,
+						Text = "",
+					}, r)
+					corner(priceBox, 8)
+					btn({
+						parent = r,
+						AnchorPoint = Vector2.new(1, 0),
+						Position = UDim2.new(1, -8, 0, 10),
+						Size = UDim2.fromOffset(100, 36),
+						BackgroundColor3 = T.Gold,
+						TextColor3 = Color3.fromRGB(40, 30, 10),
+						Text = "Pasang",
+						_radius = 8,
+					}).Activated:Connect(function()
+						local price = tonumber(priceBox.Text)
+						if not price or price < 1 then
+							self:toast("Papan Jual", "Tulis harga dulu (Micda).", T.Red)
+							return
+						end
+						local res = Remotes.get("MarketAction"):InvokeServer({ action = "list", kind = section.kind, id = id, count = count, price = math.floor(price) })
+						self:handleResult(res)
+						self:refreshMarket()
+					end)
+				end
+			end
+			if not any then
+				local r = row(list, 60)
+				Util.create("TextLabel", {
+					Size = UDim2.fromScale(1, 1),
+					BackgroundTransparency = 1,
+					Font = Enum.Font.Gotham,
+					TextScaled = true,
+					TextColor3 = T.TextDim,
+					Text = "Tasmu kosong. Panen, tambang, memancing, atau kalahkan monster dulu!",
+				}, r)
+			end
+		end
+		return
+	end
+
+	-- LELANGANKU
+	Util.create("TextLabel", {
+		Size = UDim2.new(1, -8, 0, 30),
+		BackgroundTransparency = 1,
+		Font = Enum.Font.Gotham,
+		TextScaled = true,
+		TextColor3 = T.TextDim,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Text = "Barangmu yang sedang dipajang:",
+	}, list)
+	local any = false
+	for _, l in ipairs(snap.mine or {}) do
+		any = true
+		local r = row(list, 56)
+		Util.create("TextLabel", {
+			Position = UDim2.fromOffset(12, 8),
+			Size = UDim2.new(1, -220, 0, 40),
+			BackgroundTransparency = 1,
+			Font = Enum.Font.GothamBold,
+			TextScaled = true,
+			TextColor3 = T.Text,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Text = itemNameOf(l.kind, l.id) .. " x" .. l.count .. "  @  " .. Util.formatNumber(l.price),
+		}, r)
+		btn({
+			parent = r,
+			AnchorPoint = Vector2.new(1, 0),
+			Position = UDim2.new(1, -8, 0, 10),
+			Size = UDim2.fromOffset(120, 36),
+			BackgroundColor3 = T.Red,
+			TextColor3 = Color3.new(1, 1, 1),
+			Text = "Tarik",
+			_radius = 8,
+		}).Activated:Connect(function()
+			local res = Remotes.get("MarketAction"):InvokeServer({ action = "cancel", lid = l.lid })
+			self:handleResult(res)
+			self:refreshMarket()
+		end)
+	end
+	if not any then
+		local r = row(list, 60)
+		Util.create("TextLabel", {
+			Size = UDim2.fromScale(1, 1),
+			BackgroundTransparency = 1,
+			Font = Enum.Font.Gotham,
+			TextScaled = true,
+			TextColor3 = T.TextDim,
+			Text = "Belum ada barang dipajang. Hasil jual diantar walau kamu offline!",
+		}, r)
+	end
 end
 
 function UIController:renderTrade()
@@ -2216,7 +2738,7 @@ function UIController:renderTrade()
                                 end
                         end
                 end
-                -- koin
+                -- Micda
                 local coinRow = row(list, 56)
                 Util.create("TextLabel", {
                         Position = UDim2.fromOffset(12, 8),
@@ -2226,7 +2748,7 @@ function UIController:renderTrade()
                         TextScaled = true,
                         TextColor3 = T.Gold,
                         TextXAlignment = Enum.TextXAlignment.Left,
-                        Text = "Koinmu: " .. Util.formatNumber(snap.me.coins or 0),
+                        Text = "Micdamu: " .. Util.formatNumber(snap.me.coins or 0),
                 }, coinRow)
                 Util.create("TextLabel", {
                         AnchorPoint = Vector2.new(1, 0),
@@ -2237,7 +2759,7 @@ function UIController:renderTrade()
                         TextScaled = true,
                         TextColor3 = T.Blue,
                         TextXAlignment = Enum.TextXAlignment.Right,
-                        Text = "Koin lawan: " .. Util.formatNumber(snap.partner.coins or 0),
+                        Text = "Micda lawan: " .. Util.formatNumber(snap.partner.coins or 0),
                 }, coinRow)
                 local coinInput = Util.create("TextBox", {
                         Position = UDim2.fromOffset(12, 8),
@@ -2246,7 +2768,7 @@ function UIController:renderTrade()
                         TextColor3 = T.Text,
                         Font = Enum.Font.GothamBold,
                         TextScaled = true,
-                        PlaceholderText = "koin...",
+                        PlaceholderText = "Micda...",
                         ClearTextOnFocus = true,
                         Text = "",
                 }, coinRow)

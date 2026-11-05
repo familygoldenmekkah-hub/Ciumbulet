@@ -100,11 +100,21 @@ local function onCraft(player: Player, recipeId: any)
                 end
         end
         -- potong bahan
+        local data = DataService.get(player)
         for matId, count in pairs(recipe.recipe) do
                 DataService.takeItem(player, "bag", matId, count)
         end
         DataService.giveItem(player, recipe.kind, recipe.out, recipe.count)
-        DataService.addXP(player, recipe.xp)
+        -- v10 mastery: tiap 10x resep sama menaikkan bonus XP (maks +50%)
+        local prevCount = (data.CraftCount and data.CraftCount[recipe.id]) or 0
+        data.CraftCount[recipe.id] = prevCount + 1
+        local gainedXp = Balance.craftXpWithMastery(recipe.xp, prevCount + 1)
+        DataService.addXP(player, gainedXp)
+        local masteryLevel = Balance.craftMasteryLevel(prevCount + 1)
+        if masteryLevel > Balance.craftMasteryLevel(prevCount) then
+                Remotes.get("Notify"):FireClient(player, "MASTERY NAIK!",
+                        nameOf(recipe.kind, recipe.out) .. " mastery " .. masteryLevel .. " - XP craft +" .. math.floor((Balance.CraftMasteryXpMult - 1) * math.min(masteryLevel, 3) * 100) .. "%!")
+        end
 
         local hook = recipe.station == "tempa" and "craft" or "cook"
         QuestService.progress(player, hook, 1)
@@ -112,7 +122,8 @@ local function onCraft(player: Player, recipeId: any)
         DataService.push(player)
         return {
                 ok = true,
-                msg = recipe.count .. "x " .. nameOf(recipe.kind, recipe.out) .. " selesai! (+" .. recipe.xp .. " XP)",
+                msg = recipe.count .. "x " .. nameOf(recipe.kind, recipe.out) .. " selesai! (+" .. gainedXp .. " XP"
+                        .. (masteryLevel > 0 and ("  M" .. masteryLevel) or "") .. ")",
         }
 end
 

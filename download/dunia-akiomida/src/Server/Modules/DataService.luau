@@ -1,7 +1,7 @@
 --!nonstrict
 --[[
         DataService.luau - data pemain v2 "Ekonomi Hidup":
-        koin, XP, bibit, hasil panen, sumber daya, ikan, alat, peliharaan.
+        Micda, XP, bibit, hasil panen, sumber daya, ikan, alat, peliharaan.
         DataStore + autosave + snapshot state untuk client.
 ]]
 
@@ -55,12 +55,15 @@ local function defaultData(): { [string]: any }
                 Stats = { str = 0, vit = 0, agi = 0, int = 0, dex = 0 },
                 StatPoints = 0, -- poin gratis dari naik level
                 Equips = {},
+                EquipStars = {}, -- v8: level upgrade +1..+5 per equip
+                CraftCount = {}, -- v10: jumlah tiap resep dibuat (mastery)
                 Usables = {},
                 Equipped = { weapon = "", armor = "" },
                 Buff = { kind = "", expiry = 0 },
                 Quest = { id = "", prog = 0, acceptedAt = 0, done = false },
                 TotalEarned = 0,
                 LastLoginDay = 0,
+                Streak = 0, -- v9: rantai login harian
                 Dev = false,
                 LastSeen = 0,
         }
@@ -77,6 +80,7 @@ local function sanitize(raw: any): { [string]: any }
         end
         out.Coins = sanitizeCount(raw.Coins)
         out.XP = sanitizeCount(raw.XP)
+        out.Streak = math.clamp(math.floor(tonumber(raw.Streak) or 0), 0, 999)
         for kind, field in KIND_FIELD do
                 if type(raw[field]) == "table" then
                         out[field] = {} -- timpa default supaya inventaris lama dihormati
@@ -84,6 +88,20 @@ local function sanitize(raw: any): { [string]: any }
                                 if type(id) == "string" then
                                         out[field][id] = sanitizeCount(count)
                                 end
+                        end
+                end
+        end
+        if type(raw.CraftCount) == "table" then
+                for id, n in raw.CraftCount do
+                        if type(id) == "string" then
+                                out.CraftCount[id] = math.clamp(math.floor(tonumber(n) or 0), 0, 9999)
+                        end
+                end
+        end
+        if type(raw.EquipStars) == "table" then
+                for id, star in raw.EquipStars do
+                        if type(id) == "string" then
+                                out.EquipStars[id] = math.clamp(math.floor(tonumber(star) or 0), 0, 5)
                         end
                 end
         end
@@ -234,12 +252,12 @@ function DataService.push(player: Player)
         end
         local data = DataService.get(player)
 
-        -- sinkronkan leaderstats Roblox (Koin + XP)
+        -- sinkronkan leaderstats Roblox (Micda + XP)
         local stats = player:FindFirstChild("leaderstats")
         if stats then
-                local koin = stats:FindFirstChild("Koin")
-                if koin and koin:IsA("IntValue") then
-                        koin.Value = math.floor(data.Coins)
+                local Micda = stats:FindFirstChild("Micda")
+                if Micda and Micda:IsA("IntValue") then
+                        Micda.Value = math.floor(data.Coins)
                 end
                 local xp = stats:FindFirstChild("XP")
                 if xp and xp:IsA("IntValue") then
@@ -284,6 +302,8 @@ function DataService.push(player: Player)
                 Stats = Util.deepCopy(data.Stats),
                 StatPoints = data.StatPoints,
                 Equips = Util.deepCopy(data.Equips),
+                EquipStars = Util.deepCopy(data.EquipStars),
+                CraftCount = Util.deepCopy(data.CraftCount),
                 Usables = Util.deepCopy(data.Usables),
                 Equipped = Util.deepCopy(data.Equipped),
                 Buff = Util.deepCopy(data.Buff),
@@ -291,6 +311,7 @@ function DataService.push(player: Player)
                 Plot = okPlot and plotState or { claimed = false, tiles = {} },
                 Demand = okDemand and demand or {},
                 Dev = data.Dev,
+                Streak = data.Streak,
         })
 end
 

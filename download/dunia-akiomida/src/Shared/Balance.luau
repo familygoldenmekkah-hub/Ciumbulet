@@ -27,12 +27,12 @@ Balance.MaxHpBase = 100
 -- PERALATAN TEMPAA (bahan -> senjata/zirah; semua original)
 --------------------------------------------------------------------
 Balance.Equipment = {
-        -- senjata (atk = serangan tambahan)
-        { id = "pedang_kayu", name = "Pedang Kayu", kind = "weapon", atk = 6, def = 0, level = 1, price = 90,
-                recipe = { kayu = 8 }, color = { 150, 108, 66 }, desc = "Pedang pemula dari kayu hutan." },
-        { id = "pedang_besi", name = "Pedang Besi", kind = "weapon", atk = 14, def = 0, level = 4, price = 320,
+        -- senjata (atk = serangan tambahan) - pedang JAUH lebih sakit dari pukulan
+        { id = "pedang_kayu", name = "Pedang Kayu", kind = "weapon", atk = 11, def = 0, level = 1, price = 90,
+                recipe = { kayu = 8 }, color = { 150, 108, 66 }, desc = "Pedang pemula dari kayu hutan. Jauh lebih sakit dari pukulan." },
+        { id = "pedang_besi", name = "Pedang Besi", kind = "weapon", atk = 24, def = 0, level = 4, price = 320,
                 recipe = { kayu = 6, balok_besi = 3 }, color = { 200, 200, 210 }, desc = "Tajam kokoh dari balok besi." },
-        { id = "pedang_kristal", name = "Pedang Kristal", kind = "weapon", atk = 26, def = 0, level = 7, price = 950,
+        { id = "pedang_kristal", name = "Pedang Kristal", kind = "weapon", atk = 42, def = 0, level = 7, price = 950,
                 recipe = { balok_besi = 5, kristal = 3 }, color = { 190, 120, 255 }, desc = "Bercahaya ungu, membelah udara." },
         -- zirah (def = pertahanan)
         { id = "zirah_kulit", name = "Zirah Kulit", kind = "armor", atk = 0, def = 8, level = 2, price = 110,
@@ -42,6 +42,39 @@ Balance.Equipment = {
         { id = "zirah_kristal", name = "Zirah Kristal", kind = "armor", atk = 0, def = 28, level = 8, price = 1050,
                 recipe = { inti = 2, kristal = 5 }, color = { 210, 150, 255 }, desc = "Kristal hidup melindungi pemakainya." },
 }
+
+--------------------------------------------------------------------
+-- UPGRADE PERALATAN (v8): +1..+5, tiap bintang +12% ATK/DEF
+--   Biaya naik kuadrat - sink ekonomi Micda & balok tempaan.
+--------------------------------------------------------------------
+Balance.MaxStar = 5
+Balance.StarBonus = 0.12
+
+-- v10 MASTERY CRAFT: tiap 10x resep sama = MASTER (+50% XP craft resep itu)
+Balance.CraftMasterySteps = 10
+Balance.CraftMasteryXpMult = 1.5
+
+function Balance.craftMasteryLevel(count: number): number
+        return math.floor(math.max(0, count) / Balance.CraftMasterySteps)
+end
+
+function Balance.craftXpWithMastery(baseXp: number, count: number): number
+        local lvl = Balance.craftMasteryLevel(count)
+        return math.floor(baseXp * (1 + (Balance.CraftMasteryXpMult - 1) * math.min(lvl, 3)))
+end
+
+--- biaya naik ke bintang (star+1): { micda, mat, matCount }
+function Balance.upgradeCost(star: number): (number, string, number)
+        if star <= 2 then
+                return 150 * (star + 1) * (star + 1), "balok_besi", star + 1
+        end
+        return 150 * (star + 1) * (star + 1), "balok_kristal", star - 1
+end
+
+--- ATK/DEF efektif dengan bintang
+function Balance.starScaled(base: number, star: number): number
+        return math.floor(base * (1 + Balance.StarBonus * math.clamp(star, 0, Balance.MaxStar)))
+end
 
 --------------------------------------------------------------------
 -- RESEP STASIUN CRAFT
@@ -93,33 +126,55 @@ Balance.Usables = {
 --------------------------------------------------------------------
 -- MONSTER (semua makhluk original Dunia Akiomida)
 --------------------------------------------------------------------
+-- v4 MAKHLUK ANGKA: setiap monster berwujud ANGKA raksasa dikelilingi AURA
+-- (angka = kekuatannya; makin besar angka, makin berbahaya). 100% original.
 Balance.Monsters = {
-        { id = "gelatin", name = "Gelatin Hijau", hp = 34, atk = 6, def = 0, speed = 10, xp = 9,
+        { id = "gelatin", name = "Angka Satu", hp = 34, atk = 6, def = 0, speed = 10, xp = 9,
                 respawn = 35, aggro = 16, coin = { 2, 6 },
                 drops = { { id = "gel", chance = 0.65, min = 1, max = 2 } },
                 zone = "padang", level = 1,
-                body = { color = { 130, 220, 120 }, size = 4.2, shape = "ball" } },
-        { id = "serigala", name = "Serigala Bayang", hp = 60, atk = 11, def = 2, speed = 17, xp = 16,
+                body = { color = { 130, 220, 120 }, size = 4.2, digit = "1", aura = { 130, 220, 120 } } },
+        { id = "serigala", name = "Angka Dua", hp = 60, atk = 11, def = 2, speed = 17, xp = 16,
                 respawn = 45, aggro = 20, coin = { 4, 10 },
                 drops = { { id = "taring", chance = 0.55, min = 1, max = 2 }, { id = "gel", chance = 0.15, min = 1, max = 1 } },
                 zone = "hutan", level = 3,
-                body = { color = { 90, 92, 120 }, size = 3.4, shape = "box" } },
-        { id = "golem", name = "Golem Batu", hp = 120, atk = 17, def = 6, speed = 8, xp = 28,
+                body = { color = { 150, 155, 205 }, size = 5, digit = "2", aura = { 150, 155, 205 } } },
+        { id = "golem", name = "Angka Empat", hp = 120, atk = 17, def = 6, speed = 8, xp = 28,
                 respawn = 60, aggro = 15, coin = { 8, 18 },
                 drops = { { id = "inti", chance = 0.35, min = 1, max = 1 }, { id = "batu", chance = 0.8, min = 2, max = 3 } },
                 zone = "tambang", level = 5,
-                body = { color = { 120, 120, 128 }, size = 5.5, shape = "box" } },
-        { id = "gelatin_raksasa", name = "Gelatin Raksasa", hp = 260, atk = 22, def = 4, speed = 7, xp = 70,
+                body = { color = { 255, 170, 90 }, size = 6, digit = "4", aura = { 255, 170, 90 } } },
+        { id = "angka_tiga", name = "Angka Tiga", hp = 48, atk = 8, def = 1, speed = 12, xp = 12,
+                respawn = 40, aggro = 17, coin = { 3, 8 },
+                drops = { { id = "gel", chance = 0.5, min = 1, max = 2 }, { id = "apel", chance = 0.35, min = 1, max = 2 } },
+                zone = "padang", level = 2,
+                body = { color = { 120, 200, 235 }, size = 4.6, digit = "3", aura = { 120, 200, 235 } } },
+        { id = "angka_lima", name = "Angka Lima", hp = 92, atk = 14, def = 3, speed = 15, xp = 20,
+                respawn = 50, aggro = 19, coin = { 5, 12 },
+                drops = { { id = "taring", chance = 0.5, min = 1, max = 2 }, { id = "kayu", chance = 0.4, min = 1, max = 3 } },
+                zone = "hutan", level = 4,
+                body = { color = { 225, 130, 200 }, size = 5.4, digit = "5", aura = { 225, 130, 200 } } },
+        { id = "angka_enam", name = "Angka Enam", hp = 185, atk = 20, def = 8, speed = 9, xp = 36,
+                respawn = 65, aggro = 16, coin = { 10, 22 },
+                drops = { { id = "inti", chance = 0.4, min = 1, max = 1 }, { id = "besi", chance = 0.7, min = 1, max = 3 } },
+                zone = "tambang", level = 6,
+                body = { color = { 160, 230, 150 }, size = 6.5, digit = "6", aura = { 160, 230, 150 } } },
+        { id = "angka_delapan", name = "Angka Delapan", hp = 430, atk = 27, def = 6, speed = 8, xp = 95,
+                respawn = 110, aggro = 24, coin = { 28, 60 },
+                drops = { { id = "kristal", chance = 0.45, min = 1, max = 2 }, { id = "gel", chance = 1.0, min = 3, max = 5 } },
+                zone = "arena", level = 9, elite = true,
+                body = { color = { 255, 230, 110 }, size = 8, digit = "8", aura = { 255, 230, 110 } } },
+        { id = "gelatin_raksasa", name = "Angka Tujuh", hp = 260, atk = 22, def = 4, speed = 7, xp = 70,
                 respawn = 90, aggro = 22, coin = { 20, 45 },
                 drops = { { id = "gel", chance = 1.0, min = 3, max = 6 }, { id = "inti", chance = 0.2, min = 1, max = 1 } },
                 zone = "arena", level = 7, elite = true,
-                body = { color = { 90, 200, 220 }, size = 8, shape = "ball" } },
+                body = { color = { 90, 200, 220 }, size = 7.5, digit = "7", aura = { 90, 200, 220 } } },
 }
 
 -- BOSS RAID: muncul di Arena Timur, semua pemain berburu bersama
 Balance.Boss = {
         id = "raja_golem",
-        name = "RAJA GOLEM",
+        name = "ANGKA SANG RAJA",
         hp = 3200,
         atk = 30,
         def = 10,
@@ -130,7 +185,7 @@ Balance.Boss = {
         xp = 220,
         coin = { 150, 320 },
         drops = { { id = "inti", chance = 1, min = 3, max = 5 }, { id = "kristal", chance = 1, min = 2, max = 4 } },
-        body = { color = { 100, 100, 115 }, size = 11, shape = "box" },
+        body = { color = { 255, 110, 60 }, size = 11, digit = "9", aura = { 255, 110, 60 } },
         -- hadiah partisipasi dibagi proporsional damage
         participationCoin = 40,
         participationXp = 30,
@@ -138,13 +193,46 @@ Balance.Boss = {
 }
 
 --------------------------------------------------------------------
+-- EVENT DUNIA TERJADWAL (v6): "PESTA PANEN" - momen multiplayer rame
+--   Setiap PERIOD detik, selama DURATION detik semua monster & panen
+--   memberi Micda/XP ganda - server mengumumkan agar pemain berkumpul.
+--------------------------------------------------------------------
+Balance.Event = {
+        name = "PESTA PANEN",
+        period = 1800, -- tiap 30 menit
+        duration = 300, -- berlangsung 5 menit
+        coinMult = 2,
+        xpMult = 2,
+}
+
+--------------------------------------------------------------------
+-- SKILL SENJATA (v5): aktif, cooldown, butuh pedang. Server-validated.
+--------------------------------------------------------------------
+Balance.Skills = {
+        { id = "tebasan_kuat", name = "Tebasan Kuat", mult = 2.2, cooldown = 8, level = 2,
+                desc = "Tebasan 220% ke angka terdekat. Butuh pedang." },
+        { id = "sabetan_putar", name = "Sabetan Putar", mult = 1.5, cooldown = 15, level = 5, aoe = true,
+                desc = "Putaran 150% ke SEMUA angka di sekitar. Butuh pedang." },
+}
+
+--------------------------------------------------------------------
 -- ZONA SPAWN MONSTER (dipakai CombatService + MapService dekorasi)
 --------------------------------------------------------------------
+-- HARGA LAHAN (syariah: bayar penuh di muka, TANPA bunga/cicilan/riba).
+-- Ladang 1 gratis untuk semua pemain; ladang lain dibeli dengan MICDA.
+Balance.LandPrices = { [2] = 400, [3] = 1200, [4] = 3000, [5] = 8000, [6] = 20000 }
+
 Balance.Zones = {
-        { id = "padang", name = "Padang Timur", center = { 62, 0, 26 }, radius = 44, monsters = { { id = "gelatin", count = 6 } } },
-        { id = "hutan", name = "Hutan Kayu", center = { -122, 0, -8 }, radius = 40, monsters = { { id = "serigala", count = 5 } } },
-        { id = "tambang", name = "Tambang Selatan", center = { 0, 0, 136 }, radius = 36, monsters = { { id = "golem", count = 4 } } },
-        { id = "arena", name = "Arena Timur", center = { 150, 0, 92 }, radius = 38, monsters = { { id = "gelatin_raksasa", count = 2 } } },
+        { id = "padang", name = "Padang Timur", center = { 62, 0, 26 }, radius = 44,
+                monsters = { { id = "gelatin", count = 5 }, { id = "angka_tiga", count = 3 } } },
+        { id = "hutan", name = "Hutan Kayu", center = { -122, 0, -8 }, radius = 40,
+                monsters = { { id = "serigala", count = 4 }, { id = "angka_lima", count = 3 } } },
+        { id = "tambang", name = "Tambang Selatan", center = { 0, 0, 136 }, radius = 36,
+                monsters = { { id = "golem", count = 3 }, { id = "angka_enam", count = 3 } } },
+        { id = "arena", name = "Arena Timur", center = { 150, 0, 92 }, radius = 38,
+                monsters = { { id = "gelatin_raksasa", count = 2 }, { id = "angka_delapan", count = 2 } } },
+        { id = "gua", name = "Gua Kristal", center = { -170, 0, -175 }, radius = 30,
+                monsters = { { id = "angka_delapan", count = 3 }, { id = "angka_enam", count = 2 } } },
 }
 
 --------------------------------------------------------------------
@@ -222,9 +310,16 @@ end
 -- RUMUS KOMBAT (murni - diuji offline)
 --------------------------------------------------------------------
 
---- Serangan pemain: senjata + STR + DEX + level (Toram-like scaling)
+--- Serangan pemain: senjata + STR + DEX + level (Toram-like scaling).
+--- PUKULAN TELANJANG (tanpa senjata) lemah: total dikali FIST_MULT.
+Balance.FistMult = 0.45
+
 function Balance.playerAttack(args: { weaponAtk: number, str: number, dex: number, int: number, level: number }): number
-        return math.floor(5 + (args.weaponAtk or 0) + args.str * 2 + args.dex * 0.6 + args.int * 1.5 + args.level * 1.2)
+        local total = 5 + (args.weaponAtk or 0) + args.str * 2 + args.dex * 0.6 + args.int * 1.5 + args.level * 1.2
+        if (args.weaponAtk or 0) <= 0 then
+                total = 5 + (total - 5) * Balance.FistMult
+        end
+        return math.floor(total)
 end
 
 --- Peluang kritikal (DEX membantu), maksimum 45%

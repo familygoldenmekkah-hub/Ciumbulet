@@ -3,7 +3,7 @@
 	QuizService.luau - KUIS OPSIONAL.
 	Kuis BUKAN lagi inti gameplay: tidak ada popup paksa, tidak ada zona
 	terkunci. Hanya Kak Pintar di alun-alun yang menawarkan soal bonus -
-	penjumlahan buatan sendiri (original) dengan hadiah koin. Pemain yang
+	penjumlahan buatan sendiri (original) dengan hadiah Micda. Pemain yang
 	hanya mau bertani/mengelana bisa mengabaikannya sepenuhnya.
 	Juga menangani kode penjelajah (server-only via DevCodeVault).
 ]]
@@ -128,7 +128,7 @@ local function onRedeemDevCode(player: Player, code: any)
 	DataService.markDirty(player)
 	DataService.push(player)
 	Remotes.get("Notify"):FireClient(player, "Penjelajah Dev",
-		"Kode diterima! +5.000 koin & +500 XP. Selamat datang kembali, pembuat dunia!")
+		"Kode diterima! +5.000 Micda & +500 XP. Selamat datang kembali, pembuat dunia!")
 	return true, "Kode diterima! Hadiah dev masuk."
 end
 

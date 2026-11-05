@@ -1,6 +1,6 @@
 --!nonstrict
 --[[
-	Config.luau - DUNIA AKIOMIDA v3 "Toram-grade Economy World"
+	Config.luau - DUNIA AKIOMIDA v3 "MICDA Economy World"
 	MMO petualangan: bertani, mengumpulkan, memancing, KOMBAT, MEMADAI
 	(crafting dari material), STAT & PERALATAN, TUGAS, BOSS RAID,
 	dagang antar pemain. Seluruh konten karya original, tanpa aset pihak ketiga.
@@ -11,7 +11,7 @@ local Config = {}
 Config.Game = {
 	Name = "Dunia Akiomida",
 	Tagline = "Petualangan & Ekonomi",
-	Version = "3.0.0",
+	Version = "6.0.0",
 }
 
 --------------------------------------------------------------------
@@ -20,7 +20,7 @@ Config.Game = {
 Config.Economy = {
 	StartCoins = 50,
 	StartSeeds = { wortel = 3 },
-	DailyBonus = 100, -- koin bonus login per hari
+	DailyBonus = 100, -- Micda bonus login per hari
 	WaterBoost = 0.25, -- siraman memangkas 25% sisa waktu tanaman
 	MarketPeriod = 600, -- permintaan pasar berganti tiap 10 menit
 	QuizRewardCoins = 20,
@@ -45,7 +45,7 @@ function Config.Level.thresholdOf(level: number): number
 end
 
 --------------------------------------------------------------------
--- BIBIT & HASIL PANEN (harga = koin; grow = detik; level = syarat)
+-- BIBIT & HASIL PANEN (harga = Micda; grow = detik; level = syarat)
 --------------------------------------------------------------------
 Config.Crops = {
 	{ id = "wortel", name = "Wortel", cost = 5, grow = 25, sell = 12, level = 1, color = { 255, 152, 60 } },
@@ -66,8 +66,8 @@ Config.Resources = {
 	{ id = "kristal", name = "Kristal", sell = 45 },
 	-- drop monster (bahan craft & jualan)
 	{ id = "gel", name = "Gelatin", sell = 9, color = { 130, 220, 120 } },
-	{ id = "taring", name = "Taring Serigala", sell = 16, color = { 240, 240, 235 } },
-	{ id = "inti", name = "Inti Golem", sell = 38, color = { 255, 160, 80 } },
+	{ id = "taring", name = "Pecahan Angka 2", sell = 16, color = { 240, 240, 235 } },
+	{ id = "inti", name = "Inti Angka", sell = 38, color = { 255, 160, 80 } },
 	-- hasil tempa (ingot) untuk senjata & zirah
 	{ id = "balok_besi", name = "Balok Besi", sell = 55, color = { 200, 200, 210 } },
 	{ id = "balok_kristal", name = "Balok Kristal", sell = 145, color = { 190, 120, 255 } },
@@ -98,7 +98,7 @@ Config.Tools = {
 -- PELIHARAAN (bonus harga jual, satu yang aktif)
 --------------------------------------------------------------------
 Config.Pets = {
-	{ id = "kucing", name = "Kucing Koin", cost = 500, bonus = 0.10, color = { 255, 190, 90 }, desc = "Bonus jual +10%" },
+	{ id = "kucing", name = "Kucing Micda", cost = 500, bonus = 0.10, color = { 255, 190, 90 }, desc = "Bonus jual +10%" },
 	{ id = "panda", name = "Panda Martabak", cost = 2500, bonus = 0.25, color = { 240, 240, 245 }, desc = "Bonus jual +25%" },
 	{ id = "naga", name = "Naga Emas", cost = 10000, bonus = 0.50, color = { 255, 215, 0 }, desc = "Bonus jual +50%" },
 }

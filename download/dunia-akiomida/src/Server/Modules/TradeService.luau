@@ -2,7 +2,7 @@
 --[[
         TradeService.luau - v3 dagang antar pemain (gaya MMO klasik):
           - Undang pemain terdekat via panel (validasi jarak & data)
-          - Dua sisi menawar barang & koin, lalu keduanya "SIAP"
+          - Dua sisi menawar barang & Micda, lalu keduanya "SIAP"
           - Eksekusi atomik & tervalidasi di server (anti-scam dasar)
           - Perubahan tawaran kapan pun mereset status SIAP kedua sisi
           - TradeSync: snapshot langsung ke kedua sisi setiap perubahan
@@ -93,7 +93,7 @@ local function executeTrade(session: any)
                 return
         end
         if not canDeliver(a, session.offerA, session.coinsA) or not canDeliver(b, session.offerB, session.coinsB) then
-                closeSession(session, "Dagangan gagal - barang/koin berubah saat dagang.")
+                closeSession(session, "Dagangan gagal - barang/Micda berubah saat dagang.")
                 pushSync(session)
                 return
         end

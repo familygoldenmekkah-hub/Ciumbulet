@@ -1,12 +1,31 @@
-# DUNIA AKIOMIDA v3 — "Toram-grade Economy World" (Roblox)
+# DUNIA AKIOMIDA v6.0 — "MICDA Economy World" (Roblox)
 
-Status: LIVE di Roblox (versionNumber 10, 5 Nov 2026)
+Status: LIVE di Roblox (versionNumber 19, 5 Nov 2026 — 8 publish dalam satu siklus mandiri)
 Universe: 10774464946 · Place: 77626159664192
-Build: `tools/rojo build --output build/DuniaAkiomida.rbxlx .` (335 KB, 20 modul, luau-lsp 0 TypeError, tes offline 24/24 PASS)
+Build: `tools/rojo build --output build/DuniaAkiomida.rbxlx .` (luau-lsp 0 TypeError, tes offline 25 PASS, 0 FAIL)
 
-Skor banding Toram/Growtopia: **56/100** — lihat `RUBRIC.md` (roadmap ke 100).
+Skor banding Toram/Growtopia: **76/100** — lihat `RUBRIC.md`.
 
-## Isi v3 (di atas fondasi ekonomi v2)
+## Riwayat siklus mandiri (tanpa menunggu owner, v12→v19)
+
+| Ver | Isi |
+|-----|-----|
+| v12 | Monster ANGKA BERSAURA (1/2/4/7 + boss 9) dengan aura, fix part tercecer (PivotTo), pukulan x0.45 vs pedang, PAPAN JUAL antar pemain + uang MICDA, lahan 1 gratis 5 bayar lunas, UI minimal flat, StreamingEnabled + trim 34 PointLight. |
+| v13 | +4 spesies angka (3,5,6,8) campur zona, 2 SKILL SENJATA (Tebasan Kuat, Sabetan Putar AoE) dengan tombol HUD & cooldown, SFX slash. |
+| v14 | EVENT TERJADWAL "Pesta Panen" (tiap 30 menit, Micda/XP x2, chip timer + pengumuman server). |
+| v15 | Dungeon GUA KRISTAL (dinding, kristal neon, 3 belik kristal ekstra, angka 8 & 6), recoil kena pukul, notifikasi LEVEL NAIK, pop-in panel. |
+| v16 | UPGRADE PERALATAN +1..+5 (biaya Micda + balok, +12%/bintang, tampil di panel Kar). |
+| v17 | KOMPAS ZONA (jarak ke Papan Jual/Ladang/Hutan/Tambang/Gua/Arena), STREAK LOGIN (bonus naik sampai 250 Micda). |
+| v18 | MASTERY CRAFTING (10x resep = M1..M3, XP craft +50% maks). |
+| v19 | Konsistensi dunia angka (papan arena, tips, bahan "Pecahan Angka 2"/"Inti Angka"), versi 6.0.0. |
+
+## Kepatuhan syariah (tetap)
+
+Tanpa riba (semua pembelian LUNAS di muka), tanpa maysir (tidak ada undian/lotre),
+tanpa gharar (harga & biaya jasa 2% transparan sebelum konfirmasi), tanpa syirik
+(tidak ada pemujaan; NPC hanyalah saudagar). Uang: MICDA.
+
+## Isi v3 (fondasi, tetap aktif di v4)
 
 - **KOMBAT**: 4 monster original (Gelatin Hijau, Serigala Bayang, Golem Batu,
   Gelatin Raksasa elite) dengan AI berkeliaran/mengejar/memukul balik, HP bar,

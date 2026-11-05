@@ -45,7 +45,8 @@ local function buildLamp(position: Vector3)
                 Color = Color3.fromRGB(52, 56, 70),
                 Material = Enum.Material.Metal,
         })
-        local head = part({
+        -- v4 perf: tanpa PointLight (neon tetap menyala) - hemat GPU mobile
+        part({
                 Name = "LampuKepala",
                 Shape = Enum.PartType.Ball,
                 Size = Vector3.new(1.7, 1.7, 1.7),
@@ -53,11 +54,6 @@ local function buildLamp(position: Vector3)
                 Color = Color3.fromRGB(255, 226, 160),
                 Material = Enum.Material.Neon,
         })
-        local light = Instance.new("PointLight")
-        light.Color = Color3.fromRGB(255, 214, 150)
-        light.Range = 20
-        light.Brightness = 1.1
-        light.Parent = head
 end
 
 local function buildSign(text: string, position: Vector3, yawDeg: number, color: Color3?)
@@ -464,12 +460,109 @@ function MapService.init(svc)
         local quizPrompt = buildNPC("KAK PINTAR", Vector3.new(10, 0, 14), Color3.fromRGB(88, 200, 130))
         svc.Quiz.bindPrompt(quizPrompt)
 
+        -- v4 PAPAN JUAL: pasar pemain (jual-beli antar pemain dengan Micda)
+        do
+                local mx, mz = -10, 16
+                part({
+                        Name = "PapanJualTiang",
+                        Size = Vector3.new(0.8, 6.4, 0.8),
+                        CFrame = CFrame.new(mx, 3.2, mz),
+                        Color = Color3.fromRGB(70, 74, 88),
+                        Material = Enum.Material.Metal,
+                })
+                local board = part({
+                        Name = "PapanJualBoard",
+                        Size = Vector3.new(10.5, 6, 0.6),
+                        CFrame = CFrame.new(mx, 7.4, mz) * CFrame.Angles(0, math.rad(-28), 0),
+                        Color = Color3.fromRGB(28, 32, 42),
+                        Material = Enum.Material.SmoothPlastic,
+                })
+                local gui = Instance.new("SurfaceGui")
+                gui.Face = Enum.NormalId.Front
+                gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+                gui.PixelsPerStud = 46
+                gui.Parent = board
+                Util.create("TextLabel", {
+                        Size = UDim2.fromScale(1, 0.62),
+                        BackgroundTransparency = 1,
+                        Font = Enum.Font.GothamBlack,
+                        TextScaled = true,
+                        TextColor3 = Color3.fromRGB(233, 196, 106),
+                        Text = "PAPAN JUAL",
+                }, gui)
+                Util.create("TextLabel", {
+                        Position = UDim2.fromScale(0, 0.62),
+                        Size = UDim2.fromScale(1, 0.38),
+                        BackgroundTransparency = 1,
+                        Font = Enum.Font.Gotham,
+                        TextScaled = true,
+                        TextColor3 = Color3.fromRGB(150, 158, 175),
+                        Text = "JUAL & BELI BARANG PEMAIN - MICDA",
+                }, gui)
+                local marketPrompt = Instance.new("ProximityPrompt")
+                marketPrompt.ActionText = "Buka Papan Jual"
+                marketPrompt.ObjectText = "Pasar Pemain (Micda)"
+                marketPrompt.MaxActivationDistance = 10
+                marketPrompt.HoldDuration = 0
+                marketPrompt.Parent = board
+                svc.Market.bindPrompt(marketPrompt)
+        end
+
         -- papan penunjuk arah
         buildSign("PASAR TIMUR >", Vector3.new(48, 0, 8), -90)
         buildSign("KAWASAN LADANG ^", Vector3.new(9, 0, -56), 0)
         buildSign("HUTAN KAYU <", Vector3.new(-52, 0, 8), 90)
         buildSign("TAMBANG SELATAN v", Vector3.new(9, 0, 96), 180)
         buildSign("DANAU TENANG \\", Vector3.new(-62, 0, 52), 90)
+        buildSign("PAPAN JUAL <", Vector3.new(-34, 0, 10), 90, Color3.fromRGB(70, 74, 88))
+
+        ---------------------------------------------------------------- v7 GUA KRISTAL (barat laut)
+        do
+                local gx, gz = -170, -175
+                part({
+                        Name = "GuaLantai",
+                        Shape = Enum.PartType.Cylinder,
+                        Size = Vector3.new(0.25, 64, 64),
+                        CFrame = CFrame.new(gx, 0.14, gz) * CFrame.Angles(0, 0, math.rad(90)),
+                        Color = Color3.fromRGB(58, 62, 78),
+                        Material = Enum.Material.Slate,
+                })
+                -- dinding batu keliling (10 segmen)
+                for i = 1, 10 do
+                        local ang = (i / 10) * math.pi * 2
+                        part({
+                                Name = "GuaDinding" .. i,
+                                Size = Vector3.new(22, 11, 3),
+                                CFrame = CFrame.new(gx + math.cos(ang) * 32, 5.5, gz + math.sin(ang) * 32)
+                                        * CFrame.Angles(0, -math.deg(ang) + 90, 0),
+                                Color = Color3.fromRGB(66, 68, 84),
+                                Material = Enum.Material.Rock,
+                        })
+                end
+                -- kristal raksasa dekorasi (neon, tanpa light - hemat mobile)
+                local rngK = Random.new(55)
+                for i = 1, 8 do
+                        local ang = (i / 8) * math.pi * 2 + rngK:NextNumber(-0.2, 0.2)
+                        local d = rngK:NextNumber(8, 18)
+                        local h = rngK:NextNumber(4, 9)
+                        part({
+                                Name = "GuaKristal" .. i,
+                                Size = Vector3.new(2.4, h, 2.4),
+                                CFrame = CFrame.new(gx + math.cos(ang) * d, h / 2, gz + math.sin(ang) * d)
+                                        * CFrame.Angles(rngK:NextNumber(-0.3, 0.3), 0, rngK:NextNumber(-0.3, 0.3)),
+                                Color = Color3.fromRGB(190, 120, 255),
+                                Material = Enum.Material.Neon,
+                                Transparency = 0.25,
+                                CanCollide = false,
+                        })
+                end
+                -- tambang kristal ekstra (bisa dipanen)
+                svc.Gather.buildRock(Vector3.new(gx - 12, 0, gz + 10), "kristal", 210)
+                svc.Gather.buildRock(Vector3.new(gx + 14, 0, gz - 8), "kristal", 211)
+                svc.Gather.buildRock(Vector3.new(gx + 2, 0, gz - 16), "kristal", 212)
+                buildSign("GUA KRISTAL ^", Vector3.new(-88, 0, -62), 0, Color3.fromRGB(140, 90, 200))
+                buildSign("GUA KRISTAL", Vector3.new(gx, 0, gz + 36), 180, Color3.fromRGB(140, 90, 200))
+        end
 
         ---------------------------------------------------------------- pasar timur (4 toko)
         local shops = {
@@ -570,7 +663,8 @@ function MapService.init(svc)
                         Color = Color3.fromRGB(70, 70, 78),
                         Material = Enum.Material.Rock,
                 })
-                local torch = part({
+                -- v4 perf: neon saja, tanpa PointLight
+                part({
                         Name = "TambangObor" .. side,
                         Shape = Enum.PartType.Ball,
                         Size = Vector3.new(1.4, 1.4, 1.4),
@@ -578,11 +672,6 @@ function MapService.init(svc)
                         Color = Color3.fromRGB(255, 150, 70),
                         Material = Enum.Material.Neon,
                 })
-                local light = Instance.new("PointLight")
-                light.Color = Color3.fromRGB(255, 150, 70)
-                light.Range = 18
-                light.Brightness = 1.4
-                light.Parent = torch
         end
         part({
                 Name = "TambangPalang",
@@ -816,7 +905,8 @@ function MapService.init(svc)
                 -- obor arena
                 for i = 1, 6 do
                         local ang = (i / 6) * math.pi * 2
-                        local torch = part({
+                        -- v4 perf: neon saja, tanpa PointLight
+                        part({
                                 Name = "ArenaObor" .. i,
                                 Shape = Enum.PartType.Ball,
                                 Size = Vector3.new(1.6, 1.6, 1.6),
@@ -824,13 +914,8 @@ function MapService.init(svc)
                                 Color = Color3.fromRGB(255, 140, 70),
                                 Material = Enum.Material.Neon,
                         })
-                        local light = Instance.new("PointLight")
-                        light.Color = Color3.fromRGB(255, 140, 70)
-                        light.Range = 22
-                        light.Brightness = 1.5
-                        light.Parent = torch
                 end
-                buildSign("ARENA TIMUR - PUNCAK GOLEM", Vector3.new(ax - 46, 0, az), 90, Color3.fromRGB(150, 90, 60))
+                buildSign("ARENA TIMUR - PUNCAK ANGKA 9", Vector3.new(ax - 46, 0, az), 90, Color3.fromRGB(150, 90, 60))
                 buildSign("PADANG TIMUR >", Vector3.new(52, 0, 16), -90, Color3.fromRGB(120, 150, 90))
         end
 

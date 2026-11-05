@@ -5,7 +5,7 @@
             per hari, sama untuk semua server)
           - Terima 1 tugas aktif, progres otomatis dari aktivitas dunia:
             harvest / chop / mine / fish / kill / craft / cook
-          - Klaim hadiah koin+XP di papan tugas
+          - Klaim hadiah Micda+XP di papan tugas
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -109,7 +109,7 @@ local function onQuestAction(player: Player, action: any, questId: any)
                 data.Quest = { id = "", prog = 0, acceptedAt = 0, done = false }
                 DataService.markDirty(player)
                 DataService.push(player)
-                return { ok = true, msg = "Tugas selesai! +" .. q.reward.coins .. " koin, +" .. q.reward.xp .. " XP", board = snapshot(player) }
+                return { ok = true, msg = "Tugas selesai! +" .. q.reward.coins .. " Micda, +" .. q.reward.xp .. " XP", board = snapshot(player) }
         end
 
         return { ok = false, msg = "Aksi tidak dikenal." }
