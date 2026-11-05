@@ -11,7 +11,7 @@ local Config = {}
 Config.Game = {
         Name = "Dunia Akiomida",
         Tagline = "Petualangan & Ekonomi",
-        Version = "6.1.0",
+        Version = "6.2.0",
 }
 
 --------------------------------------------------------------------

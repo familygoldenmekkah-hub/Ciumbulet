@@ -28,6 +28,7 @@ local CombatService = require(Modules.CombatService)
 local TradeService = require(Modules.TradeService)
 local MarketService = require(Modules.MarketService)
 local KiosService = require(Modules.KiosService)
+local RegionService = require(Modules.RegionService) -- v21: sistem wilayah & portal
 local MapService = require(Modules.MapService)
 
 -- bangun dunia (butuh referensi layanan untuk menghubungkan NPC)
@@ -39,6 +40,12 @@ MapService.init({
         Craft = CraftService,
         Quest = QuestService,
         Market = MarketService,
+})
+
+-- v21: gerbang portal antar wilayah (butuh DataService & FarmService)
+RegionService.init({
+        Data = DataService,
+        Farm = FarmService,
 })
 
 FarmService.init()
@@ -98,6 +105,9 @@ local function onPlayerAdded(player: Player)
         -- kotak pos pasar: hasil jual di Papan Jual saat pemain offline
         MarketService.claimMail(player)
 
+        -- v21: daftarkan pulau rumah pemain (klaim ulang ladang di pulau sendiri)
+        RegionService.onPlayerAdded(player)
+
         -- bonus login harian + rantai streak (v9, hadiah langsung tanpa syarat)
         local today = tonumber(os.date("!%Y%m%d")) or 0
         local data = DataService.get(player)
@@ -140,6 +150,7 @@ for _, player in Players:GetPlayers() do
 end
 
 Players.PlayerRemoving:Connect(function(player)
+        RegionService.onPlayerRemoving(player)
         FarmService.releasePlot(player)
         PetService.cleanup(player)
 end)
@@ -162,4 +173,4 @@ Remotes.get("GetState").OnServerInvoke = function(player)
         return true
 end
 
-print("[AKIOMIDA] Server v6.1 siap: kios vending pemain, BGM sintesis, fase murka boss, monster angka bersaura, papan jual Micda, lahan dibeli lunas, UI minimal, hemat part untuk mobile.")
+print("[AKIOMIDA] Server v6.2 siap: arsitektur wilayah pulau (pusat kota - pulau panen - pulau monster - pulau rumah pribadi), portal antar wilayah, kolam air sungguhan, ruang Bedah/Sains/Startopia, kios vending pemain, BGM sintesis, fase murka boss, monster angka bersaura, papan jual Micda.")

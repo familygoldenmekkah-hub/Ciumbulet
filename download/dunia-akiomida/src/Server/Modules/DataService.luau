@@ -10,6 +10,7 @@ local DataStoreService = game:GetService("DataStoreService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Balance = require(ReplicatedStorage.Shared.Balance)
 local Util = require(ReplicatedStorage.Shared.Util)
 local Remotes = require(ReplicatedStorage.Remotes)
 
@@ -64,6 +65,9 @@ local function defaultData(): { [string]: any }
                 TotalEarned = 0,
                 LastLoginDay = 0,
                 Streak = 0, -- v9: rantai login harian
+                HomeId = 0, -- v21: pulau rumah pribadi (0 = belum klaim)
+                LandName = "",
+                KoperasiName = "",
                 Dev = false,
                 LastSeen = 0,
         }
@@ -142,6 +146,10 @@ local function sanitize(raw: any): { [string]: any }
         out.ActivePet = type(raw.ActivePet) == "string" and raw.ActivePet or ""
         out.TotalEarned = sanitizeCount(raw.TotalEarned)
         out.LastLoginDay = sanitizeCount(raw.LastLoginDay)
+        -- v21: pulau rumah pribadi (0 = belum punya)
+        out.HomeId = math.clamp(math.floor(tonumber(raw.HomeId) or 0), 0, Balance.HOME_COUNT)
+        out.LandName = type(raw.LandName) == "string" and string.sub(raw.LandName, 1, 24) or ""
+        out.KoperasiName = type(raw.KoperasiName) == "string" and string.sub(raw.KoperasiName, 1, 24) or ""
         out.Dev = raw.Dev == true
         out.LastSeen = tonumber(raw.LastSeen) or 0
         return out
@@ -165,6 +173,41 @@ end
 
 function DataService.levelOf(player: Player): number
         return Config.Level.levelFromXp(DataService.get(player).XP)
+end
+
+-- v21: pulau rumah pribadi
+function DataService.getHomeId(player: Player): number
+        return math.floor(DataService.get(player).HomeId or 0)
+end
+
+function DataService.setHomeId(player: Player, index: number)
+        local data = DataService.get(player)
+        data.HomeId = math.clamp(math.floor(index or 0), 0, Balance.HOME_COUNT)
+        DataService.markDirty(player)
+        DataService.push(player)
+end
+
+function DataService.getLandName(player: Player): string
+        return DataService.get(player).LandName or ""
+end
+
+function DataService.setLandName(player: Player, name: string)
+        DataService.get(player).LandName = string.sub(name, 1, 24)
+        DataService.markDirty(player)
+        DataService.push(player)
+end
+
+function DataService.getKoperasiName(player: Player): string
+        return DataService.get(player).KoperasiName or ""
+end
+
+function DataService.ensureKoperasiName(player: Player): string
+        local data = DataService.get(player)
+        if data.KoperasiName == "" or data.KoperasiName == nil then
+                data.KoperasiName = Balance.koperasiName()
+                DataService.markDirty(player)
+        end
+        return data.KoperasiName
 end
 
 --------------------------------------------------------------------

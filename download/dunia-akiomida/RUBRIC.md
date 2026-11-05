@@ -19,25 +19,33 @@ Skor per kriteria 0-10, dikali bobot. Total dihitung dari (skor x bobot) / 10.
 | 8 | Polish & UX (UI, suara, animasi, efek) | 10 | animasi kombat, BGM, partikel | UI rapi & responsif |
 | 9 | Originalitas 100% & aman hak cipta | 5 | - | - |
 
-## Skor v20 (versi LIVE #20, 5 Nov 2026) - siklus mandiri: KIOS VENDING + BGM + MURKA
+## Skor v21 (versi LIVE #22, 5 Nov 2026) - ARSITEKTUR WILAYAH (permintaan pemilik)
 
 | Kriteria | Skor | Catatan |
 |----------|------|---------|
-| 1 Kombat | 9/10 | 8 monster ANGKA (1-8) + boss "Angka Sang Raja" (9) dengan FASE MURKA (HP <=50%: aura merah, gerak +35%, serang +30%, diumumkan semua pemain); 3 skill senjata aktif (Tebasan Kuat 220%, Sabetan Putar AoE 150%, Tusukan Kilat 300%); angka damage melayang + partikel tebasan skill; recoil; SFX; ledakan aura saat mati. |
-| 2 Crafting | 7/10 | 12 resep + MASTERY (tiap 10x resep = M1..M3, XP craft sampai +50%). |
-| 3 Stat | 7/10 | 5 stat + poin/level + UPGRADE PERALATAN +1..+5 (+12%/bintang, biaya Micda & balok). |
-| 4 Ekonomi | 9/10 | + KIOS VENDING pemain ala stand dunia terbuka: dipasang di lahan sendiri (250 Micda lunas), 6 slot, harga bebas per unit, jasa 2% (min 1) transparan, hasil bersih langsung ke pemilik, stok aman kembali ke tas saat bongkar/keluar. Plus Papan Jual persisten (kotak pos offline), pasar dinamis, toko NPC, sink kuat. Syariah: tanpa riba/maysir/gharar/syirik. |
-| 5 Dunia | 7/10 | 10 zona + DUNGEON "Gua Kristal". Belum ada dungeon instanced per-party. |
-| 6 Multiplayer | 8/10 | + BELANJA KIOS pemain lain (ekonomi antar pemain jadi hidup di dunia); boss raid kooperatif dgn fase murka; EVENT TERJADWAL "Pesta Panen"; trade 2 sisi; papan jual; kompas zona. Belum ada party/guild. |
-| 7 Bertani | 7/10 | 6 ladang: 1 GRATIS, 5 dibeli LUNAS Micda (400-20.000); panen kini berpartikel & hasilnya bisa dijual di kios sendiri. |
-| 8 Polish | 8/10 | + BGM pentatonik ORIGINAL disintesis kode (tombol Musik on/off), partikel panen/tempa/kios/skill/murka (semua burst sekali-pakai, hemat mobile), SFX jual ding, judul boss "MURKA!". UI minimal flat. Tanpa animasi karakter. |
-| 9 Originalitas | 10/10 | 100% karya sendiri; BGM = melodi pentatonik original dari nada platform yang di-pitch, tanpa aset pihak ketiga. |
+| 1 Kombat | 9/10 | 8 monster ANGKA (1-8) + boss "Angka Sang Raja" (9) dengan FASE MURKA (HP <=50%: aura merah, gerak +35%, serang +30%); 3 skill senjata aktif; damage melayang + partikel; SFX. Monster kini TERKURUNG di pulau monster (tidak menyebar ke wilayah umum). |
+| 2 Crafting | 7/10 | 12 resep + MASTERY (M1..M3, XP craft sampai +50%). |
+| 3 Stat | 7/10 | 5 stat + poin/level + UPGRADE PERALATAN +1..+5. |
+| 4 Ekonomi | 9/10 | KIOS VENDING pemain (di ladang pulau rumah sendiri), Papan Jual persisten, pasar dinamis, sink kuat. + KLAIM PULAU RUMAH PERSISTEN (HomeId tersimpan; pulau 1 gratis, 2-6 dibeli LUNAS Micda - tanpa riba). |
+| 5 Dunia | 8/10 | **ARSITEKTUR WILAYAH BARU (permintaan pemilik)**: dunia pulau-pulau di LAUT AIR SUNGUHAN terrain, dihubungkan GERBANG PORTAL. PULAU RUMAH pribadi x6 (rumah 2 lantai interior, LAHAN TANI pribadi, KOLAM AIR SUNGUHAN bergelombang & bisa berenang, RUANG BEDAH / RUANG SAINS / RUANG STARTOPIA, gerbang ke kota), Pusat Kota (hub sementara), Pulau Panen BEBAS MONSTER (hutan kayu, tambang bijih, Danau Tenang air sungguhan), 3 pulau monster terpisah bertingkat (Padang Liar LV1-3, Hutan Bayang LV3-5, Negeri Baja & Kristal LV5+ berisi Tambang Baja, Gua Kristal, Arena koloseum). Belum: dungeon instanced per-party, pusat kota final (menunggu bahasan pemilik). |
+| 6 Multiplayer | 8/10 | Belanja kios pemain lain, boss raid kooperatif, event terjadwal, trade 2 sisi, papan jual, kompas zona (7 target). Belum ada party/guild. |
+| 7 Bertani | 7/10 | 6 ladang kini DI PULAU RUMAH SENDIRI (plot i di pulau i, ikut kepemilikan pulau persisten); 1 pulau gratis, 5 dibeli lunas. |
+| 8 Polish | 8/10 | BGM pentatonik original, partikel hemat mobile, SFX, kompas, kolam & danau air terrain bergelombang, tata ruang pulau rapi (jalan batu, lampu taman, pagar rambate, bunga). Tanpa animasi karakter. |
+| 9 Originalitas | 10/10 | 100% karya sendiri; tidak ada aset/konten pihak ketiga. |
 
-**TOTAL: 79/100** (79.5 dibulatkan ke bawah; bobot: 9x15+7x15+7x10+9x15+7x10+8x10+7x10+8x10+10x5 = 795/10)
+**TOTAL: 80/100** (bobot: 9x15+7x15+7x10+9x15+8x10+8x10+7x10+8x10+10x5 = 805/10)
 
-Riwayat: v10 = 56 -> v11 = 64 (penilaian owner) -> siklus mandiri v11 = 76 -> v20 = 79.
-Celah utama menuju 100: party/guild (8), dungeon instanced & dunia (7),
+Riwayat: v10 = 56 -> v11 = 64 (penilaian owner) -> siklus mandiri v11 = 76 -> v20 = 79 -> v21 = 80.
+Celah utama menuju 100: pusat kota final & dungeon instanced (8), party/guild (8),
 animasi karakter (8), skill tree & progesi (7).
+
+## Catatan arsitektur wilayah (v21, dasar desain MMORPG)
+
+- Wilayah = pulau; pindah wilayah HANYA lewat gerbang portal (ProximityPrompt, server-side).
+- kind hub (pusat kota) & civil (pulau panen) DIJAMIN bebas monster oleh tes offline
+  (Balance.validateRegions: zona monster wajib di pulau combat & tak menembus wilayah peradaban).
+- Pulau rumah = wilayah pribadi pemain: klaim persisten (DataStore HomeId), pulau 1 gratis,
+  2-6 dibeli lunas Micda (syariah), ladang + kios ikut pulau pemiliknya.
 
 ## Catatan kepatuhan syariah (permintaan pemilik, diperbarui v20)
 
@@ -49,13 +57,13 @@ animasi karakter (8), skill tree & progesi (7).
 
 ## Roadmap menuju 100 (dikerjakan sesi mandiri berikutnya, tanpa menunggu owner)
 
-- **v20 (LIVE #20)**: KIOS VENDING pemain di lahan (ala stand dunia terbuka), skill ke-3
-  "Tusukan Kilat", FASE MURKA boss, BGM pentatonik sintesis kode + tombol Musik,
-  partikel panen/tempa/kios/skill, SFX jual. (selesai)
-- **v21 (target ~85)**: party + guild dasar, dungeon "Gua Kristal" instanced per-party,
-  animasi serang karakter sederhana, furniture ladang, pet ikut kombat, achievement.
-- **v22 (target ~95)**: guild + territory, event musiman, minimap, quest rantai NPC,
-  cuaca & siang-malam, tutorial questline.
+- **v21 (LIVE #21)**: ARSITEKTUR WILAYAH per permintaan pemilik: dunia pulau-pulau + gerbang
+  portal, pulau rumah pribadi x6 (rumah/ladang/kolam air sungguhan/ruang Bedah-Sains-Startopia),
+  pulau monster terpisah bertingkat, pulau panen bebas monster, klaim pulau persisten. (selesai)
+- **v22 (target ~85)**: PUSAT KOTA final (menunggu bahasan pemilik), party + guild dasar,
+  dungeon "Gua Kristal" instanced per-party, animasi serang karakter sederhana, pet ikut kombat.
+- **v23 (target ~95)**: guild + territory, event musiman, minimap, quest rantai NPC,
+  cuaca & siang-malam, tutorial questline, fungsi nyata ruang Bedah/Sains/Startopia.
 
 ## Aturan tetap setiap sesi (WAJIB)
 

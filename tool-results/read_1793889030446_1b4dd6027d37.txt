@@ -1,0 +1,1007 @@
+     1→--!nonstrict
+     2→--[[
+     3→        MapService.luau - v21 ARSITEKTUR WILAYAH (dunia MMO pulau-pulau)
+     4→        Dunia terbagi pulau wilayah (data di Balance.Regions) di atas LAUT
+     5→        AIR SUNGUHAN terrain, dihubungkan gerbang portal (RegionService):
+     6→          PUSAT KOTA (hub)    : alun-alun mancur, 4 toko, pandai besi,
+     7→                                api unggun, papan tugas, papan jual, Kak Pintar
+     8→          PULAU PANEN (civil) : Hutan Kayu, Tambang bijih, Danau Tenang
+     9→                                - TANPA MONSTER sama sekali
+    10→          PULAU MONSTER (combat): Padang Liar, Hutan Bayang,
+    11→                                Negeri Baja & Kristal (tambang baja, gua
+    12→                                kristal, arena boss) - hanya di sini monster
+    13→          PULAU RUMAH x6 (home): dibangun PersonalWorldBuilder
+    14→        Semua karya original Dunia Akiomida.
+    15→]]
+    16→
+    17→local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    18→
+    19→local Util = require(ReplicatedStorage.Shared.Util)
+    20→local Balance = require(ReplicatedStorage.Shared.Balance)
+    21→
+    22→local MapService = {}
+    23→
+    24→local folder = Instance.new("Folder")
+    25→folder.Name = "AKM_Dunia"
+    26→
+    27→local function part(props): Part
+    28→        local p = Instance.new("Part")
+    29→        p.Anchored = true
+    30→        p.TopSurface = Enum.SurfaceType.Smooth
+    31→        p.BottomSurface = Enum.SurfaceType.Smooth
+    32→        for k, v in props do
+    33→                (p :: any)[k] = v
+    34→        end
+    35→        p.Parent = folder
+    36→        return p
+    37→end
+    38→
+    39→--------------------------------------------------------------------
+    40→-- DEKORASI DASAR
+    41→--------------------------------------------------------------------
+    42→
+    43→local function buildLamp(position: Vector3)
+    44→        part({
+    45→                Name = "LampuTiang",
+    46→                Size = Vector3.new(0.7, 9, 0.7),
+    47→                CFrame = CFrame.new(position + Vector3.new(0, 4.5, 0)),
+    48→                Color = Color3.fromRGB(52, 56, 70),
+    49→                Material = Enum.Material.Metal,
+    50→        })
+    51→        -- v4 perf: tanpa PointLight (neon tetap menyala) - hemat GPU mobile
+    52→        part({
+    53→                Name = "LampuKepala",
+    54→                Shape = Enum.PartType.Ball,
+    55→                Size = Vector3.new(1.7, 1.7, 1.7),
+    56→                CFrame = CFrame.new(position + Vector3.new(0, 9.4, 0)),
+    57→                Color = Color3.fromRGB(255, 226, 160),
+    58→                Material = Enum.Material.Neon,
+    59→        })
+    60→end
+    61→
+    62→local function buildSign(text: string, position: Vector3, yawDeg: number, color: Color3?)
+    63→        local c = color or Color3.fromRGB(92, 62, 38)
+    64→        part({
+    65→                Name = "PapanTiang",
+    66→                Size = Vector3.new(0.7, 4.4, 0.7),
+    67→                CFrame = CFrame.new(position + Vector3.new(0, 2.2, 0)),
+    68→                Color = c,
+    69→                Material = Enum.Material.WoodPlanks,
+    70→        })
+    71→        local board = part({
+    72→                Name = "PapanTulisan",
+    73→                Size = Vector3.new(10, 2.6, 0.6),
+    74→                CFrame = CFrame.new(position + Vector3.new(0, 5.2, 0)) * CFrame.Angles(0, math.rad(yawDeg), 0),
+    75→                Color = c,
+    76→                Material = Enum.Material.WoodPlanks,
+    77→        })
+    78→        local gui = Instance.new("SurfaceGui")
+    79→        gui.Face = Enum.NormalId.Front
+    80→        gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+    81→        gui.PixelsPerStud = 50
+    82→        gui.Parent = board
+    83→        Util.create("TextLabel", {
+    84→                Size = UDim2.fromScale(1, 1),
+    85→                BackgroundTransparency = 1,
+    86→                Font = Enum.Font.GothamBlack,
+    87→                TextScaled = true,
+    88→                TextColor3 = Color3.fromRGB(255, 226, 150),
+    89→                Text = text,
+    90→        }, board)
+    91→        return board
+    92→end
+    93→
+    94→local function buildBench(position: Vector3, yawDeg: number)
+    95→        local base = CFrame.new(position) * CFrame.Angles(0, math.rad(yawDeg), 0)
+    96→        part({
+    97→                Name = "BangkuDuduk",
+    98→                Size = Vector3.new(4.4, 0.8, 1.8),
+    99→                CFrame = base * CFrame.new(0, 1.1, 0),
+   100→                Color = Color3.fromRGB(150, 108, 66),
+   101→                Material = Enum.Material.WoodPlanks,
+   102→        })
+   103→        part({
+   104→                Name = "BangkuSandaran",
+   105→                Size = Vector3.new(4.4, 1.6, 0.5),
+   106→                CFrame = base * CFrame.new(0, 2.2, -0.7),
+   107→                Color = Color3.fromRGB(150, 108, 66),
+   108→                Material = Enum.Material.WoodPlanks,
+   109→        })
+   110→end
+   111→
+   112→--------------------------------------------------------------------
+   113→-- NPC (karya original: tubuh kotak + kepala bulat + topi)
+   114→--------------------------------------------------------------------
+   115→
+   116→local function buildNPC(name: string, position: Vector3, color: Color3): ProximityPrompt
+   117→        part({
+   118→                Name = "NPC_Badan_" .. name,
+   119→                Size = Vector3.new(2.4, 3.2, 1.7),
+   120→                CFrame = CFrame.new(position + Vector3.new(0, 1.9, 0)),
+   121→                Color = color,
+   122→                Material = Enum.Material.SmoothPlastic,
+   123→        })
+   124→        local head = part({
+   125→                Name = "NPC_Kepala_" .. name,
+   126→                Shape = Enum.PartType.Ball,
+   127→                Size = Vector3.new(2, 2, 2),
+   128→                CFrame = CFrame.new(position + Vector3.new(0, 4.5, 0)),
+   129→                Color = Color3.fromRGB(255, 224, 189),
+   130→                Material = Enum.Material.SmoothPlastic,
+   131→        })
+   132→        part({
+   133→                Name = "NPC_Topi_" .. name,
+   134→                Size = Vector3.new(2.6, 0.7, 2.6),
+   135→                CFrame = CFrame.new(position + Vector3.new(0, 5.7, 0)),
+   136→                Color = color:Lerp(Color3.new(0, 0, 0), 0.3),
+   137→                Material = Enum.Material.SmoothPlastic,
+   138→        })
+   139→
+   140→        local billboard = Instance.new("BillboardGui")
+   141→        billboard.Size = UDim2.new(0, 160, 0, 36)
+   142→        billboard.StudsOffset = Vector3.new(0, 1.4, 0)
+   143→        billboard.AlwaysOnTop = true
+   144→        billboard.MaxDistance = 70
+   145→        billboard.Parent = head
+   146→        Util.create("TextLabel", {
+   147→                Size = UDim2.fromScale(1, 1),
+   148→                BackgroundTransparency = 1,
+   149→                Font = Enum.Font.GothamBlack,
+   150→                TextScaled = true,
+   151→                TextColor3 = color,
+   152→                TextStrokeTransparency = 0.4,
+   153→                Text = name,
+   154→        }, billboard)
+   155→
+   156→        local prompt = Instance.new("ProximityPrompt")
+   157→        prompt.MaxActivationDistance = 11
+   158→        prompt.HoldDuration = 0
+   159→        prompt.Parent = head
+   160→        return prompt
+   161→end
+   162→
+   163→--------------------------------------------------------------------
+   164→-- GEDUNG TOKO (pasar timur, menghadap barat ke alun-alun)
+   165→--------------------------------------------------------------------
+   166→
+   167→local function buildShop(position: Vector3, wallColor: Color3, roofColor: Color3, title: string)
+   168→        local x, y, z = position.X, position.Y, position.Z
+   169→        part({
+   170→                Name = "Toko_Badan",
+   171→                Size = Vector3.new(14, 9, 13),
+   172→                CFrame = CFrame.new(x, y + 4.5, z),
+   173→                Color = wallColor,
+   174→                Material = Enum.Material.Brick,
+   175→        })
+   176→        part({
+   177→                Name = "Toko_Atap",
+   178→                Size = Vector3.new(16.5, 1.3, 15.5),
+   179→                CFrame = CFrame.new(x, y + 9.6, z),
+   180→                Color = roofColor,
+   181→                Material = Enum.Material.Slate,
+   182→        })
+   183→        local sign = part({
+   184→                Name = "Toko_PapanNama",
+   185→                Size = Vector3.new(0.5, 2.6, 11),
+   186→                CFrame = CFrame.new(x - 7.3, y + 7.6, z),
+   187→                Color = Color3.fromRGB(34, 38, 52),
+   188→                Material = Enum.Material.SmoothPlastic,
+   189→        })
+   190→        local gui = Instance.new("SurfaceGui")
+   191→        gui.Face = Enum.NormalId.Left
+   192→        gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+   193→        gui.PixelsPerStud = 50
+   194→        gui.Parent = sign
+   195→        Util.create("TextLabel", {
+   196→                Size = UDim2.fromScale(1, 1),
+   197→                BackgroundTransparency = 1,
+   198→                Font = Enum.Font.GothamBlack,
+   199→                TextScaled = true,
+   200→                TextColor3 = wallColor:Lerp(Color3.new(1, 1, 1), 0.55),
+   201→                Text = string.upper(title),
+   202→        }, sign)
+   203→        part({
+   204→                Name = "Toko_Jendela",
+   205→                Size = Vector3.new(0.4, 2.2, 8),
+   206→                CFrame = CFrame.new(x - 7.2, y + 3.4, z),
+   207→                Color = Color3.fromRGB(255, 236, 170),
+   208→                Material = Enum.Material.Neon,
+   209→        })
+   210→        part({
+   211→                Name = "Toko_Peti1",
+   212→                Size = Vector3.new(2.4, 2.4, 2.4),
+   213→                CFrame = CFrame.new(x - 9.5, y + 1.2, z + 7.5) * CFrame.Angles(0, math.rad(18), 0),
+   214→                Color = Color3.fromRGB(150, 108, 66),
+   215→                Material = Enum.Material.WoodPlanks,
+   216→        })
+   217→        part({
+   218→                Name = "Toko_Peti2",
+   219→                Size = Vector3.new(2, 2, 2),
+   220→                CFrame = CFrame.new(x - 9.3, y + 3.4, z + 7.4) * CFrame.Angles(0, math.rad(-24), 0),
+   221→                Color = Color3.fromRGB(164, 120, 74),
+   222→                Material = Enum.Material.WoodPlanks,
+   223→        })
+   224→end
+   225→
+   226→--------------------------------------------------------------------
+   227→-- ALUN-ALUN PUSAT KOTA
+   228→--------------------------------------------------------------------
+   229→
+   230→local function buildPlaza()
+   231→        -- air mancur
+   232→        part({
+   233→                Name = "MancurBak",
+   234→                Shape = Enum.PartType.Cylinder,
+   235→                Size = Vector3.new(2, 17, 17),
+   236→                CFrame = CFrame.new(0, 1, 0) * CFrame.Angles(0, 0, math.rad(90)),
+   237→                Color = Color3.fromRGB(208, 200, 186),
+   238→                Material = Enum.Material.Marble,
+   239→        })
+   240→        part({
+   241→                Name = "MancurAir",
+   242→                Shape = Enum.PartType.Cylinder,
+   243→                Size = Vector3.new(1.2, 13.4, 13.4),
+   244→                CFrame = CFrame.new(0, 2.1, 0) * CFrame.Angles(0, 0, math.rad(90)),
+   245→                Color = Color3.fromRGB(90, 170, 220),
+   246→                Material = Enum.Material.Glass,
+   247→                Transparency = 0.25,
+   248→                CanCollide = false,
+   249→        })
+   250→        part({
+   251→                Name = "MancurTiang",
+   252→                Size = Vector3.new(2.6, 5, 2.6),
+   253→                CFrame = CFrame.new(0, 4.6, 0),
+   254→                Color = Color3.fromRGB(208, 200, 186),
+   255→                Material = Enum.Material.Marble,
+   256→        })
+   257→        local orb = part({
+   258→                Name = "MancurBola",
+   259→                Shape = Enum.PartType.Ball,
+   260→                Size = Vector3.new(2.6, 2.6, 2.6),
+   261→                CFrame = CFrame.new(0, 8.2, 0),
+   262→                Color = Color3.fromRGB(255, 209, 102),
+   263→                Material = Enum.Material.Neon,
+   264→        })
+   265→        local light = Instance.new("PointLight")
+   266→        light.Color = Color3.fromRGB(255, 209, 102)
+   267→        light.Range = 28
+   268→        light.Brightness = 1.4
+   269→        light.Parent = orb
+   270→
+   271→        -- gerbang judul di spawn (z = 34)
+   272→        for side = -1, 1, 2 do
+   273→                part({
+   274→                        Name = "GerbangPilar",
+   275→                        Size = Vector3.new(2.2, 14, 2.2),
+   276→                        CFrame = CFrame.new(side * 8, 7, 34),
+   277→                        Color = Color3.fromRGB(70, 74, 92),
+   278→                        Material = Enum.Material.SmoothPlastic,
+   279→                })
+   280→        end
+   281→        local beam = part({
+   282→                Name = "GerbangPalang",
+   283→                Size = Vector3.new(20, 3.2, 1.8),
+   284→                CFrame = CFrame.new(0, 15.2, 34),
+   285→                Color = Color3.fromRGB(34, 38, 52),
+   286→                Material = Enum.Material.SmoothPlastic,
+   287→        })
+   288→        local gui = Instance.new("SurfaceGui")
+   289→        gui.Face = Enum.NormalId.Front
+   290→        gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+   291→        gui.PixelsPerStud = 50
+   292→        gui.Parent = beam
+   293→        Util.create("TextLabel", {
+   294→                Size = UDim2.fromScale(1, 1),
+   295→                BackgroundTransparency = 1,
+   296→                Font = Enum.Font.GothamBlack,
+   297→                TextScaled = true,
+   298→                TextColor3 = Color3.fromRGB(255, 209, 102),
+   299→                Text = "DUNIA AKIOMIDA",
+   300→        }, beam)
+   301→
+   302→        -- bangku mengelilingi air mancur
+   303→        for _, spot in {
+   304→                { pos = Vector3.new(11.5, 0, 11.5), yaw = 135 },
+   305→                { pos = Vector3.new(-11.5, 0, 11.5), yaw = 45 },
+   306→                { pos = Vector3.new(11.5, 0, -11.5), yaw = 45 },
+   307→                { pos = Vector3.new(-11.5, 0, -11.5), yaw = 135 },
+   308→        } do
+   309→                buildBench(spot.pos, spot.yaw)
+   310→        end
+   311→
+   312→        -- lampu alun-alun
+   313→        for _, pos in {
+   314→                Vector3.new(16, 0, 16), Vector3.new(-16, 0, 16), Vector3.new(16, 0, -16), Vector3.new(-16, 0, -16),
+   315→        } do
+   316→                buildLamp(pos)
+   317→        end
+   318→
+   319→        -- bunga warna-warni di alun-alun
+   320→        local rng = Random.new(1234)
+   321→        local flowerColors = {
+   322→                Color3.fromRGB(255, 120, 150), Color3.fromRGB(255, 210, 90),
+   323→                Color3.fromRGB(150, 200, 255), Color3.fromRGB(200, 140, 255),
+   324→        }
+   325→        for i = 1, 14 do
+   326→                local angle = rng:NextNumber(0, math.pi * 2)
+   327→                local dist = rng:NextNumber(9, 17)
+   328→                part({
+   329→                        Name = "Bunga",
+   330→                        Shape = Enum.PartType.Ball,
+   331→                        Size = Vector3.new(1, 1, 1) * rng:NextNumber(0.8, 1.5),
+   332→                        CFrame = CFrame.new(math.cos(angle) * dist, 0.6, math.sin(angle) * dist),
+   333→                        Color = flowerColors[rng:NextInteger(1, #flowerColors)],
+   334→                        Material = Enum.Material.Grass,
+   335→                        CanCollide = false,
+   336→                })
+   337→        end
+   338→end
+   339→
+   340→--------------------------------------------------------------------
+   341→-- TERRAIN: LAUT AIR SUNGUHAN + PULAU WILAYAH
+   342→--------------------------------------------------------------------
+   343→
+   344→local function buildTerrain()
+   345→        local terrain = workspace.Terrain
+   346→        terrain.WaterWaveSize = 0.16
+   347→        terrain.WaterWaveSpeed = 16
+   348→        terrain.WaterReflectance = 0.4
+   349→        terrain.WaterTransparency = 0.6
+   350→
+   351→        -- LAUT DULU (top y=-1), lalu daratan menimpanya di tiap pulau
+   352→        terrain:FillBlock(CFrame.new(260, -7, 0), Vector3.new(3400, 12, 3000), Enum.Material.Water)
+   353→
+   354→        -- daratan tiap pulau wilayah (top y=0)
+   355→        for _, r in ipairs(Balance.Regions) do
+   356→                local cx, cz = r.center[1], r.center[2]
+   357→                local hx, hz = r.half[1], r.half[2]
+   358→                terrain:FillBlock(CFrame.new(cx, -5.1, cz), Vector3.new(hx * 2 + 14, 9.5, hz * 2 + 14), Enum.Material.Sand)
+   359→                terrain:FillBlock(CFrame.new(cx, -5, cz), Vector3.new(hx * 2, 10, hz * 2), Enum.Material.Grass)
+   360→        end
+   361→
+   362→        -- pulau kecil dekorasi cakrawala (panorama, tanpa fungsi)
+   363→        for _, pos in {
+   364→                { -320, 120 }, { 380, -720 }, { -280, -820 }, { 1180, -120 }, { 420, 950 }, { -180, 880 },
+   365→        } do
+   366→                terrain:FillBlock(CFrame.new(pos[1], -5.1, pos[2]), Vector3.new(74, 9.5, 74), Enum.Material.Sand)
+   367→                terrain:FillBlock(CFrame.new(pos[1], -5, pos[2]), Vector3.new(60, 10, 60), Enum.Material.Grass)
+   368→        end
+   369→end
+   370→
+   371→--------------------------------------------------------------------
+   372→-- PUSAT KOTA (hub sementara - desain final menyusul bahasan pemilik)
+   373→--------------------------------------------------------------------
+   374→
+   375→local function buildHub(svc)
+   376→        part({
+   377→                Name = "PlazaLingkaran",
+   378→                Shape = Enum.PartType.Cylinder,
+   379→                Size = Vector3.new(0.3, 40, 40),
+   380→                CFrame = CFrame.new(0, 0.28, 0) * CFrame.Angles(0, 0, math.rad(90)),
+   381→                Color = Color3.fromRGB(196, 188, 176),
+   382→                Material = Enum.Material.Granite,
+   383→        })
+   384→
+   385→        -- jalan rapi ke 4 arah gerbang
+   386→        local function road(x: number, z: number, w: number, d: number)
+   387→                part({
+   388→                        Name = "JalanKota",
+   389→                        Size = Vector3.new(w, 0.3, d),
+   390→                        CFrame = CFrame.new(x, 0.15, z),
+   391→                        Color = Color3.fromRGB(178, 172, 162),
+   392→                        Material = Enum.Material.Concrete,
+   393→                })
+   394→        end
+   395→        road(0, 83, 10, 98) -- selatan: gerbang Pulau Rumahku
+   396→        road(0, -66, 10, 132) -- utara: gerbang Pulau Panen
+   397→        road(76, 40, 152, 10) -- timur utama
+   398→        road(100, -10, 8, 100) -- cabang ke gerbang Padang Liar (z=-60)
+   399→        road(126, 85, 8, 90) -- cabang ke gerbang Hutan Bayang & Negeri Baja
+   400→
+   401→        buildPlaza()
+   402→
+   403→        -- titik lahir pemain di pusat kota
+   404→        local spawn = Instance.new("SpawnLocation")
+   405→        spawn.Size = Vector3.new(14, 1, 14)
+   406→        spawn.CFrame = CFrame.new(0, 0.5, 104)
+   407→        spawn.Anchored = true
+   408→        spawn.Neutral = true
+   409→        spawn.Duration = 3
+   410→        spawn.Color = Color3.fromRGB(208, 200, 186)
+   411→        spawn.Material = Enum.Material.Marble
+   412→        spawn.TopSurface = Enum.SurfaceType.Smooth
+   413→        spawn.Parent = folder
+   414→        local spawnDeco = part({
+   415→                Name = "SpawnCincin",
+   416→                Shape = Enum.PartType.Cylinder,
+   417→                Size = Vector3.new(0.25, 20, 20),
+   418→                CFrame = CFrame.new(0, 0.3, 104) * CFrame.Angles(0, 0, math.rad(90)),
+   419→                Color = Color3.fromRGB(255, 209, 102),
+   420→                Material = Enum.Material.Neon,
+   421→                CanCollide = false,
+   422→        })
+   423→        spawnDeco.Name = "SpawnCincin"
+   424→
+   425→        -- Kak Pintar: kuis opsional (tidak pernah memaksa!)
+   426→        local quizPrompt = buildNPC("KAK PINTAR", Vector3.new(10, 0, 14), Color3.fromRGB(88, 200, 130))
+   427→        svc.Quiz.bindPrompt(quizPrompt)
+   428→
+   429→        -- PAPAN JUAL: pasar pemain (jual-beli antar pemain dengan Micda)
+   430→        do
+   431→                local mx, mz = -10, 16
+   432→                part({
+   433→                        Name = "PapanJualTiang",
+   434→                        Size = Vector3.new(0.8, 6.4, 0.8),
+   435→                        CFrame = CFrame.new(mx, 3.2, mz),
+   436→                        Color = Color3.fromRGB(70, 74, 88),
+   437→                        Material = Enum.Material.Metal,
+   438→                })
+   439→                local board = part({
+   440→                        Name = "PapanJualBoard",
+   441→                        Size = Vector3.new(10.5, 6, 0.6),
+   442→                        CFrame = CFrame.new(mx, 7.4, mz) * CFrame.Angles(0, math.rad(-28), 0),
+   443→                        Color = Color3.fromRGB(28, 32, 42),
+   444→                        Material = Enum.Material.SmoothPlastic,
+   445→                })
+   446→                local gui = Instance.new("SurfaceGui")
+   447→                gui.Face = Enum.NormalId.Front
+   448→                gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+   449→                gui.PixelsPerStud = 46
+   450→                gui.Parent = board
+   451→                Util.create("TextLabel", {
+   452→                        Size = UDim2.fromScale(1, 0.62),
+   453→                        BackgroundTransparency = 1,
+   454→                        Font = Enum.Font.GothamBlack,
+   455→                        TextScaled = true,
+   456→                        TextColor3 = Color3.fromRGB(233, 196, 106),
+   457→                        Text = "PAPAN JUAL",
+   458→                }, gui)
+   459→                Util.create("TextLabel", {
+   460→                        Position = UDim2.fromScale(0, 0.62),
+   461→                        Size = UDim2.fromScale(1, 0.38),
+   462→                        BackgroundTransparency = 1,
+   463→                        Font = Enum.Font.Gotham,
+   464→                        TextScaled = true,
+   465→                        TextColor3 = Color3.fromRGB(150, 158, 175),
+   466→                        Text = "JUAL & BELI BARANG PEMAIN - MICDA",
+   467→                }, gui)
+   468→                local marketPrompt = Instance.new("ProximityPrompt")
+   469→                marketPrompt.ActionText = "Buka Papan Jual"
+   470→                marketPrompt.ObjectText = "Pasar Pemain (Micda)"
+   471→                marketPrompt.MaxActivationDistance = 10
+   472→                marketPrompt.HoldDuration = 0
+   473→                marketPrompt.Parent = board
+   474→                svc.Market.bindPrompt(marketPrompt)
+   475→        end
+   476→
+   477→        -- papan penunjuk arah wilayah
+   478→        buildSign("PULAU PANEN ^ (KAYU-BIJIH-IKAN)", Vector3.new(9, 0, -58), 0)
+   479→        buildSign("PULAU RUMAHKU v (SELATAN)", Vector3.new(9, 0, 64), 180)
+   480→        buildSign("PULAU MONSTER >", Vector3.new(58, 0, 46), -90, Color3.fromRGB(150, 70, 60))
+   481→        buildSign("PAPAN JUAL <", Vector3.new(-34, 0, 10), 90, Color3.fromRGB(70, 74, 88))
+   482→        buildSign("PANDAI BESI & PASAR >", Vector3.new(58, 0, 30), -90)
+   483→        buildSign("API UNGGUN BU MASAK", Vector3.new(26, 0, 14), 180)
+   484→
+   485→        -- lampu jalan tepi jalan utama
+   486→        for _, pos in {
+   487→                Vector3.new(-7, 0, 60), Vector3.new(7, 0, 60), Vector3.new(-7, 0, -40), Vector3.new(7, 0, -40),
+   488→                Vector3.new(40, 0, 33), Vector3.new(40, 0, 47), Vector3.new(120, 0, 33), Vector3.new(120, 0, 47),
+   489→        } do
+   490→                buildLamp(pos)
+   491→        end
+   492→end
+   493→
+   494→--------------------------------------------------------------------
+   495→-- PASAR TIMUR (4 toko) + PANDAI BESI + DAPUR + PAPAN TUGAS
+   496→--------------------------------------------------------------------
+   497→
+   498→local function buildMarket(svc)
+   499→        local shops = {
+   500→                { id = "bibit", pos = Vector3.new(102, 0, -36), wall = Color3.fromRGB(120, 178, 110), roof = Color3.fromRGB(84, 110, 76), title = "Toko Bibit", npc = "KAK TANI", npcColor = Color3.fromRGB(120, 178, 110) },
+   501→                { id = "jual", pos = Vector3.new(102, 0, -12), wall = Color3.fromRGB(226, 168, 84), roof = Color3.fromRGB(150, 100, 50), title = "Pasar Pengepul", npc = "BU LARIS", npcColor = Color3.fromRGB(255, 209, 102) },
+   502→                { id = "alat", pos = Vector3.new(102, 0, 12), wall = Color3.fromRGB(110, 160, 210), roof = Color3.fromRGB(66, 96, 130), title = "Toko Alat", npc = "PAK BANG", npcColor = Color3.fromRGB(110, 160, 210) },
+   503→                { id = "pet", pos = Vector3.new(102, 0, 36), wall = Color3.fromRGB(224, 140, 190), roof = Color3.fromRGB(140, 84, 120), title = "Toko Peliharaan", npc = "MBAH SEKAR", npcColor = Color3.fromRGB(224, 140, 190) },
+   504→        }
+   505→        for _, shop in shops do
+   506→                buildShop(shop.pos, shop.wall, shop.roof, shop.title)
+   507→                local npcPos = shop.pos + Vector3.new(-11, 0, 0)
+   508→                local prompt = buildNPC(shop.npc, npcPos, shop.npcColor)
+   509→                svc.Shop.bindPrompt(prompt, shop.id)
+   510→        end
+   511→
+   512→        -- pandai besi (tempa)
+   513→        local forgeX, forgeZ = 102, -58
+   514→        part({
+   515→                Name = "TempaBadan",
+   516→                Size = Vector3.new(13, 8, 12),
+   517→                CFrame = CFrame.new(forgeX, 4, forgeZ),
+   518→                Color = Color3.fromRGB(90, 96, 110),
+   519→                Material = Enum.Material.Brick,
+   520→        })
+   521→        part({
+   522→                Name = "TempaAtap",
+   523→                Size = Vector3.new(15.5, 1.2, 14.5),
+   524→                CFrame = CFrame.new(forgeX, 8.6, forgeZ),
+   525→                Color = Color3.fromRGB(50, 54, 64),
+   526→                Material = Enum.Material.Slate,
+   527→        })
+   528→        local forgeSign = part({
+   529→                Name = "TempaPapanNama",
+   530→                Size = Vector3.new(0.5, 2.4, 10),
+   531→                CFrame = CFrame.new(forgeX - 6.8, 6.6, forgeZ),
+   532→                Color = Color3.fromRGB(34, 38, 52),
+   533→                Material = Enum.Material.SmoothPlastic,
+   534→        })
+   535→        local forgeGui = Instance.new("SurfaceGui")
+   536→        forgeGui.Face = Enum.NormalId.Left
+   537→        forgeGui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+   538→        forgeGui.PixelsPerStud = 50
+   539→        forgeGui.Parent = forgeSign
+   540→        Util.create("TextLabel", {
+   541→                Size = UDim2.fromScale(1, 1),
+   542→                BackgroundTransparency = 1,
+   543→                Font = Enum.Font.GothamBlack,
+   544→                TextScaled = true,
+   545→                TextColor3 = Color3.fromRGB(255, 150, 90),
+   546→                Text = "PANDAI BESI",
+   547→        }, forgeGui)
+   548→
+   549→        local anvil = part({
+   550→                Name = "Perapian",
+   551→                Size = Vector3.new(3, 1.6, 1.6),
+   552→                CFrame = CFrame.new(forgeX - 10.5, 1.8, forgeZ) * CFrame.Angles(0, math.rad(20), 0),
+   553→                Color = Color3.fromRGB(60, 62, 72),
+   554→                Material = Enum.Material.Metal,
+   555→        })
+   556→        part({
+   557→                Name = "PerapianKaki",
+   558→                Size = Vector3.new(1.4, 1.2, 1.4),
+   559→                CFrame = CFrame.new(forgeX - 10.5, 0.6, forgeZ),
+   560→                Color = Color3.fromRGB(50, 52, 60),
+   561→                Material = Enum.Material.Metal,
+   562→        })
+   563→        local forgeFire = part({
+   564→                Name = "ApiTempa",
+   565→                Shape = Enum.PartType.Ball,
+   566→                Size = Vector3.new(1.8, 1.8, 1.8),
+   567→                CFrame = CFrame.new(forgeX - 14, 1.6, forgeZ + 4),
+   568→                Color = Color3.fromRGB(255, 130, 60),
+   569→                Material = Enum.Material.Neon,
+   570→        })
+   571→        do
+   572→                local light = Instance.new("PointLight")
+   573→                light.Color = Color3.fromRGB(255, 130, 60)
+   574→                light.Range = 16
+   575→                light.Brightness = 1.5
+   576→                light.Parent = forgeFire
+   577→        end
+   578→        local forgePrompt = buildNPC("PAK TEMPA", Vector3.new(forgeX - 14, 0, forgeZ - 3), Color3.fromRGB(255, 150, 90))
+   579→        local anvilPrompt = Instance.new("ProximityPrompt")
+   580→        anvilPrompt.Parent = anvil
+   581→        svc.Craft.bindStation(anvilPrompt, "tempa")
+   582→        svc.Craft.bindStation(forgePrompt, "tempa")
+   583→
+   584→        -- dapur alam (api unggun)
+   585→        part({
+   586→                Name = "ApiUnggunBatu",
+   587→                Shape = Enum.PartType.Cylinder,
+   588→                Size = Vector3.new(0.8, 6, 6),
+   589→                CFrame = CFrame.new(26, 0.4, 26) * CFrame.Angles(0, 0, math.rad(90)),
+   590→                Color = Color3.fromRGB(120, 118, 124),
+   591→                Material = Enum.Material.Slate,
+   592→        })
+   593→        for i = 1, 4 do
+   594→                part({
+   595→                        Name = "ApiUnggunKayu",
+   596→                        Size = Vector3.new(0.7, 3.4, 0.7),
+   597→                        CFrame = CFrame.new(26, 1.4, 26) * CFrame.Angles(math.rad(24), math.rad(i * 90), 0) * CFrame.new(0, 1.2, 0),
+   598→                        Color = Color3.fromRGB(110, 76, 46),
+   599→                        Material = Enum.Material.Wood,
+   600→                })
+   601→        end
+   602→        local kitchenFire = part({
+   603→                Name = "ApiUnggunApi",
+   604→                Shape = Enum.PartType.Ball,
+   605→                Size = Vector3.new(2.4, 2.4, 2.4),
+   606→                CFrame = CFrame.new(26, 1.8, 26),
+   607→                Color = Color3.fromRGB(255, 160, 70),
+   608→                Material = Enum.Material.Neon,
+   609→        })
+   610→        do
+   611→                local light = Instance.new("PointLight")
+   612→                light.Color = Color3.fromRGB(255, 160, 70)
+   613→                light.Range = 18
+   614→                light.Brightness = 1.4
+   615→                light.Parent = kitchenFire
+   616→        end
+   617→        part({
+   618→                Name = "Kuali",
+   619→                Shape = Enum.PartType.Cylinder,
+   620→                Size = Vector3.new(0.9, 3, 3),
+   621→                CFrame = CFrame.new(29, 1.1, 28) * CFrame.Angles(0, 0, math.rad(90)),
+   622→                Color = Color3.fromRGB(40, 42, 50),
+   623→                Material = Enum.Material.Metal,
+   624→        })
+   625→        buildNPC("BU MASAK", Vector3.new(23, 0, 29), Color3.fromRGB(240, 130, 150))
+   626→        local cookPrompt = buildNPC("KUALI AJAIB", Vector3.new(29, 0, 24), Color3.fromRGB(240, 130, 150))
+   627→        svc.Craft.bindStation(cookPrompt, "dapur")
+   628→
+   629→        -- papan tugas harian
+   630→        part({
+   631→                Name = "PapanTugasTiang",
+   632→                Size = Vector3.new(0.8, 6, 0.8),
+   633→                CFrame = CFrame.new(-16, 3, -18),
+   634→                Color = Color3.fromRGB(96, 66, 42),
+   635→                Material = Enum.Material.Wood,
+   636→        })
+   637→        local questBoard = part({
+   638→                Name = "PapanTugasPapan",
+   639→                Size = Vector3.new(8, 5, 0.7),
+   640→                CFrame = CFrame.new(-16, 6.4, -18) * CFrame.Angles(0, math.rad(35), 0),
+   641→                Color = Color3.fromRGB(178, 140, 90),
+   642→                Material = Enum.Material.WoodPlanks,
+   643→        })
+   644→        do
+   645→                local gui = Instance.new("SurfaceGui")
+   646→                gui.Face = Enum.NormalId.Back
+   647→                gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+   648→                gui.PixelsPerStud = 40
+   649→                gui.Parent = questBoard
+   650→                Util.create("TextLabel", {
+   651→                        Size = UDim2.fromScale(1, 1),
+   652→                        BackgroundTransparency = 1,
+   653→                        Font = Enum.Font.GothamBlack,
+   654→                        TextScaled = true,
+   655→                        TextColor3 = Color3.fromRGB(90, 60, 30),
+   656→                        Text = "TUGAS HARIAN",
+   657→                }, gui)
+   658→        end
+   659→        buildNPC("KAK TUGAS", Vector3.new(-14, 0, -15), Color3.fromRGB(255, 209, 102))
+   660→        local questPrompt = buildNPC("PAPAN TUGAS", Vector3.new(-18, 0, -21), Color3.fromRGB(255, 209, 102))
+   661→        svc.Quest.bindBoard(questPrompt)
+   662→end
+   663→
+   664→--------------------------------------------------------------------
+   665→-- PULAU PANEN (civil - TANPA MONSTER): hutan, tambang, danau
+   666→--------------------------------------------------------------------
+   667→
+   668→local function buildHarvestIsland(svc)
+   669→        local C = Vector3.new(0, 0, -640)
+   670→
+   671→        -- plaza kecil depan gerbang (rel z 130)
+   672→        part({
+   673→                Name = "PanenPlaza",
+   674→                Shape = Enum.PartType.Cylinder,
+   675→                Size = Vector3.new(0.3, 26, 26),
+   676→                CFrame = CFrame.new(C.X, 0.28, C.Z + 130) * CFrame.Angles(0, 0, math.rad(90)),
+   677→                Color = Color3.fromRGB(196, 188, 176),
+   678→                Material = Enum.Material.Granite,
+   679→        })
+   680→        local function road(x: number, z: number, w: number, d: number)
+   681→                part({
+   682→                        Name = "JalanPanen",
+   683→                        Size = Vector3.new(w, 0.24, d),
+   684→                        CFrame = CFrame.new(C.X + x, 0.12, C.Z + z),
+   685→                        Color = Color3.fromRGB(186, 180, 170),
+   686→                        Material = Enum.Material.Concrete,
+   687→                })
+   688→        end
+   689→        road(0, 95, 8, 70) -- gerbang (rel z 142) -> jalan horizontal
+   690→        road(0, 60, 280, 8) -- jalan horizontal timur-barat
+   691→        road(-90, 0, 8, 120) -- cabang barat ke Hutan Kayu
+   692→        road(105, 10, 8, 100) -- cabang timur ke Tambang
+   693→        road(-60, 45, 8, 40) -- cabang tenggara ke Danau Tenang
+   694→
+   695→        -- HUTAN KAYU (barat): 12 pohon bisa ditebang
+   696→        local rng = Random.new(4242)
+   697→        for i = 1, 12 do
+   698→                local tx = -150 + (i - 1) % 4 * 34 + rng:NextNumber(-8, 8)
+   699→                local tz = -30 - math.floor((i - 1) / 4) * 44 + rng:NextNumber(-8, 8)
+   700→                svc.Gather.buildTree(C + Vector3.new(tx, 0, tz), 400 + i)
+   701→        end
+   702→        buildSign("HUTAN KAYU", C + Vector3.new(-36, 0, 12), 45, Color3.fromRGB(60, 110, 70))
+   703→
+   704→        -- TAMBANG (timur): lantai batu + gerbang + bijih
+   705→        part({
+   706→                Name = "TambangLantai",
+   707→                Shape = Enum.PartType.Cylinder,
+   708→                Size = Vector3.new(0.25, 62, 62),
+   709→                CFrame = CFrame.new(C.X + 105, 0.14, C.Z - 85) * CFrame.Angles(0, 0, math.rad(90)),
+   710→                Color = Color3.fromRGB(112, 112, 118),
+   711→                Material = Enum.Material.Slate,
+   712→        })
+   713→        for side = -1, 1, 2 do
+   714→                part({
+   715→                        Name = "TambangPilar",
+   716→                        Size = Vector3.new(2.4, 10, 2.4),
+   717→                        CFrame = CFrame.new(C.X + 105 + side * 6, 5, C.Z - 46),
+   718→                        Color = Color3.fromRGB(70, 70, 78),
+   719→                        Material = Enum.Material.Rock,
+   720→                })
+   721→                part({
+   722→                        Name = "TambangObor",
+   723→                        Shape = Enum.PartType.Ball,
+   724→                        Size = Vector3.new(1.4, 1.4, 1.4),
+   725→                        CFrame = CFrame.new(C.X + 105 + side * 6, 10.6, C.Z - 46),
+   726→                        Color = Color3.fromRGB(255, 150, 70),
+   727→                        Material = Enum.Material.Neon,
+   728→                })
+   729→        end
+   730→        part({
+   731→                Name = "TambangPalang",
+   732→                Size = Vector3.new(15, 2, 2),
+   733→                CFrame = CFrame.new(C.X + 105, 11, C.Z - 46),
+   734→                Color = Color3.fromRGB(48, 48, 56),
+   735→                Material = Enum.Material.Rock,
+   736→        })
+   737→        part({
+   738→                Name = "TambangGua",
+   739→                Size = Vector3.new(12, 9, 6),
+   740→                CFrame = CFrame.new(C.X + 105, 4.5, C.Z - 40),
+   741→                Color = Color3.fromRGB(30, 30, 36),
+   742→                Material = Enum.Material.Rock,
+   743→        })
+   744→        local rocks = {
+   745→                { id = "batu", pos = Vector3.new(90, 0, -100) },
+   746→                { id = "batu", pos = Vector3.new(122, 0, -95) },
+   747→                { id = "batu", pos = Vector3.new(104, 0, -72) },
+   748→                { id = "besi", pos = Vector3.new(88, 0, -52) },
+   749→                { id = "besi", pos = Vector3.new(126, 0, -58) },
+   750→                { id = "besi", pos = Vector3.new(140, 0, -120) },
+   751→                { id = "kristal", pos = Vector3.new(96, 0, -130) },
+   752→                { id = "kristal", pos = Vector3.new(70, 0, -118) },
+   753→        }
+   754→        for i, rock in rocks do
+   755→                svc.Gather.buildRock(C + rock.pos, rock.id, 200 + i)
+   756→        end
+   757→        buildSign("TAMBANG", C + Vector3.new(66, 0, -24), -45, Color3.fromRGB(90, 90, 96))
+   758→
+   759→        -- DANAU TENANG (tenggara): AIR SUNGUHAN terrain + dermaga memancing
+   760→        local lake = C + Vector3.new(-90, 0, 80)
+   761→        local terrain = workspace.Terrain
+   762→        terrain:FillBlock(CFrame.new(lake.X, -3.6, lake.Z), Vector3.new(66, 10, 50), Enum.Material.Air)
+   763→        terrain:FillBlock(CFrame.new(lake.X, -5.1, lake.Z), Vector3.new(72, 9.5, 56), Enum.Material.Sand)
+   764→        terrain:FillBlock(CFrame.new(lake.X, -5.05, lake.Z), Vector3.new(60, 9, 44), Enum.Material.Water)
+   765→        svc.Gather.buildPier(lake + Vector3.new(35, 0, 0), Vector3.new(-1, 0, 0))
+   766→        buildSign("DANAU TENANG", C + Vector3.new(-36, 0, 108), 90, Color3.fromRGB(60, 110, 130))
+   767→        buildSign("PULAU PANEN", C + Vector3.new(0, 0, 118), 180, Color3.fromRGB(124, 94, 62))
+   768→
+   769→        -- kelengkapan: lampu, bangku, kincir angin dekorasi
+   770→        for _, pos in {
+   771→                Vector3.new(-7, 0, 100), Vector3.new(7, 0, 100), Vector3.new(-40, 0, 52), Vector3.new(60, 0, 52),
+   772→        } do
+   773→                buildLamp(C + pos)
+   774→        end
+   775→        buildBench(C + Vector3.new(-18, 0, 118), 0)
+   776→        buildBench(C + Vector3.new(18, 0, 118), 180)
+   777→        local towerX, towerZ = -30, -110
+   778→        part({
+   779→                Name = "KincirMenara",
+   780→                Size = Vector3.new(4, 18, 4),
+   781→                CFrame = CFrame.new(C.X + towerX, 9, C.Z + towerZ),
+   782→                Color = Color3.fromRGB(214, 206, 192),
+   783→                Material = Enum.Material.WoodPlanks,
+   784→        })
+   785→        for blade = 1, 4 do
+   786→                part({
+   787→                        Name = "KincirBaling",
+   788→                        Size = Vector3.new(1, 12, 0.6),
+   789→                        CFrame = CFrame.new(C.X + towerX, 19, C.Z + towerZ - 2.4) * CFrame.Angles(0, 0, math.rad(blade * 90)),
+   790→                        Color = Color3.fromRGB(240, 236, 226),
+   791→                        Material = Enum.Material.WoodPlanks,
+   792→                })
+   793→        end
+   794→end
+   795→
+   796→--------------------------------------------------------------------
+   797→-- PULAU MONSTER (combat) - dekorasi bertema, zona spawn di Balance.Zones
+   798→--------------------------------------------------------------------
+   799→
+   800→local function warningSign(pos: Vector3, text: string)
+   801→        buildSign(text, pos, 90, Color3.fromRGB(150, 70, 60))
+   802→end
+   803→
+   804→local function buildMonsterIslands()
+   805→        -- PADANG LIAR (640,-320): padang terbuka, pohon jarang, batu
+   806→        local P = Vector3.new(640, 0, -320)
+   807→        warningSign(P + Vector3.new(-96, 0, 0), "PADANG LIAR - MONSTER LV 1-3")
+   808→        local rng = Random.new(911)
+   809→        for i = 1, 6 do
+   810→                part({
+   811→                        Name = "PadangBatu",
+   812→                        Shape = Enum.PartType.Ball,
+   813→                        Size = Vector3.new(1, 1, 1) * rng:NextNumber(2.4, 4.6),
+   814→                        CFrame = CFrame.new(P + Vector3.new(rng:NextNumber(-100, 100), 0.6, rng:NextNumber(-100, 100))),
+   815→                        Color = Color3.fromRGB(128, 126, 122),
+   816→                        Material = Enum.Material.Slate,
+   817→                })
+   818→        end
+   819→        for i = 1, 4 do
+   820→                part({
+   821→                        Name = "PadangPohonBatang",
+   822→                        Size = Vector3.new(1.2, rng:NextNumber(7, 10), 1.2),
+   823→                        CFrame = CFrame.new(P + Vector3.new(rng:NextNumber(-110, 110), 4.4, rng:NextNumber(-110, 110))),
+   824→                        Color = Color3.fromRGB(112, 88, 60),
+   825→                        Material = Enum.Material.Wood,
+   826→                })
+   827→        end
+   828→
+   829→        -- HUTAN BAYANG (640,60): pohon lebat gelap
+   830→        local H = Vector3.new(640, 0, 60)
+   831→        warningSign(H + Vector3.new(-96, 0, 0), "HUTAN BAYANG - MONSTER LV 3-5")
+   832→        for i = 1, 10 do
+   833→                local ang = (i / 10) * math.pi * 2
+   834→                local d = 62 + (i % 3) * 24
+   835→                part({
+   836→                        Name = "BayangBatang",
+   837→                        Size = Vector3.new(1.6, 11, 1.6),
+   838→                        CFrame = CFrame.new(H + Vector3.new(math.cos(ang) * d, 5.5, math.sin(ang) * d)),
+   839→                        Color = Color3.fromRGB(70, 60, 66),
+   840→                        Material = Enum.Material.Wood,
+   841→                })
+   842→                part({
+   843→                        Name = "BayangDedaun",
+   844→                        Shape = Enum.PartType.Ball,
+   845→                        Size = Vector3.new(9, 7, 9),
+   846→                        CFrame = CFrame.new(H + Vector3.new(math.cos(ang) * d, 12.5, math.sin(ang) * d)),
+   847→                        Color = Color3.fromRGB(52, 84, 62),
+   848→                        Material = Enum.Material.Grass,
+   849→                })
+   850→        end
+   851→
+   852→        -- NEGERI BAJA & KRISTAL (760,560): 3 biome monster
+   853→        local B = Vector3.new(760, 0, 560)
+   854→        warningSign(B + Vector3.new(-196, 0, 0), "NEGERI BAJA & KRISTAL - MONSTER LV 5+")
+   855→        -- a) tambang baja (barat laut pulau)
+   856→        part({
+   857→                Name = "BajaLantai",
+   858→                Shape = Enum.PartType.Cylinder,
+   859→                Size = Vector3.new(0.25, 60, 60),
+   860→                CFrame = CFrame.new(605, 0.14, 430) * CFrame.Angles(0, 0, math.rad(90)),
+   861→                Color = Color3.fromRGB(96, 98, 106),
+   862→                Material = Enum.Material.Slate,
+   863→        })
+   864→        for i = 1, 4 do
+   865→                part({
+   866→                        Name = "BajaBatuBesar",
+   867→                        Shape = Enum.PartType.Ball,
+   868→                        Size = Vector3.new(1, 1, 1) * (5 + i),
+   869→                        CFrame = CFrame.new(605 + (i % 2 == 0 and 18 or -20), 2 + i * 0.4, 430 + (i < 3 and 20 or -18)),
+   870→                        Color = Color3.fromRGB(118, 120, 128),
+   871→                        Material = Enum.Material.Rock,
+   872→                })
+   873→        end
+   874→        buildSign("TAMBANG BAJA", Vector3.new(605, 0, 474), 0, Color3.fromRGB(90, 90, 96))
+   875→        -- b) gua kristal (timur laut): dinding cincin dgn bukaan barat + kristal neon
+   876→        local gx, gz = 920, 430
+   877→        part({
+   878→                Name = "GuaLantai",
+   879→                Shape = Enum.PartType.Cylinder,
+   880→                Size = Vector3.new(0.25, 64, 64),
+   881→                CFrame = CFrame.new(gx, 0.14, gz) * CFrame.Angles(0, 0, math.rad(90)),
+   882→                Color = Color3.fromRGB(58, 62, 78),
+   883→                Material = Enum.Material.Slate,
+   884→        })
+   885→        for i = 1, 10 do
+   886→                local ang = (i / 10) * math.pi * 2
+   887→                -- bukaan menghadap barat (arah pusat pulau)
+   888→                local diff = math.abs(math.atan2(math.sin(ang - math.pi), math.cos(ang - math.pi)))
+   889→                if diff > math.pi / 10 then
+   890→                        part({
+   891→                                Name = "GuaDinding",
+   892→                                Size = Vector3.new(22, 11, 3),
+   893→                                CFrame = CFrame.new(gx + math.cos(ang) * 32, 5.5, gz + math.sin(ang) * 32)
+   894→                                        * CFrame.Angles(0, -math.deg(ang) + 90, 0),
+   895→                                Color = Color3.fromRGB(66, 68, 84),
+   896→                                Material = Enum.Material.Rock,
+   897→                        })
+   898→                end
+   899→        end
+   900→        local rngK = Random.new(55)
+   901→        for i = 1, 8 do
+   902→                local ang = (i / 8) * math.pi * 2 + rngK:NextNumber(-0.2, 0.2)
+   903→                local d = rngK:NextNumber(8, 18)
+   904→                local h = rngK:NextNumber(4, 9)
+   905→                part({
+   906→                        Name = "GuaKristal",
+   907→                        Size = Vector3.new(2.4, h, 2.4),
+   908→                        CFrame = CFrame.new(gx + math.cos(ang) * d, h / 2, gz + math.sin(ang) * d)
+   909→                                * CFrame.Angles(rngK:NextNumber(-0.3, 0.3), 0, rngK:NextNumber(-0.3, 0.3)),
+   910→                        Color = Color3.fromRGB(190, 120, 255),
+   911→                        Material = Enum.Material.Neon,
+   912→                        Transparency = 0.25,
+   913→                        CanCollide = false,
+   914→                })
+   915→        end
+   916→        buildSign("GUA KRISTAL", Vector3.new(gx - 40, 0, gz), 90, Color3.fromRGB(140, 90, 200))
+   917→        -- c) arena koloseum (selatan pulau): dinding cincin dgn 2 pintu + obor
+   918→        local ax, az = 760, 650
+   919→        part({
+   920→                Name = "ArenaLantai",
+   921→                Shape = Enum.PartType.Cylinder,
+   922→                Size = Vector3.new(0.3, 76, 76),
+   923→                CFrame = CFrame.new(ax, 0.16, az) * CFrame.Angles(0, 0, math.rad(90)),
+   924→                Color = Color3.fromRGB(196, 176, 150),
+   925→                Material = Enum.Material.Sand,
+   926→        })
+   927→        for i = 1, 12 do
+   928→                local ang = ((i - 0.5) / 12) * math.pi * 2
+   929→                local diffU = math.abs(math.atan2(math.sin(ang + math.pi / 2), math.cos(ang + math.pi / 2)))
+   930→                local diffS = math.abs(math.atan2(math.sin(ang - math.pi / 2), math.cos(ang - math.pi / 2)))
+   931→                if diffU > math.pi / 12 and diffS > math.pi / 12 then
+   932→                        part({
+   933→                                Name = "ArenaDinding",
+   934→                                Size = Vector3.new(20, 9, 2.6),
+   935→                                CFrame = CFrame.new(ax + math.cos(ang) * 38, 4.5, az + math.sin(ang) * 38)
+   936→                                        * CFrame.Angles(0, -math.deg(ang) + 90, 0),
+   937→                                Color = Color3.fromRGB(150, 132, 110),
+   938→                                Material = Enum.Material.Slate,
+   939→                        })
+   940→                end
+   941→        end
+   942→        for i = 1, 6 do
+   943→                local ang = (i / 6) * math.pi * 2
+   944→                part({
+   945→                        Name = "ArenaObor",
+   946→                        Shape = Enum.PartType.Ball,
+   947→                        Size = Vector3.new(1.6, 1.6, 1.6),
+   948→                        CFrame = CFrame.new(ax + math.cos(ang) * 32, 8.6, az + math.sin(ang) * 32),
+   949→                        Color = Color3.fromRGB(255, 140, 70),
+   950→                        Material = Enum.Material.Neon,
+   951→                })
+   952→        end
+   953→        buildSign("ARENA - PUNCAK ANGKA 9", Vector3.new(ax - 46, 0, az), 90, Color3.fromRGB(150, 90, 60))
+   954→end
+   955→
+   956→--------------------------------------------------------------------
+   957→-- BUILD ALL
+   958→--------------------------------------------------------------------
+   959→
+   960→function MapService.init(svc)
+   961→        folder.Parent = workspace
+   962→
+   963→        -- atmosfer cerah (bukan kabut kelabu!)
+   964→        local atmo = Instance.new("Atmosphere")
+   965→        atmo.Density = 0.14
+   966→        atmo.Offset = 0.2
+   967→        atmo.Color = Color3.fromRGB(205, 215, 235)
+   968→        atmo.Glare = 0.15
+   969→        atmo.Haze = 0.8
+   970→        atmo.Parent = game:GetService("Lighting")
+   971→
+   972→        -- awan
+   973→        local rngAwan = Random.new(77)
+   974→        for i = 1, 8 do
+   975→                part({
+   976→                        Name = "Awan",
+   977→                        Shape = Enum.PartType.Ball,
+   978→                        Size = Vector3.new(1, 1, 1) * rngAwan:NextNumber(28, 56),
+   979→                        CFrame = CFrame.new(rngAwan:NextNumber(-300, 300), rngAwan:NextNumber(85, 125), rngAwan:NextNumber(-400, 400)),
+   980→                        Color = Color3.new(1, 1, 1),
+   981→                        Material = Enum.Material.SmoothPlastic,
+   982→                        Transparency = 0.35,
+   983→                        CanCollide = false,
+   984→                })
+   985→        end
+   986→
+   987→        -- laut + seluruh pulau wilayah (terrain)
+   988→        buildTerrain()
+   989→
+   990→        -- isi wilayah
+   991→        buildHub(svc)
+   992→        buildMarket(svc)
+   993→        buildHarvestIsland(svc)
+   994→        buildMonsterIslands()
+   995→
+   996→        -- 6 pulau rumah pribadi (rumah, ladang, kolam air, ruang Bedah/Sains/Startopia)
+   997→        local PersonalWorldBuilder = require(script.Parent.PersonalWorldBuilder)
+   998→        for i = 1, Balance.HOME_COUNT do
+   999→                PersonalWorldBuilder.build(i, svc)
+  1000→        end
+  1001→
+  1002→        print("[AKIOMIDA] Dunia v21 siap: Pusat Kota, Pulau Panen (bebas monster), 3 pulau monster, "
+  1003→                .. Balance.HOME_COUNT .. " Pulau Rumah (rumah+ladang+kolam+ruang Bedah/Sains/Startopia), laut air sungguhan.")
+  1004→end
+  1005→
+  1006→return MapService
+  1007→

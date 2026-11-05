@@ -1,12 +1,12 @@
-# DUNIA AKIOMIDA v6.1 — "MICDA Economy World" (Roblox)
+# DUNIA AKIOMIDA v6.2 — "ARSITEKTUR WILAYAH" (Roblox)
 
-Status: LIVE di Roblox (versionNumber 20, 5 Nov 2026 — siklus mandiri v20)
-Universe: 10774464946 · Place: 77626159664192 · Versi game: 6.1.0
-Build: `tools/rojo build --output build/DuniaAkiomida.rbxlx .` (luau-lsp 0 TypeError & 0 lint, tes offline 107 PASS, 0 FAIL)
+Status: LIVE di Roblox (versionNumber 22, 5 Nov 2026 — arsitektur wilayah)
+Universe: 10774464946 · Place: 77626159664192 · Versi game: 6.2.0
+Build: `tools/rojo build --output build/DuniaAkiomida.rbxlx .` (luau-lsp 0 TypeError & 0 lint, tes offline 122 PASS, 0 FAIL)
 
-Skor banding Toram/Growtopia: **79/100** — lihat `RUBRIC.md`.
+Skor banding Toram/Growtopia: **80/100** — lihat `RUBRIC.md`.
 
-## Riwayat siklus mandiri (tanpa menunggu owner, v12→v20)
+## Riwayat siklus (v12→v22)
 
 | Ver | Isi |
 |-----|-----|
@@ -15,10 +15,24 @@ Skor banding Toram/Growtopia: **79/100** — lihat `RUBRIC.md`.
 | v14 | EVENT TERJADWAL "Pesta Panen" (tiap 30 menit, Micda/XP x2, chip timer + pengumuman server). |
 | v15 | Dungeon GUA KRISTAL (dinding, kristal neon, 3 belik kristal ekstra, angka 8 & 6), recoil kena pukul, notifikasi LEVEL NAIK, pop-in panel. |
 | v16 | UPGRADE PERALATAN +1..+5 (biaya Micda + balok, +12%/bintang, tampil di panel Kar). |
-| v17 | KOMPAS ZONA (jarak ke Papan Jual/Ladang/Hutan/Tambang/Gua/Arena), STREAK LOGIN (bonus naik sampai 250 Micda). |
-| v18 | MASTERY CRAFTING (10x resep = M1..M3, XP craft +50% maks). |
-| v19 | Konsistensi dunia angka (papan arena, tips, bahan "Pecahan Angka 2"/"Inti Angka"), versi 6.0.0. |
-| v20 | **KIOS VENDING PEMAIN** di pad ladang (pasang 250 Micda lunas, 6 slot, harga bebas, jasa 2% transparan, hasil langsung ke pemilik, panel kelola/belanja) · skill ke-3 **Tusukan Kilat** (300%, Lv8) · **FASE MURKA** boss (HP ≤50%: aura merah, gerak +35%, serang +30%, diumumkan semua) · **BGM pentatonik** original disintesis kode + tombol Musik · partikel panen/tempa/kios/skill/murka (burst sekali-pakai, hemat mobile) · SFX jual. Versi 6.1.0. |
+| v17 | KOMPAS ZONA, STREAK LOGIN. |
+| v18 | MASTERY CRAFTING. |
+| v19 | Konsistensi dunia angka, versi 6.0.0. |
+| v20 | KIOS VENDING PEMAIN (250 Micda lunas, 6 slot, jasa 2% transparan) · skill Tusukan Kilat · FASE MURKA boss · BGM pentatonik sintesis · partikel hemat mobile. Versi 6.1.0. |
+| v21 | **ARSITEKTUR WILAYAH (permintaan pemilik)**: dunia = pulau-pulau di LAUT AIR SUNGUHAN terrain, pindah wilayah lewat GERBANG PORTAL. PULAU RUMAH pribadi x6 (klaim persisten: 1 gratis, 2-6 lunas Micda) berisi rumah berinterior, LAHAN TANI pribadi, KOLAM AIR SUNGUHAN (bergelombang, bisa berenang, bukan balok), RUANG BEDAH / RUANG SAINS / RUANG STARTOPIA, gerbang ke kota. PULAU PANEN bebas monster (hutan kayu, tambang bijih, Danau Tenang). 3 PULAU MONSTER terpisah bertingkat: Padang Liar (LV1-3), Hutan Bayang (LV3-5), Negeri Baja & Kristal (LV5+: Tambang Baja, Gua Kristal, Arena koloseum berpintu). Tata ruang rapi: jalan batu, lampu taman, pagar rambate, plaza. Modul baru: RegionService, PersonalWorldBuilder, data Balance.Regions + validasi otomatis "monster tidak boleh menembus wilayah umum". Versi 6.2.0. |
+
+## Arsitektur wilayah (v21)
+
+- **Pusat Kota** (hub): spawn, air mancur, 4 toko, pandai besi, api unggun, papan tugas,
+  papan jual, Kak Pintar, papan juara + 5 gerbang portal.
+- **Pulau Panen** (civil, TANPA monster): Hutan Kayu (12 pohon), Tambang bijih,
+  Danau Tenang (air terrain + dermaga memancing).
+- **Pulau Monster** (combat): Padang Liar · Hutan Bayang · Negeri Baja & Kristal
+  (Tambang Baja, Gua Kristal, Arena boss).
+- **Pulau Rumah x6** (home, klaim persisten per pemain): rumah, ladang pribadi + pad kios,
+  kolam air sungguhan (bisa berenang & memancing), ruang Bedah/Sains/Startopia.
+- Zona monster DIJAMIN tidak menembus wilayah peradaban oleh tes offline
+  (`Balance.validateRegions()` — dijalankan setiap build).
 
 ## Kepatuhan syariah (tetap)
 

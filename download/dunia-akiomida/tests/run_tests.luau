@@ -177,9 +177,17 @@ do
         end
         local zoneOk = true
         for _, z in ipairs(Balance.Zones) do
-                local cx, cz = z.center[1], z.center[3]
-                if math.abs(cx) > 320 or math.abs(cz) > 320 then
-                        zoneOk = false -- di luar pulau!
+                -- v21: zona monster WAJIB di dalam pulau combat (dicek validateRegions)
+                local inside = false
+                for _, r in ipairs(Balance.Regions) do
+                        if r.kind == "combat" and math.abs(z.center[1] - r.center[1]) <= r.half[1]
+                                and math.abs(z.center[3] - r.center[2]) <= r.half[2] then
+                                inside = true
+                                break
+                        end
+                end
+                if not inside then
+                        zoneOk = false -- zona monster tidak di pulau combat!
                 end
                 for _, spec in ipairs(z.monsters) do
                         if not monIds[spec.id] then
@@ -187,7 +195,7 @@ do
                         end
                 end
         end
-        check("Zona spawn di dalam pulau & monster dikenal", zoneOk)
+        check("Zona spawn di dalam pulau combat & monster dikenal", zoneOk)
 end
 
 -------------------------------------------------------------------- Kombat: TTK simulasi
@@ -411,6 +419,91 @@ do
                 B.enrageSpeed >= 1.1 and B.enrageSpeed <= 1.8 and B.enrageAtk >= 1.1 and B.enrageAtk <= 1.8,
                 tostring(B.enrageSpeed) .. "/" .. tostring(B.enrageAtk))
         check("Boss enrage: warna aura murka ada", B.enrageAura ~= nil, "-")
+end
+
+-- ===== v21: ARSITEKTUR WILAYAH (pulau rumah, portal, zona monster terpisah) =====
+do
+        -- validasi penuh arsitektur wilayah
+        local errs = Balance.validateRegions()
+        check("Arsitektur wilayah valid (gerbang, batas, zona monster terpisah)", #errs == 0,
+                table.concat(errs, "; "))
+
+        -- wilayah unik & lengkap: pusat + panen + 3 combat + 6 rumah
+        local kinds = {}
+        for _, r in ipairs(Balance.Regions) do
+                kinds[r.kind] = (kinds[r.kind] or 0) + 1
+        end
+        check("Wilayah: 1 pusat, 1 civil, 3 combat, 6 home",
+                (kinds["hub"] or 0) == 1 and (kinds["civil"] or 0) == 1
+                and (kinds["combat"] or 0) == 3 and (kinds["home"] or 0) == 6,
+                (kinds["hub"] or 0) .. "/" .. (kinds["civil"] or 0) .. "/" .. (kinds["combat"] or 0) .. "/" .. (kinds["home"] or 0))
+
+        -- Pusat Kota & Pulau Panen WAJIB punya gerbang balik & ke pusat
+        local pusat = Balance.regionById("pusat")
+        check("Pusat Kota ada", pusat ~= nil, "-")
+        check("Pusat Kota: 5 gerbang (rumah/panen/3 monster)", pusat and #pusat.gates == 5, tostring(pusat and #pusat.gates))
+        local panen = Balance.regionById("panen")
+        check("Pulau Panen bebas monster: tidak ada zona menembusnya",
+                panen ~= nil and #Balance.validateRegions() == 0, "-")
+
+        -- klaim pulau rumah (murni)
+        check("nextFreeHome kosong = 1", Balance.nextFreeHome({}) == 1, "-")
+        check("nextFreeHome 1 diambil = 2", Balance.nextFreeHome({ [1] = true }) == 2, "-")
+        check("nextFreeHome 1-5 diambil = 6", Balance.nextFreeHome({ [1] = true, [2] = true, [3] = true, [4] = true, [5] = true }) == 6, "-")
+        check("nextFreeHome penuh = 0", Balance.nextFreeHome({ [1] = true, [2] = true, [3] = true, [4] = true, [5] = true, [6] = true }) == 0, "-")
+
+        -- harga pulau rumah: 1 gratis, 2..6 lunas (syariah)
+        check("Pulau rumah 1 gratis", (Balance.LandPrices[1] or 0) == 0, tostring(Balance.LandPrices[1]))
+        local hargaOk = true
+        for i = 2, Balance.HOME_COUNT do
+                if (Balance.LandPrices[i] or 0) <= 0 then
+                        hargaOk = false
+                end
+        end
+        check("Pulau rumah 2-6 dijual lunas Micda", hargaOk, "-")
+
+        -- homeCenter dalam rentang & berjarak rapi
+        local spreadOk = true
+        local hx0 = Balance.homeCenter(1)
+        for i = 2, Balance.HOME_COUNT do
+                local hx, hz = Balance.homeCenter(i)
+                local _, pz = Balance.homeCenter(i - 1)
+                if hz - pz ~= Balance.HOME_GAP then
+                        spreadOk = false
+                end
+                if hx ~= hx0 then
+                        spreadOk = false
+                end
+        end
+        check("Pulau rumah tersusun rapi 1 kolom jarak tetap", spreadOk, "-")
+
+        -- arrival portal: setiap region non-pusat harus punya titik muncul dari pusat
+        local arrivalOk = true
+        for _, r in ipairs(Balance.Regions) do
+                if r.id ~= "pusat" then
+                        local ax, az = Balance.gateArrival(r.id, "pusat")
+                        if not ax then
+                                arrivalOk = false
+                        else
+                                if math.abs(ax - r.center[1]) > r.half[1] or math.abs(az - r.center[2]) > r.half[2] then
+                                        arrivalOk = false -- muncul di luar pulau
+                                end
+                        end
+                end
+        end
+        check("Titik muncul portal ada & di dalam pulau (dari pusat)", arrivalOk, "-")
+        local axH, azH = Balance.gateArrival("pusat", "rumah3")
+        check("Gerbang PULAU RUMAHKU di pusat menerima pulang dari rumah3",
+                axH ~= nil and math.abs(axH - pusat.center[1]) <= pusat.half[1], tostring(axH))
+
+        -- jumlah monster tetap ramai
+        local totalMon = 0
+        for _, z in ipairs(Balance.Zones) do
+                for _, spec in ipairs(z.monsters) do
+                        totalMon += spec.count
+                end
+        end
+        check("Total spawn monster >= 24 (dunia ramai)", totalMon >= 24, tostring(totalMon))
 end
 
 print("SEMUA TES LULUS - siap publish.")

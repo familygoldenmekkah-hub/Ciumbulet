@@ -2,7 +2,7 @@
 --[[
         CombatService.luau - v3 "Toram-grade" kombat dunia terbuka:
           - 4 makhluk original: Gelatin Hijau, Serigala Bayang, Golem Batu,
-            Gelatin Raksasa (elite) + BOSS RAID "Raja Golem" di Arena Timur
+            Gelatin Raksasa (elite) + BOSS RAID "Raja Golem" di Arena (Negeri Baja & Kristal)
           - AI: berkeliaran, mengejar pemain dalam radius aggro, menyerang balik
           - Serang lewat ProximityPrompt "Serang" + validasi jarak di server
           - Damage dari STR/DEX/INT/level + senjata tempaan (EquipService)
@@ -250,7 +250,7 @@ local function maybeEnrage(entity: any)
         Remotes.get("BossState"):FireAllClients({
                 active = true, name = Balance.Boss.name,
                 hp = math.max(1, entity.hp), maxHp = entity.maxHp,
-                zone = "Arena Timur", enraged = true,
+                zone = "Arena", enraged = true,
         })
         for _, player in Players:GetPlayers() do
                 notify(player, "MURKA!", Balance.Boss.name .. " mengamuk! Gerak & serangannya menguat - berhati-hatilah!")
@@ -875,10 +875,10 @@ function CombatService.startBoss()
 
         Remotes.get("BossState"):FireAllClients({
                 active = true, name = def.name, hp = maxHp, maxHp = maxHp,
-                zone = "Arena Timur",
+                zone = "Arena",
         })
         for _, player in Players:GetPlayers() do
-                notify(player, "BOSS RAID!", def.name .. " muncul di Arena Timur! Serang bersama untuk hadiah besar!")
+                notify(player, "BOSS RAID!", def.name .. " muncul di Arena (Negeri Baja & Kristal)! Serang bersama untuk hadiah besar!")
         end
 end
 
@@ -940,7 +940,7 @@ local function bossLoop()
                                 Remotes.get("BossState"):FireAllClients({
                                         active = true, name = Balance.Boss.name,
                                         hp = math.max(0, boss.hp), maxHp = boss.maxHp,
-                                        zone = "Arena Timur", enraged = boss.enraged == true,
+                                        zone = "Arena", enraged = boss.enraged == true,
                                 })
                         end
                 end
@@ -971,7 +971,7 @@ function CombatService.spawnMonsters()
                         end
                 end
         end
-        print("[AKIOMIDA] Monster dikerahkan di 4 zona.")
+        print("[AKIOMIDA] Monster dikerahkan di " .. #Balance.Zones .. " zona (semua di pulau monster terpisah).")
 end
 
 -- v6: loop event PESTA PANEN (aktivitas multiplayer terjadwal & terumumkan)

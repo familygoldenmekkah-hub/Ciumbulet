@@ -390,17 +390,18 @@ function UIController:buildHud()
         self.navRows = {}
         local navTargets = {
                 { name = "Papan Jual", pos = Vector3.new(-10, 0, 16) },
-                { name = "Ladang", pos = Vector3.new(0, 0, -97) },
-                { name = "Hutan", pos = Vector3.new(-122, 0, -8) },
-                { name = "Tambang", pos = Vector3.new(0, 0, 136) },
-                { name = "Gua Kristal", pos = Vector3.new(-170, 0, -175) },
-                { name = "Arena Boss", pos = Vector3.new(150, 0, 92) },
+                { name = "Rumahku (Gerbang)", pos = Vector3.new(0, 0, 132) },
+                { name = "Pulau Panen", pos = Vector3.new(0, 0, -640) },
+                { name = "Padang Liar", pos = Vector3.new(640, 0, -320) },
+                { name = "Hutan Bayang", pos = Vector3.new(640, 0, 60) },
+                { name = "Negeri Baja", pos = Vector3.new(760, 0, 560) },
+                { name = "Arena Boss", pos = Vector3.new(760, 0, 650) },
         }
         local navHolder = Util.create("Frame", {
                 Name = "Kompas",
                 AnchorPoint = Vector2.new(0, 1),
                 Position = UDim2.new(0, 12, 1, -150),
-                Size = UDim2.fromOffset(170, 6 * 30),
+                Size = UDim2.fromOffset(170, 7 * 30),
                 BackgroundTransparency = 1,
                 Visible = false,
         }, self.gui)
@@ -521,11 +522,11 @@ function UIController:buildHud()
 end
 
 local TIPS = {
-        "Ladang pertama GRATIS! Ladang lain dibeli lunas pakai Micda di Kawasan Ladang (Utara).",
+        "Klaim PULAU RUMAHMU lewat gerbang selatan Pusat Kota - ada rumah, ladang, kolam & ruang Bedah/Sains/Startopia!",
         "Jual hasil panen ke Bu Laris di Pasar Pengepul - harga pasar berubah tiap 10 menit!",
         "Tempa balok besi dari bijih di PAK TEMPA, lalu buat Pedang Besi & Zirah!",
-        "Monster berwujud ANGKA dengan AURA berkeliaran - lawan Angka Satu di Padang Timur!",
-        "BOSS RAID: Angka Sang Raja (9) muncul di Arena Timur - serang bersama semua pemain!",
+        "Monster berwujud ANGKA dengan AURA hanya ada di PULAU MONSTER - lawan Angka Satu di Padang Liar!",
+        "BOSS RAID: Angka Sang Raja (9) muncul di Arena (Negeri Baja & Kristal) - serang bersama semua pemain!",
         "Naik level dapat 2 poin stat - buka panel Kar dan bagikan ke STR/VIT/AGI!",
         "Makan Roti Aktif dari Bu Masak untuk lari lebih cepat 12%!",
         "Dagang aman antar pemain: tombol Dagang, dekati partner, undang & SIAP!",
@@ -1254,7 +1255,7 @@ function UIController:renderInv()
         end
 
         -- ladang
-        local plotText = "Belum klaim - ambil alih gratis di Kawasan Ladang!"
+        local plotText = "Belum klaim - klaim PULAU RUMAHMU lewat gerbang selatan Pusat Kota!"
         if s.Plot.claimed then
                 local ready = 0
                 local growing = 0
@@ -1562,16 +1563,16 @@ function UIController:buildHelpPanel()
                 TextXAlignment = Enum.TextXAlignment.Left,
                 TextYAlignment = Enum.TextYAlignment.Top,
                 Text = table.concat({
-                        "1. KUMPUL: tanam & panen (Ladang Utara), tebang pohon (Hutan), tambang bijih (Tambang, perlu Belik), mancing (Danau, perlu Pancing).",
-                        "2. JUAL: Bu Laris di Pasar Pengepul - harga naik-turun tiap 10 menit, jual saat permintaan tinggi!",
-                        "3. KOMBAT: dekati MONSTER ANGKA (1/2/3/4...) lalu tekan E untuk menyerang. Pukulan lemah - tempa PEDANG supaya sakit!",
-                        "4. TEMPAA: kumpulkan bahan, buat Balok Besi di PAK TEMPA, lalu tempa Pedang & Zirah. Pakai di panel Kar.",
-                        "5. STAT: tiap naik level = 2 poin. Panel Kar: STR (serangan), VIT (HP), AGI (lari), INT (ramuan), DEX (kritikal).",
-                        "6. MASAK: Bu Masak menjual resep - Roti Aktif (lari cepat), Sate Ikan & Ramuan (pulihkan HP).",
-                        "7. BOSS: ANGKA SANG RAJA (9) muncul di Arena Timur tiap ±15 menit. Serang bersama - hadiah sesuai kontribusi!",
-                        "8. TUGAS: Papan Tugas di alun-alun - rotasi harian, hadiah Micda+XP besar.",
-                        "9. DAGANG: tombol Dagang, dekati pemain lain, undang, tawar barang/Micda, keduanya SIAP -> tukar aman.",
-                        "10. LEVEL membuka bibit mahal & resep tempaa. Semua aktivitas memberi XP!",
+                        "1. WILAYAH: dunia terbagi pulau - Pusat Kota, Pulau Panen (kayu/bijih/ikan), pulau MONSTER, dan PULAU RUMAH pribadimu. Pindah lewat GERBANG PORTAL.",
+                        "2. PULAU RUMAH: klaim lewat gerbang selatan Pusat Kota. Ada rumah, ladang pribadi, kolam air sungguhan & ruang Bedah/Sains/Startopia.",
+                        "3. KUMPUL: tebang pohon & tambang bijih di Pulau Panen (perlu Belik), mancing di Danau Tenang (perlu Pancing), tanam di ladangmu.",
+                        "4. JUAL: Bu Laris di Pasar Pengepul - harga naik-turun tiap 10 menit, jual saat permintaan tinggi!",
+                        "5. KOMBAT: dekati MONSTER ANGKA (1/2/3/4...) di pulau monster, tekan E untuk menyerang. Pukulan lemah - tempa PEDANG supaya sakit!",
+                        "6. TEMPAA: kumpulkan bahan, buat Balok Besi di PAK TEMPA, lalu tempa Pedang & Zirah. Pakai di panel Kar.",
+                        "7. STAT: tiap naik level = 2 poin. Panel Kar: STR (serangan), VIT (HP), AGI (lari), INT (ramuan), DEX (kritikal).",
+                        "8. MASAK: Bu Masak menjual resep - Roti Aktif (lari cepat), Sate Ikan & Ramuan (pulihkan HP).",
+                        "9. BOSS: ANGKA SANG RAJA (9) muncul di Arena (Negeri Baja & Kristal) tiap ±15 menit. Serang bersama - hadiah sesuai kontribusi!",
+                        "10. TUGAS: Papan Tugas di alun-alun - rotasi harian, hadiah Micda+XP besar. DAGANG & PAPAN JUAL untuk ekonomi antar pemain!",
                         "11. KUIS Kak Pintar opsional: +20 Micda per jawaban benar. Diabaikan juga tidak apa-apa.",
                 }, "\n"),
         }, frame)

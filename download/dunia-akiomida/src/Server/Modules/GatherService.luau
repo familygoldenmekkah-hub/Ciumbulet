@@ -2,7 +2,7 @@
 --[[
         GatherService.luau - aktivitas mengumpulkan sumber daya:
           Hutan Kayu   : tebang pohon -> Kayu (+Apel keberuntungan)
-          Tambang Selatan : tambang Batu (belik lv1), Besi (lv2), Kristal (lv3)
+          Tambang (Pulau Panen) : tambang Batu (belik lv1), Besi (lv2), Kristal (lv3)
           Danau Tenang : memancing (butuh Pancing Ajaib)
         Semua node respawn otomatis supaya dunia tetap hidup.
 ]]

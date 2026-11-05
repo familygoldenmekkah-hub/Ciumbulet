@@ -303,6 +303,21 @@ local function onClaimTriggered(player: Player, plot)
         DataService.push(player)
 end
 
+-- v21: klaim langsung oleh sistem (portal Pulau Rumah) tanpa biaya -
+-- biaya pulau ditangani RegionService sekali di muka (persisten).
+function FarmService.claimPlotFor(player: Player, index: number): boolean
+        local plot = plots[index]
+        if not plot or plot.owner then
+                return false
+        end
+        plot.owner = player
+        updateSign(plot)
+        for _, tile in plot.tiles do
+                updateTilePrompt(tile)
+        end
+        return true
+end
+
 --------------------------------------------------------------------
 -- BANGUN LADANG (dipanggil MapService)
 --------------------------------------------------------------------

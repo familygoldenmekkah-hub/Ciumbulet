@@ -44,13 +44,9 @@ local DEFINITIONS = {
         Skill = "RemoteFunction", -- client -> server: skill senjata (skillId)
         EquipUpgrade = "RemoteFunction", -- client -> server: upgrade peralatan (+1..+5)
         EventState = "RemoteEvent", -- server -> semua: event dunia (Pesta Panen)
-        MarketAction = "RemoteFunction", -- client -> server: browse/list/cancel/buy
-        MarketSync = "RemoteEvent", -- server -> client: snapshot papan jual
-        OpenMarket = "RemoteEvent", -- server -> client: buka panel papan jual
-        -- v20: kios vending pemain di lahan (ala stand jualan dunia terbuka)
-        KiosAction = "RemoteFunction", -- client -> server: place/stock/take/price/browse/buy/close
-        KiosSync = "RemoteEvent", -- server -> client: snapshot kios
-        OpenKios = "RemoteEvent", -- server -> client: buka panel kios (mode kelola/belanja)
+        -- v22: papan nama lahan pemain
+        OpenLandBoard = "RemoteEvent", -- server -> client: buka dialog papan nama lahan
+        LandBoard = "RemoteFunction", -- client -> server: simpan nama lahan
 }
 
 local function folder(): Folder

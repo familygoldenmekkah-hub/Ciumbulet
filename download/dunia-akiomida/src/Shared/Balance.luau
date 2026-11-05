@@ -61,25 +61,6 @@ Balance.CraftMasteryXpMult = 1.5
 --   Syariah: bayar lunas per transaksi, jasa 2% (min 1) TRANSPARAN,
 --   tanpa escrow bunga, tanpa gharar (barang & harga terlihat jelas).
 --------------------------------------------------------------------
-Balance.Kios = {
-        price = 250, -- harga pasang kios (lunas di muka, sewa spot sesi ini)
-        feeRate = 0.02, -- jasa layanan kios 2% - transparan (ujr, bukan riba)
-        feeMin = 1,
-        maxSlots = 6, -- 6 jenis barang per kios
-        maxStock = 99, -- maks stok per jenis
-        maxPrice = 999999,
-}
-
---- Jasa kios untuk transaksi senilai `total` Micda (murni - diuji offline).
-function Balance.kiosFee(total: number): number
-        return math.max(Balance.Kios.feeMin, math.floor((total or 0) * Balance.Kios.feeRate + 0.5))
-end
-
---- Hasil bersih penjual setelah jasa (murni - diuji offline).
-function Balance.kiosProceeds(total: number): number
-        return math.max(0, math.floor(total or 0) - Balance.kiosFee(total))
-end
-
 function Balance.craftMasteryLevel(count: number): number
         return math.floor(math.max(0, count) / Balance.CraftMasterySteps)
 end
@@ -197,7 +178,7 @@ Balance.Monsters = {
                 body = { color = { 90, 200, 220 }, size = 7.5, digit = "7", aura = { 90, 200, 220 } } },
 }
 
--- BOSS RAID: muncul di Arena Timur, semua pemain berburu bersama
+-- BOSS RAID: muncul di Arena (pulau monster Negeri Baja & Kristal)
 Balance.Boss = {
         id = "raja_golem",
         name = "ANGKA SANG RAJA",
@@ -249,24 +230,228 @@ Balance.Skills = {
 }
 
 --------------------------------------------------------------------
--- ZONA SPAWN MONSTER (dipakai CombatService + MapService dekorasi)
+-- ZONA SPAWN MONSTER (v21: SEMUA monster HIDUP di PULAU MONSTER
+-- terpisah - tidak pernah menyebar ke wilayah umum peradaban)
 --------------------------------------------------------------------
--- HARGA LAHAN (syariah: bayar penuh di muka, TANPA bunga/cicilan/riba).
--- Ladang 1 gratis untuk semua pemain; ladang lain dibeli dengan MICDA.
-Balance.LandPrices = { [2] = 400, [3] = 1200, [4] = 3000, [5] = 8000, [6] = 20000 }
 
 Balance.Zones = {
-        { id = "padang", name = "Padang Timur", center = { 62, 0, 26 }, radius = 44,
-                monsters = { { id = "gelatin", count = 5 }, { id = "angka_tiga", count = 3 } } },
-        { id = "hutan", name = "Hutan Kayu", center = { -122, 0, -8 }, radius = 40,
-                monsters = { { id = "serigala", count = 4 }, { id = "angka_lima", count = 3 } } },
-        { id = "tambang", name = "Tambang Selatan", center = { 0, 0, 136 }, radius = 36,
+        { id = "padang", name = "Padang Liar", center = { 640, 0, -320 }, radius = 95,
+                monsters = { { id = "gelatin", count = 4 }, { id = "angka_tiga", count = 3 }, { id = "serigala", count = 2 } } },
+        { id = "hutan", name = "Hutan Bayang", center = { 640, 0, 60 }, radius = 95,
+                monsters = { { id = "serigala", count = 3 }, { id = "angka_lima", count = 3 } } },
+        { id = "tambang", name = "Tambang Baja", center = { 605, 0, 430 }, radius = 65,
                 monsters = { { id = "golem", count = 3 }, { id = "angka_enam", count = 3 } } },
-        { id = "arena", name = "Arena Timur", center = { 150, 0, 92 }, radius = 38,
-                monsters = { { id = "gelatin_raksasa", count = 2 }, { id = "angka_delapan", count = 2 } } },
-        { id = "gua", name = "Gua Kristal", center = { -170, 0, -175 }, radius = 30,
+        { id = "gua", name = "Gua Kristal", center = { 920, 0, 430 }, radius = 55,
                 monsters = { { id = "angka_delapan", count = 3 }, { id = "angka_enam", count = 2 } } },
+        { id = "arena", name = "Arena", center = { 760, 0, 650 }, radius = 70,
+                monsters = { { id = "gelatin_raksasa", count = 2 }, { id = "angka_delapan", count = 2 } } },
 }
+
+--------------------------------------------------------------------
+-- REGIONS / WILAYAH (v22 - arsitektur MMO ala dunia terbuka):
+--   Dunia terdiri dari PULAU-PULAU WILAYAH yang dihubungkan GERBANG
+--   PORTAL (wilayah bisa berpindah). Kategori:
+--     hub     = Pusat Kota (DIBIARKAN KOSONG - isi menyusul diskusi)
+--     civil   = Pulau Panen (kayu/bijih/ikan - DILARANG ada monster)
+--     combat  = pulau monster (hanya di sini monster boleh hidup)
+--     home    = Lahan pribadi pemain: 1 pemain = 1 lahan (GRATIS,
+--               otomatis saat masuk), berisi rumah 3 lantai + rooftop,
+--               ladang 500 petak, kolam air sungguhan, ruang Bedah/
+--               Sains/Startopia/Pancing, koperasi, gerbang ke kota.
+--------------------------------------------------------------------
+Balance.HOME_COUNT = 10
+Balance.HOME_COLS = { -700, -380 }
+Balance.HOME_Z0 = -440
+Balance.HOME_GAP = 260
+Balance.HOME_HALF = { 105, 95 }
+
+Balance.Regions = {
+        { id = "pusat", name = "Pusat Kota", kind = "hub", center = { 0, 0 }, half = { 170, 150 },
+                gates = {
+                        { dest = "home", pos = { 0, 132 } },
+                        { dest = "panen", pos = { 0, -132 } },
+                        { dest = "padang", pos = { 152, -60 } },
+                        { dest = "hutan", pos = { 152, 40 } },
+                        { dest = "baja", pos = { 152, 130 } },
+                } },
+        { id = "panen", name = "Pulau Panen", kind = "civil", center = { 0, -640 }, half = { 190, 150 },
+                gates = { { dest = "pusat", pos = { 0, -498 } } } },
+        { id = "padang", name = "Padang Liar", kind = "combat", center = { 640, -320 }, half = { 130, 130 },
+                gates = { { dest = "pusat", pos = { 516, -320 } } } },
+        { id = "hutan", name = "Hutan Bayang", kind = "combat", center = { 640, 60 }, half = { 130, 130 },
+                gates = { { dest = "pusat", pos = { 516, 60 } } } },
+        { id = "baja", name = "Negeri Baja & Kristal", kind = "combat", center = { 760, 560 }, half = { 240, 210 },
+                gates = { { dest = "pusat", pos = { 528, 560 } } } },
+}
+-- Lahan pribadi pemain: 2 kolom x 5 baris, gerbang di tepi timur
+for hi = 1, Balance.HOME_COUNT do
+        local hx, hz = Balance.homeCenter(hi)
+        table.insert(Balance.Regions, {
+                id = "rumah" .. hi, name = "Lahan " .. hi, kind = "home",
+                center = { hx, hz }, half = { Balance.HOME_HALF[1], Balance.HOME_HALF[2] },
+                gates = { { dest = "pusat", pos = { hx + Balance.HOME_HALF[1], hz } } },
+        })
+end
+
+--- Lahan pribadi berdasarkan index 1..HOME_COUNT: kolom barat (index
+--- ganjil) & timur (genap), 5 baris per kolom (murni - diuji offline).
+function Balance.homeCenter(index: number): (number, number)
+        if index < 1 or index > Balance.HOME_COUNT then
+                return 0, 0
+        end
+        local col = (index - 1) % 2
+        local row = math.floor((index - 1) / 2)
+        return Balance.HOME_COLS[col + 1], Balance.HOME_Z0 + row * Balance.HOME_GAP
+end
+
+--- Titik lahir di lahan sendiri: plaza gerbang, di dalam batas lahan.
+function Balance.landSpawn(index: number): (number, number)
+        local hx, hz = Balance.homeCenter(index)
+        return hx + 84, hz + 10
+end
+
+--- Pilih lahan kosong terkecil; 0 bila penuh (murni - diuji offline).
+function Balance.nextFreeHome(taken: { [number]: boolean }): number
+        for i = 1, Balance.HOME_COUNT do
+                if not taken[i] then
+                        return i
+                end
+        end
+        return 0
+end
+
+--- Nama koperasi otomatis: "akiomida" + 8 kode huruf-angka (murni).
+Balance.KOPERASI_PREFIX = "akiomida"
+local KOPERASI_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+
+function Balance.koperasiName(rng: Random?): string
+        local r = rng or Random.new()
+        local code = table.create(8)
+        for i = 1, 8 do
+                local n = r:NextInteger(1, #KOPERASI_CHARS)
+                code[i] = string.sub(KOPERASI_CHARS, n, n)
+        end
+        return Balance.KOPERASI_PREFIX .. table.concat(code)
+end
+
+--- Bersihkan nama lahan dari papan nama: 3..20 karakter aman (murni).
+function Balance.sanitizeLandName(text: any): string?
+        if type(text) ~= "string" then
+                return nil
+        end
+        local cleaned = string.gsub(text, "%s+", " ")
+        cleaned = string.gsub(cleaned, "^%s+", ""):gsub("%s+$", "")
+        if #cleaned < 3 or #cleaned > 20 then
+                return nil
+        end
+        if not string.match(cleaned, "^[A-Za-z0-9 _%-%.%']+$") then
+                return nil
+        end
+        return cleaned
+end
+
+function Balance.regionById(id: string)
+        for _, r in ipairs(Balance.Regions) do
+                if r.id == id then
+                        return r
+                end
+        end
+        return nil
+end
+
+--- Titik muncul di region tujuan: 13 stud ke dalam dari gerbang yang
+--- menghadap region asal (murni - diuji offline). "home" cocok dengan
+--- "rumahK" mana pun.
+function Balance.gateArrival(regionId: string, fromRegionId: string): (number?, number?)
+        local region = Balance.regionById(regionId)
+        if not region then
+                return nil, nil
+        end
+        for _, g in ipairs(region.gates) do
+                local match = g.dest == fromRegionId
+                        or (g.dest == "home" and string.sub(fromRegionId, 1, 5) == "rumah")
+                if match then
+                        local dx = region.center[1] - g.pos[1]
+                        local dz = region.center[2] - g.pos[2]
+                        local len = math.sqrt(dx * dx + dz * dz)
+                        if len < 1 then
+                                return g.pos[1], g.pos[2]
+                        end
+                        return g.pos[1] + dx / len * 13, g.pos[2] + dz / len * 13
+                end
+        end
+        return nil, nil
+end
+
+--- Dua kotak (center1, half1, center2, half2) bertumpuk dengan margin (murni).
+function Balance.rectsOverlap(c1: { number }, h1: { number }, c2: { number }, h2: { number }, margin: number): boolean
+        return math.abs(c1[1] - c2[1]) < h1[1] + h2[1] + margin
+                and math.abs(c1[2] - c2[2]) < h1[2] + h2[2] + margin
+end
+
+--- Validasi arsitektur wilayah (murni - dipanggil tes offline):
+--- gerbang menunjuk wilayah yang ada, posisi gerbang di dalam pulau,
+--- zona monster di dalam pulau combat & TIDAK menyentuh pulau peradaban.
+function Balance.validateRegions(): { string }
+        local errs = {}
+        local ids = {}
+        for _, r in ipairs(Balance.Regions) do
+                if ids[r.id] then
+                        table.insert(errs, "region duplikat: " .. r.id)
+                end
+                ids[r.id] = true
+        end
+        for _, r in ipairs(Balance.Regions) do
+                for _, g in ipairs(r.gates) do
+                        if g.dest ~= "home" and not ids[g.dest] then
+                                table.insert(errs, "gerbang " .. r.id .. " menunjuk wilayah tak dikenal: " .. tostring(g.dest))
+                        end
+                        if math.abs(g.pos[1] - r.center[1]) > r.half[1] - 4
+                                or math.abs(g.pos[2] - r.center[2]) > r.half[2] - 4 then
+                                table.insert(errs, "gerbang " .. r.id .. " keluar batas pulau")
+                        end
+                end
+        end
+        for _, zone in ipairs(Balance.Zones) do
+                local island
+                for _, r in ipairs(Balance.Regions) do
+                        if r.kind == "combat" and Balance.rectsOverlap(
+                                { zone.center[1], zone.center[3] }, { zone.radius, zone.radius },
+                                r.center, r.half, 0) then
+                                island = r
+                                break
+                        end
+                end
+                if not island then
+                        table.insert(errs, "zona monster '" .. zone.id .. "' tidak berada di pulau combat mana pun")
+                else
+                        if math.abs(zone.center[1] - island.center[1]) + zone.radius > island.half[1] - 10
+                                or math.abs(zone.center[3] - island.center[2]) + zone.radius > island.half[2] - 10 then
+                                table.insert(errs, "zona monster '" .. zone.id .. "' menjulur keluar pulau " .. island.id)
+                        end
+                end
+                for _, r in ipairs(Balance.Regions) do
+                        if r.kind ~= "combat" and Balance.rectsOverlap(
+                                { zone.center[1], zone.center[3] }, { zone.radius, zone.radius },
+                                r.center, r.half, 12) then
+                                table.insert(errs, "zona monster '" .. zone.id .. "' menembus wilayah " .. r.kind .. " '" .. r.id .. "'")
+                        end
+                end
+        end
+        for _, m in ipairs(Balance.Monsters) do
+                local ok = false
+                for _, z in ipairs(Balance.Zones) do
+                        if z.id == m.zone then
+                                ok = true
+                                break
+                        end
+                end
+                if not ok then
+                        table.insert(errs, "monster '" .. m.id .. "' zona tidak dikenal: " .. tostring(m.zone))
+                end
+        end
+        return errs
+end
 
 --------------------------------------------------------------------
 -- TUGAS (papan tugas; rotasi harian deterministik)
