@@ -1,8 +1,3 @@
---!nonstrict
---[[
-        Util.luau - helper bersama (server & client).
-]]
-
 local Util = {}
 
 local SUFFIXES = { "", "K", "M", "B", "T" }
@@ -65,15 +60,10 @@ function Util.create(className: string, props: { [string]: any }?, parent: Insta
         return inst
 end
 
---- Warna zona dari Config.Zones (array {r,g,b} 0-255) -> Color3.
 function Util.zoneColor(rgb): Color3
         return Color3.fromRGB(rgb[1], rgb[2], rgb[3])
 end
 
---------------------------------------------------------------------
--- v20 PARTIKEL BURST (hemat mobile): emitter sekali pakai, Rate = 0,
--- hanya Emit(count) lalu dihapus - TIDAK ada emitter kontinu di dunia.
---------------------------------------------------------------------
 function Util.burst(parent: Instance?, color: Color3, count: number, speed: number?, size: number?)
         if not parent or not parent.Parent then
                 return

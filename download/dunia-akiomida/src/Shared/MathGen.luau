@@ -1,14 +1,3 @@
---!nonstrict
---[[
-        MathGen.luau
-        Generator soal matematika prosedural (karya original, gaya edukatif
-        peduli umpan balik). Satu generator per zona, tingkat kesulitan naik.
-
-        Output per soal:
-        { t = teks soal, opsi = {3 teks}, benar = index (1..3),
-          betul = pujian/penguatan, salah = petunjuk lembut }
-]]
-
 local MathGen = {}
 
 local function shuffledOptions(correct: number, decoys: { number }): ({ string }, number)
@@ -21,7 +10,7 @@ local function shuffledOptions(correct: number, decoys: { number }): ({ string }
                         table.insert(opts, tostring(d))
                 end
         end
-        -- fallback decoys bila kurang
+
         local filler = correct + 1
         while #opts < 3 do
                 if filler ~= correct and table.find(opts, tostring(filler)) == nil then
@@ -29,7 +18,7 @@ local function shuffledOptions(correct: number, decoys: { number }): ({ string }
                 end
                 filler += 1
         end
-        -- shuffle
+
         for i = #opts, 2, -1 do
                 local j = math.random(1, i)
                 opts[i], opts[j] = opts[j], opts[i]
@@ -44,7 +33,7 @@ local function question(t: string, correct: number, decoys: { number }, betul: s
 end
 
 local function near(n: number): { number }
-        -- decoys "klik terdekat" yang masuk akal secara pedagogis
+
         local out = {}
         local candidates = { n + 1, n - 1, n + 2, n - 2, n + 10, n - 10, n * 2 }
         for _, c in candidates do
@@ -55,9 +44,6 @@ local function near(n: number): { number }
         return out
 end
 
---------------------------------------------------------------------
--- ZONA 1: KAMP ANGKA - berhitung dasar
---------------------------------------------------------------------
 local function kamp(): any
         local pick = math.random(1, 4)
         if pick == 1 then
@@ -100,9 +86,6 @@ local function kamp(): any
         end
 end
 
---------------------------------------------------------------------
--- ZONA 2: HUTAN SIMBOL - tanda, urutan operasi, bilangan negatif
---------------------------------------------------------------------
 local function hutan(): any
         local pick = math.random(1, 4)
         if pick == 1 then
@@ -152,9 +135,6 @@ local function hutan(): any
         end
 end
 
---------------------------------------------------------------------
--- ZONA 3: PEGUNUNGAN POLA - pola barisan
---------------------------------------------------------------------
 local function gunung(): any
         local pick = math.random(1, 3)
         if pick == 1 then
@@ -192,9 +172,6 @@ local function gunung(): any
         end
 end
 
---------------------------------------------------------------------
--- ZONA 4: KOTA BUKTI - aljabar & pembuktian sederhana
---------------------------------------------------------------------
 local function kota(): any
         local pick = math.random(1, 3)
         if pick == 1 then
@@ -231,9 +208,6 @@ local function kota(): any
         end
 end
 
---------------------------------------------------------------------
--- ZONA 5: LEMBAH KEDALAMAN - pangkat, akar, fungsi
---------------------------------------------------------------------
 local function lembah(): any
         local pick = math.random(1, 3)
         if pick == 1 then
@@ -271,9 +245,6 @@ local function lembah(): any
         end
 end
 
---------------------------------------------------------------------
--- ZONA 6: PUNCAK RISET - prima, modulo, nalar tingkat lanjut
---------------------------------------------------------------------
 local function salju(): any
         local pick = math.random(1, 3)
         if pick == 1 then
@@ -316,7 +287,6 @@ end
 
 local GENERATORS = { kamp, hutan, gunung, kota, lembah, salju }
 
---- zoneIndex 1..6
 function MathGen.generate(zoneIndex: number): any
         local gen = GENERATORS[math.clamp(zoneIndex, 1, #GENERATORS)]
         return gen()

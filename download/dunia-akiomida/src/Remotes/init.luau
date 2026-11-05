@@ -1,8 +1,3 @@
---!nonstrict
---[[
-        Remotes.luau - registry RemoteEvent/RemoteFunction Dunia Akiomida v2.
-]]
-
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
@@ -11,42 +6,29 @@ local Remotes = {}
 local FOLDER_NAME = "Remotes"
 
 local DEFINITIONS = {
-        Notify = "RemoteEvent", -- server -> client: toast
-        StateSync = "RemoteEvent", -- server -> client: snapshot data lengkap
-        OpenShop = "RemoteEvent", -- server -> client: buka panel toko (shopId)
-        OpenPlant = "RemoteEvent", -- server -> client: buka panel pilih bibit (plot, tile)
-        OpenQuiz = "RemoteEvent", -- server -> client: buka panel kuis opsional
-        GetState = "RemoteFunction", -- client -> server: minta snapshot
-        BuyItem = "RemoteFunction", -- client -> server: beli item toko
-        SellItem = "RemoteFunction", -- client -> server: jual barang (kind, id, all)
-        SellAll = "RemoteFunction", -- client -> server: jual semua isi tas
-        PlantSeed = "RemoteFunction", -- client -> server: tanam bibit di petak
-        EquipPet = "RemoteFunction", -- client -> server: pakai/lepas peliharaan
-        QuizRequest = "RemoteFunction", -- client -> server: minta soal kuis opsional
-        QuizAnswer = "RemoteFunction", -- client -> server: jawab soal
-        RedeemDevCode = "RemoteFunction", -- client -> server: kode penjelajah
-        GetLeaderboard = "RemoteFunction", -- client -> server: papan juara
-        -- v3: kombat, craft, peralatan, tugas, dagang
-        Attack = "RemoteFunction", -- client -> server: serang monster (monsterId)
-        Craft = "RemoteFunction", -- client -> server: buat item dari resep
-        Equip = "RemoteFunction", -- client -> server: pakai/lepas senjata-zirah
-        UseItem = "RemoteFunction", -- client -> server: makan makanan/ramuan
-        AllocStat = "RemoteFunction", -- client -> server: tambah poin stat
-        QuestAction = "RemoteFunction", -- client -> server: list/accept/claim tugas
-        TradeAction = "RemoteFunction", -- client -> server: invite/offer/coin/ready/cancel
-        OpenCraft = "RemoteEvent", -- server -> client: buka panel tempa/dapur
-        OpenQuest = "RemoteEvent", -- server -> client: buka papan tugas
-        OpenTrade = "RemoteEvent", -- server -> client: buka panel dagang
-        OpenChar = "RemoteEvent", -- server -> client: buka panel karakter
-        BossState = "RemoteEvent", -- server -> semua: status boss raid
-        TradeSync = "RemoteEvent", -- server -> kedua pihak: snapshot dagang
-        -- v4: papan jual antar pemain (Micda)
-        Skill = "RemoteFunction", -- client -> server: skill senjata (skillId)
-        EquipUpgrade = "RemoteFunction", -- client -> server: upgrade peralatan (+1..+5)
-        EventState = "RemoteEvent", -- server -> semua: event dunia (Pesta Panen)
-        -- v22: papan nama lahan pemain
-        OpenLandBoard = "RemoteEvent", -- server -> client: buka dialog papan nama lahan
-        LandBoard = "RemoteFunction", -- client -> server: simpan nama lahan
+        Notify = "RemoteEvent",
+        StateSync = "RemoteEvent",
+        OpenFarm = "RemoteEvent",
+        OpenToko = "RemoteEvent",
+        OpenKoperasi = "RemoteEvent",
+        OpenCraft = "RemoteEvent",
+        OpenChar = "RemoteEvent",
+        OpenLandBoard = "RemoteEvent",
+        GetState = "RemoteFunction",
+        FarmAct = "RemoteFunction",
+        TokoAct = "RemoteFunction",
+        KoperasiAct = "RemoteFunction",
+        Craft = "RemoteFunction",
+        Equip = "RemoteFunction",
+        UseItem = "RemoteFunction",
+        AllocStat = "RemoteFunction",
+        LandBoard = "RemoteFunction",
+        RedeemDevCode = "RemoteFunction",
+        GetLeaderboard = "RemoteFunction",
+        Attack = "RemoteFunction",
+        Skill = "RemoteFunction",
+        EquipUpgrade = "RemoteFunction",
+        BossState = "RemoteEvent",
 }
 
 local function folder(): Folder

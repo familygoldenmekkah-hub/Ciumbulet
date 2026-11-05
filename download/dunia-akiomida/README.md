@@ -1,10 +1,21 @@
-# DUNIA AKIOMIDA v6.2 — "ARSITEKTUR WILAYAH" (Roblox)
+# DUNIA AKIOMIDA v7 — "PANEN BARU" (Roblox)
 
-Status: LIVE di Roblox (versionNumber 22, 5 Nov 2026 — arsitektur wilayah)
-Universe: 10774464946 · Place: 77626159664192 · Versi game: 6.2.0
-Build: `tools/rojo build --output build/DuniaAkiomida.rbxlx .` (luau-lsp 0 TypeError & 0 lint, tes offline 122 PASS, 0 FAIL)
+Status: LIVE di Roblox (versionNumber 25, 5 Nov 2026 — ekonomi tani versi baru)
+Universe: 10774464946 · Place: 77626159664192 · Versi game: 7.0.0
+Build: `tools/rojo build --output build/DuniaAkiomida.rbxlx .` (luau-lsp 0 TypeError, tes offline 202 PASS, 0 FAIL)
 
-Skor banding Toram/Growtopia: **80/100** — lihat `RUBRIC.md`.
+Skor banding Toram/Growtopia: **83/100** — lihat `RUBRIC.md`.
+
+## Ekonomi tani v7 (permintaan pemilik)
+
+- **34 tanaman** (12 Common, 14 Rare, 8 Epic) dengan harga jual tetap, tumbuh **3 detik**, panen acak **1-4 hasil**.
+- **TOKO BENIH** di Pusat Kota (bangunan interior profesional: rak kemasan benih, konter kasir, planter demo, papan harga):
+  Pack Common **400** / Rare **1.500** / Epic **3.500** Micda, isi 3 benih acak (kategori dijamin).
+- **GABUNG BENIH**: hanya 8 resep (Tangelo, Plumcot, Nectaplum, Kacang Tanah, Pluerry, Canola, Triticale, Tetsukabuto).
+- **TAS** 50 slot, satu jenis per slot, maksimal **250** per slot; tas penuh = tidak bisa panen/membeli.
+- **KOPERASI** di tiap lahan: jual panen/ikan/bahan monster harga tetap transparan; nama otomatis "akiomida"+8 kode.
+- Dana awal pemain: **900.000 Micda**. Data penyimpanan baru (AKM_World_v3) - ekonomi lama dilupakan.
+- Pintu semua bangunan: tinggi **2x karakter** (10 stud) & benar-benar BUKA-TUTUP; tinggi satu lantai bangunan **4x karakter** (20 stud).
 
 ## Riwayat siklus (v12→v22)
 
@@ -19,18 +30,23 @@ Skor banding Toram/Growtopia: **80/100** — lihat `RUBRIC.md`.
 | v18 | MASTERY CRAFTING. |
 | v19 | Konsistensi dunia angka, versi 6.0.0. |
 | v20 | KIOS VENDING PEMAIN (250 Micda lunas, 6 slot, jasa 2% transparan) · skill Tusukan Kilat · FASE MURKA boss · BGM pentatonik sintesis · partikel hemat mobile. Versi 6.1.0. |
+| v23 | Ekonomi tani v7: 34 tanaman + pack benih + gabung benih + tas 50x250 + koperasi + toko benih; ekonomi lama (papan jual, kios, toko NPC, kuis, tugas, peliharaan, pulau panen) DIHAPUS total. Resep craft menyesuaikan drop monster. Versi 7.0.0 (#23). |
+| v24 | Bangunan dinormalkan: pintu 10 stud berengsel buka-tutup (DoorKit), tinggi lantai 20 stud, rumah 3 lantai + rooftop terrace penuh interior (ruang tamu + TV, kitchen set, kamar + lemari), ruang PANCING baru, koperasi & papan nama di tiap lahan (#24). |
+| v25 | Stasiun Pandai Besi & Dapur Alam dipindah ke pulau monster, perbaikan grid kebun & tata letak lahan; tes 202 PASS (#25). |
 | v21 | **ARSITEKTUR WILAYAH (permintaan pemilik)**: dunia = pulau-pulau di LAUT AIR SUNGUHAN terrain, pindah wilayah lewat GERBANG PORTAL. PULAU RUMAH pribadi x6 (klaim persisten: 1 gratis, 2-6 lunas Micda) berisi rumah berinterior, LAHAN TANI pribadi, KOLAM AIR SUNGUHAN (bergelombang, bisa berenang, bukan balok), RUANG BEDAH / RUANG SAINS / RUANG STARTOPIA, gerbang ke kota. PULAU PANEN bebas monster (hutan kayu, tambang bijih, Danau Tenang). 3 PULAU MONSTER terpisah bertingkat: Padang Liar (LV1-3), Hutan Bayang (LV3-5), Negeri Baja & Kristal (LV5+: Tambang Baja, Gua Kristal, Arena koloseum berpintu). Tata ruang rapi: jalan batu, lampu taman, pagar rambate, plaza. Modul baru: RegionService, PersonalWorldBuilder, data Balance.Regions + validasi otomatis "monster tidak boleh menembus wilayah umum". Versi 6.2.0. |
 
-## Arsitektur wilayah (v21)
+## Arsitektur wilayah (v25)
 
-- **Pusat Kota** (hub): spawn, air mancur, 4 toko, pandai besi, api unggun, papan tugas,
-  papan jual, Kak Pintar, papan juara + 5 gerbang portal.
-- **Pulau Panen** (civil, TANPA monster): Hutan Kayu (12 pohon), Tambang bijih,
-  Danau Tenang (air terrain + dermaga memancing).
-- **Pulau Monster** (combat): Padang Liar · Hutan Bayang · Negeri Baja & Kristal
-  (Tambang Baja, Gua Kristal, Arena boss).
-- **Pulau Rumah x6** (home, klaim persisten per pemain): rumah, ladang pribadi + pad kios,
-  kolam air sungguhan (bisa berenang & memancing), ruang Bedah/Sains/Startopia.
+- **Pusat Kota** (hub): SANGAT KOSONG sesuai permintaan - hanya plaza, air mancur,
+  **TOKO BENIH** (interior profesional), spawn & 4 gerbang (lahan + 3 monster).
+- **Lahan Pemain x10** (home): 1 pemain = 1 lahan, GRATIS & otomatis saat masuk,
+  respawn langsung di lahannya. Isi: rumah 3 lantai + rooftop terrace (ruang tamu + TV,
+  kitchen set + meja makan, kamar + lemari), KEBUN 500 PETAK, kolam air sungguhan
+  (bisa berenang & memancing), ruang Bedah/Sains/Startopia/PANCING berinterior,
+  KOPERASI (nama otomatis), PAPAN NAMA wajib diisi, gerbang ke kota.
+- **Pulau Monster** (combat): Padang Liar (LV1-3, ada Dapur Alam) · Hutan Bayang (LV3-5) ·
+  Negeri Baja & Kristal (LV5+: Tambang Baja + Pandai Besi, Gua Kristal, Arena boss).
+- Pulau Panen lama & seluruh ekonomi lama DIHAPUS (permintaan pemilik, dibangun versi baru).
 - Zona monster DIJAMIN tidak menembus wilayah peradaban oleh tes offline
   (`Balance.validateRegions()` — dijalankan setiap build).
 

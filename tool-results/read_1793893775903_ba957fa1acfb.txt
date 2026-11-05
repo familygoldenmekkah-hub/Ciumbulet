@@ -1,0 +1,672 @@
+     1→     1→--!nonstrict
+     2→     2→--[[
+     3→     3→        UIController.luau - seluruh UI Dunia Akiomida v2 (dibangun lewat kode):
+     4→     4→          HUD   : Micda, level + bar XP, tombol Tas / Kode / Bantuan, tips, toast
+     5→     5→          Toko  : tab Beli (bibit/alat/pet) & Jual (harga pasar dinamis)
+     6→     6→          Tas   : bibit, hasil panen, sumber daya, ikan, alat, peliharaan
+     7→     7→          Tanam : pilih bibit untuk petak ladang
+     8→     8→          Kuis  : OPSIONAL - hanya muncul jika pemain menemui Kak Pintar
+     9→     9→        Tidak ada popup paksa. Semua panel tertutup saat pemain menjelajah.
+    10→    10→]]
+    11→    11→
+    12→    12→local Players = game:GetService("Players")
+    13→    13→local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    14→    14→local SoundService = game:GetService("SoundService")
+    15→    15→
+    16→    16→local Config = require(ReplicatedStorage.Shared.Config)
+    17→    17→local Balance = require(ReplicatedStorage.Shared.Balance)
+    18→    18→local Remotes = require(ReplicatedStorage.Remotes)
+    19→    19→local Util = require(ReplicatedStorage.Shared.Util)
+    20→    20→local Ambience = require(script.Parent.Ambience)
+    21→    21→
+    22→    22→local UIController = {}
+    23→    23→UIController.__index = UIController
+    24→    24→
+    25→    25→-- v4 TEMMINIMAL: satu aksen emas, panel gelap flat, tanpa warna-warni pelangi
+    26→    26→local T = {
+    27→    27→        Bg = Color3.fromRGB(14, 16, 20),
+    28→    28→        Panel = Color3.fromRGB(22, 25, 32),
+    29→    29→        PanelLight = Color3.fromRGB(36, 40, 50),
+    30→    30→        Gold = Color3.fromRGB(233, 196, 106),
+    31→    31→        Green = Color3.fromRGB(96, 200, 140),
+    32→    32→        Red = Color3.fromRGB(228, 104, 104),
+    33→    33→        Blue = Color3.fromRGB(122, 168, 226),
+    34→    34→        Text = Color3.fromRGB(232, 234, 240),
+    35→    35→        TextDim = Color3.fromRGB(138, 144, 158),
+    36→    36→        Disabled = Color3.fromRGB(70, 75, 88),
+    37→    37→}
+    38→    38→
+    39→    39→local player = Players.LocalPlayer
+    40→    40→
+    41→    41→local function corner(parent, radius)
+    42→    42→        return Util.create("UICorner", { CornerRadius = UDim.new(0, radius or 10) }, parent)
+    43→    43→end
+    44→    44→
+    45→    45→local function makeSound(pitch: number?): Sound
+    46→    46→        local s = Util.create("Sound", {
+    47→    47→                SoundId = "rbxasset://sounds/electronicpingshort.wav",
+    48→    48→                Volume = 0.3,
+    49→    49→                PlaybackSpeed = pitch or 1,
+    50→    50→        }, SoundService)
+    51→    51→        return s :: Sound
+    52→    52→end
+    53→    53→
+    54→    54→local function btn(props): TextButton
+    55→    55→        local b = Util.create("TextButton", {
+    56→    56→                Font = Enum.Font.GothamBold,
+    57→    57→                TextColor3 = T.Text,
+    58→    58→                TextScaled = true,
+    59→    59→                AutoButtonColor = true,
+    60→    60→                BackgroundColor3 = T.PanelLight,
+    61→    61→                BorderSizePixel = 0,
+    62→    62→        }, props.parent)
+    63→    63→        for k, v in props do
+    64→    64→                if k ~= "parent" and k ~= "_radius" then
+    65→    65→                        (b :: any)[k] = v
+    66→    66→                end
+    67→    67→        end
+    68→    68→        corner(b, props._radius or 8)
+    69→    69→        return b
+    70→    70→end
+    71→    71→
+    72→    72→function UIController.new()
+    73→    73→        local self = setmetatable({}, UIController)
+    74→    74→
+    75→    75→        self.state = nil
+    76→    76→        self.activePanel = nil
+    77→    77→        self.shopId = nil
+    78→    78→        self.shopTab = "beli"
+    79→    79→        self.pendingPlant = nil
+    80→    80→        self.craftStation = nil
+    81→    81→        self.tradeSnap = nil
+    82→    82→        self.inviteFrom = nil
+    83→    83→        self.bossInfo = nil
+    84→    84→        self.marketTab = "papan"
+    85→    85→        self.marketSnap = nil
+    86→    86→        self.kiosMode = nil
+    87→    87→        self.kiosSnap = nil
+    88→    88→
+    89→    89→        self:buildGui()
+    90→    90→        self:buildHud()
+    91→    91→        self:buildShopPanel()
+    92→    92→        self:buildPlantPanel()
+    93→    93→        self:buildInvPanel()
+    94→    94→        self:buildQuizPanel()
+    95→    95→        self:buildCodePanel()
+    96→    96→        self:buildHelpPanel()
+    97→    97→        self:buildCharPanel()
+    98→    98→        self:buildCraftPanel()
+    99→    99→        self:buildQuestPanel()
+   100→   100→        self:buildTradePanel()
+   101→   101→        self:buildMarketPanel()
+   102→   102→        self:buildKiosPanel()
+   103→   103→        self:wireRemotes()
+   104→   104→        self:startTips()
+   105→   105→        Ambience.start() -- v20: BGM pentatonik sintesis kode
+   106→   106→
+   107→   107→        return self
+   108→   108→end
+   109→   109→
+   110→   110→--------------------------------------------------------------------
+   111→   111→-- GUI DASAR
+   112→   112→--------------------------------------------------------------------
+   113→   113→
+   114→   114→function UIController:buildGui()
+   115→   115→        self.gui = Util.create("ScreenGui", {
+   116→   116→                Name = "AKM_HUD",
+   117→   117→                ResetOnSpawn = false,
+   118→   118→                IgnoreGuiInset = true,
+   119→   119→                ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+   120→   120→        }, player:WaitForChild("PlayerGui"))
+   121→   121→end
+   122→   122→
+   123→   123→function UIController:panelFrame(name: string, sizeScale: number, heightScale: number): Frame
+   124→   124→        local frame = Util.create("Frame", {
+   125→   125→                Name = name,
+   126→   126→                AnchorPoint = Vector2.new(0.5, 0.5),
+   127→   127→                Position = UDim2.fromScale(0.5, 0.5),
+   128→   128→                Size = UDim2.fromScale(sizeScale, heightScale),
+   129→   129→                BackgroundColor3 = T.Panel,
+   130→   130→                BorderSizePixel = 0,
+   131→   131→                Visible = false,
+   132→   132→        }, self.gui)
+   133→   133→        corner(frame, 14)
+   134→   134→        Util.create("UISizeConstraint", { MinSize = Vector2.new(430, 360) }, frame)
+   135→   135→        return frame
+   136→   136→end
+   137→   137→
+   138→   138→function UIController:showPanel(name: string?)
+   139→   139→        local TweenService = game:GetService("TweenService")
+   140→   140→        for _, n in { "Shop", "Plant", "Inv", "Quiz", "Code", "Help", "Char", "Craft", "Quest", "Trade", "Market", "Kios" } do
+   141→   141→                local f = self.gui:FindFirstChild(n)
+   142→   142→                if f then
+   143→   143→                        (f :: Frame).Visible = (n == name)
+   144→   144→                end
+   145→   145→        end
+   146→   146→        if self.navHolder then
+   147→   147→                self.navHolder.Visible = (name == nil)
+   148→   148→        end
+   149→   149→        if name then
+   150→   150→                -- v7 pop-in halus (rasa premium, bukan pop-up kasar)
+   151→   151→                local f = self.gui:FindFirstChild(name)
+   152→   152→                if f and f:IsA("Frame") then
+   153→   153→                        f.Size = UDim2.fromScale(f.Size.X.Scale * 0.94, f.Size.Y.Scale * 0.94)
+   154→   154→                        TweenService:Create(f, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+   155→   155→                                Size = UDim2.fromScale(f.Size.X.Scale / 0.94, f.Size.Y.Scale / 0.94),
+   156→   156→                        }):Play()
+   157→   157→                end
+   158→   158→        end
+   159→   159→        self.activePanel = name
+   160→   160→end
+   161→   161→
+   162→   162→--------------------------------------------------------------------
+   163→   163→-- HUD
+   164→   164→--------------------------------------------------------------------
+   165→   165→
+   166→   166→function UIController:buildHud()
+   167→   167→        ---------------------------------------------------------------- chip Micda
+   168→   168→        local coinChip = Util.create("Frame", {
+   169→   169→                Name = "MicdaChip",
+   170→   170→                Position = UDim2.fromOffset(16, 14),
+   171→   171→                Size = UDim2.fromOffset(170, 46),
+   172→   172→                BackgroundColor3 = T.Bg,
+   173→   173→                BackgroundTransparency = 0.15,
+   174→   174→                BorderSizePixel = 0,
+   175→   175→        }, self.gui)
+   176→   176→        corner(coinChip, 12)
+   177→   177→        local coinIcon = Util.create("Frame", {
+   178→   178→                Position = UDim2.fromOffset(7, 7),
+   179→   179→                Size = UDim2.fromOffset(32, 32),
+   180→   180→                BackgroundColor3 = T.Gold,
+   181→   181→                BorderSizePixel = 0,
+   182→   182→        }, coinChip)
+   183→   183→        corner(coinIcon, 16)
+   184→   184→        Util.create("TextLabel", {
+   185→   185→                Size = UDim2.fromScale(1, 1),
+   186→   186→                BackgroundTransparency = 1,
+   187→   187→                Font = Enum.Font.GothamBlack,
+   188→   188→                TextScaled = true,
+   189→   189→                TextColor3 = Color3.fromRGB(120, 86, 20),
+   190→   190→                Text = "M",
+   191→   191→        }, coinIcon)
+   192→   192→        self.coinText = Util.create("TextLabel", {
+   193→   193→                Position = UDim2.fromOffset(44, 0),
+   194→   194→                Size = UDim2.new(1, -50, 1, 0),
+   195→   195→                BackgroundTransparency = 1,
+   196→   196→                Font = Enum.Font.GothamBlack,
+   197→   197→                TextScaled = true,
+   198→   198→                TextColor3 = T.Gold,
+   199→   199→                TextXAlignment = Enum.TextXAlignment.Left,
+   200→   200→                Text = "0",
+   201→   201→        }, coinChip)
+   202→   202→
+   203→   203→        ---------------------------------------------------------------- chip level + XP
+   204→   204→        local levelChip = Util.create("Frame", {
+   205→   205→                Name = "LevelChip",
+   206→   206→                Position = UDim2.fromOffset(16, 66),
+   207→   207→                Size = UDim2.fromOffset(170, 58),
+   208→   208→                BackgroundColor3 = T.Bg,
+   209→   209→                BackgroundTransparency = 0.15,
+   210→   210→                BorderSizePixel = 0,
+   211→   211→        }, self.gui)
+   212→   212→        corner(levelChip, 12)
+   213→   213→        self.levelText = Util.create("TextLabel", {
+   214→   214→                Position = UDim2.fromOffset(10, 4),
+   215→   215→                Size = UDim2.new(1, -20, 0, 26),
+   216→   216→                BackgroundTransparency = 1,
+   217→   217→                Font = Enum.Font.GothamBold,
+   218→   218→                TextScaled = true,
+   219→   219→                TextColor3 = T.Blue,
+   220→   220→                TextXAlignment = Enum.TextXAlignment.Left,
+   221→   221→                Text = "Level 1",
+   222→   222→        }, levelChip)
+   223→   223→        local barBg = Util.create("Frame", {
+   224→   224→                Position = UDim2.fromOffset(10, 34),
+   225→   225→                Size = UDim2.new(1, -20, 0, 14),
+   226→   226→                BackgroundColor3 = T.PanelLight,
+   227→   227→                BorderSizePixel = 0,
+   228→   228→        }, levelChip)
+   229→   229→        corner(barBg, 7)
+   230→   230→        self.xpBar = Util.create("Frame", {
+   231→   231→                Size = UDim2.fromScale(0, 1),
+   232→   232→                BackgroundColor3 = T.Blue,
+   233→   233→                BorderSizePixel = 0,
+   234→   234→        }, barBg)
+   235→   235→        corner(self.xpBar, 7)
+   236→   236→
+   237→   237→        ---------------------------------------------------------------- chip HP (v3)
+   238→   238→        local hpChip = Util.create("Frame", {
+   239→   239→                Name = "HpChip",
+   240→   240→                Position = UDim2.fromOffset(16, 130),
+   241→   241→                Size = UDim2.fromOffset(170, 46),
+   242→   242→                BackgroundColor3 = T.Bg,
+   243→   243→                BackgroundTransparency = 0.15,
+   244→   244→                BorderSizePixel = 0,
+   245→   245→        }, self.gui)
+   246→   246→        corner(hpChip, 12)
+   247→   247→        self.hpText = Util.create("TextLabel", {
+   248→   248→                Position = UDim2.fromOffset(10, 3),
+   249→   249→                Size = UDim2.new(1, -20, 0, 22),
+   250→   250→                BackgroundTransparency = 1,
+   251→   251→                Font = Enum.Font.GothamBold,
+   252→   252→                TextScaled = true,
+   253→   253→                TextColor3 = T.Red,
+   254→   254→                TextXAlignment = Enum.TextXAlignment.Left,
+   255→   255→                Text = "HP 100/100",
+   256→   256→        }, hpChip)
+   257→   257→        local hpBg = Util.create("Frame", {
+   258→   258→                Position = UDim2.fromOffset(10, 28),
+   259→   259→                Size = UDim2.new(1, -20, 0, 12),
+   260→   260→                BackgroundColor3 = T.PanelLight,
+   261→   261→                BorderSizePixel = 0,
+   262→   262→        }, hpChip)
+   263→   263→        corner(hpBg, 6)
+   264→   264→        self.hpBar = Util.create("Frame", {
+   265→   265→                Size = UDim2.fromScale(1, 1),
+   266→   266→                BackgroundColor3 = Color3.fromRGB(235, 90, 90),
+   267→   267→                BorderSizePixel = 0,
+   268→   268→        }, hpBg)
+   269→   269→        corner(self.hpBar, 6)
+   270→   270→
+   271→   271→        ---------------------------------------------------------------- chip tugas aktif (v3)
+   272→   272→        self.questChip = Util.create("TextLabel", {
+   273→   273→                Name = "QuestChip",
+   274→   274→                Position = UDim2.fromOffset(16, 182),
+   275→   275→                Size = UDim2.fromOffset(240, 54),
+   276→   276→                BackgroundTransparency = 1,
+   277→   277→                Font = Enum.Font.Gotham,
+   278→   278→                TextScaled = true,
+   279→   279→                TextColor3 = T.Gold,
+   280→   280→                TextXAlignment = Enum.TextXAlignment.Left,
+   281→   281→                TextStrokeTransparency = 0.8,
+   282→   282→                Text = "",
+   283→   283→                Visible = false,
+   284→   284→        }, self.gui)
+   285→   285→
+   286→   286→        ---------------------------------------------------------------- bar boss raid (v3, atas tengah)
+   287→   287→        local bossBar = Util.create("Frame", {
+   288→   288→                Name = "BossBar",
+   289→   289→                AnchorPoint = Vector2.new(0.5, 0),
+   290→   290→                Position = UDim2.new(0.5, 0, 0, 12),
+   291→   291→                Size = UDim2.fromOffset(430, 62),
+   292→   292→                BackgroundColor3 = T.Bg,
+   293→   293→                BackgroundTransparency = 0.2,
+   294→   294→                BorderSizePixel = 0,
+   295→   295→                Visible = false,
+   296→   296→        }, self.gui)
+   297→   297→        corner(bossBar, 12)
+   298→   298→        self.bossTitle = Util.create("TextLabel", {
+   299→   299→                Size = UDim2.new(1, -16, 0, 24),
+   300→   300→                Position = UDim2.fromOffset(8, 4),
+   301→   301→                BackgroundTransparency = 1,
+   302→   302→                Font = Enum.Font.GothamBlack,
+   303→   303→                TextScaled = true,
+   304→   304→                TextColor3 = Color3.fromRGB(255, 90, 90),
+   305→   305→                Text = "RAJA GOLEM",
+   306→   306→        }, bossBar)
+   307→   307→        local bossBg = Util.create("Frame", {
+   308→   308→                Position = UDim2.fromOffset(12, 32),
+   309→   309→                Size = UDim2.new(1, -24, 0, 20),
+   310→   310→                BackgroundColor3 = Color3.fromRGB(60, 20, 20),
+   311→   311→                BorderSizePixel = 0,
+   312→   312→        }, bossBar)
+   313→   313→        corner(bossBg, 8)
+   314→   314→        self.bossHp = Util.create("Frame", {
+   315→   315→                Size = UDim2.fromScale(1, 1),
+   316→   316→                BackgroundColor3 = Color3.fromRGB(255, 80, 80),
+   317→   317→                BorderSizePixel = 0,
+   318→   318→        }, bossBg)
+   319→   319→        corner(self.bossHp, 8)
+   320→   320→        self.bossBar = bossBar
+   321→   321→
+   322→   322→        ---------------------------------------------------------------- tombol kanan atas
+   323→   323→        local actions = {
+   324→   324→                { name = "Tas", label = "Tas", cb = function()
+   325→   325→                        self:renderInv()
+   326→   326→                        self:showPanel("Inv")
+   327→   327→                end },
+   328→   328→                { name = "Kar", label = "Kar", cb = function()
+   329→   329→                        self:renderChar()
+   330→   330→                        self:showPanel("Char")
+   331→   331→                end },
+   332→   332→                { name = "Tugas", label = "Tugas", cb = function()
+   333→   333→                        self:renderQuest()
+   334→   334→                        self:showPanel("Quest")
+   335→   335→                end },
+   336→   336→                { name = "Dagang", label = "Dagang", cb = function()
+   337→   337→                        self:renderTrade()
+   338→   338→                        self:showPanel("Trade")
+   339→   339→                end },
+   340→   340→                { name = "Pasar", label = "Pasar", cb = function()
+   341→   341→                        self:showPanel("Market")
+   342→   342→                        self:refreshMarket()
+   343→   343→                end },
+   344→   344→                { name = "Musik", label = "Musik", cb = function()
+   345→   345→                        local on = Ambience.toggle()
+   346→   346→                        self:toast("Musik Latar", on and "Musik dinyalakan." or "Musik dimatikan.", T.Gold)
+   347→   347→                end },
+   348→   348→                { name = "Kode", label = "Kode", cb = function()
+   349→   349→                        self:showPanel("Code")
+   350→   350→                end },
+   351→   351→                { name = "Bantuan", label = "?", cb = function()
+   352→   352→                        self:showPanel("Help")
+   353→   353→                end },
+   354→   354→        }
+   355→   355→        local i = 0
+   356→   356→        for _, act in actions do
+   357→   357→                i += 1
+   358→   358→                local rowIdx = math.floor((i - 1) / 4)
+   359→   359→                local colIdx = (i - 1) % 4
+   360→   360→                local b = btn({
+   361→   361→                        parent = self.gui,
+   362→   362→                        Name = "Btn" .. act.name,
+   363→   363→                        AnchorPoint = Vector2.new(1, 0),
+   364→   364→                        Position = UDim2.new(1, -16 - colIdx * 84, 0, 14 + rowIdx * 50),
+   365→   365→                        Size = UDim2.fromOffset(76, 42),
+   366→   366→                        BackgroundColor3 = T.Panel,
+   367→   367→                        BackgroundTransparency = 0.12,
+   368→   368→                        TextColor3 = T.Text,
+   369→   369→                        Text = act.label,
+   370→   370→                        _radius = 8,
+   371→   371→                })
+   372→   372→                b.Activated:Connect(act.cb)
+   373→   373→        end
+   374→   374→
+   375→   375→        ---------------------------------------------------------------- tips bawah
+   376→   376→        self.tipLabel = Util.create("TextLabel", {
+   377→   377→                Name = "Tips",
+   378→   378→                AnchorPoint = Vector2.new(0.5, 1),
+   379→   379→                Position = UDim2.new(0.5, 0, 1, -14),
+   380→   380→                Size = UDim2.fromOffset(640, 34),
+   381→   381→                BackgroundTransparency = 1,
+   382→   382→                Font = Enum.Font.GothamBold,
+   383→   383→                TextScaled = true,
+   384→   384→                TextColor3 = T.TextDim,
+   385→   385→                TextStrokeTransparency = 0.7,
+   386→   386→                Text = "",
+   387→   387→        }, self.gui)
+   388→   388→
+   389→   389→        ---------------------------------------------------------------- kompas zona (v9)
+   390→   390→        self.navRows = {}
+   391→   391→        local navTargets = {
+   392→   392→                { name = "Papan Jual", pos = Vector3.new(-10, 0, 16) },
+   393→   393→                { name = "Rumahku (Gerbang)", pos = Vector3.new(0, 0, 132) },
+   394→   394→                { name = "Pulau Panen", pos = Vector3.new(0, 0, -640) },
+   395→   395→                { name = "Padang Liar", pos = Vector3.new(640, 0, -320) },
+   396→   396→                { name = "Hutan Bayang", pos = Vector3.new(640, 0, 60) },
+   397→   397→                { name = "Negeri Baja", pos = Vector3.new(760, 0, 560) },
+   398→   398→                { name = "Arena Boss", pos = Vector3.new(760, 0, 650) },
+   399→   399→        }
+   400→   400→        local navHolder = Util.create("Frame", {
+   401→   401→                Name = "Kompas",
+   402→   402→                AnchorPoint = Vector2.new(0, 1),
+   403→   403→                Position = UDim2.new(0, 12, 1, -150),
+   404→   404→                Size = UDim2.fromOffset(170, 7 * 30),
+   405→   405→                BackgroundTransparency = 1,
+   406→   406→                Visible = false,
+   407→   407→        }, self.gui)
+   408→   408→        Util.create("UIListLayout", { Padding = UDim.new(0, 4) }, navHolder)
+   409→   409→        for _, nt in navTargets do
+   410→   410→                local chip = Util.create("Frame", {
+   411→   411→                        Size = UDim2.new(1, 0, 0, 26),
+   412→   412→                        BackgroundColor3 = T.Panel,
+   413→   413→                        BackgroundTransparency = 0.25,
+   414→   414→                        BorderSizePixel = 0,
+   415→   415→                }, navHolder)
+   416→   416→                corner(chip, 6)
+   417→   417→                Util.create("TextLabel", {
+   418→   418→                        Position = UDim2.fromOffset(8, 0),
+   419→   419→                        Size = UDim2.new(0.55, 0, 1, 0),
+   420→   420→                        BackgroundTransparency = 1,
+   421→   421→                        Font = Enum.Font.GothamBold,
+   422→   422→                        TextScaled = true,
+   423→   423→                        TextColor3 = T.TextDim,
+   424→   424→                        TextXAlignment = Enum.TextXAlignment.Left,
+   425→   425→                        Text = nt.name,
+   426→   426→                }, chip)
+   427→   427→                local dist = Util.create("TextLabel", {
+   428→   428→                        AnchorPoint = Vector2.new(1, 0),
+   429→   429→                        Position = UDim2.new(1, -8, 0, 0),
+   430→   430→                        Size = UDim2.new(0.4, 0, 1, 0),
+   431→   431→                        BackgroundTransparency = 1,
+   432→   432→                        Font = Enum.Font.GothamBold,
+   433→   433→                        TextScaled = true,
+   434→   434→                        TextColor3 = T.Gold,
+   435→   435→                        TextXAlignment = Enum.TextXAlignment.Right,
+   436→   436→                        Text = "-",
+   437→   437→                }, chip)
+   438→   438→                self.navRows[nt.name] = { label = dist, pos = nt.pos }
+   439→   439→        end
+   440→   440→        self.navHolder = navHolder
+   441→   441→
+   442→   442→        task.spawn(function()
+   443→   443→                while true do
+   444→   444→                        local char = player.Character
+   445→   445→                        local root = char and char.PrimaryPart
+   446→   446→                        if root then
+   447→   447→                                for name, nav in pairs(self.navRows or {}) do
+   448→   448→                                        nav.label.Text = math.floor((nav.pos - root.Position).Magnitude) .. "m"
+   449→   449→                                end
+   450→   450→                        end
+   451→   451→                        task.wait(0.5)
+   452→   452→                end
+   453→   453→            end)
+   454→   454→        ---------------------------------------------------------------- chip event dunia (v6)
+   455→   455→        self.eventChip = Util.create("TextLabel", {
+   456→   456→                Name = "EventChip",
+   457→   457→                AnchorPoint = Vector2.new(0.5, 0),
+   458→   458→                Position = UDim2.new(0.5, 0, 0, 84),
+   459→   459→                Size = UDim2.fromOffset(360, 40),
+   460→   460→                BackgroundColor3 = T.Panel,
+   461→   461→                BackgroundTransparency = 0.15,
+   462→   462→                Font = Enum.Font.GothamBlack,
+   463→   463→                TextScaled = true,
+   464→   464→                TextColor3 = T.Gold,
+   465→   465→                Text = "",
+   466→   466→                Visible = false,
+   467→   467→        }, self.gui)
+   468→   468→        corner(self.eventChip, 8)
+   469→   469→
+   470→   470→        ---------------------------------------------------------------- tombol skill senjata (v5)
+   471→   471→        self.skillBtns = {}
+   472→   472→        for idx, sk in ipairs(Balance.Skills) do
+   473→   473→                local b = btn({
+   474→   474→                        parent = self.gui,
+   475→   475→                        Name = "Skill" .. sk.id,
+   476→   476→                        AnchorPoint = Vector2.new(1, 1),
+   477→   477→                        Position = UDim2.new(1, -16, 1, -108 - (idx - 1) * 56),
+   478→   478→                        Size = UDim2.fromOffset(200, 46),
+   479→   479→                        BackgroundColor3 = T.Panel,
+   480→   480→                        BackgroundTransparency = 0.12,
+   481→   481→                        TextColor3 = T.Gold,
+   482→   482→                        Text = sk.name,
+   483→   483→                        _radius = 8,
+   484→   484→                        Visible = false,
+   485→   485→                })
+   486→   486→                b.Activated:Connect(function()
+   487→   487→                        local res = Remotes.get("Skill"):InvokeServer({ skillId = sk.id })
+   488→   488→                        self:handleResult(res)
+   489→   489→                        if res and res.ok then
+   490→   490→                                b.TextColor3 = T.Disabled
+   491→   491→                                task.spawn(function()
+   492→   492→                                        for t = sk.cooldown, 1, -1 do
+   493→   493→                                                if not b.Parent then
+   494→   494→                                                        return
+   495→   495→                                                end
+   496→   496→                                                b.Text = sk.name .. " (" .. t .. "s)"
+   497→   497→                                                task.wait(1)
+   498→   498→                                        end
+   499→   499→                                        if b.Parent then
+   500→   500→                                                b.Text = sk.name
+   501→   501→                                                b.TextColor3 = T.Gold
+   502→   502→                                        end
+   503→   503→                                end)
+   504→   504→                        end
+   505→   505→                end)
+   506→   506→                self.skillBtns[sk.id] = b
+   507→   507→        end
+   508→   508→
+   509→   509→        ---------------------------------------------------------------- kontainer toast
+   510→   510→        self.toastHolder = Util.create("Frame", {
+   511→   511→                Name = "Toasts",
+   512→   512→                AnchorPoint = Vector2.new(0.5, 1),
+   513→   513→                Position = UDim2.new(0.5, 0, 1, -56),
+   514→   514→                Size = UDim2.fromOffset(460, 150),
+   515→   515→                BackgroundTransparency = 1,
+   516→   516→        }, self.gui)
+   517→   517→        Util.create("UIListLayout", {
+   518→   518→                Padding = UDim.new(0, 6),
+   519→   519→                VerticalAlignment = Enum.VerticalAlignment.Bottom,
+   520→   520→                HorizontalAlignment = Enum.HorizontalAlignment.Center,
+   521→   521→        }, self.toastHolder)
+   522→   522→end
+   523→   523→
+   524→   524→local TIPS = {
+   525→   525→        "Klaim PULAU RUMAHMU lewat gerbang selatan Pusat Kota - ada rumah, ladang, kolam & ruang Bedah/Sains/Startopia!",
+   526→   526→        "Jual hasil panen ke Bu Laris di Pasar Pengepul - harga pasar berubah tiap 10 menit!",
+   527→   527→        "Tempa balok besi dari bijih di PAK TEMPA, lalu buat Pedang Besi & Zirah!",
+   528→   528→        "Monster berwujud ANGKA dengan AURA hanya ada di PULAU MONSTER - lawan Angka Satu di Padang Liar!",
+   529→   529→        "BOSS RAID: Angka Sang Raja (9) muncul di Arena (Negeri Baja & Kristal) - serang bersama semua pemain!",
+   530→   530→        "Naik level dapat 2 poin stat - buka panel Kar dan bagikan ke STR/VIT/AGI!",
+   531→   531→        "Makan Roti Aktif dari Bu Masak untuk lari lebih cepat 12%!",
+   532→   532→        "Dagang aman antar pemain: tombol Dagang, dekati partner, undang & SIAP!",
+   533→   533→        "PAPAN JUAL di alun-alun: pasang barang, pemain lain beli - Micda masuk walau kamu offline!",
+   534→   534→        "Punya ladang? Pasang KIOS di pad dekat papan ladangmu - pemain lain belanja langsung ke kiosmu!",
+   535→   535→        "Papan Tugas Harian di alun-alun memberi Micda & XP besar - ambil tiap hari!",
+   536→   536→        "Kucing Micda memberi +10% harga jual. Lihat Toko Peliharaan!",
+   537→   537→        "Bonus login harian 100 Micda. Datang lagi besok!",
+   538→   538→        "Kuis Kak Pintar di alun-alun memberi Micda bonus - sepenuhnya opsional.",
+   539→   539→}
+   540→   540→
+   541→   541→function UIController:startTips()
+   542→   542→        task.spawn(function()
+   543→   543→                local idx = 0
+   544→   544→                while true do
+   545→   545→                        idx += 1
+   546→   546→                        local tip = TIPS[(idx - 1) % #TIPS + 1]
+   547→   547→                        if self.tipLabel then
+   548→   548→                                self.tipLabel.Text = tip
+   549→   549→                        end
+   550→   550→                        task.wait(14)
+   551→   551→                end
+   552→   552→        end)
+   553→   553→end
+   554→   554→
+   555→   555→function UIController:toast(title: string, text: string, color: Color3?)
+   556→   556→        local c = color or T.Gold
+   557→   557→        local toast = Util.create("Frame", {
+   558→   558→                Size = UDim2.new(1, 0, 0, 52),
+   559→   559→                BackgroundColor3 = T.Bg,
+   560→   560→                BackgroundTransparency = 0.12,
+   561→   561→                BorderSizePixel = 0,
+   562→   562→        }, self.toastHolder)
+   563→   563→        corner(toast, 10)
+   564→   564→        Util.create("Frame", {
+   565→   565→                Size = UDim2.fromOffset(6, 36),
+   566→   566→                Position = UDim2.fromOffset(8, 8),
+   567→   567→                BackgroundColor3 = c,
+   568→   568→                BorderSizePixel = 0,
+   569→   569→        }, toast)
+   570→   570→        Util.create("TextLabel", {
+   571→   571→                Position = UDim2.fromOffset(22, 3),
+   572→   572→                Size = UDim2.new(1, -30, 0, 20),
+   573→   573→                BackgroundTransparency = 1,
+   574→   574→                Font = Enum.Font.GothamBold,
+   575→   575→                TextScaled = true,
+   576→   576→                TextColor3 = c,
+   577→   577→                TextXAlignment = Enum.TextXAlignment.Left,
+   578→   578→                Text = title,
+   579→   579→        }, toast)
+   580→   580→        Util.create("TextLabel", {
+   581→   581→                Position = UDim2.fromOffset(22, 24),
+   582→   582→                Size = UDim2.new(1, -30, 0, 26),
+   583→   583→                BackgroundTransparency = 1,
+   584→   584→                Font = Enum.Font.Gotham,
+   585→   585→                TextScaled = true,
+   586→   586→                TextColor3 = T.Text,
+   587→   587→                TextXAlignment = Enum.TextXAlignment.Left,
+   588→   588→                Text = text,
+   589→   589→        }, toast)
+   590→   590→
+   591→   591→        task.delay(4.5, function()
+   592→   592→                if toast.Parent then
+   593→   593→                        toast:Destroy()
+   594→   594→                end
+   595→   595→        end)
+   596→   596→end
+   597→   597→
+   598→   598→--------------------------------------------------------------------
+   599→   599→-- STATE -> HUD
+   600→   600→--------------------------------------------------------------------
+   601→   601→
+   602→   602→function UIController:renderState()
+   603→   603→        local s = self.state
+   604→   604→        if not s then
+   605→   605→                return
+   606→   606→        end
+   607→   607→        self.coinText.Text = Util.formatNumber(s.Coins)
+   608→   608→        self.levelText.Text = "Level " .. s.Level .. (s.Dev and "  [DEV]" or "")
+   609→   609→        self.xpBar.Size = UDim2.fromScale(math.clamp(s.LevelPct, 0.02, 1), 1)
+   610→   610→
+   611→   611→        self:renderHudExtras()
+   612→   612→
+   613→   613→        -- v5: tombol skill muncul sesuai level
+   614→   614→        for _, sk in ipairs(Balance.Skills) do
+   615→   615→                local b = self.skillBtns[sk.id]
+   616→   616→                if b then
+   617→   617→                        b.Visible = s.Level >= sk.level
+   618→   618→                end
+   619→   619→        end
+   620→   620→
+   621→   621→        -- refresh panel terbuka supaya harga/inv tetap segar
+   622→   622→        if self.activePanel == "Shop" and self.shopId then
+   623→   623→                self:renderShop()
+   624→   624→        elseif self.activePanel == "Plant" and self.pendingPlant then
+   625→   625→                self:renderPlantPanel()
+   626→   626→        elseif self.activePanel == "Inv" then
+   627→   627→                self:renderInv()
+   628→   628→        elseif self.activePanel == "Char" then
+   629→   629→                self:renderChar()
+   630→   630→        elseif self.activePanel == "Craft" then
+   631→   631→                self:renderCraft()
+   632→   632→        elseif self.activePanel == "Quest" then
+   633→   633→                self:renderQuest()
+   634→   634→        end
+   635→   635→end
+   636→   636→
+   637→   637→--------------------------------------------------------------------
+   638→   638→-- HP / TUGAS / BOSS: pembaruan HUD tiap state
+   639→   639→--------------------------------------------------------------------
+   640→   640→
+   641→   641→function UIController:renderHudExtras()
+   642→   642→        local s = self.state
+   643→   643→        if not s then
+   644→   644→                return
+   645→   645→        end
+   646→   646→
+   647→   647→        -- tugas aktif
+   648→   648→        local q = s.Quest
+   649→   649→        if q and q.id ~= "" then
+   650→   650→                local def = nil
+   651→   651→                for _, d in ipairs(Balance.Quests) do
+   652→   652→                        if d.id == q.id then
+   653→   653→                                def = d
+   654→   654→                                break
+   655→   655→                        end
+   656→   656→                end
+   657→   657→                if def then
+   658→   658→                        self.questChip.Visible = true
+   659→   659→                        self.questChip.Text = (q.done and "[SIAP KLAIM] " or "Tugas: ") .. def.title .. " "
+   660→   660→                                .. math.min(q.prog, def.goal.count) .. "/" .. def.goal.count
+   661→   661→                        self.questChip.TextColor3 = q.done and T.Green or T.Gold
+   662→   662→                end
+   663→   663→        else
+   664→   664→                self.questChip.Visible = false
+   665→   665→        end
+   666→   666→end
+   667→   667→
+   668→   668→--------------------------------------------------------------------
+   669→   669→-- PANEL TOKO
+   670→   670→--------------------------------------------------------------------
+   671→
+   672→[showing lines 1-670 of 3288; use offset=671 with limit to continue reading]

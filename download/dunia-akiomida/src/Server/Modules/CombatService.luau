@@ -1,16 +1,3 @@
---!nonstrict
---[[
-        CombatService.luau - v3 "Toram-grade" kombat dunia terbuka:
-          - 4 makhluk original: Gelatin Hijau, Serigala Bayang, Golem Batu,
-            Gelatin Raksasa (elite) + BOSS RAID "Raja Golem" di Arena (Negeri Baja & Kristal)
-          - AI: berkeliaran, mengejar pemain dalam radius aggro, menyerang balik
-          - Serang lewat ProximityPrompt "Serang" + validasi jarak di server
-          - Damage dari STR/DEX/INT/level + senjata tempaan (EquipService)
-          - Drop material -> bahan tempa (objek jadi bahan!)
-          - Boss raid kooperatif: semua pemain memukul bersama, hadiah
-            dibagi menurut kontribusi damage. Broadcast BossState ke UI.
-]]
-
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -21,16 +8,11 @@ local Util = require(ReplicatedStorage.Shared.Util)
 
 local DataService = require(script.Parent.DataService)
 local EquipService = require(script.Parent.EquipService)
-local QuestService = require(script.Parent.QuestService)
 
 local CombatService = {}
 
---------------------------------------------------------------------
--- STATE
---------------------------------------------------------------------
-
 local monsterFolder: Folder? = nil
-local monsters: { [string]: any } = {} -- id unik -> entitas
+local monsters: { [string]: any } = {}
 local monsterSeq = 0
 local lastAttack: { [Player]: number } = {}
 local rng = Random.new(tick() * 1000)
@@ -38,14 +20,6 @@ local rng = Random.new(tick() * 1000)
 local boss: any = nil
 local bossCredits: { [Player]: number } = {}
 local bossNextSpawn = 0
-
--- v6 event dunia
-local eventActive = false
-local eventEndsAt = 0
-
---------------------------------------------------------------------
--- HELPERS
---------------------------------------------------------------------
 
 local function notify(player: Player, title: string, text: string)
         Remotes.get("Notify"):FireClient(player, title, text)
@@ -64,13 +38,6 @@ local function isAliveCharacter(player: Player): boolean
         return humanoid ~= nil and humanoid.Health > 0 and character.PrimaryPart ~= nil
 end
 
---------------------------------------------------------------------
--- MODEL MONSTER "ANGKA BERSAURA" (karya original Dunia Akiomida)
---   Monster berwujud ANGKA raksasa (susunan balok gaya tujuh-segmen)
---   dikelilingi AURA bercahaya + cincin lantai + percikan halus.
---   Angka-angka ini PUNYA DAMAGE: mereka mengejar & menyerang pemain.
---------------------------------------------------------------------
-
 local function part(props): Part
         local p = Instance.new("Part")
         p.Anchored = true
@@ -83,7 +50,6 @@ local function part(props): Part
         return p
 end
 
--- layout segmen angka (gaya tujuh-segmen): tiap segmen balok original
 local SEG = {
         a = { horiz = true, x = 0, y = 0.5 },
         g = { horiz = true, x = 0, y = 0 },
@@ -108,13 +74,11 @@ local function buildMonsterModel(def: any, position: Vector3, isBoss: boolean): 
         local size = def.body.size
         local digit = tostring(def.body.digit or "1")
 
-        -- dimensi angka: tinggi = size, lebar = 62%, tebal balok = 18%
         local H = size
         local W = H * 0.62
         local t = math.max(0.5, H * 0.18)
         local depth = math.max(0.6, t * 0.9)
 
-        -- AKAR: part tak terlihat sebagai acuan gerak & penempel prompt/HP
         local root = part({
                 Name = "Badan",
                 Size = Vector3.new(W + 2, H + 2, depth + 2),
@@ -125,7 +89,6 @@ local function buildMonsterModel(def: any, position: Vector3, isBoss: boolean): 
         root.Parent = model
         model.PrimaryPart = root
 
-        -- segmen angka + aura neon mengelilingi tiap balok
         local segs = DIGIT_SEGMENTS[digit] or "bc"
         for i = 1, #segs do
                 local s = SEG[string.sub(segs, i, i)]
@@ -150,7 +113,6 @@ local function buildMonsterModel(def: any, position: Vector3, isBoss: boolean): 
                 }).Parent = model
         end
 
-        -- mata kecil di atas angka supaya terlihat hidup
         local eyeZ = -(depth / 2 + 0.05)
         local eyeSize = math.max(0.35, t * 0.5)
         for side = -1, 1, 2 do
@@ -165,7 +127,6 @@ local function buildMonsterModel(def: any, position: Vector3, isBoss: boolean): 
                 }).Parent = model
         end
 
-        -- cincin aura di tanah + percikan halus (ringan untuk mobile)
         part({
                 Name = "CincinAura",
                 Shape = Enum.PartType.Cylinder,
@@ -206,7 +167,6 @@ local function buildMonsterModel(def: any, position: Vector3, isBoss: boolean): 
         return model, root
 end
 
--- v5: suara posisional bawaan platform (original, ringan)
 local function playSound(root: BasePart, soundName: string, pitch: number?, volume: number?)
         local s = Instance.new("Sound")
         s.SoundId = "rbxasset://sounds/" .. soundName
@@ -220,11 +180,6 @@ local function playSound(root: BasePart, soundName: string, pitch: number?, volu
                 end
         end)
 end
-
---------------------------------------------------------------------
--- v20 FASE MURKA BOSS: pada HP <= 50% sang raja mengamuk
---   (gaya mekanik bos MMO: aura merah, gerak & serangan naik, diumumkan)
---------------------------------------------------------------------
 
 local function maybeEnrage(entity: any)
         if not entity.isBoss or entity.enraged or not entity.alive then
@@ -303,10 +258,6 @@ local function hpBillboard(body: Part, name: string, hp: number, maxHp: number, 
         return { gui = gui, bar = bar, label = hpLabel, name = nameLabel }
 end
 
---------------------------------------------------------------------
--- SPAWN & AI
---------------------------------------------------------------------
-
 local function zoneCenter(zoneId: string): Vector3
         for _, zone in ipairs(Balance.Zones) do
                 if zone.id == zoneId then
@@ -369,7 +320,6 @@ local function monsterDie(entity: any, byPlayer: Player?)
         entity.alive = false
         local def = entity.def
 
-        -- animasi kematian sederhana: tenggelam & hilang
         for _, p in entity.model:GetChildren() do
                 if p:IsA("BasePart") then
                         p.CanCollide = false
@@ -378,7 +328,7 @@ local function monsterDie(entity: any, byPlayer: Player?)
         end
         local model = entity.model
         do
-                -- ledakan aura saat tumbang
+
                 local root = entity.body
                 if root and root.Parent then
                         local burst = Instance.new("ParticleEmitter")
@@ -414,20 +364,15 @@ local function monsterDie(entity: any, byPlayer: Player?)
 
         if entity.isBoss then
                 boss = nil
-                return -- boss tidak respawn otomatis (diatur bossLoop)
+                return
         end
 
-        -- respawn di zona setelah jeda
         task.delay(def.respawn, function()
                 if monsterFolder and monsterFolder.Parent then
                         spawnMonster(def, entity.zone)
                 end
         end)
 end
-
---------------------------------------------------------------------
--- ANGKA DAMAGE MELAYANG (biar serangan terasa "sakit")
---------------------------------------------------------------------
 
 local function damageTag(entity: any, dmg: number, crit: boolean, killed: boolean)
         local root = entity.body
@@ -467,10 +412,6 @@ local function damageTag(entity: any, dmg: number, crit: boolean, killed: boolea
         end)
 end
 
---------------------------------------------------------------------
--- SKILL SENJATA (v5)
---------------------------------------------------------------------
-
 local lastSkill: { [Player]: { [string]: number } } = {}
 
 local function findNearestMonster(player: Player, maxDist: number)
@@ -505,7 +446,7 @@ local function hitEntity(player: Player, entity: any, mult: number, stats: any, 
         local def = entity.def.def or 0
         local dmg = math.max(1, math.floor(atk * (1 - def / (def + 60)) + 0.5))
         entity.hp -= dmg
-        -- v20: partikel tebasan skill + cek fase murka boss
+
         if mult > 1.6 and entity.body.Parent then
                 local aura = entity.def.body and entity.def.body.aura
                 Util.burst(entity.body, aura and Color3.fromRGB(aura[1], aura[2], aura[3]) or Color3.fromRGB(255, 230, 120), 8, 8)
@@ -601,10 +542,6 @@ Players.PlayerRemoving:Connect(function(player)
         lastSkill[player] = nil
 end)
 
---------------------------------------------------------------------
--- SERANGAN PEMAIN
---------------------------------------------------------------------
-
 function CombatService.playerAttack(player: Player, entity: any)
         if not entity or not entity.alive or not DataService.has(player) then
                 return { ok = false, msg = "Target tidak valid." }
@@ -612,12 +549,12 @@ function CombatService.playerAttack(player: Player, entity: any)
         if not isAliveCharacter(player) then
                 return { ok = false, msg = "Kamu tidak bisa menyerang sekarang." }
         end
-        -- jarak server-side
+
         local root = player.Character and player.Character.PrimaryPart
         if not root or (root.Position - entity.body.Position).Magnitude > 14 then
                 return { ok = false, msg = "Terlalu jauh!" }
         end
-        -- jeda serangan (AGI mempercepat)
+
         local now = os.clock()
         local cd = Balance.attackCooldown(statsOf(player).agi)
         if lastAttack[player] and now - lastAttack[player] < cd then
@@ -638,17 +575,16 @@ function CombatService.playerAttack(player: Player, entity: any)
         if crit then
                 atk = math.floor(atk * Balance.CritMult + 0.5)
         end
-        -- kurva pelunakan dengan pertahanan monster
+
         local def = entity.def.def or 0
         local dmg = math.max(1, math.floor(atk * (1 - def / (def + 60)) + 0.5))
 
         entity.hp -= dmg
-        maybeEnrage(entity) -- v20: boss bisa memasuki fase murka dari serangan biasa
+        maybeEnrage(entity)
         local bb = entity.bb
         bb.bar.Size = UDim2.fromScale(math.clamp(entity.hp / entity.maxHp, 0, 1), 1)
         bb.label.Text = math.max(0, entity.hp) .. " / " .. entity.maxHp
 
-        -- krediting boss raid
         if entity.isBoss then
                 bossCredits[player] = (bossCredits[player] or 0) + dmg
         end
@@ -656,7 +592,6 @@ function CombatService.playerAttack(player: Player, entity: any)
         local killed = entity.hp <= 0
         damageTag(entity, dmg, crit, killed)
 
-        -- recoil visual: angka tersentak sedikit (juice)
         do
                 local rootPart = entity.body
                 if rootPart and rootPart.Parent and not killed then
@@ -680,12 +615,12 @@ function CombatService.playerAttack(player: Player, entity: any)
         if killed then
                 CombatService.onKill(player, entity)
                 if entity.isBoss then
-                        -- bagi hadiah raid SEBELUM boss dibersihkan
+
                         CombatService.finishBoss()
                 end
                 monsterDie(entity, player)
         else
-                -- monster berbalik mengejar penyerang
+
                 entity.target = player
         end
 
@@ -696,12 +631,7 @@ end
 function CombatService.onKill(player: Player, entity: any)
         local def = entity.def
 
-        -- XP & Micda (ganda saat PESTA PANEN)
         local xpGain, coinGain = def.xp, rng:NextInteger(def.coin[1], def.coin[2])
-        if eventActive then
-                xpGain = math.floor(xpGain * Balance.Event.xpMult)
-                coinGain = math.floor(coinGain * Balance.Event.coinMult)
-        end
         local before = DataService.levelOf(player)
         DataService.addXP(player, xpGain)
         DataService.addCoins(player, coinGain, true)
@@ -710,10 +640,6 @@ function CombatService.onKill(player: Player, entity: any)
                         "Level " .. DataService.levelOf(player) .. "! Dapat 2 poin stat - bagikan di panel Kar.")
         end
 
-        -- progres tugas "kalahkan monster"
-        QuestService.progress(player, "kill", 1)
-
-        -- drop material -> bahan craft
         local dropTexts = {}
         for _, drop in ipairs(def.drops) do
                 if rng:NextNumber() <= drop.chance then
@@ -729,15 +655,10 @@ function CombatService.onKill(player: Player, entity: any)
         end
         notify(player, "KOMBAT!", msg)
 
-        -- boss raid: broadcast peristiwa
         if entity.isBoss then
                 Remotes.get("BossState"):FireAllClients({ active = false, killed = true, name = def.name })
         end
 end
-
---------------------------------------------------------------------
--- AI LOOP (wander / chase / attack)
---------------------------------------------------------------------
 
 local function stepMonster(entity: any, dt: number)
         if not entity.alive or not entity.body.Parent then
@@ -745,7 +666,6 @@ local function stepMonster(entity: any, dt: number)
         end
         local def = entity.def
 
-        -- validasi target
         local targetPlayer = entity.target
         if targetPlayer then
                 local valid = targetPlayer.Parent ~= nil and isAliveCharacter(targetPlayer)
@@ -753,7 +673,7 @@ local function stepMonster(entity: any, dt: number)
                         local root = targetPlayer.Character.PrimaryPart
                         local dist = (root.Position - entity.home).Magnitude
                         if dist > def.aggro * 2.2 then
-                                valid = false -- terlalu jauh dari rumahnya, pulang
+                                valid = false
                         end
                 end
                 if not valid then
@@ -761,7 +681,6 @@ local function stepMonster(entity: any, dt: number)
                 end
         end
 
-        -- cari target baru dalam radius aggro
         if not entity.target then
                 for _, player in Players:GetPlayers() do
                         if isAliveCharacter(player) and DataService.has(player) then
@@ -776,7 +695,7 @@ local function stepMonster(entity: any, dt: number)
 
         local bodyPos = entity.body.Position
         local goal: Vector3
-        -- v20: fase murka mempercepat gerak boss
+
         local speed = def.speed * (entity.enraged and (Balance.Boss.enrageSpeed or 1) or 1)
 
         if entity.target then
@@ -785,14 +704,14 @@ local function stepMonster(entity: any, dt: number)
                 if dist > 5 then
                         goal = root.Position
                 else
-                        goal = bodyPos -- dekat: berhenti & serang
+                        goal = bodyPos
                         local now = os.clock()
                         if now - entity.lastHit >= 1.5 then
                                 entity.lastHit = now
-                                -- damage ke pemain dengan pertahanan zirah + VIT
+
                                 local pstats = statsOf(entity.target)
                                 local defense = Balance.playerDefense(EquipService.armorDef(entity.target), pstats.vit)
-                                -- v20: serangan boss menguat saat murka
+
                                 local rawAtk = def.atk * (entity.enraged and (Balance.Boss.enrageAtk or 1) or 1)
                                 local taken = Balance.damageTaken(rawAtk, defense)
                                 local humanoid = entity.target.Character:FindFirstChildOfClass("Humanoid")
@@ -802,7 +721,7 @@ local function stepMonster(entity: any, dt: number)
                         end
                 end
         else
-                -- berkeliaran di sekitar rumah
+
                 if (bodyPos - entity.wanderTo).Magnitude < 3 then
                         entity.wanderTo = entity.home + Vector3.new(rng:NextNumber(-12, 12), 0, rng:NextNumber(-12, 12))
                         return
@@ -816,9 +735,8 @@ local function stepMonster(entity: any, dt: number)
                 dir = dir.Unit
                 local step = math.min(speed * dt, dir.Magnitude * 99)
                 local newPos = bodyPos + dir * step
-                -- v4: pindahkan SELURUH model (angka, aura, mata) supaya tidak
-                -- ada part tertinggal berserakan (penyebab dunia terlihat kotor)
-                entity.model:PivotTo(CFrame.lookAt(newPos, newPos + dir))
+
+                                entity.model:PivotTo(CFrame.lookAt(newPos, newPos + dir))
         end
 end
 
@@ -827,10 +745,6 @@ RunService.Heartbeat:Connect(function(dt)
                 pcall(stepMonster, entity, dt)
         end
 end)
-
---------------------------------------------------------------------
--- BOSS RAID (kooperatif - kegiatan multiplayer terancang)
---------------------------------------------------------------------
 
 function CombatService.startBoss()
         if boss then
@@ -929,7 +843,7 @@ local function bossLoop()
                         CombatService.startBoss()
                 end
                 if boss and boss.alive then
-                        -- despawn kalau terlalu lama tak dibunuh
+
                         if now - boss.spawnedAt > Balance.Boss.despawn then
                                 bossCredits = {}
                                 monsterDie(boss)
@@ -950,10 +864,6 @@ local function bossLoop()
         end
 end
 
---------------------------------------------------------------------
--- INIT
---------------------------------------------------------------------
-
 function CombatService.spawnMonsters()
         for _, zone in ipairs(Balance.Zones) do
                 for _, spec in ipairs(zone.monsters) do
@@ -972,26 +882,6 @@ function CombatService.spawnMonsters()
                 end
         end
         print("[AKIOMIDA] Monster dikerahkan di " .. #Balance.Zones .. " zona (semua di pulau monster terpisah).")
-end
-
--- v6: loop event PESTA PANEN (aktivitas multiplayer terjadwal & terumumkan)
-local function eventLoop()
-        while true do
-                task.wait(Balance.Event.period)
-                eventActive = true
-                eventEndsAt = os.time() + Balance.Event.duration
-                Remotes.get("EventState"):FireAllClients({
-                        active = true, name = Balance.Event.name,
-                        endsAt = eventEndsAt,
-                        note = "Micda & XP dari monster x" .. Balance.Event.coinMult .. "!",
-                })
-                Remotes.get("Notify"):FireAllClients(Balance.Event.name,
-                        "Dimulai! " .. Balance.Event.coinMult .. "x Micda & XP dari semua angka selama " .. math.floor(Balance.Event.duration / 60) .. " menit - kumpulkan semuanya!")
-                task.wait(Balance.Event.duration)
-                eventActive = false
-                Remotes.get("EventState"):FireAllClients({ active = false, name = Balance.Event.name })
-                Remotes.get("Notify"):FireAllClients("Pesta Usai", "Pesta Panen selesai. Sampai pesta berikutnya!")
-        end
 end
 
 function CombatService.init()
@@ -1016,10 +906,8 @@ function CombatService.init()
                 bossCredits[player] = nil
         end)
 
-        -- boss pertama muncul 6 menit setelah server hidup (biar pemain sempat latihan)
         bossNextSpawn = os.clock() + 360
         task.spawn(bossLoop)
-        task.spawn(eventLoop)
 end
 
 return CombatService

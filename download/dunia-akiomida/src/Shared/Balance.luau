@@ -1,18 +1,5 @@
---!nonstrict
---[[
-        Balance.luau - DUNIA AKIOMIDA v3 (TORAM-GRADE)
-        Semua data kombat, stat, peralatan, resep craft, tugas, boss, dan
-        rumus matematika murni - MODUL MURNI (tanpa API Roblox) supaya bisa
-        diuji offline lewat luau CLI.
-        Seluruh konten karya original Dunia Akiomida (tidak menyalin
-        konten pihak ketiga; terinspirasi mekanik genre MMO klasik).
-]]
-
 local Balance = {}
 
---------------------------------------------------------------------
--- STAT KARAKTER (gaya Toram: 5 atribut, poin saat naik level)
---------------------------------------------------------------------
 Balance.Stats = {
         { id = "str", name = "Kekuatan", desc = "+2 serangan per poin" },
         { id = "vit", name = "Vitalitas", desc = "+6 HP & +1.2 pertahanan per poin" },
@@ -20,47 +7,32 @@ Balance.Stats = {
         { id = "int", name = "Intelek", desc = "+1.5 serangan sihir & ramuan lebih kuat" },
         { id = "dex", name = "Ketepatan", desc = "+0.6 serangan & peluang kritikal" },
 }
-Balance.MaxStatPerStat = 60 -- batas tiap atribut supaya build seimbang
+Balance.MaxStatPerStat = 60
 Balance.MaxHpBase = 100
 
---------------------------------------------------------------------
--- PERALATAN TEMPAA (bahan -> senjata/zirah; semua original)
---------------------------------------------------------------------
 Balance.Equipment = {
-        -- senjata (atk = serangan tambahan) - pedang JAUH lebih sakit dari pukulan
+
         { id = "pedang_kayu", name = "Pedang Kayu", kind = "weapon", atk = 11, def = 0, level = 1, price = 90,
-                recipe = { kayu = 8 }, color = { 150, 108, 66 }, desc = "Pedang pemula dari kayu hutan. Jauh lebih sakit dari pukulan." },
+                recipe = { gel = 10 }, color = { 150, 108, 66 }, desc = "Pedang pemula dari kayu hutan. Jauh lebih sakit dari pukulan." },
         { id = "pedang_besi", name = "Pedang Besi", kind = "weapon", atk = 24, def = 0, level = 4, price = 320,
-                recipe = { kayu = 6, balok_besi = 3 }, color = { 200, 200, 210 }, desc = "Tajam kokoh dari balok besi." },
+                recipe = { gel = 6, balok_besi = 3 }, color = { 200, 200, 210 }, desc = "Tajam kokoh dari balok besi." },
         { id = "pedang_kristal", name = "Pedang Kristal", kind = "weapon", atk = 42, def = 0, level = 7, price = 950,
                 recipe = { balok_besi = 5, kristal = 3 }, color = { 190, 120, 255 }, desc = "Bercahaya ungu, membelah udara." },
-        -- zirah (def = pertahanan)
+
         { id = "zirah_kulit", name = "Zirah Kulit", kind = "armor", atk = 0, def = 8, level = 2, price = 110,
-                recipe = { gel = 6, kayu = 4 }, color = { 165, 120, 80 }, desc = "Kulit gelatin yang dikeringkan." },
+                recipe = { taring = 5, gel = 5 }, color = { 165, 120, 80 }, desc = "Kulit gelatin yang dikeringkan." },
         { id = "zirah_besi", name = "Zirah Besi", kind = "armor", atk = 0, def = 16, level = 5, price = 380,
                 recipe = { taring = 4, balok_besi = 4 }, color = { 150, 155, 170 }, desc = "Lapisan besi penangkal taring." },
         { id = "zirah_kristal", name = "Zirah Kristal", kind = "armor", atk = 0, def = 28, level = 8, price = 1050,
                 recipe = { inti = 2, kristal = 5 }, color = { 210, 150, 255 }, desc = "Kristal hidup melindungi pemakainya." },
 }
 
---------------------------------------------------------------------
--- UPGRADE PERALATAN (v8): +1..+5, tiap bintang +12% ATK/DEF
---   Biaya naik kuadrat - sink ekonomi Micda & balok tempaan.
---------------------------------------------------------------------
 Balance.MaxStar = 5
 Balance.StarBonus = 0.12
 
--- v10 MASTERY CRAFT: tiap 10x resep sama = MASTER (+50% XP craft resep itu)
 Balance.CraftMasterySteps = 10
 Balance.CraftMasteryXpMult = 1.5
 
---------------------------------------------------------------------
--- KIOS VENDING PEMAIN (v20, ala stand jualan dunia terbuka):
---   Pemilik lahan memasang KIOS di ladangnya, mengisi barang + harga,
---   pemain lain membeli langsung di kios walau pemilik sedang di ladang lain.
---   Syariah: bayar lunas per transaksi, jasa 2% (min 1) TRANSPARAN,
---   tanpa escrow bunga, tanpa gharar (barang & harga terlihat jelas).
---------------------------------------------------------------------
 function Balance.craftMasteryLevel(count: number): number
         return math.floor(math.max(0, count) / Balance.CraftMasterySteps)
 end
@@ -70,7 +42,6 @@ function Balance.craftXpWithMastery(baseXp: number, count: number): number
         return math.floor(baseXp * (1 + (Balance.CraftMasteryXpMult - 1) * math.min(lvl, 3)))
 end
 
---- biaya naik ke bintang (star+1): { micda, mat, matCount }
 function Balance.upgradeCost(star: number): (number, string, number)
         if star <= 2 then
                 return 150 * (star + 1) * (star + 1), "balok_besi", star + 1
@@ -78,47 +49,40 @@ function Balance.upgradeCost(star: number): (number, string, number)
         return 150 * (star + 1) * (star + 1), "balok_kristal", star - 1
 end
 
---- ATK/DEF efektif dengan bintang
 function Balance.starScaled(base: number, star: number): number
         return math.floor(base * (1 + Balance.StarBonus * math.clamp(star, 0, Balance.MaxStar)))
 end
 
---------------------------------------------------------------------
--- RESEP STASIUN CRAFT
---   tempa  = perapian besi/kristal + senjata + zirah (anvil Pak Tempa)
---   dapur  = makanan buff & ramuan (api unggun Bu Masak)
---------------------------------------------------------------------
 Balance.Recipes = {
-        -- tempa: smelting
+
         { id = "balok_besi", station = "tempa", kind = "mat", out = "balok_besi", count = 1, level = 2,
                 recipe = { besi = 3 }, xp = 6 },
         { id = "balok_kristal", station = "tempa", kind = "mat", out = "balok_kristal", count = 1, level = 5,
                 recipe = { kristal = 3 }, xp = 14 },
-        -- tempa: senjata & zirah (menghasilkan item "equip")
+
         { id = "pedang_kayu", station = "tempa", kind = "equip", out = "pedang_kayu", count = 1, level = 1,
-                recipe = { kayu = 8 }, xp = 10 },
+                recipe = { gel = 10 }, xp = 10 },
         { id = "pedang_besi", station = "tempa", kind = "equip", out = "pedang_besi", count = 1, level = 4,
-                recipe = { kayu = 6, balok_besi = 3 }, xp = 26 },
+                recipe = { gel = 6, balok_besi = 3 }, xp = 26 },
         { id = "pedang_kristal", station = "tempa", kind = "equip", out = "pedang_kristal", count = 1, level = 7,
                 recipe = { balok_besi = 5, kristal = 3 }, xp = 60 },
         { id = "zirah_kulit", station = "tempa", kind = "equip", out = "zirah_kulit", count = 1, level = 2,
-                recipe = { gel = 6, kayu = 4 }, xp = 12 },
+                recipe = { taring = 5, gel = 5 }, xp = 12 },
         { id = "zirah_besi", station = "tempa", kind = "equip", out = "zirah_besi", count = 1, level = 5,
                 recipe = { taring = 4, balok_besi = 4 }, xp = 30 },
         { id = "zirah_kristal", station = "tempa", kind = "equip", out = "zirah_kristal", count = 1, level = 8,
                 recipe = { inti = 2, kristal = 5 }, xp = 70 },
-        -- dapur: makanan buff
+
         { id = "roti_aktif", station = "dapur", kind = "use", out = "roti_aktif", count = 1, level = 1,
-                recipe = { wortel = 2, jagung = 1 }, xp = 5 },
+                recipe = { wortel = 3 }, xp = 5 },
         { id = "sate_ikan", station = "dapur", kind = "use", out = "sate_ikan", count = 1, level = 2,
                 recipe = { ikan_kecil = 2 }, xp = 6 },
         { id = "ramuan_hijau", station = "dapur", kind = "use", out = "ramuan_hijau", count = 1, level = 2,
-                recipe = { apel = 3 }, xp = 6 },
+                recipe = { jamur = 3 }, xp = 6 },
         { id = "ramuan_inti", station = "dapur", kind = "use", out = "ramuan_inti", count = 1, level = 6,
-                recipe = { inti = 1, apel = 2 }, xp = 18 },
+                recipe = { inti = 1, jamur = 2 }, xp = 18 },
 }
 
--- item "use" (makanan/ramuan): efek saat dimakan, harga jual di pasar
 Balance.Usables = {
         { id = "roti_aktif", name = "Roti Aktif", sell = 18, effect = "speed", power = 0.12, duration = 300,
                 color = { 230, 180, 110 }, desc = "Lari +12% selama 5 menit." },
@@ -130,11 +94,6 @@ Balance.Usables = {
                 color = { 255, 160, 80 }, desc = "Pulihkan seluruh HP seketika." },
 }
 
---------------------------------------------------------------------
--- MONSTER (semua makhluk original Dunia Akiomida)
---------------------------------------------------------------------
--- v4 MAKHLUK ANGKA: setiap monster berwujud ANGKA raksasa dikelilingi AURA
--- (angka = kekuatannya; makin besar angka, makin berbahaya). 100% original.
 Balance.Monsters = {
         { id = "gelatin", name = "Angka Satu", hp = 34, atk = 6, def = 0, speed = 10, xp = 9,
                 respawn = 35, aggro = 16, coin = { 2, 6 },
@@ -148,17 +107,17 @@ Balance.Monsters = {
                 body = { color = { 150, 155, 205 }, size = 5, digit = "2", aura = { 150, 155, 205 } } },
         { id = "golem", name = "Angka Empat", hp = 120, atk = 17, def = 6, speed = 8, xp = 28,
                 respawn = 60, aggro = 15, coin = { 8, 18 },
-                drops = { { id = "inti", chance = 0.35, min = 1, max = 1 }, { id = "batu", chance = 0.8, min = 2, max = 3 } },
+                drops = { { id = "inti", chance = 0.35, min = 1, max = 1 }, { id = "besi", chance = 0.8, min = 2, max = 3 } },
                 zone = "tambang", level = 5,
                 body = { color = { 255, 170, 90 }, size = 6, digit = "4", aura = { 255, 170, 90 } } },
         { id = "angka_tiga", name = "Angka Tiga", hp = 48, atk = 8, def = 1, speed = 12, xp = 12,
                 respawn = 40, aggro = 17, coin = { 3, 8 },
-                drops = { { id = "gel", chance = 0.5, min = 1, max = 2 }, { id = "apel", chance = 0.35, min = 1, max = 2 } },
+                drops = { { id = "gel", chance = 0.5, min = 1, max = 2 }, { id = "taring", chance = 0.35, min = 1, max = 2 } },
                 zone = "padang", level = 2,
                 body = { color = { 120, 200, 235 }, size = 4.6, digit = "3", aura = { 120, 200, 235 } } },
         { id = "angka_lima", name = "Angka Lima", hp = 92, atk = 14, def = 3, speed = 15, xp = 20,
                 respawn = 50, aggro = 19, coin = { 5, 12 },
-                drops = { { id = "taring", chance = 0.5, min = 1, max = 2 }, { id = "kayu", chance = 0.4, min = 1, max = 3 } },
+                drops = { { id = "taring", chance = 0.5, min = 1, max = 2 }, { id = "gel", chance = 0.4, min = 1, max = 3 } },
                 zone = "hutan", level = 4,
                 body = { color = { 225, 130, 200 }, size = 5.4, digit = "5", aura = { 225, 130, 200 } } },
         { id = "angka_enam", name = "Angka Enam", hp = 185, atk = 20, def = 8, speed = 9, xp = 36,
@@ -178,7 +137,6 @@ Balance.Monsters = {
                 body = { color = { 90, 200, 220 }, size = 7.5, digit = "7", aura = { 90, 200, 220 } } },
 }
 
--- BOSS RAID: muncul di Arena (pulau monster Negeri Baja & Kristal)
 Balance.Boss = {
         id = "raja_golem",
         name = "ANGKA SANG RAJA",
@@ -187,39 +145,23 @@ Balance.Boss = {
         def = 10,
         speed = 9,
         aggro = 55,
-        respawn = 900, -- tiap 15 menit muncul lagi
-        despawn = 420, -- 7 menit tanpa dibunuh, pergi
+        respawn = 900,
+        despawn = 420,
         xp = 220,
         coin = { 150, 320 },
         drops = { { id = "inti", chance = 1, min = 3, max = 5 }, { id = "kristal", chance = 1, min = 2, max = 4 } },
         body = { color = { 255, 110, 60 }, size = 11, digit = "9", aura = { 255, 110, 60 } },
-        -- hadiah partisipasi dibagi proporsional damage
+
         participationCoin = 40,
         participationXp = 30,
         topBonusCoin = 150,
-        -- v20 FASE MURKA: pada HP <= 50% sang raja mengamuk (gaya mekanik bos MMO)
+
         enrageAt = 0.5,
         enrageSpeed = 1.35,
         enrageAtk = 1.3,
         enrageAura = { 255, 60, 50 },
 }
 
---------------------------------------------------------------------
--- EVENT DUNIA TERJADWAL (v6): "PESTA PANEN" - momen multiplayer rame
---   Setiap PERIOD detik, selama DURATION detik semua monster & panen
---   memberi Micda/XP ganda - server mengumumkan agar pemain berkumpul.
---------------------------------------------------------------------
-Balance.Event = {
-        name = "PESTA PANEN",
-        period = 1800, -- tiap 30 menit
-        duration = 300, -- berlangsung 5 menit
-        coinMult = 2,
-        xpMult = 2,
-}
-
---------------------------------------------------------------------
--- SKILL SENJATA (v5): aktif, cooldown, butuh pedang. Server-validated.
---------------------------------------------------------------------
 Balance.Skills = {
         { id = "tebasan_kuat", name = "Tebasan Kuat", mult = 2.2, cooldown = 8, level = 2,
                 desc = "Tebasan 220% ke angka terdekat. Butuh pedang." },
@@ -228,11 +170,6 @@ Balance.Skills = {
         { id = "tusukan_kilat", name = "Tusukan Kilat", mult = 3.0, cooldown = 14, level = 8,
                 desc = "Tusukan kilat 300% ke angka terdekat. Butuh pedang." },
 }
-
---------------------------------------------------------------------
--- ZONA SPAWN MONSTER (v21: SEMUA monster HIDUP di PULAU MONSTER
--- terpisah - tidak pernah menyebar ke wilayah umum peradaban)
---------------------------------------------------------------------
 
 Balance.Zones = {
         { id = "padang", name = "Padang Liar", center = { 640, 0, -320 }, radius = 95,
@@ -247,18 +184,6 @@ Balance.Zones = {
                 monsters = { { id = "gelatin_raksasa", count = 2 }, { id = "angka_delapan", count = 2 } } },
 }
 
---------------------------------------------------------------------
--- REGIONS / WILAYAH (v22 - arsitektur MMO ala dunia terbuka):
---   Dunia terdiri dari PULAU-PULAU WILAYAH yang dihubungkan GERBANG
---   PORTAL (wilayah bisa berpindah). Kategori:
---     hub     = Pusat Kota (DIBIARKAN KOSONG - isi menyusul diskusi)
---     civil   = Pulau Panen (kayu/bijih/ikan - DILARANG ada monster)
---     combat  = pulau monster (hanya di sini monster boleh hidup)
---     home    = Lahan pribadi pemain: 1 pemain = 1 lahan (GRATIS,
---               otomatis saat masuk), berisi rumah 3 lantai + rooftop,
---               ladang 500 petak, kolam air sungguhan, ruang Bedah/
---               Sains/Startopia/Pancing, koperasi, gerbang ke kota.
---------------------------------------------------------------------
 Balance.HOME_COUNT = 10
 Balance.HOME_COLS = { -700, -380 }
 Balance.HOME_Z0 = -440
@@ -269,13 +194,10 @@ Balance.Regions = {
         { id = "pusat", name = "Pusat Kota", kind = "hub", center = { 0, 0 }, half = { 170, 150 },
                 gates = {
                         { dest = "home", pos = { 0, 132 } },
-                        { dest = "panen", pos = { 0, -132 } },
                         { dest = "padang", pos = { 152, -60 } },
                         { dest = "hutan", pos = { 152, 40 } },
                         { dest = "baja", pos = { 152, 130 } },
                 } },
-        { id = "panen", name = "Pulau Panen", kind = "civil", center = { 0, -640 }, half = { 190, 150 },
-                gates = { { dest = "pusat", pos = { 0, -498 } } } },
         { id = "padang", name = "Padang Liar", kind = "combat", center = { 640, -320 }, half = { 130, 130 },
                 gates = { { dest = "pusat", pos = { 516, -320 } } } },
         { id = "hutan", name = "Hutan Bayang", kind = "combat", center = { 640, 60 }, half = { 130, 130 },
@@ -283,18 +205,7 @@ Balance.Regions = {
         { id = "baja", name = "Negeri Baja & Kristal", kind = "combat", center = { 760, 560 }, half = { 240, 210 },
                 gates = { { dest = "pusat", pos = { 528, 560 } } } },
 }
--- Lahan pribadi pemain: 2 kolom x 5 baris, gerbang di tepi timur
-for hi = 1, Balance.HOME_COUNT do
-        local hx, hz = Balance.homeCenter(hi)
-        table.insert(Balance.Regions, {
-                id = "rumah" .. hi, name = "Lahan " .. hi, kind = "home",
-                center = { hx, hz }, half = { Balance.HOME_HALF[1], Balance.HOME_HALF[2] },
-                gates = { { dest = "pusat", pos = { hx + Balance.HOME_HALF[1], hz } } },
-        })
-end
 
---- Lahan pribadi berdasarkan index 1..HOME_COUNT: kolom barat (index
---- ganjil) & timur (genap), 5 baris per kolom (murni - diuji offline).
 function Balance.homeCenter(index: number): (number, number)
         if index < 1 or index > Balance.HOME_COUNT then
                 return 0, 0
@@ -304,13 +215,20 @@ function Balance.homeCenter(index: number): (number, number)
         return Balance.HOME_COLS[col + 1], Balance.HOME_Z0 + row * Balance.HOME_GAP
 end
 
---- Titik lahir di lahan sendiri: plaza gerbang, di dalam batas lahan.
+for hi = 1, Balance.HOME_COUNT do
+        local hx, hz = Balance.homeCenter(hi)
+        table.insert(Balance.Regions, {
+                id = "rumah" .. hi, name = "Lahan " .. hi, kind = "home",
+                center = { hx, hz }, half = { Balance.HOME_HALF[1], Balance.HOME_HALF[2] },
+                gates = { { dest = "pusat", pos = { hx + Balance.HOME_HALF[1] - 5, hz } } },
+        })
+end
+
 function Balance.landSpawn(index: number): (number, number)
         local hx, hz = Balance.homeCenter(index)
         return hx + 84, hz + 10
 end
 
---- Pilih lahan kosong terkecil; 0 bila penuh (murni - diuji offline).
 function Balance.nextFreeHome(taken: { [number]: boolean }): number
         for i = 1, Balance.HOME_COUNT do
                 if not taken[i] then
@@ -320,7 +238,6 @@ function Balance.nextFreeHome(taken: { [number]: boolean }): number
         return 0
 end
 
---- Nama koperasi otomatis: "akiomida" + 8 kode huruf-angka (murni).
 Balance.KOPERASI_PREFIX = "akiomida"
 local KOPERASI_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
@@ -334,7 +251,6 @@ function Balance.koperasiName(rng: Random?): string
         return Balance.KOPERASI_PREFIX .. table.concat(code)
 end
 
---- Bersihkan nama lahan dari papan nama: 3..20 karakter aman (murni).
 function Balance.sanitizeLandName(text: any): string?
         if type(text) ~= "string" then
                 return nil
@@ -344,7 +260,7 @@ function Balance.sanitizeLandName(text: any): string?
         if #cleaned < 3 or #cleaned > 20 then
                 return nil
         end
-        if not string.match(cleaned, "^[A-Za-z0-9 _%-%.%']+$") then
+        if not string.match(cleaned, "^[A-Za-z0-9 _.'%-]+$") then
                 return nil
         end
         return cleaned
@@ -359,9 +275,6 @@ function Balance.regionById(id: string)
         return nil
 end
 
---- Titik muncul di region tujuan: 13 stud ke dalam dari gerbang yang
---- menghadap region asal (murni - diuji offline). "home" cocok dengan
---- "rumahK" mana pun.
 function Balance.gateArrival(regionId: string, fromRegionId: string): (number?, number?)
         local region = Balance.regionById(regionId)
         if not region then
@@ -383,15 +296,11 @@ function Balance.gateArrival(regionId: string, fromRegionId: string): (number?, 
         return nil, nil
 end
 
---- Dua kotak (center1, half1, center2, half2) bertumpuk dengan margin (murni).
 function Balance.rectsOverlap(c1: { number }, h1: { number }, c2: { number }, h2: { number }, margin: number): boolean
         return math.abs(c1[1] - c2[1]) < h1[1] + h2[1] + margin
                 and math.abs(c1[2] - c2[2]) < h1[2] + h2[2] + margin
 end
 
---- Validasi arsitektur wilayah (murni - dipanggil tes offline):
---- gerbang menunjuk wilayah yang ada, posisi gerbang di dalam pulau,
---- zona monster di dalam pulau combat & TIDAK menyentuh pulau peradaban.
 function Balance.validateRegions(): { string }
         local errs = {}
         local ids = {}
@@ -453,83 +362,6 @@ function Balance.validateRegions(): { string }
         return errs
 end
 
---------------------------------------------------------------------
--- TUGAS (papan tugas; rotasi harian deterministik)
---------------------------------------------------------------------
-Balance.Quests = {
-        { id = "panen5", title = "Panen Raya", goal = { type = "harvest", count = 5 }, reward = { coins = 120, xp = 40 },
-                desc = "Panen 5 tanaman apa pun di ladangmu." },
-        { id = "tebang6", title = "Bantuan Tukang Kayu", goal = { type = "chop", count = 6 }, reward = { coins = 100, xp = 35 },
-                desc = "Tebang 6 pohon di Hutan Kayu." },
-        { id = "tambang8", title = "Kiriman Pak Bang", goal = { type = "mine", count = 8 }, reward = { coins = 140, xp = 45 },
-                desc = "Tambang 8 bijih batu/besi/kristal." },
-        { id = "mancing5", title = "Pesanan Bu Laris", goal = { type = "fish", count = 5 }, reward = { coins = 130, xp = 40 },
-                desc = "Pancing 5 ikan di Danau Tenang." },
-        { id = "kalah5", title = "Patroli Padang", goal = { type = "kill", count = 5 }, reward = { coins = 160, xp = 50 },
-                desc = "Kalahkan 5 monster mana pun." },
-        { id = "tempa1", title = "Praktik Pak Tempa", goal = { type = "craft", count = 1 }, reward = { coins = 180, xp = 55 },
-                desc = "Tempa 1 peralatan atau balok di Pandai Besi." },
-        { id = "masak2", title = "Katering Bu Masak", goal = { type = "cook", count = 2 }, reward = { coins = 150, xp = 45 },
-                desc = "Masak 2 makanan/ramuan di Api Unggun." },
-}
-Balance.QuestsPerDay = 3 -- jumlah tugas yang ditawarkan tiap hari (rotasi)
-
---- Rotasi harian deterministik (sama di server & client): pilih
---- QuestsPerDay tugas dari kolam berdasarkan hash hari ini.
-function Balance.todayQuestIds(): { string }
-        local day = math.floor(os.time() / 86400)
-        local pool = {}
-        for _, q in ipairs(Balance.Quests) do
-                table.insert(pool, q.id)
-        end
-        local function hashString(s: string): number
-                local h = 0
-                for i = 1, #s do
-                        h = (h * 31 + string.byte(s, i)) % 1000000007
-                end
-                return h
-        end
-        local picked: { string } = {}
-        local start = day % #pool
-        for i = 1, Balance.QuestsPerDay do
-                local idx = ((start + (hashString("akm" .. day) + i * 7) % #pool)) % #pool
-                local id = pool[idx + 1]
-                local dup = false
-                for _, p in picked do
-                        if p == id then
-                                dup = true
-                                break
-                        end
-                end
-                if not dup then
-                        table.insert(picked, id)
-                end
-        end
-        -- fallback: kalau kurang (tabrakan duplikat), isi berurutan
-        for _, id in pool do
-                if #picked >= Balance.QuestsPerDay then
-                        break
-                end
-                local dup = false
-                for _, p in picked do
-                        if p == id then
-                                dup = true
-                                break
-                        end
-                end
-                if not dup then
-                        table.insert(picked, id)
-                end
-        end
-        return picked
-end
-
---------------------------------------------------------------------
--- RUMUS KOMBAT (murni - diuji offline)
---------------------------------------------------------------------
-
---- Serangan pemain: senjata + STR + DEX + level (Toram-like scaling).
---- PUKULAN TELANJANG (tanpa senjata) lemah: total dikali FIST_MULT.
 Balance.FistMult = 0.45
 
 function Balance.playerAttack(args: { weaponAtk: number, str: number, dex: number, int: number, level: number }): number
@@ -540,45 +372,33 @@ function Balance.playerAttack(args: { weaponAtk: number, str: number, dex: numbe
         return math.floor(total)
 end
 
---- Peluang kritikal (DEX membantu), maksimum 45%
 function Balance.critChance(dex: number): number
         return math.clamp(0.04 + dex * 0.006, 0, 0.45)
 end
 
 Balance.CritMult = 1.6
 
---- Total pertahanan: zirah + VIT
 function Balance.playerDefense(armorDef: number, vit: number): number
         return (armorDef or 0) + vit * 1.2
 end
 
---- Damage yang diterima pemain dengan kurva pelunakan (soft cap)
 function Balance.damageTaken(rawAtk: number, defense: number): number
         local mult = defense / (defense + 60)
         return math.max(1, math.floor(rawAtk * (1 - mult) + 0.5))
 end
 
---- HP maksimum: dasar + VIT
 function Balance.maxHp(vit: number): number
         return Balance.MaxHpBase + vit * 6
 end
 
---- Laju lari: dasar + AGI (dibatasi), bike ditangani pemanggil
 function Balance.walkSpeed(agi: number): number
         return math.min(16 + agi * 0.05, 19)
 end
 
---- Jeda serangan pemain (detik): AGI mempercepat, minimal 0.35
 function Balance.attackCooldown(agi: number): number
         return math.max(0.35, 0.7 - agi * 0.008)
 end
 
---------------------------------------------------------------------
--- VALIDASI & KONSISTENSI (dipanggil test offline)
---------------------------------------------------------------------
-
---- Pastikan semua resep merujuk bahan yang ada & output terdaftar.
---- materials: set id sumber daya/crop/ikan yang sah. Return list kesalahan.
 function Balance.validateRecipes(materials: { [string]: boolean }, equips: { [string]: boolean },
                 usables: { [string]: boolean }, resources: { [string]: boolean }): { string }
         local errs = {}
@@ -601,8 +421,6 @@ function Balance.validateRecipes(materials: { [string]: boolean }, equips: { [st
         return errs
 end
 
---- Kurva kekuatan: simulasi waktu-bunuh monster oleh pemain level L.
---- Dipakai untuk cek keseimbangan (TTK wajar: tidak instan, tidak lama).
 function Balance.simulateTtk(level: number, monsterId: string, statSpread: string?): (number, number)
         local spread = statSpread or "balanced"
         local str, dex, vit, agi, int = 0, 0, 0, 0, 0
@@ -633,9 +451,9 @@ function Balance.simulateTtk(level: number, monsterId: string, statSpread: strin
                 return -1, -1
         end
         local ttk = mon.hp / math.max(1, dps)
-        -- berapa damage pemain terima sebelum monster mati
+
         local def = Balance.playerDefense(8, vit)
-        local hits = math.ceil(ttk / 1.5) -- monster menyerang tiap ~1.5s
+        local hits = math.ceil(ttk / 1.5)
         return ttk, Balance.damageTaken(mon.atk, def) * hits
 end
 

@@ -1,23 +1,13 @@
---!nonstrict
---[[
-        Ambience.luau - v20 musik latar ORIGINAL disintesis kode:
-          Satu nada dasar (bunyi elektronik bawaan platform) di-pitch
-          mengikuti rasio setengah nada (2^(n/12)) membentuk skala
-          PENTATONIK mayor - melodi lembut bergaya pedangan damai.
-          Tanpa satu pun aset pihak ketiga. Bisa dimatikan lewat tombol♪.
-]]
-
 local SoundService = game:GetService("SoundService")
 
 local Ambience = {}
 
--- skala pentatonik mayor dalam semiton dari nada dasar (dua oktaf)
 local SCALE = { 0, 2, 4, 7, 9, 12, 14, 16 }
--- melodi 16 langkah (indeks skala) - tenang, untuk menjelajah dunia terbuka
+
 local MELODY = { 1, 3, 5, 4, 6, 5, 3, 2, 4, 6, 8, 7, 5, 3, 2, 1 }
-local BASS_EVERY = 4 -- nada bass tiap 4 langkah
-local BASE_SPEED = 0.62 -- pitch nada dasar (nada rendah lembut)
-local STEP = 0.55 -- detik per langkah
+local BASS_EVERY = 4
+local BASE_SPEED = 0.62
+local STEP = 0.55
 
 local enabled = true
 local running = false
@@ -26,7 +16,6 @@ function Ambience.isEnabled(): boolean
         return enabled
 end
 
---- Nyalakan/matikan musik. Return status terbaru.
 function Ambience.toggle(): boolean
         enabled = not enabled
         return enabled
@@ -62,7 +51,7 @@ function Ambience.start()
                                 local semi = SCALE[idx] or 0
                                 note(BASE_SPEED * (2 ^ (semi / 12)), 0.085)
                                 if step % BASS_EVERY == 0 then
-                                        note(BASE_SPEED * 0.5, 0.07) -- bass satu oktaf ke bawah
+                                        note(BASE_SPEED * 0.5, 0.07)
                                 end
                         end
                         step += 1

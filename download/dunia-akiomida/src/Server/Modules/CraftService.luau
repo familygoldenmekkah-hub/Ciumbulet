@@ -1,13 +1,3 @@
---!nonstrict
---[[
-        CraftService.luau - v3 "Toram-grade" profesing crafting:
-          - Stasiun TEMPAA (anvil Pak Tempa): smelting balok besi/kristal,
-            senjata (pedang kayu/besi/kristal), zirah (kulit/besi/kristal)
-          - Stasiun DAPUR (api unggun Bu Masak): makanan buff & ramuan
-          - Resep dari Balance.Recipes: objek alam -> bahan -> peralatan
-          - XP craft + hook tugas (craft / cook)
-]]
-
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Remotes = require(ReplicatedStorage.Remotes)
@@ -15,8 +5,19 @@ local Balance = require(ReplicatedStorage.Shared.Balance)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Util = require(ReplicatedStorage.Shared.Util)
 
+local CropConfig = require(ReplicatedStorage.Shared.CropConfig)
 local DataService = require(script.Parent.DataService)
-local QuestService = require(script.Parent.QuestService)
+
+local MAT_KIND_ORDER = { "bag", "crop", "fish" }
+
+local function matKindOf(player: Player, id: string): string
+	for _, kind in ipairs(MAT_KIND_ORDER) do
+		if DataService.countItem(player, kind, id) > 0 then
+			return kind
+		end
+	end
+	return "bag"
+end
 
 local CraftService = {}
 
@@ -44,7 +45,7 @@ local function nameOf(kind: string, id: string): string
                                 return res.name
                         end
                 end
-                for _, crop in ipairs(Config.Crops) do
+                for _, crop in ipairs(CropConfig.Crops) do
                         if crop.id == id then
                                 return crop.name
                         end
@@ -67,15 +68,10 @@ local function recipeLabel(r: any): string
         return table.concat(parts, " + ")
 end
 
--- label resep untuk client (satu kali saja, dipasangkan via provider)
 local recipeLabels: { [string]: string } = {}
 for _, r in ipairs(Balance.Recipes) do
         recipeLabels[r.id] = recipeLabel(r)
 end
-
---------------------------------------------------------------------
--- JALANKAN RESEP
---------------------------------------------------------------------
 
 local function onCraft(player: Player, recipeId: any)
         if not DataService.has(player) or type(recipeId) ~= "string" then
@@ -94,19 +90,17 @@ local function onCraft(player: Player, recipeId: any)
         if DataService.levelOf(player) < recipe.level then
                 return { ok = false, msg = "Butuh level " .. recipe.level .. " untuk resep ini." }
         end
-        -- cek bahan
         for matId, count in pairs(recipe.recipe) do
-                if DataService.countItem(player, "bag", matId) < count then
+                if DataService.countItem(player, matKindOf(player, matId), matId) < count then
                         return { ok = false, msg = "Bahan kurang: " .. nameOf("bag", matId) .. " x" .. count }
                 end
         end
-        -- potong bahan
         local data = DataService.get(player)
         for matId, count in pairs(recipe.recipe) do
-                DataService.takeItem(player, "bag", matId, count)
+                DataService.takeItem(player, matKindOf(player, matId), matId, count)
         end
         DataService.giveItem(player, recipe.kind, recipe.out, recipe.count)
-        -- v10 mastery: tiap 10x resep sama menaikkan bonus XP (maks +50%)
+
         local prevCount = (data.CraftCount and data.CraftCount[recipe.id]) or 0
         data.CraftCount[recipe.id] = prevCount + 1
         local gainedXp = Balance.craftXpWithMastery(recipe.xp, prevCount + 1)
@@ -117,10 +111,6 @@ local function onCraft(player: Player, recipeId: any)
                         nameOf(recipe.kind, recipe.out) .. " mastery " .. masteryLevel .. " - XP craft +" .. math.floor((Balance.CraftMasteryXpMult - 1) * math.min(masteryLevel, 3) * 100) .. "%!")
         end
 
-        local hook = recipe.station == "tempa" and "craft" or "cook"
-        QuestService.progress(player, hook, 1)
-
-        -- v20: percikan tempa di tangan pembuat (sekali pakai, ringan mobile)
         local char = player.Character
         local root = char and char:FindFirstChild("HumanoidRootPart")
         if root then
@@ -138,10 +128,6 @@ local function onCraft(player: Player, recipeId: any)
         }
 end
 
---------------------------------------------------------------------
--- STASIUN DI DUNIA
---------------------------------------------------------------------
-
 function CraftService.bindStation(prompt: ProximityPrompt, station: string)
         prompt.ActionText = "Buat"
         prompt.ObjectText = STATION_TITLES[station] or "Stasiun"
@@ -154,7 +140,6 @@ function CraftService.bindStation(prompt: ProximityPrompt, station: string)
         end)
 end
 
--- daftar resep per stasiun untuk snapshot client
 function CraftService.recipesFor(station: string)
         local out = {}
         for _, r in ipairs(Balance.Recipes) do

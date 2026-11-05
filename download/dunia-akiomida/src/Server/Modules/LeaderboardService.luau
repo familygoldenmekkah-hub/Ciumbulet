@@ -1,8 +1,3 @@
---!nonstrict
---[[
-        LeaderboardService.luau - Top XP global (OrderedDataStore) + papan fisik.
-]]
-
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

@@ -1,8 +1,3 @@
---!nonstrict
---[[
-	init.client.luau - bootstrap UI Dunia Akiomida.
-]]
-
 local UIController = require(script.UIController)
 
 UIController.new()

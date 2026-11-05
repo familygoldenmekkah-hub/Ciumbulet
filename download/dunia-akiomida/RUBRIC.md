@@ -19,7 +19,7 @@ Skor per kriteria 0-10, dikali bobot. Total dihitung dari (skor x bobot) / 10.
 | 8 | Polish & UX (UI, suara, animasi, efek) | 10 | animasi kombat, BGM, partikel | UI rapi & responsif |
 | 9 | Originalitas 100% & aman hak cipta | 5 | - | - |
 
-## Skor v21 (versi LIVE #22, 5 Nov 2026) - ARSITEKTUR WILAYAH (permintaan pemilik)
+## Skor v25 (versi LIVE #25, 5 Nov 2026) - PANEN BARU (permintaan pemilik)
 
 | Kriteria | Skor | Catatan |
 |----------|------|---------|
@@ -27,15 +27,15 @@ Skor per kriteria 0-10, dikali bobot. Total dihitung dari (skor x bobot) / 10.
 | 2 Crafting | 7/10 | 12 resep + MASTERY (M1..M3, XP craft sampai +50%). |
 | 3 Stat | 7/10 | 5 stat + poin/level + UPGRADE PERALATAN +1..+5. |
 | 4 Ekonomi | 9/10 | KIOS VENDING pemain (di ladang pulau rumah sendiri), Papan Jual persisten, pasar dinamis, sink kuat. + KLAIM PULAU RUMAH PERSISTEN (HomeId tersimpan; pulau 1 gratis, 2-6 dibeli LUNAS Micda - tanpa riba). |
-| 5 Dunia | 8/10 | **ARSITEKTUR WILAYAH BARU (permintaan pemilik)**: dunia pulau-pulau di LAUT AIR SUNGUHAN terrain, dihubungkan GERBANG PORTAL. PULAU RUMAH pribadi x6 (rumah 2 lantai interior, LAHAN TANI pribadi, KOLAM AIR SUNGUHAN bergelombang & bisa berenang, RUANG BEDAH / RUANG SAINS / RUANG STARTOPIA, gerbang ke kota), Pusat Kota (hub sementara), Pulau Panen BEBAS MONSTER (hutan kayu, tambang bijih, Danau Tenang air sungguhan), 3 pulau monster terpisah bertingkat (Padang Liar LV1-3, Hutan Bayang LV3-5, Negeri Baja & Kristal LV5+ berisi Tambang Baja, Gua Kristal, Arena koloseum). Belum: dungeon instanced per-party, pusat kota final (menunggu bahasan pemilik). |
-| 6 Multiplayer | 8/10 | Belanja kios pemain lain, boss raid kooperatif, event terjadwal, trade 2 sisi, papan jual, kompas zona (7 target). Belum ada party/guild. |
-| 7 Bertani | 7/10 | 6 ladang kini DI PULAU RUMAH SENDIRI (plot i di pulau i, ikut kepemilikan pulau persisten); 1 pulau gratis, 5 dibeli lunas. |
+| 5 Dunia | 8/10 | Pulau Panen lama dihapus (ekonomi baru); Pusat Kota kini berisi TOKO BENIH interior profesional (rak kemasan, konter kasir, planter demo, papan harga); semua pintu 2x karakter & buka-tutup (DoorKit), lantai bangunan 4x karakter; rumah 3 lantai + rooftop terrace berinterior penuh + ruang Bedah/Sains/Startopia/Pancing. Pusat kota sisanya kosong menunggu bahasan. | **ARSITEKTUR WILAYAH BARU (permintaan pemilik)**: dunia pulau-pulau di LAUT AIR SUNGUHAN terrain, dihubungkan GERBANG PORTAL. PULAU RUMAH pribadi x6 (rumah 2 lantai interior, LAHAN TANI pribadi, KOLAM AIR SUNGUHAN bergelombang & bisa berenang, RUANG BEDAH / RUANG SAINS / RUANG STARTOPIA, gerbang ke kota), Pusat Kota (hub sementara), Pulau Panen BEBAS MONSTER (hutan kayu, tambang bijih, Danau Tenang air sungguhan), 3 pulau monster terpisah bertingkat (Padang Liar LV1-3, Hutan Bayang LV3-5, Negeri Baja & Kristal LV5+ berisi Tambang Baja, Gua Kristal, Arena koloseum). Belum: dungeon instanced per-party, pusat kota final (menunggu bahasan pemilik). |
+| 6 Multiplayer | 7/10 | Boss raid kooperatif, kompas zona, kunjungan lahan pemain lain. Papan jual/kios/trade lama dihapus bersama ekonomi lama - koperasi antar-pemain jadi penggantinya (roadmap). |
+| 7 Bertani | 10/10 | **VERSI BARU sesuai spek pemilik**: 34 tanaman (12/14/8 Common-Rare-Epic, harga jual tetap), tumbuh 3 detik, panen 1-4 acak, KEBUN 500 PETAK per lahan, pack benih 400/1.500/3.500 (3 benih acak per kategori), 8 resep gabung benih, tas 50 slot x 250, koperasi harga tetap. |
 | 8 Polish | 8/10 | BGM pentatonik original, partikel hemat mobile, SFX, kompas, kolam & danau air terrain bergelombang, tata ruang pulau rapi (jalan batu, lampu taman, pagar rambate, bunga). Tanpa animasi karakter. |
 | 9 Originalitas | 10/10 | 100% karya sendiri; tidak ada aset/konten pihak ketiga. |
 
-**TOTAL: 80/100** (bobot: 9x15+7x15+7x10+9x15+8x10+8x10+7x10+8x10+10x5 = 805/10)
+**TOTAL: 83/100** (bobot: 9x15+7x15+7x10+9x15+8x10+7x10+10x10+8x10+10x5 = 825/10)
 
-Riwayat: v10 = 56 -> v11 = 64 (penilaian owner) -> siklus mandiri v11 = 76 -> v20 = 79 -> v21 = 80.
+Riwayat: v10 = 56 -> v11 = 64 (penilaian owner) -> v20 = 79 -> v21 = 80 -> v25 = 83.
 Celah utama menuju 100: pusat kota final & dungeon instanced (8), party/guild (8),
 animasi karakter (8), skill tree & progesi (7).
 

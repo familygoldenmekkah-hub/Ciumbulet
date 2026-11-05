@@ -1,36 +1,21 @@
---!nonstrict
---[[
-        FarmService.luau - jantung ekonomi: ladang pribadi pemain.
-        Alur Grow a Garden ala Dunia Akiomida:
-          klaim ladang -> beli bibit -> tanam -> (siram) -> tumbuh (nyata waktu,
-          tetap tumbuh saat pemain menjelajah) -> panen -> jual di pasar.
-        Server-authoritative: semua waktu & validasi di server.
-]]
-
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Remotes)
 local Util = require(ReplicatedStorage.Shared.Util)
+local CropConfig = require(ReplicatedStorage.Shared.CropConfig)
+local TasLogic = require(ReplicatedStorage.Shared.TasLogic)
 
 local DataService = require(script.Parent.DataService)
-local QuestService = require(script.Parent.QuestService)
-
-local Balance = require(ReplicatedStorage.Shared.Balance)
 
 local FarmService = {}
 
-local PLOT_COUNT = 6
-local GRID = 4 -- petak 4x4
-local TILE_SIZE = 5
-local FENCE_HALF = 13
+local COLS = 25
+local ROWS = 20
+local PLOT_COUNT = COLS * ROWS
+local PLOT_SIZE = 3.4
+local GROW = CropConfig.GrowTime
 
-local cropById: { [string]: any } = {}
-for _, crop in ipairs(Config.Crops) do
-        cropById[crop.id] = crop
-end
-
-local plots: { [number]: any } = {}
+local fields: { [number]: any } = {}
 local worldFolder: Folder? = nil
 
 local function world(): Folder
@@ -47,7 +32,7 @@ local function world(): Folder
         return f :: Folder
 end
 
-local function part(props): Part
+local function part(props, parent): Part
         local p = Instance.new("Part")
         p.Anchored = true
         p.TopSurface = Enum.SurfaceType.Smooth
@@ -55,588 +40,408 @@ local function part(props): Part
         for k, v in props do
                 (p :: any)[k] = v
         end
-        p.Parent = world()
+        p.Parent = parent or world()
         return p
 end
 
---------------------------------------------------------------------
--- VISUAL TANAMAN (3 tahap + siap panen)
---------------------------------------------------------------------
-
-local function destroyPlant(tile)
-        if tile.plant then
-                tile.plant:Destroy()
-                tile.plant = nil
+local function fieldFolder(index: number): Folder
+        local f = world():FindFirstChild("Kebun" .. index) :: Folder?
+        if not f then
+                f = Instance.new("Folder")
+                f.Name = "Kebun" .. index
+                f.Parent = world()
         end
-end
-
---- bucket: 0 = biji, 1 = kecambah, 2 = tumbuh, 3 = siap panen
-local function buildPlantVisual(tile, bucket: number)
-        destroyPlant(tile)
-        local crop = cropById[tile.seed]
-        if not crop then
-                return
-        end
-        local base = tile.part.Position
-        local ground = base + Vector3.new(0, tile.part.Size.Y / 2, 0)
-        local model = Instance.new("Model")
-        model.Name = "Tanaman_" .. tile.seed
-
-        local fruitColor = Color3.fromRGB(crop.color[1], crop.color[2], crop.color[3])
-
-        if bucket == 0 then
-                part({
-                        Name = "Biji",
-                        Size = Vector3.new(1.4, 0.5, 1.4),
-                        CFrame = CFrame.new(ground + Vector3.new(0, 0.25, 0)),
-                        Color = Color3.fromRGB(122, 88, 56),
-                        Material = Enum.Material.Ground,
-                        CanCollide = false,
-                }).Parent = model
-        elseif bucket == 1 then
-                part({
-                        Name = "Kecambah",
-                        Size = Vector3.new(0.5, 1.6, 0.5),
-                        CFrame = CFrame.new(ground + Vector3.new(0, 0.8, 0)),
-                        Color = Color3.fromRGB(120, 200, 90),
-                        Material = Enum.Material.Grass,
-                        CanCollide = false,
-                }).Parent = model
-        elseif bucket == 2 then
-                part({
-                        Name = "Batang",
-                        Size = Vector3.new(0.6, 2.6, 0.6),
-                        CFrame = CFrame.new(ground + Vector3.new(0, 1.3, 0)),
-                        Color = Color3.fromRGB(96, 170, 80),
-                        Material = Enum.Material.Grass,
-                        CanCollide = false,
-                }).Parent = model
-                part({
-                        Name = "Daun1",
-                        Shape = Enum.PartType.Ball,
-                        Size = Vector3.new(1.8, 1.1, 1.8),
-                        CFrame = CFrame.new(ground + Vector3.new(0.7, 2.0, 0.2)),
-                        Color = Color3.fromRGB(110, 195, 90),
-                        Material = Enum.Material.Grass,
-                        CanCollide = false,
-                }).Parent = model
-                part({
-                        Name = "Daun2",
-                        Shape = Enum.PartType.Ball,
-                        Size = Vector3.new(1.6, 1.0, 1.6),
-                        CFrame = CFrame.new(ground + Vector3.new(-0.7, 1.7, -0.2)),
-                        Color = Color3.fromRGB(110, 195, 90),
-                        Material = Enum.Material.Grass,
-                        CanCollide = false,
-                }).Parent = model
-        else
-                local scale = 1
-                if tile.seed == "labu" or tile.seed == "bintang" then
-                        scale = 1.5
-                end
-                part({
-                        Name = "Batang",
-                        Size = Vector3.new(0.7, 3.2, 0.7),
-                        CFrame = CFrame.new(ground + Vector3.new(0, 1.6, 0)),
-                        Color = Color3.fromRGB(90, 160, 75),
-                        Material = Enum.Material.Grass,
-                        CanCollide = false,
-                }).Parent = model
-                part({
-                        Name = "Buah",
-                        Shape = Enum.PartType.Ball,
-                        Size = Vector3.new(2.4, 2.4, 2.4) * scale,
-                        CFrame = CFrame.new(ground + Vector3.new(0, 2.6 + scale * 0.4, 0)),
-                        Color = fruitColor,
-                        Material = Enum.Material.SmoothPlastic,
-                        CanCollide = false,
-                }).Parent = model
-                local glow = Instance.new("PointLight")
-                glow.Color = fruitColor
-                glow.Range = 8
-                glow.Brightness = 1.2
-                glow.Parent = model.Buah
-        end
-
-        model.Parent = tile.part
-        tile.plant = model
-end
-
---------------------------------------------------------------------
--- PROMPT & STATE PETAK
---------------------------------------------------------------------
-
-local function updateTilePrompt(tile)
-        local prompt = tile.prompt
-        if not prompt then
-                return
-        end
-        local plot = plots[tile.plotIndex]
-        local owner = plot and plot.owner
-
-        if not owner then
-                prompt.Enabled = false
-                return
-        end
-
-        if tile.state == "empty" then
-                prompt.ActionText = "Tanam Bibit"
-                prompt.ObjectText = "Petak Ladang"
-                prompt.HoldDuration = 0
-                prompt.Enabled = true
-        elseif tile.state == "growing" then
-                local data = DataService.get(owner)
-                local canWater = data.Tools.can and not tile.watered
-                if canWater then
-                        prompt.ActionText = "Siram"
-                        prompt.ObjectText = tile.seed .. " tumbuh"
-                        prompt.HoldDuration = 0.4
-                        prompt.Enabled = true
-                else
-                        prompt.Enabled = false
-                end
-        elseif tile.state == "ready" then
-                prompt.ActionText = "Panen"
-                prompt.ObjectText = cropById[tile.seed] and cropById[tile.seed].name or "Hasil"
-                prompt.HoldDuration = 0
-                prompt.Enabled = true
-        end
-end
-
-local function onTileTriggered(player: Player, tile)
-        local plot = plots[tile.plotIndex]
-        if not plot or plot.owner ~= player or not DataService.has(player) then
-                return
-        end
-
-        if tile.state == "empty" then
-                Remotes.get("OpenPlant"):FireClient(player, tile.plotIndex, tile.tileIndex)
-        elseif tile.state == "growing" then
-                local data = DataService.get(player)
-                if not data.Tools.can then
-                        Remotes.get("Notify"):FireClient(player, "Butuh Alat", "Kamu butuh Kaleng Siram - beli di Toko Alat.")
-                        return
-                end
-                if tile.watered then
-                        return
-                end
-                tile.watered = true
-                tile.plantedAt -= tile.growTime * Config.Economy.WaterBoost
-                Remotes.get("Notify"):FireClient(player, "Disiram!", "Tanamanmu tumbuh 25% lebih cepat.")
-                DataService.addXP(player, 2)
-                DataService.push(player)
-        elseif tile.state == "ready" then
-                local crop = cropById[tile.seed]
-                if not crop then
-                        return
-                end
-                -- v20: percikan panen (sekali pakai, ringan untuk mobile)
-                Util.burst(tile.part, Color3.fromRGB(crop.color[1], crop.color[2], crop.color[3]), 10, 6)
-                DataService.giveItem(player, "crop", crop.id, 1)
-                DataService.addXP(player, 4)
-                QuestService.progress(player, "harvest", 1)
-                tile.state = "empty"
-                tile.seed = nil
-                tile.plantedAt = 0
-                tile.growTime = 0
-                tile.watered = false
-                tile.bucket = -1
-                destroyPlant(tile)
-                updateTilePrompt(tile)
-                DataService.push(player)
-        end
-end
-
---------------------------------------------------------------------
--- KLAIM LADANG
---------------------------------------------------------------------
-
-local function priceOfPlot(index: number): number
-        return Balance.LandPrices[index] or 0
-end
-
-local function updateSign(plot)
-        local signText = plot.signText
-        if not signText then
-                return
-        end
-        if plot.owner then
-                signText.Text = "LADANG " .. plot.index .. " - MILIK " .. string.upper(plot.owner.DisplayName)
-                plot.claimPrompt.Enabled = false
-        else
-                local price = priceOfPlot(plot.index)
-                signText.Text = price <= 0
-                        and "LADANG " .. plot.index .. " - AMBIL ALIH (GRATIS)"
-                        or "LADANG " .. plot.index .. " - BELI " .. price .. " MICDA"
-                plot.claimPrompt.Enabled = true
-        end
-end
-
-local function onClaimTriggered(player: Player, plot)
-        if plot.owner then
-                if plot.owner == player then
-                        Remotes.get("Notify"):FireClient(player, "Ladangmu", "Ini sudah ladang milikmu. Tanami bibit di petak!")
-                end
-                return
-        end
-        -- v4 EKONOMI SYARIAH: ladang 1 GRATIS; ladang lain DIBELI dengan Micda
-        -- (bayar penuh di muka - tanpa cicilan, tanpa bunga, tanpa riba)
-        local price = priceOfPlot(plot.index)
-        if price > 0 then
-                local data = DataService.get(player)
-                if data.Coins < price then
-                        Remotes.get("Notify"):FireClient(player, "Micda Kurang",
-                                "Ladang " .. plot.index .. " dijual " .. price .. " Micda (bayar penuh, tanpa bunga). Micdamu: " .. data.Coins .. ".")
-                        return
-                end
-                DataService.addCoins(player, -price, false)
-        end
-        plot.owner = player
-        updateSign(plot)
-        for _, tile in plot.tiles do
-                updateTilePrompt(tile)
-        end
-        local msg = price > 0
-                and "Ladang " .. plot.index .. " kini milikmu (dibeli " .. price .. " Micda, lunas)! Beli bibit di Toko Bibit, lalu dekati petak tanah untuk menanam."
-                or "Ladang " .. plot.index .. " kini milikmu (GRATIS)! Beli bibit di Toko Bibit (Pasar Timur), lalu dekati petak tanah untuk menanam."
-        Remotes.get("Notify"):FireClient(player, "Ladang Baru!", msg)
-        DataService.push(player)
-end
-
--- v21: klaim langsung oleh sistem (portal Pulau Rumah) tanpa biaya -
--- biaya pulau ditangani RegionService sekali di muka (persisten).
-function FarmService.claimPlotFor(player: Player, index: number): boolean
-        local plot = plots[index]
-        if not plot or plot.owner then
-                return false
-        end
-        plot.owner = player
-        updateSign(plot)
-        for _, tile in plot.tiles do
-                updateTilePrompt(tile)
-        end
-        return true
-end
-
---------------------------------------------------------------------
--- BANGUN LADANG (dipanggil MapService)
---------------------------------------------------------------------
-
-function FarmService.buildPlot(index: number, center: Vector3)
-        local plot = {
-                index = index,
-                center = center,
-                owner = nil,
-                tiles = {},
-        }
-
-        part({
-                Name = "LadangDasar_" .. index,
-                Size = Vector3.new(26, 1, 26),
-                CFrame = CFrame.new(center),
-                Color = Color3.fromRGB(124, 94, 62),
-                Material = Enum.Material.Ground,
-        })
-
-        -- pagar: 4 tiang + 4 palang
-        local offsets = { Vector3.new(FENCE_HALF, 0, FENCE_HALF), Vector3.new(-FENCE_HALF, 0, FENCE_HALF),
-                Vector3.new(FENCE_HALF, 0, -FENCE_HALF), Vector3.new(-FENCE_HALF, 0, -FENCE_HALF) }
-        for i, off in offsets do
-                part({
-                        Name = "PagarTiang_" .. index .. "_" .. i,
-                        Size = Vector3.new(1.1, 3.4, 1.1),
-                        CFrame = CFrame.new(center + off + Vector3.new(0, 1.7, 0)),
-                        Color = Color3.fromRGB(140, 100, 62),
-                        Material = Enum.Material.WoodPlanks,
-                })
-        end
-        -- palang utara-selatan & timur-barat sederhana
-        for _, cfg in {
-                { off = Vector3.new(FENCE_HALF, 0, 0), size = Vector3.new(0.7, 0.7, FENCE_HALF * 2) },
-                { off = Vector3.new(-FENCE_HALF, 0, 0), size = Vector3.new(0.7, 0.7, FENCE_HALF * 2) },
-                { off = Vector3.new(0, 0, FENCE_HALF), size = Vector3.new(FENCE_HALF * 2, 0.7, 0.7) },
-                { off = Vector3.new(0, 0, -FENCE_HALF), size = Vector3.new(FENCE_HALF * 2, 0.7, 0.7) },
-        } do
-                part({
-                        Name = "PagarPalang_" .. index,
-                        Size = cfg.size,
-                        CFrame = CFrame.new(center + cfg.off + Vector3.new(0, 1.9, 0)),
-                        Color = Color3.fromRGB(140, 100, 62),
-                        Material = Enum.Material.WoodPlanks,
-                })
-        end
-
-        -- papan klaim
-        local board = part({
-                Name = "LadangPapan_" .. index,
-                Size = Vector3.new(11, 2.6, 0.5),
-                CFrame = CFrame.new(center + Vector3.new(0, 3.4, FENCE_HALF + 1)) * CFrame.Angles(0, math.rad(180), 0),
-                Color = Color3.fromRGB(92, 62, 38),
-                Material = Enum.Material.WoodPlanks,
-        })
-        part({
-                Name = "LadangPapanTiang_" .. index,
-                Size = Vector3.new(0.6, 3.4, 0.6),
-                CFrame = CFrame.new(center + Vector3.new(0, 1.7, FENCE_HALF + 1)),
-                Color = Color3.fromRGB(92, 62, 38),
-                Material = Enum.Material.WoodPlanks,
-        })
-
-        local gui = Instance.new("SurfaceGui")
-        gui.Face = Enum.NormalId.Front
-        gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-        gui.PixelsPerStud = 50
-        gui.Parent = board
-        local signText = Util.create("TextLabel", {
-                Size = UDim2.fromScale(1, 1),
-                BackgroundTransparency = 1,
-                Font = Enum.Font.GothamBlack,
-                TextScaled = true,
-                TextColor3 = Color3.fromRGB(255, 209, 102),
-                Text = "LADANG " .. index,
-        }, gui)
-
-        local claimPrompt = Instance.new("ProximityPrompt")
-        claimPrompt.ActionText = priceOfPlot(index) > 0 and "Beli Ladang (Micda)" or "Ambil Alih Ladang"
-        claimPrompt.ObjectText = priceOfPlot(index) > 0
-                and ("Ladang " .. index .. " - " .. priceOfPlot(index) .. " Micda (lunas di muka)")
-                or ("Ladang " .. index .. " (gratis)")
-        claimPrompt.MaxActivationDistance = 12
-        claimPrompt.HoldDuration = 0.3
-        claimPrompt.Parent = board
-        claimPrompt.Triggered:Connect(function(player)
-                onClaimTriggered(player, plot)
-        end)
-
-        -- 4x4 petak tanah
-        local tiles = {}
-        for row = 1, GRID do
-                for col = 1, GRID do
-                        local tileIndex = (row - 1) * GRID + col
-                        local ox = -(GRID - 1) * TILE_SIZE / 2 + (col - 1) * TILE_SIZE
-                        local oz = -(GRID - 1) * TILE_SIZE / 2 + (row - 1) * TILE_SIZE
-                        local tilePart = part({
-                                Name = "Petak_" .. index .. "_" .. tileIndex,
-                                Size = Vector3.new(4.4, 0.5, 4.4),
-                                CFrame = CFrame.new(center + Vector3.new(ox, 0.75, oz)),
-                                Color = Color3.fromRGB(96, 66, 42),
-                                Material = Enum.Material.Ground,
-                        })
-
-                        local prompt = Instance.new("ProximityPrompt")
-                        prompt.ActionText = "Tanam Bibit"
-                        prompt.ObjectText = "Petak Ladang"
-                        prompt.MaxActivationDistance = 8
-                        prompt.HoldDuration = 0
-                        prompt.Enabled = false
-                        prompt.RequiresLineOfSight = false
-                        prompt.Parent = tilePart
-
-                        local tile = {
-                                part = tilePart,
-                                prompt = prompt,
-                                plotIndex = index,
-                                tileIndex = tileIndex,
-                                state = "empty",
-                                seed = nil,
-                                plantedAt = 0,
-                                growTime = 0,
-                                watered = false,
-                                bucket = -1,
-                                plant = nil,
-                        }
-                        prompt.Triggered:Connect(function(player)
-                                onTileTriggered(player, tile)
-                        end)
-                        tiles[tileIndex] = tile
-                end
-        end
-
-        plot.tiles = tiles
-        plot.signText = signText
-        plot.claimPrompt = claimPrompt
-
-        -- v20 PAD KIOS: spot stand jualan milik pemilik di pojok ladang
-        local pad = part({
-                Name = "PadKios_" .. index,
-                Size = Vector3.new(4, 0.5, 4),
-                CFrame = CFrame.new(center + Vector3.new(-11, 0.75, 10.5)),
-                Color = Color3.fromRGB(70, 60, 52),
-                Material = Enum.Material.Concrete,
-        })
-        local kiosPrompt = Instance.new("ProximityPrompt")
-        kiosPrompt.ActionText = "Kios Jual"
-        kiosPrompt.ObjectText = "Pad Kios Pemain"
-        kiosPrompt.MaxActivationDistance = 8
-        kiosPrompt.HoldDuration = 0
-        kiosPrompt.RequiresLineOfSight = false
-        kiosPrompt.Parent = pad
-
-        plot.kiosPad = pad
-        plot.kiosPrompt = kiosPrompt
-
-        plots[index] = plot
-        updateSign(plot)
-        return plot
-end
-
---------------------------------------------------------------------
--- AKSES PLOT (dipakai KiosService; tanpa siklus require)
---------------------------------------------------------------------
-
-function FarmService.getPlot(index: number)
-        return plots[index]
+        return f
 end
 
 function FarmService.plotCount(): number
         return PLOT_COUNT
 end
 
---------------------------------------------------------------------
--- TANAM (RemoteFunction dari panel pilih bibit)
---------------------------------------------------------------------
-
-local function onPlantSeed(player: Player, plotIndex: any, tileIndex: any, seedId: any)
-        if not DataService.has(player) then
-                return { ok = false, msg = "Data belum siap." }
-        end
-        if type(plotIndex) ~= "number" or type(tileIndex) ~= "number" or type(seedId) ~= "string" then
-                return { ok = false, msg = "Permintaan tidak valid." }
-        end
-        local plot = plots[math.floor(plotIndex)]
-        local tile = plot and plot.tiles[math.floor(tileIndex)]
-        if not plot or not tile or plot.owner ~= player then
-                return { ok = false, msg = "Petak tidak tersedia." }
-        end
-        if tile.state ~= "empty" then
-                return { ok = false, msg = "Petak sudah ditanami." }
-        end
-        local crop = cropById[seedId]
-        if not crop then
-                return { ok = false, msg = "Bibit tidak dikenal." }
-        end
-        if DataService.levelOf(player) < crop.level then
-                return { ok = false, msg = "Butuh level " .. crop.level .. " untuk bibit ini." }
-        end
-        if not DataService.takeItem(player, "seed", seedId, 1) then
-                return { ok = false, msg = "Bibit habis. Beli lagi di Toko Bibit!" }
-        end
-
-        tile.state = "growing"
-        tile.seed = seedId
-        tile.plantedAt = time()
-        tile.growTime = crop.grow
-        tile.watered = false
-        tile.bucket = 0
-        buildPlantVisual(tile, 0)
-        updateTilePrompt(tile)
-        DataService.addXP(player, 2)
-        DataService.push(player)
-        return { ok = true, msg = crop.name .. " ditanam! Kembali setelah ±" .. crop.grow .. " detik." }
+function FarmService.getField(index: number)
+        return fields[index]
 end
 
---------------------------------------------------------------------
--- LOOP PERTUMBUHAN
---------------------------------------------------------------------
+function FarmService.isOwner(player: Player, index: number): boolean
+        local field = fields[index]
+        return field ~= nil and field.owner == player
+end
+
+local function plotCenter(field, plotNo: number): Vector3
+        local col = (plotNo - 1) % COLS
+        local row = math.floor((plotNo - 1) / COLS)
+        return field.origin + Vector3.new(col * PLOT_SIZE, 0, row * PLOT_SIZE)
+end
+
+local function plotState(state: { crop: string?, at: number? }): number
+        if not state or not state.crop then
+                return 0
+        end
+        if os.clock() - (state.at or 0) >= GROW then
+                return 2
+        end
+        return 1
+end
+
+local function refreshPlot(field, plotNo: number)
+        local partPlot = field.parts[plotNo]
+        if not partPlot then
+                return
+        end
+        local st = field.plots[plotNo]
+        local state = plotState(st)
+        partPlot:SetAttribute("State", state)
+        partPlot:SetAttribute("Crop", st and st.crop or "")
+        local model = field.plants[plotNo]
+        if state == 0 then
+                if model then
+                        model:Destroy()
+                        field.plants[plotNo] = nil
+                end
+                return
+        end
+        local crop = CropConfig.byId(st.crop or "")
+        local color = crop and Color3.fromRGB(crop.color[1], crop.color[2], crop.color[3]) or Color3.fromRGB(120, 180, 90)
+        if not model then
+                model = Instance.new("Part")
+                model.Name = "Tanaman" .. plotNo
+                model.Anchored = true
+                model.CanCollide = false
+                model.CanTouch = false
+                model.CastShadow = false
+                model.Shape = Enum.PartType.Ball
+                model.Material = Enum.Material.Grass
+                model.Parent = field.folder
+                field.plants[plotNo] = model
+        end
+        local size = state == 2 and 1.9 or 1.1
+        model.Size = Vector3.new(size, size * 1.25, size)
+        model.Color = color
+        model.CFrame = CFrame.new(plotCenter(field, plotNo) + Vector3.new(0, (state == 2 and 1.35 or 0.8), 0))
+end
+
+function FarmService.buildField(index: number, center: Vector3)
+        local folder = fieldFolder(index)
+        local field = fields[index]
+        if field then
+                return field
+        end
+        field = {
+                index = index,
+                owner = nil,
+                origin = center - Vector3.new((COLS - 1) * PLOT_SIZE / 2, 0, (ROWS - 1) * PLOT_SIZE / 2),
+                plots = {},
+                parts = {},
+                plants = {},
+                folder = folder,
+        }
+        fields[index] = field
+
+        part({
+                Name = "KebunDasar" .. index,
+                Size = Vector3.new(COLS * PLOT_SIZE + 4, 0.3, ROWS * PLOT_SIZE + 4),
+                CFrame = CFrame.new(center.X, 0.15, center.Z),
+                Color = Color3.fromRGB(122, 94, 66),
+                Material = Enum.Material.Ground,
+        }, folder)
+
+        for plotNo = 1, PLOT_COUNT do
+                local pos = plotCenter(field, plotNo)
+                local soil = part({
+                        Name = "Petak" .. plotNo,
+                        Size = Vector3.new(PLOT_SIZE - 0.5, 0.36, PLOT_SIZE - 0.5),
+                        CFrame = CFrame.new(pos.X, 0.42, pos.Z),
+                        Color = Color3.fromRGB(96, 72, 50),
+                        Material = Enum.Material.Ground,
+                }, folder)
+                field.parts[plotNo] = soil
+        end
+
+        local boardPos = center + Vector3.new(COLS * PLOT_SIZE / 2 + 4, 0, -ROWS * PLOT_SIZE / 2 + 8)
+        part({
+                Name = "KebunPapanTiang",
+                Size = Vector3.new(0.7, 3.2, 0.7),
+                CFrame = CFrame.new(boardPos + Vector3.new(0, 1.6, 0)) * CFrame.Angles(0, math.rad(90), 0),
+                Color = Color3.fromRGB(96, 66, 38),
+                Material = Enum.Material.WoodPlanks,
+        }, folder)
+        local board = part({
+                Name = "KebunPapan",
+                Size = Vector3.new(10, 2.8, 0.5),
+                CFrame = CFrame.new(boardPos + Vector3.new(0, 4.6, 0)) * CFrame.Angles(0, math.rad(90), 0),
+                Color = Color3.fromRGB(96, 66, 38),
+                Material = Enum.Material.WoodPlanks,
+        }, folder)
+        local gui = Instance.new("SurfaceGui")
+        gui.Face = Enum.NormalId.Front
+        gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+        gui.PixelsPerStud = 50
+        gui.Parent = board
+        Util.create("TextLabel", {
+                Size = UDim2.fromScale(1, 0.6),
+                BackgroundTransparency = 1,
+                Font = Enum.Font.GothamBlack,
+                TextScaled = true,
+                TextColor3 = Color3.fromRGB(255, 226, 150),
+                Text = "KEBUN " .. PLOT_COUNT .. " PETAK",
+        }, gui)
+        Util.create("TextLabel", {
+                Position = UDim2.fromScale(0, 0.6),
+                Size = UDim2.fromScale(1, 0.4),
+                BackgroundTransparency = 1,
+                Font = Enum.Font.Gotham,
+                TextScaled = true,
+                TextColor3 = Color3.fromRGB(210, 214, 224),
+                Text = "Tanam & panen di sini",
+        }, gui)
+        local prompt = Instance.new("ProximityPrompt")
+        prompt.ActionText = "Buka Kebun"
+        prompt.ObjectText = "Kebun " .. PLOT_COUNT .. " Petak"
+        prompt.MaxActivationDistance = 10
+        prompt.HoldDuration = 0
+        prompt.RequiresLineOfSight = false
+        prompt.Parent = board
+        prompt.Triggered:Connect(function(player: Player)
+                if FarmService.isOwner(player, index) then
+                        Remotes.get("OpenFarm"):FireClient(player, index)
+                else
+                        Remotes.get("Notify"):FireClient(player, "Kebun Orang Lain", "Kebun ini bukan milikmu. Setiap pemain punya satu lahan sendiri!")
+                end
+        end)
+
+        for plotNo = 1, PLOT_COUNT do
+                refreshPlot(field, plotNo)
+        end
+        return field
+end
+
+function FarmService.claimFieldFor(player: Player, index: number)
+        local field = fields[index]
+        if not field then
+                return false
+        end
+        field.owner = player
+        for plotNo = 1, PLOT_COUNT do
+                field.plots[plotNo] = nil
+                refreshPlot(field, plotNo)
+        end
+        return true
+end
+
+local function counts(field)
+        local kosong, tumbuh, siap = 0, 0, 0
+        for plotNo = 1, PLOT_COUNT do
+                local st = plotState(field.plots[plotNo])
+                if st == 0 then
+                        kosong += 1
+                elseif st == 1 then
+                        tumbuh += 1
+                else
+                        siap += 1
+                end
+        end
+        return kosong, tumbuh, siap
+end
+
+local function statesArray(field): { number }
+        local out = table.create(PLOT_COUNT)
+        for plotNo = 1, PLOT_COUNT do
+                out[plotNo] = plotState(field.plots[plotNo])
+        end
+        return out
+end
+
+local function snapshot(player: Player, index: number)
+        local field = fields[index]
+        if not field or field.owner ~= player then
+                return nil
+        end
+        local kosong, tumbuh, siap = counts(field)
+        return {
+                lahan = index,
+                total = PLOT_COUNT,
+                kosong = kosong,
+                tumbuh = tumbuh,
+                siap = siap,
+                states = statesArray(field),
+        }
+end
+
+local function actionPlant(player: Player, index: number, plotNo: number, seedId: string)
+        local field = fields[index]
+        if not field or field.owner ~= player then
+                return { ok = false, msg = "Kebun ini bukan milikmu." }
+        end
+        if not CropConfig.byId(seedId) then
+                return { ok = false, msg = "Benih tidak dikenal." }
+        end
+        if field.plots[plotNo] and field.plots[plotNo].crop then
+                return { ok = false, msg = "Petak itu masih tertanam." }
+        end
+        if DataService.countItem(player, "seed", seedId) < 1 then
+                return { ok = false, msg = "Benih " .. CropConfig.nameOf(seedId) .. " habis di tas." }
+        end
+        DataService.takeItem(player, "seed", seedId, 1)
+        field.plots[plotNo] = { crop = seedId, at = os.clock() }
+        refreshPlot(field, plotNo)
+        DataService.push(player)
+        return { ok = true, msg = CropConfig.nameOf(seedId) .. " ditanam di petak " .. plotNo .. "! Tumbuh dalam " .. GROW .. " detik." }
+end
+
+local function actionPlantAll(player: Player, index: number, seedId: string)
+        local field = fields[index]
+        if not field or field.owner ~= player then
+                return { ok = false, msg = "Kebun ini bukan milikmu." }
+        end
+        if not CropConfig.byId(seedId) then
+                return { ok = false, msg = "Benih tidak dikenal." }
+        end
+        local stock = DataService.countItem(player, "seed", seedId)
+        if stock < 1 then
+                return { ok = false, msg = "Benih " .. CropConfig.nameOf(seedId) .. " habis di tas." }
+        end
+        local planted = 0
+        for plotNo = 1, PLOT_COUNT do
+                if planted >= stock then
+                        break
+                end
+                local st = field.plots[plotNo]
+                if not st or not st.crop then
+                        field.plots[plotNo] = { crop = seedId, at = os.clock() }
+                        refreshPlot(field, plotNo)
+                        planted += 1
+                end
+        end
+        if planted == 0 then
+                return { ok = false, msg = "Semua petak masih tertanam." }
+        end
+        DataService.takeItem(player, "seed", seedId, planted)
+        DataService.push(player)
+        return { ok = true, msg = planted .. " benih " .. CropConfig.nameOf(seedId) .. " ditanam sekaligus!" }
+end
+
+local function actionHarvest(player: Player, index: number, plotNo: number)
+        local field = fields[index]
+        if not field or field.owner ~= player then
+                return { ok = false, msg = "Kebun ini bukan milikmu." }
+        end
+        local st = field.plots[plotNo]
+        if not st or not st.crop then
+                return { ok = false, msg = "Petak itu kosong." }
+        end
+        if plotState(st) ~= 2 then
+                return { ok = false, msg = "Belum siap panen! Tunggu " .. GROW .. " detik." }
+        end
+        local yield = math.random(CropConfig.YieldMin, CropConfig.YieldMax)
+        local seeds, crops = DataService.tasTables(player)
+        local room = TasLogic.roomFor(seeds, crops, "crop", st.crop, yield)
+        if room <= 0 then
+                return { ok = false, msg = "TAS PENUH! Jual hasil panenmu di Koperasi dulu." }
+        end
+        DataService.giveItem(player, "crop", st.crop, room)
+        field.plots[plotNo] = nil
+        refreshPlot(field, plotNo)
+        DataService.push(player)
+        return { ok = true, msg = "Panen " .. room .. "x " .. CropConfig.nameOf(st.crop) .. "!" }
+end
+
+local function actionHarvestAll(player: Player, index: number)
+        local field = fields[index]
+        if not field or field.owner ~= player then
+                return { ok = false, msg = "Kebun ini bukan milikmu." }
+        end
+        local totals: { [string]: number } = {}
+        local fullBag = false
+        for plotNo = 1, PLOT_COUNT do
+                local st = field.plots[plotNo]
+                if st and st.crop and plotState(st) == 2 then
+                        local yield = math.random(CropConfig.YieldMin, CropConfig.YieldMax)
+                        local seeds, crops = DataService.tasTables(player)
+                        local room = TasLogic.roomFor(seeds, crops, "crop", st.crop, yield)
+                        if room <= 0 then
+                                fullBag = true
+                                continue
+                        end
+                        DataService.giveItem(player, "crop", st.crop, room)
+                        totals[st.crop] = (totals[st.crop] or 0) + room
+                        field.plots[plotNo] = nil
+                        refreshPlot(field, plotNo)
+                end
+        end
+        local parts = {}
+        local totalItems = 0
+        for id, n in pairs(totals) do
+                table.insert(parts, n .. "x " .. CropConfig.nameOf(id))
+                totalItems += n
+        end
+        table.sort(parts)
+        DataService.push(player)
+        if totalItems == 0 then
+                if fullBag then
+                        return { ok = false, msg = "TAS PENUH! Jual hasil panenmu di Koperasi dulu." }
+                end
+                return { ok = false, msg = "Belum ada tanaman yang siap panen." }
+        end
+        local msg = "Panen raya: " .. table.concat(parts, ", ")
+        if fullBag then
+                msg ..= " (tas penuh, sebagian petak tersisa)"
+        end
+        return { ok = true, msg = msg }
+end
+
+function FarmService.init()
+        Remotes.get("FarmAct").OnServerInvoke = function(player, payload)
+                if not DataService.has(player) or type(payload) ~= "table" then
+                        return { ok = false, msg = "Permintaan tidak valid." }
+                end
+                local index = tonumber(payload.lahan) or 0
+                local action = payload.action
+                if action == "info" then
+                        local snap = snapshot(player, index)
+                        if not snap then
+                                return { ok = false, msg = "Kebun ini bukan milikmu." }
+                        end
+                        return { ok = true, farm = snap }
+                elseif action == "plant" then
+                        return actionPlant(player, index, tonumber(payload.plot) or 0, tostring(payload.seed or ""))
+                elseif action == "plantAll" then
+                        return actionPlantAll(player, index, tostring(payload.seed or ""))
+                elseif action == "harvest" then
+                        return actionHarvest(player, index, tonumber(payload.plot) or 0)
+                elseif action == "harvestAll" then
+                        return actionHarvestAll(player, index)
+                end
+                return { ok = false, msg = "Aksi tidak dikenal." }
+        end
+        DataService.registerProvider("farm", function(player: Player)
+                local homeId = DataService.getHomeId(player)
+                if homeId < 1 then
+                        return { lahan = 0 }
+                end
+                local snap = snapshot(player, homeId)
+                if not snap then
+                        return { lahan = homeId, total = PLOT_COUNT, kosong = PLOT_COUNT, tumbuh = 0, siap = 0, states = {} }
+                end
+                return snap
+        end)
+end
 
 function FarmService.startLoop()
         task.spawn(function()
                 while true do
-                        task.wait(2)
-                        for _, plot in plots do
-                                if not plot.owner then
-                                        continue
-                                end
-                                for _, tile in plot.tiles do
-                                        if tile.state ~= "growing" then
-                                                continue
-                                        end
-                                        local progress = (time() - tile.plantedAt) / math.max(1, tile.growTime)
-                                        if progress >= 1 then
-                                                tile.state = "ready"
-                                                buildPlantVisual(tile, 3)
-                                                updateTilePrompt(tile)
-                                        else
-                                                local bucket = math.floor(progress * 3) -- 0..2
-                                                if bucket ~= tile.bucket then
-                                                        tile.bucket = bucket
-                                                        buildPlantVisual(tile, bucket)
-                                                end
-                                                local prompt = tile.prompt
-                                                if prompt and not prompt.Enabled then
-                                                        updateTilePrompt(tile) -- misal pemain baru saja beli kaleng siram
+                        task.wait(1)
+                        for _, field in pairs(fields) do
+                                for plotNo = 1, PLOT_COUNT do
+                                        local st = field.plots[plotNo]
+                                        if st and st.crop then
+                                                local attr = field.parts[plotNo] and field.parts[plotNo]:GetAttribute("State")
+                                                if attr ~= plotState(st) then
+                                                        refreshPlot(field, plotNo)
                                                 end
                                         end
                                 end
                         end
                 end
-        end)
-end
-
---------------------------------------------------------------------
--- STATE & PEMBERSIHAN
---------------------------------------------------------------------
-
-function FarmService.getPlotState(player: Player)
-        for _, plot in plots do
-                if plot.owner == player then
-                        local tilesOut = {}
-                        for i, tile in plot.tiles do
-                                local entry: any = { state = tile.state }
-                                if tile.state ~= "empty" then
-                                        entry.seed = tile.seed
-                                        entry.watered = tile.watered
-                                        if tile.state == "growing" then
-                                                entry.remain = math.max(0, math.ceil(tile.growTime - (time() - tile.plantedAt)))
-                                        end
-                                end
-                                tilesOut[i] = entry
-                        end
-                        return { claimed = true, index = plot.index, tiles = tilesOut }
-                end
-        end
-        return { claimed = false, tiles = {} }
-end
-
---- Pemain keluar: hasil siap panen otomatis masuk tas,
---- tanaman yang masih tumbuh hangus (ladang dibebaskan).
-function FarmService.releasePlot(player: Player)
-        for _, plot in plots do
-                if plot.owner == player then
-                        local harvested = 0
-                        for _, tile in plot.tiles do
-                                if tile.state == "ready" and tile.seed then
-                                        DataService.giveItem(player, "crop", tile.seed, 1)
-                                        harvested += 1
-                                end
-                                tile.state = "empty"
-                                tile.seed = nil
-                                tile.plantedAt = 0
-                                tile.growTime = 0
-                                tile.watered = false
-                                tile.bucket = -1
-                                destroyPlant(tile)
-                                updateTilePrompt(tile)
-                        end
-                        if harvested > 0 then
-                                Remotes.get("Notify"):FireClient(player, "Panen Otomatis",
-                                        harvested .. " hasil siap panen otomatis masuk tas sebelum kamu pergi.")
-                        end
-                        plot.owner = nil
-                        updateSign(plot)
-                end
-        end
-end
-
---------------------------------------------------------------------
--- INIT
---------------------------------------------------------------------
-
-function FarmService.init()
-        Remotes.get("PlantSeed").OnServerInvoke = onPlantSeed
-        -- daftarkan snapshot ladang ke DataService (tanpa siklus require)
-        DataService.registerProvider("plot", function(p)
-                return FarmService.getPlotState(p)
         end)
 end
 

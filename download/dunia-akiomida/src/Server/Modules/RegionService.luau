@@ -1,21 +1,5 @@
---!nonstrict
---[[
-        RegionService.luau - v21 SISTEM WILAYAH (arsitektur MMO)
-        Dunia terbagi pulau-pulau wilayah (lihat Balance.Regions):
-          Pusat Kota (hub) <-> Pulau Panen (civil) <-> pulau monster (combat)
-          + Pulau Rumah pribadi tiap pemain (home).
-        Setiap gerbang = portal bercahaya + ProximityPrompt "Masuki Portal".
-        Teleport server-side (aman), titik muncul dari Balance.gateArrival.
-
-        KLAIM PULAU RUMAH (syariah: lunas di muka, tanpa bunga):
-          - Pulau 1 GRATIS untuk pemain pertama yang mengklaim.
-          - Pulau 2..6 dibeli LUNAS dengan Micda (harga = Balance.LandPrices).
-          - Kepemilikan PERSISTEN (Data.HomeId di DataService).
-          - Pulau ini berisi: rumah, ladang pribadi, kolam air sungguhan,
-            ruang Bedah/Sains/Startopia, gerbang balik ke Pusat Kota.
-]]
-
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
 
 local Remotes = require(ReplicatedStorage.Remotes)
 local Balance = require(ReplicatedStorage.Shared.Balance)
@@ -23,11 +7,12 @@ local Util = require(ReplicatedStorage.Shared.Util)
 
 local RegionService = {}
 
-local DataService -- diisi saat init (hindari siklus require)
+local DataService
 local FarmService
+local PersonalWorldBuilder
 
 local worldFolder: Folder? = nil
-local homeTaken: { [number]: Player } = {} -- pulau rumah -> pemilik online
+local homeTaken: { [number]: Player } = {}
 
 local function world(): Folder
         local f = worldFolder
@@ -55,29 +40,20 @@ local function part(props): Part
         return p
 end
 
---------------------------------------------------------------------
--- GERBANG PORTAL
---------------------------------------------------------------------
-
--- warna portal per jenis tujuan (konsisten antar wilayah)
 local PORTAL_COLORS = {
         home = Color3.fromRGB(120, 220, 160),
         pusat = Color3.fromRGB(255, 209, 102),
-        panen = Color3.fromRGB(140, 220, 120),
         padang = Color3.fromRGB(240, 130, 90),
         hutan = Color3.fromRGB(130, 200, 235),
         baja = Color3.fromRGB(190, 120, 255),
 }
 
 local GATE_LABEL = {
-        panen = "PULAU PANEN",
         padang = "PADANG LIAR (MONSTER)",
         hutan = "HUTAN BAYANG (MONSTER)",
         baja = "NEGERI BAJA & KRISTAL (MONSTER)",
 }
 
---- Bangun satu gerbang portal: pos = tepi pulau, n = arah normal ke dalam
---- pulau (bidang portal menghadap pemain yang datang dari dalam).
 local function buildGate(pos: Vector3, nX: number, nZ: number, destId: string, label: string)
         local color = PORTAL_COLORS[destId] or Color3.fromRGB(200, 200, 210)
         local len = math.sqrt(nX * nX + nZ * nZ)
@@ -87,7 +63,6 @@ local function buildGate(pos: Vector3, nX: number, nZ: number, destId: string, l
         end
         local base = CFrame.lookAt(pos, pos + Vector3.new(nX / len, 0, nZ / len))
 
-        -- lantai gerbang
         part({
                 Name = "PortalLantai",
                 Size = Vector3.new(8, 0.3, 10),
@@ -95,7 +70,6 @@ local function buildGate(pos: Vector3, nX: number, nZ: number, destId: string, l
                 Color = Color3.fromRGB(198, 190, 178),
                 Material = Enum.Material.Granite,
         })
-        -- dua pilar di sisi kiri-kanan bidang
         for _, side in { -1, 1 } do
                 part({
                         Name = "PortalPilar",
@@ -111,9 +85,9 @@ local function buildGate(pos: Vector3, nX: number, nZ: number, destId: string, l
                         CFrame = base * CFrame.new(side * 4.4, 12.6, 0),
                         Color = color,
                         Material = Enum.Material.Neon,
+                        CanCollide = false,
                 })
         end
-        -- palang atas
         part({
                 Name = "PortalPalang",
                 Size = Vector3.new(11, 2, 2.2),
@@ -121,7 +95,6 @@ local function buildGate(pos: Vector3, nX: number, nZ: number, destId: string, l
                 Color = Color3.fromRGB(44, 48, 62),
                 Material = Enum.Material.SmoothPlastic,
         })
-        -- bidang portal bercahaya (tembus, tanpa tabrakan)
         local plane = part({
                 Name = "PortalCahaya",
                 Size = Vector3.new(7.6, 10.6, 0.4),
@@ -131,7 +104,6 @@ local function buildGate(pos: Vector3, nX: number, nZ: number, destId: string, l
                 Transparency = 0.55,
                 CanCollide = false,
         })
-        -- papan nama gerbang (terbaca dari dalam pulau)
         local board = part({
                 Name = "PortalPapan",
                 Size = Vector3.new(10.5, 2.6, 0.6),
@@ -153,7 +125,6 @@ local function buildGate(pos: Vector3, nX: number, nZ: number, destId: string, l
                 Text = label,
         }, board)
 
-        -- prompt teleport
         local prompt = Instance.new("ProximityPrompt")
         prompt.ActionText = "Masuki Portal"
         prompt.ObjectText = label
@@ -164,12 +135,7 @@ local function buildGate(pos: Vector3, nX: number, nZ: number, destId: string, l
         prompt.Triggered:Connect(function(player: Player)
                 RegionService.travel(player, destId)
         end)
-        return plane
 end
-
---------------------------------------------------------------------
--- TELEPORT & KLAIM
---------------------------------------------------------------------
 
 local function teleportTo(player: Player, regionId: string, fromRegionId: string)
         local ax, az = Balance.gateArrival(regionId, fromRegionId)
@@ -189,54 +155,91 @@ local function teleportTo(player: Player, regionId: string, fromRegionId: string
         end
         local region = Balance.regionById(regionId)
         Remotes.get("Notify"):FireClient(player, "-> " .. (region and region.name or regionId),
-                regionId == "pusat" and "Selamat datang kembali di Pusat Kota."
+                regionId == "pusat" and "Selamat datang di Pusat Kota - TOKO BENIH ada di sini!"
                         or "Kau memasuki " .. (region and region.name or regionId) .. ".")
 end
 
---- Menuju pulau rumah pemain: klaim bila belum punya.
-local function travelHome(player: Player)
+local function landSpawnLocation(index: number): SpawnLocation?
+        local folder = world():FindFirstChild("Lahan" .. index)
+        if not folder then
+                return nil
+        end
+        return folder:FindFirstChild("SpawnLahan" .. index) :: SpawnLocation?
+end
+
+local function goToOwnLahan(player: Player): boolean
         local homeId = DataService.getHomeId(player)
         if homeId < 1 then
-                -- cari pulau kosong (di antara pemain yang sedang online)
-                local taken = {}
-                for idx, owner in homeTaken do
-                        if owner ~= player and owner.Parent then
-                                taken[idx] = true
-                        end
-                end
-                local idx = Balance.nextFreeHome(taken)
-                if idx < 1 then
-                        Remotes.get("Notify"):FireClient(player, "Pulau Penuh",
-                                "Semua pulau rumah sudah dimiliki. Coba lagi nanti!")
-                        return
-                end
-                -- syariah: pulau 1 gratis; pulau lain DIBELI LUNAS (tanpa bunga/cicilan)
-                local price = Balance.LandPrices[idx] or 0
-                if price > 0 then
-                        local data = DataService.get(player)
-                        if data.Coins < price then
-                                Remotes.get("Notify"):FireClient(player, "Micda Kurang",
-                                        "Pulau Rumah " .. idx .. " dijual " .. price .. " Micda (bayar penuh, milik permanen). Micdamu: " .. data.Coins .. ".")
-                                return
-                        end
-                        DataService.addCoins(player, -price, false)
-                end
-                DataService.setHomeId(player, idx)
-                homeTaken[idx] = player
-                FarmService.claimPlotFor(player, idx)
-                Remotes.get("Notify"):FireClient(player, "PULAU RUMAHMU!",
-                        (price > 0 and ("Pulau Rumah " .. idx .. " kini MILIKMU (dibeli " .. price .. " Micda, lunas & permanen)!")
-                                or ("Pulau Rumah 1 kini MILIKMU (GRATIS & permanen)!"))
-                                .. " Ada rumah, ladang pribadi, kolam air sungguhan, ruang Bedah/Sains/Startopia.")
+                return false
         end
-        teleportTo(player, "rumah" .. homeId, "pusat")
+        local spawnLoc = landSpawnLocation(homeId)
+        local character = player.Character
+        if not character then
+                return true
+        end
+        local root = character:FindFirstChild("HumanoidRootPart")
+        if not root then
+                return true
+        end
+        if spawnLoc then
+                player.RespawnLocation = spawnLoc
+                character:PivotTo(spawnLoc.CFrame + Vector3.new(0, 4, 0))
+        else
+                local sx, sz = Balance.landSpawn(homeId)
+                character:PivotTo(CFrame.new(sx, 4, sz))
+        end
+        Util.burst(root, Color3.fromRGB(150, 240, 180), 14, 8)
+        return true
+end
+
+local function claimLahan(player: Player): number
+        local homeId = DataService.getHomeId(player)
+        if homeId >= 1 then
+                return homeId
+        end
+        local taken = {}
+        for idx, owner in homeTaken do
+                if owner ~= player and owner.Parent then
+                        taken[idx] = true
+                end
+        end
+        local idx = Balance.nextFreeHome(taken)
+        if idx < 1 then
+                return 0
+        end
+        DataService.setHomeId(player, idx)
+        homeTaken[idx] = player
+        local koperasiName = DataService.ensureKoperasiName(player)
+        PersonalWorldBuilder.buildFull(idx, { Farm = FarmService, Gather = require(script.Parent.GatherService) }, koperasiName)
+        FarmService.claimFieldFor(player, idx)
+        return idx
+end
+
+local function travelHome(player: Player)
+        local idx = claimLahan(player)
+        if idx < 1 then
+                Remotes.get("Notify"):FireClient(player, "Lahan Penuh",
+                        "Semua lahan sudah dimiliki pemain lain. Coba lagi nanti!")
+                return
+        end
+        if goToOwnLahan(player) then
+                Remotes.get("Notify"):FireClient(player, "LAHANMU!",
+                        "Selamat datang di lahanmu sendiri: rumah 3 lantai + rooftop, kebun 500 petak, kolam air, ruang Bedah/Sains/Startopia/Pancing & koperasimu.")
+        end
+        local landName = DataService.getLandName(player)
+        if landName == "" then
+                task.delay(1.2, function()
+                        if player.Parent then
+                                Remotes.get("OpenLandBoard"):FireClient(player)
+                        end
+                end)
+        end
 end
 
 function RegionService.travel(player: Player, destId: string)
         if not DataService.has(player) then
                 return
         end
-        -- dari wilayah asal mana? (dari posisi karakter)
         local character = player.Character
         local fromId = "pusat"
         if character then
@@ -260,28 +263,33 @@ function RegionService.travel(player: Player, destId: string)
         end
 end
 
---------------------------------------------------------------------
--- PEMAIN
---------------------------------------------------------------------
-
 function RegionService.onPlayerAdded(player: Player)
-        local homeId = DataService.getHomeId(player)
+        local homeId = claimLahan(player)
         if homeId >= 1 then
                 homeTaken[homeId] = player
-                -- klaim ulang ladang di pulau sendiri (kepemilikan pulau persisten)
-                task.delay(2, function()
+                task.delay(2.5, function()
                         if not player.Parent then
                                 return
                         end
-                        local ok = FarmService.claimPlotFor(player, homeId)
-                        if not ok then
-                                local plot = FarmService.getPlot(homeId)
-                                if plot and plot.owner and plot.owner ~= player then
-                                        Remotes.get("Notify"):FireClient(player, "Pulau Ditempati",
-                                                "Ladang di Pulau Rumahmu sedang dipakai pemain lain pada sesi ini. Kamu tetap pemilik pulau.")
-                                end
+                        goToOwnLahan(player)
+                        local landName = DataService.getLandName(player)
+                        if landName == "" then
+                                Remotes.get("Notify"):FireClient(player, "PAPAN NAMA",
+                                        "Isi papan nama lahanku supaya pengunjung tahu siapa pemiliknya!")
+                                Remotes.get("OpenLandBoard"):FireClient(player)
                         end
                 end)
+        end
+end
+
+function RegionService.onCharacterAdded(player: Player)
+        local homeId = DataService.getHomeId(player)
+        if homeId < 1 then
+                return
+        end
+        local spawnLoc = landSpawnLocation(homeId)
+        if spawnLoc then
+                player.RespawnLocation = spawnLoc
         end
 end
 
@@ -293,20 +301,29 @@ function RegionService.onPlayerRemoving(player: Player)
         end
 end
 
---------------------------------------------------------------------
--- INIT
---------------------------------------------------------------------
+local function handleLandBoard(player: Player, text: any)
+        local cleaned = Balance.sanitizeLandName(text)
+        if not cleaned then
+                return false, "Nama lahan harus 3-20 huruf/angka (spasi, titik, minus, apostrof diperbolehkan)."
+        end
+        DataService.setLandName(player, cleaned)
+        local homeId = DataService.getHomeId(player)
+        if homeId >= 1 then
+                PersonalWorldBuilder.setNameBoard(homeId, cleaned)
+        end
+        return true, "Papan nama lahanmu kini: " .. cleaned
+end
 
 function RegionService.init(svc)
         DataService = svc.Data
         FarmService = svc.Farm
+        PersonalWorldBuilder = require(script.Parent.PersonalWorldBuilder)
 
-        -- bangun semua gerbang dari data wilayah (bidang tegak lurus tepi pulau)
         for _, region in ipairs(Balance.Regions) do
                 for _, gate in ipairs(region.gates) do
                         local label = GATE_LABEL[gate.dest]
                         if gate.dest == "home" then
-                                label = "PULAU RUMAHKU"
+                                label = "LAHANMU (RUMAH & KEBUN)"
                         elseif gate.dest == "pusat" then
                                 label = "PUSAT KOTA"
                         elseif not label then
@@ -318,6 +335,17 @@ function RegionService.init(svc)
                         buildGate(Vector3.new(gate.pos[1], 0, gate.pos[2]), nX, nZ, gate.dest, label)
                 end
         end
+
+        Remotes.get("LandBoard").OnServerInvoke = handleLandBoard
+
+        Players.PlayerAdded:Connect(function(player)
+                player.CharacterAdded:Connect(function()
+                        RegionService.onCharacterAdded(player)
+                end)
+                if player.Character then
+                        RegionService.onCharacterAdded(player)
+                end
+        end)
 
         print("[AKIOMIDA] RegionService: " .. #Balance.Regions .. " wilayah & gerbang portal dibangun.")
 end
