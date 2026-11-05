@@ -1,4 +1,4 @@
-# DUNIA AKIOMIDA - Versi Roblox (v1.0.0)
+# DUNIA AKIOMIDA - Versi Roblox (v1.0.1)
 
 Port original dari game browser **"Dunia Akiomida: Petualangan Matematika"**
 (akiomida.com / repo `akiomida/Io`) ke Roblox. Seluruh kode Luau ditulis dari
@@ -6,8 +6,20 @@ nol (karya mandiri), soal digenerate prosedural, dialog & materi ditulis ulang.
 
 **Status: ✅ LIVE DI ROBLOX** - publish sukses via Open Cloud API
 (Universe `10774464946` / Place `77626159664192`, **versionNumber: 5**, 3 Nov 2026).
+Patch v1.0.1 (versionNumber 8): perbaikan dunia & keamanan - lihat di bawah.
 
 ---
+
+
+## Patch v1.0.1 (perbaikan bug tampilan)
+
+| Masalah | Perbaikan |
+|---|---|
+| Pulau dirender salah sumbu 90° - 4 dari 6 zona melayang di kehampaan | Sumbu panjang pulau kini sejajar barisan zona (sumbu Z) |
+| Pemain di-kick saat DataStore gagal (API Services belum aktif) | Fallback "Mode Sesi": game tetap main, progres sementara di memori |
+| Pemain bisa jatuh ke kehampaan dari tepi pulau | Samudra lebar 3000 stud mengelilingi pulau |
+| Langit polos, dunia terasa kosong | Atmosphere + 8 awan dekoratif |
+| Spawn melayang 1 stud, suara kuis tak pernah bunyi, teks soal Puncak Riset tidak cocok dgn 3 tombol | Dibereskan semua |
 
 ## Yang dibawa ke Roblox (identitas dipertahankan)
 

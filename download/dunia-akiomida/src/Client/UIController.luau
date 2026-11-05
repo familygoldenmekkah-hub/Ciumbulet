@@ -426,6 +426,7 @@ function UIController:answer(choice: number)
                 end
                 if result.correct then
                         self.sound.PlaybackSpeed = 1.1
+                        self.sound:Play()
                         self.optionButtons[choice].BackgroundColor3 = T.Green
                         self.quizFeedback.TextColor3 = T.Green
                         if result.justMastered then
@@ -435,6 +436,7 @@ function UIController:answer(choice: number)
                         end
                 else
                         self.sound.PlaybackSpeed = 0.7
+                        self.sound:Play()
                         self.quizFeedback.TextColor3 = T.TextDim
                         self.quizFeedback.Text = result.feedback
                 end

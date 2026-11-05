@@ -1,6 +1,6 @@
 --!nonstrict
 --[[
-        Config.luau - DUNIA AKIOMIDA (versi Roblox)
+        Config.luau - DUNIA AKIOMIDA (versi Roblox) - v1.0.1
         Port original dari game browser "Dunia Akiomida: Petualangan Matematika".
         Fitur sengaja TIDAK dibawa ke Roblox: ads, donasi, share, toggle wawasan.
 ]]

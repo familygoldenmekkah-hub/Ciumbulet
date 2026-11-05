@@ -284,7 +284,7 @@ local function salju(): any
                 local correct = math.random() < 0.5 and p or c
                 local askPrima = correct == p
                 return question(
-                        ("Manakah bilangan PRIMA: %d atau %d?"):format(p, c),
+                        "Manakah bilangan PRIMA di antara pilihan berikut?",
                         correct,
                         { askPrima and c or p },
                         "Benar! Prima hanya habis dibagi 1 dan dirinya sendiri.",

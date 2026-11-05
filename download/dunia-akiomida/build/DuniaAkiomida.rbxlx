@@ -92,7 +92,7 @@ return Remotes
           <string name="Name">Config</string>
           <string name="Source"><![CDATA[--!nonstrict
 --[[
-        Config.luau - DUNIA AKIOMIDA (versi Roblox)
+        Config.luau - DUNIA AKIOMIDA (versi Roblox) - v1.0.1
         Port original dari game browser "Dunia Akiomida: Petualangan Matematika".
         Fitur sengaja TIDAK dibawa ke Roblox: ads, donasi, share, toggle wawasan.
 ]]
@@ -528,7 +528,7 @@ local function salju(): any
                 local correct = math.random() < 0.5 and p or c
                 local askPrima = correct == p
                 return question(
-                        ("Manakah bilangan PRIMA: %d atau %d?"):format(p, c),
+                        "Manakah bilangan PRIMA di antara pilihan berikut?",
                         correct,
                         { askPrima and c or p },
                         "Benar! Prima hanya habis dibagi 1 dan dirinya sendiri.",
@@ -661,7 +661,7 @@ return Util
         <token name="RunContext">0</token>
         <string name="Source"><![CDATA[--!nonstrict
 --[[
-	init.server.luau - bootstrap Dunia Akiomida.
+        init.server.luau - bootstrap Dunia Akiomida.
 ]]
 
 local Players = game:GetService("Players")
@@ -685,28 +685,38 @@ LeaderboardService.init()
 local notify = Remotes.get("Notify")
 
 local function onPlayerAdded(player: Player)
-	local ok = DataService.load(player)
-	if not ok then
-		player:Kick("Gagal memuat progres - coba masuk lagi sebentar.")
-		return
-	end
+        local ok = DataService.load(player)
+        if not ok then
+                -- JANGAN kick pemain: pakai sesi memori supaya game tetap bisa
+                -- dimainkan walau DataStore sedang tidak tersedia.
+                DataService.startSession(player)
+                warn("[AKIOMIDA] DataStore gagal, sesi memori dipakai untuk " .. player.Name)
+                task.delay(5, function()
+                        notify:FireClient(player, "Mode Sesi",
+                                "Progres sementara hanya tersimpan di sesi ini. Coba keluar-masuk lagi nanti untuk simpan permanen.")
+                end)
+        end
 
-	-- leaderstats: XP (papan peringkat Roblox standar)
-	local leaderstats = Instance.new("Folder")
-	leaderstats.Name = "leaderstats"
-	local xp = Instance.new("IntValue")
-	xp.Name = "XP"
-	xp.Value = DataService.get(player).XP
-	xp.Parent = leaderstats
-	leaderstats.Parent = player
+        -- leaderstats: XP (papan peringkat Roblox standar)
+        local leaderstats = Instance.new("Folder")
+        leaderstats.Name = "leaderstats"
+        local xp = Instance.new("IntValue")
+        xp.Name = "XP"
+        xp.Value = DataService.get(player).XP
+        xp.Parent = leaderstats
+        leaderstats.Parent = player
 
-	QuizService.pushState(player)
-	notify:FireClient(player, "Dunia Akiomida", "Selamat datang, penjelajah! Temui Kak Satu di Kamp Angka.")
+        task.delay(4, function()
+                if player.Parent then
+                        QuizService.pushState(player)
+                        notify:FireClient(player, "Dunia Akiomida", "Selamat datang, penjelajah! Temui Kak Satu di Kamp Angka.")
+                end
+        end)
 end
 
 Players.PlayerAdded:Connect(onPlayerAdded)
 for _, player in Players:GetPlayers() do
-	task.spawn(onPlayerAdded, player)
+        task.spawn(onPlayerAdded, player)
 end
 
 print("[AKIOMIDA] Server siap: 6 zona + kuis + leaderboard.")
@@ -721,8 +731,8 @@ print("[AKIOMIDA] Server siap: 6 zona + kuis + leaderboard.")
             <string name="Name">DataService</string>
             <string name="Source"><![CDATA[--!nonstrict
 --[[
-	DataService.luau - progres pemain: XP, koin, jawaban benar per zona,
-	bahasan dibaca, streak, status dev. DataStore + autosave + sanitize.
+        DataService.luau - progres pemain: XP, koin, jawaban benar per zona,
+        bahasan dibaca, streak, status dev. DataStore + autosave + sanitize.
 ]]
 
 local Players = game:GetService("Players")
@@ -736,126 +746,138 @@ local DataService = {}
 
 local store = DataStoreService:GetDataStore(Config.Data.StoreName)
 
-local sessions: { [Player]: { data: { [string]: any }, dirty: boolean } } = {}
+local sessions: { [Player]: { data: { [string]: any }, dirty: boolean, fallback: boolean } } = {}
 
 local function defaultData(): { [string]: any }
-	local correct: { [string]: number } = {}
-	for _, zone in Config.Zones do
-		correct[zone.id] = 0
-	end
-	local mastered: { [string]: boolean } = {}
-	for _, zone in Config.Zones do
-		mastered[zone.id] = false
-	end
-	return {
-		XP = 0,
-		Coins = 0,
-		Correct = correct,
-		Mastered = mastered,
-		Read = {}, -- topic ids
-		Streak = 0,
-		BestStreak = 0,
-		Dev = false,
-		LastSeen = 0,
-	}
+        local correct: { [string]: number } = {}
+        for _, zone in Config.Zones do
+                correct[zone.id] = 0
+        end
+        local mastered: { [string]: boolean } = {}
+        for _, zone in Config.Zones do
+                mastered[zone.id] = false
+        end
+        return {
+                XP = 0,
+                Coins = 0,
+                Correct = correct,
+                Mastered = mastered,
+                Read = {}, -- topic ids
+                Streak = 0,
+                BestStreak = 0,
+                Dev = false,
+                LastSeen = 0,
+        }
 end
 
 local function sanitize(raw: any): { [string]: any }
-	local out = defaultData()
-	if type(raw) ~= "table" then
-		return out
-	end
-	out.XP = tonumber(raw.XP) or 0
-	out.Coins = tonumber(raw.Coins) or 0
-	out.Streak = tonumber(raw.Streak) or 0
-	out.BestStreak = tonumber(raw.BestStreak) or 0
-	out.Dev = raw.Dev == true
-	if type(raw.Correct) == "table" then
-		for _, zone in Config.Zones do
-			out.Correct[zone.id] = math.max(0, math.floor(tonumber(raw.Correct[zone.id]) or 0))
-		end
-	end
-	if type(raw.Mastered) == "table" then
-		for _, zone in Config.Zones do
-			out.Mastered[zone.id] = raw.Mastered[zone.id] == true
-		end
-	end
-	if type(raw.Read) == "table" then
-		for _, id in raw.Read do
-			if type(id) == "string" then
-				table.insert(out.Read, id)
-			end
-		end
-	end
-	out.LastSeen = tonumber(raw.LastSeen) or 0
-	return out
+        local out = defaultData()
+        if type(raw) ~= "table" then
+                return out
+        end
+        out.XP = tonumber(raw.XP) or 0
+        out.Coins = tonumber(raw.Coins) or 0
+        out.Streak = tonumber(raw.Streak) or 0
+        out.BestStreak = tonumber(raw.BestStreak) or 0
+        out.Dev = raw.Dev == true
+        if type(raw.Correct) == "table" then
+                for _, zone in Config.Zones do
+                        out.Correct[zone.id] = math.max(0, math.floor(tonumber(raw.Correct[zone.id]) or 0))
+                end
+        end
+        if type(raw.Mastered) == "table" then
+                for _, zone in Config.Zones do
+                        out.Mastered[zone.id] = raw.Mastered[zone.id] == true
+                end
+        end
+        if type(raw.Read) == "table" then
+                for _, id in raw.Read do
+                        if type(id) == "string" then
+                                table.insert(out.Read, id)
+                        end
+                end
+        end
+        out.LastSeen = tonumber(raw.LastSeen) or 0
+        return out
 end
 
 function DataService.get(player: Player): { [string]: any }
-	local s = sessions[player]
-	return s and s.data or defaultData()
+        local s = sessions[player]
+        return s and s.data or defaultData()
 end
 
 function DataService.has(player: Player): boolean
-	return sessions[player] ~= nil
+        return sessions[player] ~= nil
 end
 
 function DataService.markDirty(player: Player)
-	local s = sessions[player]
-	if s then
-		s.dirty = true
-	end
+        local s = sessions[player]
+        if s then
+                s.dirty = true
+        end
 end
 
 function DataService.load(player: Player): boolean
-	local key = "p_" .. player.UserId
-	local ok, raw = Util.retry(Config.Data.LoadRetries, function()
-		return store:GetAsync(key)
-	end)
-	if not ok then
-		return false
-	end
-	sessions[player] = { data = sanitize(raw), dirty = false }
-	return true
+        local key = "p_" .. player.UserId
+        local ok, raw = Util.retry(Config.Data.LoadRetries, function()
+                return store:GetAsync(key)
+        end)
+        if not ok then
+                return false
+        end
+        sessions[player] = { data = sanitize(raw), dirty = false, fallback = false }
+        return true
+end
+
+--- Sesi cadangan (memori saja) saat DataStore tidak tersedia,
+--- supaya pemain tetap bisa bermain tanpa di-kick.
+function DataService.startSession(player: Player)
+        if sessions[player] then
+                return
+        end
+        sessions[player] = { data = defaultData(), dirty = false, fallback = true }
 end
 
 function DataService.save(player: Player): boolean
-	local s = sessions[player]
-	if not s then
-		return false
-	end
-	s.data.LastSeen = os.time()
-	local ok = Util.retry(Config.Data.LoadRetries, function()
-		store:SetAsync("p_" .. player.UserId, s.data)
-	end)
-	if ok then
-		s.dirty = false
-	end
-	return ok
+        local s = sessions[player]
+        if not s then
+                return false
+        end
+        if s.fallback then
+                return false -- sesi memori: tidak ada tempat menyimpan
+        end
+        s.data.LastSeen = os.time()
+        local ok = Util.retry(Config.Data.LoadRetries, function()
+                store:SetAsync("p_" .. player.UserId, s.data)
+        end)
+        if ok then
+                s.dirty = false
+        end
+        return ok
 end
 
 function DataService.startLoops()
-	task.spawn(function()
-		while true do
-			task.wait(Config.Data.AutosaveInterval)
-			for player, s in sessions do
-				if s.dirty then
-					task.spawn(DataService.save, player)
-				end
-			end
-		end
-	end)
+        task.spawn(function()
+                while true do
+                        task.wait(Config.Data.AutosaveInterval)
+                        for player, s in sessions do
+                                if s.dirty then
+                                        task.spawn(DataService.save, player)
+                                end
+                        end
+                end
+        end)
 
-	Players.PlayerRemoving:Connect(function(player)
-		DataService.save(player)
-		sessions[player] = nil
-	end)
+        Players.PlayerRemoving:Connect(function(player)
+                DataService.save(player)
+                sessions[player] = nil
+        end)
 
-	game:BindToClose(function()
-		for player in sessions do
-			DataService.save(player)
-		end
-	end)
+        game:BindToClose(function()
+                for player in sessions do
+                        DataService.save(player)
+                end
+        end)
 end
 
 return DataService
@@ -1031,11 +1053,11 @@ return LeaderboardService
             <string name="Name">MapService</string>
             <string name="Source"><![CDATA[--!nonstrict
 --[[
-	MapService.luau
-	Pulau panjang berisi 6 zona (bioma prosedural, tanpa aset eksternal):
-	  kamp - hutan - gunung - kota - lembah - salju
-	Tiap zona: alas berwarna, gerbang label, NPC cerita (ProximityPrompt),
-	dan Papan Bahasan (materi baca). Semua karya original.
+        MapService.luau
+        Pulau panjang berisi 6 zona (bioma prosedural, tanpa aset eksternal):
+          kamp - hutan - gunung - kota - lembah - salju
+        Tiap zona: alas berwarna, gerbang label, NPC cerita (ProximityPrompt),
+        dan Papan Bahasan (materi baca). Semua karya original.
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -1050,19 +1072,19 @@ local folder = Instance.new("Folder")
 folder.Name = "DuniaAkiomida"
 
 local function part(props): Part
-	local p = Instance.new("Part")
-	p.Anchored = true
-	p.TopSurface = Enum.SurfaceType.Smooth
-	p.BottomSurface = Enum.SurfaceType.Smooth
-	for k, v in props do
-		(p :: any)[k] = v
-	end
-	p.Parent = folder
-	return p
+        local p = Instance.new("Part")
+        p.Anchored = true
+        p.TopSurface = Enum.SurfaceType.Smooth
+        p.BottomSurface = Enum.SurfaceType.Smooth
+        for k, v in props do
+                (p :: any)[k] = v
+        end
+        p.Parent = folder
+        return p
 end
 
 local function zoneCenter(zoneIndex: number): Vector3
-	return Vector3.new(0, 0, Config.World.StartZ + (zoneIndex - 1) * Config.World.ZoneSpacing)
+        return Vector3.new(0, 0, Config.World.StartZ + (zoneIndex - 1) * Config.World.ZoneSpacing)
 end
 
 --------------------------------------------------------------------
@@ -1070,175 +1092,175 @@ end
 --------------------------------------------------------------------
 
 local function biomeKamp(center: Vector3, color: Color3)
-	-- tenda: dua papan miring membentuk atap
-	for i = 0, 1 do
-		part({
-			Name = "Tenda" .. i,
-			Size = Vector3.new(8, 0.8, 6),
-			CFrame = CFrame.new(center + Vector3.new(-6, 4.2, 8)) * CFrame.Angles(i == 0 and math.rad(35) or math.rad(-35), 0, i == 0 and math.rad(-28) or math.rad(28)),
-			Color = color,
-			Material = Enum.Material.Fabric,
-		})
-	end
-	-- api unggun
-	part({
-		Name = "ApiUnggun",
-		Shape = Enum.PartType.Ball,
-		Size = Vector3.new(2.4, 2.4, 2.4),
-		CFrame = CFrame.new(center + Vector3.new(0, 1.8, 10)),
-		Color = Color3.fromRGB(255, 140, 60),
-		Material = Enum.Material.Neon,
-	})
-	local light = Instance.new("PointLight")
-	light.Color = Color3.fromRGB(255, 160, 80)
-	light.Range = 22
-	light.Brightness = 1.6
-	light.Parent = folder.ApiUnggun
-	-- kayu tumpuk
-	for i = 1, 3 do
-		part({
-			Name = "Kayu" .. i,
-			Size = Vector3.new(1.2, 1.2, 5),
-			CFrame = CFrame.new(center + Vector3.new(7, 0.6 + (i - 1) * 1.2, 12)) * CFrame.Angles(0, math.rad(15 * i), 0),
-			Color = Color3.fromRGB(120, 82, 45),
-			Material = Enum.Material.Wood,
-		})
-	end
+        -- tenda: dua papan miring membentuk atap
+        for i = 0, 1 do
+                part({
+                        Name = "Tenda" .. i,
+                        Size = Vector3.new(8, 0.8, 6),
+                        CFrame = CFrame.new(center + Vector3.new(-6, 4.2, 8)) * CFrame.Angles(i == 0 and math.rad(35) or math.rad(-35), 0, i == 0 and math.rad(-28) or math.rad(28)),
+                        Color = color,
+                        Material = Enum.Material.Fabric,
+                })
+        end
+        -- api unggun
+        part({
+                Name = "ApiUnggun",
+                Shape = Enum.PartType.Ball,
+                Size = Vector3.new(2.4, 2.4, 2.4),
+                CFrame = CFrame.new(center + Vector3.new(0, 1.8, 10)),
+                Color = Color3.fromRGB(255, 140, 60),
+                Material = Enum.Material.Neon,
+        })
+        local light = Instance.new("PointLight")
+        light.Color = Color3.fromRGB(255, 160, 80)
+        light.Range = 22
+        light.Brightness = 1.6
+        light.Parent = folder.ApiUnggun
+        -- kayu tumpuk
+        for i = 1, 3 do
+                part({
+                        Name = "Kayu" .. i,
+                        Size = Vector3.new(1.2, 1.2, 5),
+                        CFrame = CFrame.new(center + Vector3.new(7, 0.6 + (i - 1) * 1.2, 12)) * CFrame.Angles(0, math.rad(15 * i), 0),
+                        Color = Color3.fromRGB(120, 82, 45),
+                        Material = Enum.Material.Wood,
+                })
+        end
 end
 
 local function biomeHutan(center: Vector3, color: Color3)
-	local rng = Random.new(11)
-	for i = 1, 10 do
-		local x = rng:NextNumber(-30, 30)
-		local z = rng:NextNumber(-18, 18)
-		part({
-			Name = "Pohon" .. i,
-			Size = Vector3.new(1.6, rng:NextNumber(7, 12), 1.6),
-			CFrame = CFrame.new(center + Vector3.new(x, 5, z)),
-			Color = Color3.fromRGB(46, 110, 88),
-			Material = Enum.Material.Grass,
-		})
-		part({
-			Name = "Dedaunan" .. i,
-			Shape = Enum.PartType.Ball,
-			Size = Vector3.new(7, 7, 7),
-			CFrame = CFrame.new(center + Vector3.new(x, 11, z)),
-			Color = Color3.fromRGB(40, 150, 100),
-			Material = Enum.Material.Grass,
-		})
-	end
-	-- simbol matematika melayang
-	local symbols = { "+", "-", "x", ":", "=", "pi" }
-	for i, sym in symbols do
-		local angle = (i / #symbols) * math.pi * 2
-		part({
-			Name = "Simbol" .. i,
-			Size = Vector3.new(3, 3, 0.4),
-			CFrame = CFrame.new(center + Vector3.new(math.cos(angle) * 22, 9 + (i % 3), math.sin(angle) * 22))
-				* CFrame.Angles(0, angle + math.rad(90), 0),
-			Color = color,
-			Material = Enum.Material.Neon,
-			Transparency = 0.15,
-		})
-	end
+        local rng = Random.new(11)
+        for i = 1, 10 do
+                local x = rng:NextNumber(-30, 30)
+                local z = rng:NextNumber(-18, 18)
+                part({
+                        Name = "Pohon" .. i,
+                        Size = Vector3.new(1.6, rng:NextNumber(7, 12), 1.6),
+                        CFrame = CFrame.new(center + Vector3.new(x, 5, z)),
+                        Color = Color3.fromRGB(46, 110, 88),
+                        Material = Enum.Material.Grass,
+                })
+                part({
+                        Name = "Dedaunan" .. i,
+                        Shape = Enum.PartType.Ball,
+                        Size = Vector3.new(7, 7, 7),
+                        CFrame = CFrame.new(center + Vector3.new(x, 11, z)),
+                        Color = Color3.fromRGB(40, 150, 100),
+                        Material = Enum.Material.Grass,
+                })
+        end
+        -- simbol matematika melayang
+        local symbols = { "+", "-", "x", ":", "=", "pi" }
+        for i, sym in symbols do
+                local angle = (i / #symbols) * math.pi * 2
+                part({
+                        Name = "Simbol" .. i,
+                        Size = Vector3.new(3, 3, 0.4),
+                        CFrame = CFrame.new(center + Vector3.new(math.cos(angle) * 22, 9 + (i % 3), math.sin(angle) * 22))
+                                * CFrame.Angles(0, angle + math.rad(90), 0),
+                        Color = color,
+                        Material = Enum.Material.Neon,
+                        Transparency = 0.15,
+                })
+        end
 end
 
 local function biomeGunung(center: Vector3, color: Color3)
-	local specs = {
-		{ x = -16, h = 26, r = 10 },
-		{ x = 14, h = 34, r = 12 },
-		{ x = 0, h = 44, r = 14 },
-	}
-	for i, spec in specs do
-		local layers = 4
-		for l = 1, layers do
-			local t = l / layers
-			part({
-				Name = "Gunung" .. i .. "L" .. l,
-				Shape = Enum.PartType.Cylinder,
-				Size = Vector3.new(spec.h / layers, spec.r * (1 - t) * 2 + 2, spec.r * (1 - t) * 2 + 2),
-				CFrame = CFrame.new(center + Vector3.new(spec.x, spec.h / layers * (l - 0.5), 0))
-					* CFrame.Angles(0, 0, math.rad(90)),
-				Color = color:Lerp(Color3.fromRGB(255, 255, 255), t * 0.85),
-				Material = Enum.Material.Slate,
-			})
-		end
-	end
+        local specs = {
+                { x = -16, h = 26, r = 10 },
+                { x = 14, h = 34, r = 12 },
+                { x = 0, h = 44, r = 14 },
+        }
+        for i, spec in specs do
+                local layers = 4
+                for l = 1, layers do
+                        local t = l / layers
+                        part({
+                                Name = "Gunung" .. i .. "L" .. l,
+                                Shape = Enum.PartType.Cylinder,
+                                Size = Vector3.new(spec.h / layers, spec.r * (1 - t) * 2 + 2, spec.r * (1 - t) * 2 + 2),
+                                CFrame = CFrame.new(center + Vector3.new(spec.x, spec.h / layers * (l - 0.5), 0))
+                                        * CFrame.Angles(0, 0, math.rad(90)),
+                                Color = color:Lerp(Color3.fromRGB(255, 255, 255), t * 0.85),
+                                Material = Enum.Material.Slate,
+                        })
+                end
+        end
 end
 
 local function biomeKota(center: Vector3, color: Color3)
-	-- kolom-kolom kota bukti
-	local rng = Random.new(44)
-	for i = 1, 6 do
-		local x = rng:NextNumber(-26, 26)
-		local z = rng:NextNumber(-14, 14)
-		local h = rng:NextNumber(8, 18)
-		part({
-			Name = "Kolom" .. i,
-			Size = Vector3.new(4, h, 4),
-			CFrame = CFrame.new(center + Vector3.new(x, h / 2, z)),
-			Color = Color3.fromRGB(235, 230, 220),
-			Material = Enum.Material.Marble,
-		})
-		part({
-			Name = "AtapKolom" .. i,
-			Size = Vector3.new(5, 1, 5),
-			CFrame = CFrame.new(center + Vector3.new(x, h + 0.5, z)),
-			Color = color,
-			Material = Enum.Material.Marble,
-		})
-	end
+        -- kolom-kolom kota bukti
+        local rng = Random.new(44)
+        for i = 1, 6 do
+                local x = rng:NextNumber(-26, 26)
+                local z = rng:NextNumber(-14, 14)
+                local h = rng:NextNumber(8, 18)
+                part({
+                        Name = "Kolom" .. i,
+                        Size = Vector3.new(4, h, 4),
+                        CFrame = CFrame.new(center + Vector3.new(x, h / 2, z)),
+                        Color = Color3.fromRGB(235, 230, 220),
+                        Material = Enum.Material.Marble,
+                })
+                part({
+                        Name = "AtapKolom" .. i,
+                        Size = Vector3.new(5, 1, 5),
+                        CFrame = CFrame.new(center + Vector3.new(x, h + 0.5, z)),
+                        Color = color,
+                        Material = Enum.Material.Marble,
+                })
+        end
 end
 
 local function biomeLembah(center: Vector3, color: Color3)
-	-- cekungan: dinding rendah keliling
-	for i = 1, 4 do
-		local angle = (i / 4) * math.pi * 2
-		part({
-			Name = "DindingLembah" .. i,
-			Size = Vector3.new(40, 10, 3),
-			CFrame = CFrame.new(center + Vector3.new(math.cos(angle) * 26, 5, math.sin(angle) * 26))
-				* CFrame.Angles(0, -angle + math.rad(90), 0),
-			Color = Color3.fromRGB(70, 55, 95),
-			Material = Enum.Material.Slate,
-		})
-	end
-	local rng = Random.new(5)
-	for i = 1, 5 do
-		part({
-			Name = "KristalLembah" .. i,
-			Size = Vector3.new(2.4, rng:NextNumber(5, 9), 2.4),
-			CFrame = CFrame.new(center + Vector3.new(rng:NextNumber(-18, 18), 3.5, rng:NextNumber(-12, 12)))
-				* CFrame.Angles(0, rng:NextNumber(0, math.pi), math.rad(14)),
-			Color = color,
-			Material = Enum.Material.Neon,
-			Transparency = 0.1,
-		})
-	end
+        -- cekungan: dinding rendah keliling
+        for i = 1, 4 do
+                local angle = (i / 4) * math.pi * 2
+                part({
+                        Name = "DindingLembah" .. i,
+                        Size = Vector3.new(40, 10, 3),
+                        CFrame = CFrame.new(center + Vector3.new(math.cos(angle) * 26, 5, math.sin(angle) * 26))
+                                * CFrame.Angles(0, -angle + math.rad(90), 0),
+                        Color = Color3.fromRGB(70, 55, 95),
+                        Material = Enum.Material.Slate,
+                })
+        end
+        local rng = Random.new(5)
+        for i = 1, 5 do
+                part({
+                        Name = "KristalLembah" .. i,
+                        Size = Vector3.new(2.4, rng:NextNumber(5, 9), 2.4),
+                        CFrame = CFrame.new(center + Vector3.new(rng:NextNumber(-18, 18), 3.5, rng:NextNumber(-12, 12)))
+                                * CFrame.Angles(0, rng:NextNumber(0, math.pi), math.rad(14)),
+                        Color = color,
+                        Material = Enum.Material.Neon,
+                        Transparency = 0.1,
+                })
+        end
 end
 
 local function biomeSalju(center: Vector3, color: Color3)
-	local layers = 4
-	for l = 1, layers do
-		local t = l / layers
-		part({
-			Name = "PuncakL" .. l,
-			Shape = Enum.PartType.Cylinder,
-			Size = Vector3.new(10, (16 * (1 - t)) * 2 + 2, (16 * (1 - t)) * 2 + 2),
-			CFrame = CFrame.new(center + Vector3.new(0, 10 / layers * (l - 0.5) + 2, -4))
-				* CFrame.Angles(0, 0, math.rad(90)),
-			Color = Color3.fromRGB(240, 246, 255):Lerp(color, 0.25),
-			Material = Enum.Material.Snow,
-		})
-	end
-	local light = Instance.new("PointLight")
-	light.Color = Color3.fromRGB(200, 230, 255)
-	light.Range = 26
-	light.Brightness = 0.9
-	local holder = folder:FindFirstChild("PuncakL" .. layers)
-	if holder then
-		light.Parent = holder
-	end
+        local layers = 4
+        for l = 1, layers do
+                local t = l / layers
+                part({
+                        Name = "PuncakL" .. l,
+                        Shape = Enum.PartType.Cylinder,
+                        Size = Vector3.new(10, (16 * (1 - t)) * 2 + 2, (16 * (1 - t)) * 2 + 2),
+                        CFrame = CFrame.new(center + Vector3.new(0, 10 / layers * (l - 0.5) + 2, -4))
+                                * CFrame.Angles(0, 0, math.rad(90)),
+                        Color = Color3.fromRGB(240, 246, 255):Lerp(color, 0.25),
+                        Material = Enum.Material.Snow,
+                })
+        end
+        local light = Instance.new("PointLight")
+        light.Color = Color3.fromRGB(200, 230, 255)
+        light.Range = 26
+        light.Brightness = 0.9
+        local holder = folder:FindFirstChild("PuncakL" .. layers)
+        if holder then
+                light.Parent = holder
+        end
 end
 
 local BIOMES = { biomeKamp, biomeHutan, biomeGunung, biomeKota, biomeLembah, biomeSalju }
@@ -1248,115 +1270,115 @@ local BIOMES = { biomeKamp, biomeHutan, biomeGunung, biomeKota, biomeLembah, bio
 --------------------------------------------------------------------
 
 local function buildNPC(center: Vector3, zoneIndex: number, color: Color3)
-	local name = "KAK " .. string.upper((Config.Zones[zoneIndex].name:split(" ")[2] or "AKIOMIDA"))
-	local body = part({
-		Name = "NPC_Body_" .. zoneIndex,
-		Size = Vector3.new(2.4, 3, 1.6),
-		CFrame = CFrame.new(center + Vector3.new(0, 2.5, -6)),
-		Color = color,
-		Material = Enum.Material.SmoothPlastic,
-	})
-	local head = part({
-		Name = "NPC_Head_" .. zoneIndex,
-		Shape = Enum.PartType.Ball,
-		Size = Vector3.new(1.8, 1.8, 1.8),
-		CFrame = CFrame.new(center + Vector3.new(0, 5.2, -6)),
-		Color = Color3.fromRGB(255, 224, 189),
-		Material = Enum.Material.SmoothPlastic,
-	})
+        local name = "KAK " .. string.upper((Config.Zones[zoneIndex].name:split(" ")[2] or "AKIOMIDA"))
+        local body = part({
+                Name = "NPC_Body_" .. zoneIndex,
+                Size = Vector3.new(2.4, 3, 1.6),
+                CFrame = CFrame.new(center + Vector3.new(0, 2.5, -6)),
+                Color = color,
+                Material = Enum.Material.SmoothPlastic,
+        })
+        local head = part({
+                Name = "NPC_Head_" .. zoneIndex,
+                Shape = Enum.PartType.Ball,
+                Size = Vector3.new(1.8, 1.8, 1.8),
+                CFrame = CFrame.new(center + Vector3.new(0, 5.2, -6)),
+                Color = Color3.fromRGB(255, 224, 189),
+                Material = Enum.Material.SmoothPlastic,
+        })
 
-	local billboard = Instance.new("BillboardGui")
-	billboard.Size = UDim2.new(0, 140, 0, 34)
-	billboard.StudsOffset = Vector3.new(0, 1.6, 0)
-	billboard.AlwaysOnTop = true
-	billboard.MaxDistance = 60
-	billboard.Parent = head
-	Util.create("TextLabel", {
-		Size = UDim2.fromScale(1, 1),
-		BackgroundTransparency = 1,
-		Font = Enum.Font.GothamBlack,
-		TextScaled = true,
-		TextColor3 = color,
-		TextStrokeTransparency = 0.4,
-		Text = name,
-	}, billboard)
+        local billboard = Instance.new("BillboardGui")
+        billboard.Size = UDim2.new(0, 140, 0, 34)
+        billboard.StudsOffset = Vector3.new(0, 1.6, 0)
+        billboard.AlwaysOnTop = true
+        billboard.MaxDistance = 60
+        billboard.Parent = head
+        Util.create("TextLabel", {
+                Size = UDim2.fromScale(1, 1),
+                BackgroundTransparency = 1,
+                Font = Enum.Font.GothamBlack,
+                TextScaled = true,
+                TextColor3 = color,
+                TextStrokeTransparency = 0.4,
+                Text = name,
+        }, billboard)
 
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.ActionText = "Bicara"
-	prompt.ObjectText = name
-	prompt.MaxActivationDistance = 12
-	prompt.HoldDuration = 0
-	prompt.Parent = body
-	prompt.Triggered:Connect(function(player)
-		Remotes.get("ZoneEntered"):FireClient(player, { type = "npc", zone = zoneIndex })
-	end)
+        local prompt = Instance.new("ProximityPrompt")
+        prompt.ActionText = "Bicara"
+        prompt.ObjectText = name
+        prompt.MaxActivationDistance = 12
+        prompt.HoldDuration = 0
+        prompt.Parent = body
+        prompt.Triggered:Connect(function(player)
+                Remotes.get("ZoneEntered"):FireClient(player, { type = "npc", zone = zoneIndex })
+        end)
 end
 
 local function buildBoard(center: Vector3, zoneIndex: number, color: Color3)
-	local board = part({
-		Name = "PapanBahasan_" .. zoneIndex,
-		Size = Vector3.new(10, 6, 0.6),
-		CFrame = CFrame.new(center + Vector3.new(-12, 6, -2)) * CFrame.Angles(0, math.rad(35), 0),
-		Color = Color3.fromRGB(60, 45, 30),
-		Material = Enum.Material.WoodPlanks,
-	})
-	Util.create("SurfaceGui", {
-		Face = Enum.NormalId.Front,
-		SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud,
-		PixelsPerStud = 50,
-	}, board)
-	local gui = board:FindFirstChildOfClass("SurfaceGui")
-	Util.create("TextLabel", {
-		Size = UDim2.fromScale(1, 0.3),
-		BackgroundTransparency = 1,
-		Font = Enum.Font.GothamBlack,
-		TextScaled = true,
-		TextColor3 = color,
-		Text = "BAHASAN",
-	}, gui)
+        local board = part({
+                Name = "PapanBahasan_" .. zoneIndex,
+                Size = Vector3.new(10, 6, 0.6),
+                CFrame = CFrame.new(center + Vector3.new(-12, 6, -2)) * CFrame.Angles(0, math.rad(35), 0),
+                Color = Color3.fromRGB(60, 45, 30),
+                Material = Enum.Material.WoodPlanks,
+        })
+        Util.create("SurfaceGui", {
+                Face = Enum.NormalId.Front,
+                SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud,
+                PixelsPerStud = 50,
+        }, board)
+        local gui = board:FindFirstChildOfClass("SurfaceGui")
+        Util.create("TextLabel", {
+                Size = UDim2.fromScale(1, 0.3),
+                BackgroundTransparency = 1,
+                Font = Enum.Font.GothamBlack,
+                TextScaled = true,
+                TextColor3 = color,
+                Text = "BAHASAN",
+        }, gui)
 
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.ActionText = "Baca Bahasan"
-	prompt.ObjectText = Config.Zones[zoneIndex].name
-	prompt.MaxActivationDistance = 10
-	prompt.HoldDuration = 0
-	prompt.Parent = board
-	prompt.Triggered:Connect(function(player)
-		Remotes.get("ZoneEntered"):FireClient(player, { type = "board", zone = zoneIndex })
-	end)
+        local prompt = Instance.new("ProximityPrompt")
+        prompt.ActionText = "Baca Bahasan"
+        prompt.ObjectText = Config.Zones[zoneIndex].name
+        prompt.MaxActivationDistance = 10
+        prompt.HoldDuration = 0
+        prompt.Parent = board
+        prompt.Triggered:Connect(function(player)
+                Remotes.get("ZoneEntered"):FireClient(player, { type = "board", zone = zoneIndex })
+        end)
 end
 
 local function buildGate(center: Vector3, zoneIndex: number, color: Color3)
-	local zone = Config.Zones[zoneIndex]
-	for side = -1, 1, 2 do
-		part({
-			Name = "GerbangPilar_" .. zoneIndex .. "_" .. side,
-			Size = Vector3.new(1.6, 12, 1.6),
-			CFrame = CFrame.new(center + Vector3.new(side * 7, 6, 16)),
-			Color = Color3.fromRGB(60, 64, 80),
-			Material = Enum.Material.SmoothPlastic,
-		})
-	end
-	local beam = part({
-		Name = "GerbangPalang_" .. zoneIndex,
-		Size = Vector3.new(16, 2, 1.4),
-		CFrame = CFrame.new(center + Vector3.new(0, 13, 16)),
-		Color = Color3.fromRGB(25, 28, 38),
-		Material = Enum.Material.SmoothPlastic,
-	})
-	local gui = Instance.new("SurfaceGui")
-	gui.Face = Enum.NormalId.Front
-	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-	gui.PixelsPerStud = 50
-	gui.Parent = beam
-	Util.create("TextLabel", {
-		Size = UDim2.fromScale(1, 1),
-		BackgroundTransparency = 1,
-		Font = Enum.Font.GothamBlack,
-		TextScaled = true,
-		TextColor3 = color,
-		Text = string.upper(zone.name),
-	}, gui)
+        local zone = Config.Zones[zoneIndex]
+        for side = -1, 1, 2 do
+                part({
+                        Name = "GerbangPilar_" .. zoneIndex .. "_" .. side,
+                        Size = Vector3.new(1.6, 12, 1.6),
+                        CFrame = CFrame.new(center + Vector3.new(side * 7, 6, 16)),
+                        Color = Color3.fromRGB(60, 64, 80),
+                        Material = Enum.Material.SmoothPlastic,
+                })
+        end
+        local beam = part({
+                Name = "GerbangPalang_" .. zoneIndex,
+                Size = Vector3.new(16, 2, 1.4),
+                CFrame = CFrame.new(center + Vector3.new(0, 13, 16)),
+                Color = Color3.fromRGB(25, 28, 38),
+                Material = Enum.Material.SmoothPlastic,
+        })
+        local gui = Instance.new("SurfaceGui")
+        gui.Face = Enum.NormalId.Front
+        gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+        gui.PixelsPerStud = 50
+        gui.Parent = beam
+        Util.create("TextLabel", {
+                Size = UDim2.fromScale(1, 1),
+                BackgroundTransparency = 1,
+                Font = Enum.Font.GothamBlack,
+                TextScaled = true,
+                TextColor3 = color,
+                Text = string.upper(zone.name),
+        }, gui)
 end
 
 --------------------------------------------------------------------
@@ -1364,76 +1386,110 @@ end
 --------------------------------------------------------------------
 
 function MapService.init()
-	folder.Parent = workspace
+        folder.Parent = workspace
 
-	-- pulau panjang
-	local totalLen = Config.World.StartZ + (#Config.Zones - 1) * Config.World.ZoneSpacing + 80
-	part({
-		Name = "Pulau",
-		Shape = Enum.PartType.Cylinder,
-		Size = Vector3.new(Config.World.IslandHeight, totalLen, Config.World.IslandWidth * 2),
-		CFrame = CFrame.new(0, -Config.World.IslandHeight / 2, totalLen / 2 - 20) * CFrame.Angles(0, 0, math.rad(90)),
-		Color = Color3.fromRGB(95, 165, 75),
-		Material = Enum.Material.Grass,
-	})
+        -- pulau panjang (sumbu panjang = Z, sejajar barisan zona!)
+        local totalLen = Config.World.StartZ + (#Config.Zones - 1) * Config.World.ZoneSpacing + 80
+        part({
+                Name = "Pulau",
+                Shape = Enum.PartType.Cylinder,
+                Size = Vector3.new(Config.World.IslandHeight, Config.World.IslandWidth * 2, totalLen),
+                CFrame = CFrame.new(0, -Config.World.IslandHeight / 2, totalLen / 2 - 20) * CFrame.Angles(0, 0, math.rad(90)),
+                Color = Color3.fromRGB(95, 165, 75),
+                Material = Enum.Material.Grass,
+        })
 
-	-- arch judul di spawn
-	part({
-		Name = "PilarKiri",
-		Size = Vector3.new(2, 14, 2),
-		CFrame = CFrame.new(-8, 7, 34),
-		Color = Color3.fromRGB(60, 64, 80),
-		Material = Enum.Material.SmoothPlastic,
-	})
-	part({
-		Name = "PilarKanan",
-		Size = Vector3.new(2, 14, 2),
-		CFrame = CFrame.new(8, 7, 34),
-		Color = Color3.fromRGB(60, 64, 80),
-		Material = Enum.Material.SmoothPlastic,
-	})
-	local beam = part({
-		Name = "PalangJudul",
-		Size = Vector3.new(20, 3.5, 1.5),
-		CFrame = CFrame.new(0, 15, 34),
-		Color = Color3.fromRGB(25, 28, 38),
-		Material = Enum.Material.SmoothPlastic,
-	})
-	local gui = Instance.new("SurfaceGui")
-	gui.Face = Enum.NormalId.Front
-	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-	gui.PixelsPerStud = 50
-	gui.Parent = beam
-	Util.create("TextLabel", {
-		Size = UDim2.fromScale(1, 1),
-		BackgroundTransparency = 1,
-		Font = Enum.Font.GothamBlack,
-		TextScaled = true,
-		TextColor3 = Color3.fromRGB(255, 209, 102),
-		Text = "DUNIA AKIOMIDA",
-	}, gui)
+        -- samudra luas: cegah pemain jatuh ke kehampaan + memperindah dunia
+        part({
+                Name = "Samudra",
+                Size = Vector3.new(3000, 2, 3000),
+                CFrame = CFrame.new(0, -2, totalLen / 2 - 20),
+                Color = Color3.fromRGB(58, 132, 195),
+                Material = Enum.Material.Glass,
+                Transparency = 0.2,
+        })
 
-	-- zona per zona
-	for zoneIndex, zone in Config.Zones do
-		local center = zoneCenter(zoneIndex)
-		local color = Util.zoneColor(zone.color)
+        -- atmosfer lembut biar langit terasa hidup
+        local atmo = Instance.new("Atmosphere")
+        atmo.Density = 0.3
+        atmo.Offset = 0.25
+        atmo.Color = Color3.fromRGB(199, 199, 205)
+        atmo.Glare = 0.2
+        atmo.Haze = 1.6
+        atmo.Parent = game:GetService("Lighting")
 
-		-- alas zona berwarna
-		part({
-			Name = "AlasZona_" .. zoneIndex,
-			Shape = Enum.PartType.Cylinder,
-			Size = Vector3.new(0.4, 76, 76),
-			CFrame = CFrame.new(center + Vector3.new(0, 0.2, 0)) * CFrame.Angles(0, 0, math.rad(90)),
-			Color = color,
-			Material = Enum.Material.SmoothPlastic,
-			Transparency = 0.45,
-		})
+        -- awan dekoratif (tak bisa ditabrak)
+        local rngAwan = Random.new(77)
+        for i = 1, 8 do
+                part({
+                        Name = "Awan" .. i,
+                        Shape = Enum.PartType.Ball,
+                        Size = Vector3.new(1, 1, 1) * rngAwan:NextNumber(26, 54),
+                        CFrame = CFrame.new(rngAwan:NextNumber(-140, 140), rngAwan:NextNumber(75, 115), rngAwan:NextNumber(-40, totalLen + 40)),
+                        Color = Color3.fromRGB(255, 255, 255),
+                        Material = Enum.Material.SmoothPlastic,
+                        Transparency = 0.4,
+                        CanCollide = false,
+                })
+        end
 
-		buildGate(center, zoneIndex, color)
-		buildNPC(center, zoneIndex, color)
-		buildBoard(center, zoneIndex, color)
-		BIOMES[zoneIndex](center, color)
-	end
+        -- arch judul di spawn
+        part({
+                Name = "PilarKiri",
+                Size = Vector3.new(2, 14, 2),
+                CFrame = CFrame.new(-8, 7, 34),
+                Color = Color3.fromRGB(60, 64, 80),
+                Material = Enum.Material.SmoothPlastic,
+        })
+        part({
+                Name = "PilarKanan",
+                Size = Vector3.new(2, 14, 2),
+                CFrame = CFrame.new(8, 7, 34),
+                Color = Color3.fromRGB(60, 64, 80),
+                Material = Enum.Material.SmoothPlastic,
+        })
+        local beam = part({
+                Name = "PalangJudul",
+                Size = Vector3.new(20, 3.5, 1.5),
+                CFrame = CFrame.new(0, 15, 34),
+                Color = Color3.fromRGB(25, 28, 38),
+                Material = Enum.Material.SmoothPlastic,
+        })
+        local gui = Instance.new("SurfaceGui")
+        gui.Face = Enum.NormalId.Front
+        gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+        gui.PixelsPerStud = 50
+        gui.Parent = beam
+        Util.create("TextLabel", {
+                Size = UDim2.fromScale(1, 1),
+                BackgroundTransparency = 1,
+                Font = Enum.Font.GothamBlack,
+                TextScaled = true,
+                TextColor3 = Color3.fromRGB(255, 209, 102),
+                Text = "DUNIA AKIOMIDA",
+        }, gui)
+
+        -- zona per zona
+        for zoneIndex, zone in Config.Zones do
+                local center = zoneCenter(zoneIndex)
+                local color = Util.zoneColor(zone.color)
+
+                -- alas zona berwarna
+                part({
+                        Name = "AlasZona_" .. zoneIndex,
+                        Shape = Enum.PartType.Cylinder,
+                        Size = Vector3.new(0.4, 76, 76),
+                        CFrame = CFrame.new(center + Vector3.new(0, 0.2, 0)) * CFrame.Angles(0, 0, math.rad(90)),
+                        Color = color,
+                        Material = Enum.Material.SmoothPlastic,
+                        Transparency = 0.45,
+                })
+
+                buildGate(center, zoneIndex, color)
+                buildNPC(center, zoneIndex, color)
+                buildBoard(center, zoneIndex, color)
+                BIOMES[zoneIndex](center, color)
+        end
 end
 
 return MapService
@@ -2193,6 +2249,7 @@ function UIController:answer(choice: number)
                 end
                 if result.correct then
                         self.sound.PlaybackSpeed = 1.1
+                        self.sound:Play()
                         self.optionButtons[choice].BackgroundColor3 = T.Green
                         self.quizFeedback.TextColor3 = T.Green
                         if result.justMastered then
@@ -2202,6 +2259,7 @@ function UIController:answer(choice: number)
                         end
                 else
                         self.sound.PlaybackSpeed = 0.7
+                        self.sound:Play()
                         self.quizFeedback.TextColor3 = T.TextDim
                         self.quizFeedback.Text = result.feedback
                 end
@@ -2667,7 +2725,7 @@ return UIController
         <token name="Material">272</token>
         <Vector3 name="Position">
           <X>0</X>
-          <Y>1.5</Y>
+          <Y>0.5</Y>
           <Z>44</Z>
         </Vector3>
         <Vector3 name="size">

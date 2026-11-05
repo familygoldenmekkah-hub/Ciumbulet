@@ -1,6 +1,6 @@
 --!nonstrict
 --[[
-	init.server.luau - bootstrap Dunia Akiomida.
+        init.server.luau - bootstrap Dunia Akiomida.
 ]]
 
 local Players = game:GetService("Players")
@@ -24,28 +24,38 @@ LeaderboardService.init()
 local notify = Remotes.get("Notify")
 
 local function onPlayerAdded(player: Player)
-	local ok = DataService.load(player)
-	if not ok then
-		player:Kick("Gagal memuat progres - coba masuk lagi sebentar.")
-		return
-	end
+        local ok = DataService.load(player)
+        if not ok then
+                -- JANGAN kick pemain: pakai sesi memori supaya game tetap bisa
+                -- dimainkan walau DataStore sedang tidak tersedia.
+                DataService.startSession(player)
+                warn("[AKIOMIDA] DataStore gagal, sesi memori dipakai untuk " .. player.Name)
+                task.delay(5, function()
+                        notify:FireClient(player, "Mode Sesi",
+                                "Progres sementara hanya tersimpan di sesi ini. Coba keluar-masuk lagi nanti untuk simpan permanen.")
+                end)
+        end
 
-	-- leaderstats: XP (papan peringkat Roblox standar)
-	local leaderstats = Instance.new("Folder")
-	leaderstats.Name = "leaderstats"
-	local xp = Instance.new("IntValue")
-	xp.Name = "XP"
-	xp.Value = DataService.get(player).XP
-	xp.Parent = leaderstats
-	leaderstats.Parent = player
+        -- leaderstats: XP (papan peringkat Roblox standar)
+        local leaderstats = Instance.new("Folder")
+        leaderstats.Name = "leaderstats"
+        local xp = Instance.new("IntValue")
+        xp.Name = "XP"
+        xp.Value = DataService.get(player).XP
+        xp.Parent = leaderstats
+        leaderstats.Parent = player
 
-	QuizService.pushState(player)
-	notify:FireClient(player, "Dunia Akiomida", "Selamat datang, penjelajah! Temui Kak Satu di Kamp Angka.")
+        task.delay(4, function()
+                if player.Parent then
+                        QuizService.pushState(player)
+                        notify:FireClient(player, "Dunia Akiomida", "Selamat datang, penjelajah! Temui Kak Satu di Kamp Angka.")
+                end
+        end)
 end
 
 Players.PlayerAdded:Connect(onPlayerAdded)
 for _, player in Players:GetPlayers() do
-	task.spawn(onPlayerAdded, player)
+        task.spawn(onPlayerAdded, player)
 end
 
 print("[AKIOMIDA] Server siap: 6 zona + kuis + leaderboard.")
