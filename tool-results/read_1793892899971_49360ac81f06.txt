@@ -1,0 +1,644 @@
+     1→--!nonstrict
+     2→--[[
+     3→        FarmService.luau - jantung ekonomi: ladang pribadi pemain.
+     4→        Alur Grow a Garden ala Dunia Akiomida:
+     5→          klaim ladang -> beli bibit -> tanam -> (siram) -> tumbuh (nyata waktu,
+     6→          tetap tumbuh saat pemain menjelajah) -> panen -> jual di pasar.
+     7→        Server-authoritative: semua waktu & validasi di server.
+     8→]]
+     9→
+    10→local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    11→
+    12→local Config = require(ReplicatedStorage.Shared.Config)
+    13→local Remotes = require(ReplicatedStorage.Remotes)
+    14→local Util = require(ReplicatedStorage.Shared.Util)
+    15→
+    16→local DataService = require(script.Parent.DataService)
+    17→local QuestService = require(script.Parent.QuestService)
+    18→
+    19→local Balance = require(ReplicatedStorage.Shared.Balance)
+    20→
+    21→local FarmService = {}
+    22→
+    23→local PLOT_COUNT = 6
+    24→local GRID = 4 -- petak 4x4
+    25→local TILE_SIZE = 5
+    26→local FENCE_HALF = 13
+    27→
+    28→local cropById: { [string]: any } = {}
+    29→for _, crop in ipairs(Config.Crops) do
+    30→        cropById[crop.id] = crop
+    31→end
+    32→
+    33→local plots: { [number]: any } = {}
+    34→local worldFolder: Folder? = nil
+    35→
+    36→local function world(): Folder
+    37→        local f = worldFolder
+    38→        if not f then
+    39→                f = workspace:FindFirstChild("AKM_Dunia") :: Folder?
+    40→                if not f then
+    41→                        f = Instance.new("Folder")
+    42→                        f.Name = "AKM_Dunia"
+    43→                        f.Parent = workspace
+    44→                end
+    45→                worldFolder = f
+    46→        end
+    47→        return f :: Folder
+    48→end
+    49→
+    50→local function part(props): Part
+    51→        local p = Instance.new("Part")
+    52→        p.Anchored = true
+    53→        p.TopSurface = Enum.SurfaceType.Smooth
+    54→        p.BottomSurface = Enum.SurfaceType.Smooth
+    55→        for k, v in props do
+    56→                (p :: any)[k] = v
+    57→        end
+    58→        p.Parent = world()
+    59→        return p
+    60→end
+    61→
+    62→--------------------------------------------------------------------
+    63→-- VISUAL TANAMAN (3 tahap + siap panen)
+    64→--------------------------------------------------------------------
+    65→
+    66→local function destroyPlant(tile)
+    67→        if tile.plant then
+    68→                tile.plant:Destroy()
+    69→                tile.plant = nil
+    70→        end
+    71→end
+    72→
+    73→--- bucket: 0 = biji, 1 = kecambah, 2 = tumbuh, 3 = siap panen
+    74→local function buildPlantVisual(tile, bucket: number)
+    75→        destroyPlant(tile)
+    76→        local crop = cropById[tile.seed]
+    77→        if not crop then
+    78→                return
+    79→        end
+    80→        local base = tile.part.Position
+    81→        local ground = base + Vector3.new(0, tile.part.Size.Y / 2, 0)
+    82→        local model = Instance.new("Model")
+    83→        model.Name = "Tanaman_" .. tile.seed
+    84→
+    85→        local fruitColor = Color3.fromRGB(crop.color[1], crop.color[2], crop.color[3])
+    86→
+    87→        if bucket == 0 then
+    88→                part({
+    89→                        Name = "Biji",
+    90→                        Size = Vector3.new(1.4, 0.5, 1.4),
+    91→                        CFrame = CFrame.new(ground + Vector3.new(0, 0.25, 0)),
+    92→                        Color = Color3.fromRGB(122, 88, 56),
+    93→                        Material = Enum.Material.Ground,
+    94→                        CanCollide = false,
+    95→                }).Parent = model
+    96→        elseif bucket == 1 then
+    97→                part({
+    98→                        Name = "Kecambah",
+    99→                        Size = Vector3.new(0.5, 1.6, 0.5),
+   100→                        CFrame = CFrame.new(ground + Vector3.new(0, 0.8, 0)),
+   101→                        Color = Color3.fromRGB(120, 200, 90),
+   102→                        Material = Enum.Material.Grass,
+   103→                        CanCollide = false,
+   104→                }).Parent = model
+   105→        elseif bucket == 2 then
+   106→                part({
+   107→                        Name = "Batang",
+   108→                        Size = Vector3.new(0.6, 2.6, 0.6),
+   109→                        CFrame = CFrame.new(ground + Vector3.new(0, 1.3, 0)),
+   110→                        Color = Color3.fromRGB(96, 170, 80),
+   111→                        Material = Enum.Material.Grass,
+   112→                        CanCollide = false,
+   113→                }).Parent = model
+   114→                part({
+   115→                        Name = "Daun1",
+   116→                        Shape = Enum.PartType.Ball,
+   117→                        Size = Vector3.new(1.8, 1.1, 1.8),
+   118→                        CFrame = CFrame.new(ground + Vector3.new(0.7, 2.0, 0.2)),
+   119→                        Color = Color3.fromRGB(110, 195, 90),
+   120→                        Material = Enum.Material.Grass,
+   121→                        CanCollide = false,
+   122→                }).Parent = model
+   123→                part({
+   124→                        Name = "Daun2",
+   125→                        Shape = Enum.PartType.Ball,
+   126→                        Size = Vector3.new(1.6, 1.0, 1.6),
+   127→                        CFrame = CFrame.new(ground + Vector3.new(-0.7, 1.7, -0.2)),
+   128→                        Color = Color3.fromRGB(110, 195, 90),
+   129→                        Material = Enum.Material.Grass,
+   130→                        CanCollide = false,
+   131→                }).Parent = model
+   132→        else
+   133→                local scale = 1
+   134→                if tile.seed == "labu" or tile.seed == "bintang" then
+   135→                        scale = 1.5
+   136→                end
+   137→                part({
+   138→                        Name = "Batang",
+   139→                        Size = Vector3.new(0.7, 3.2, 0.7),
+   140→                        CFrame = CFrame.new(ground + Vector3.new(0, 1.6, 0)),
+   141→                        Color = Color3.fromRGB(90, 160, 75),
+   142→                        Material = Enum.Material.Grass,
+   143→                        CanCollide = false,
+   144→                }).Parent = model
+   145→                part({
+   146→                        Name = "Buah",
+   147→                        Shape = Enum.PartType.Ball,
+   148→                        Size = Vector3.new(2.4, 2.4, 2.4) * scale,
+   149→                        CFrame = CFrame.new(ground + Vector3.new(0, 2.6 + scale * 0.4, 0)),
+   150→                        Color = fruitColor,
+   151→                        Material = Enum.Material.SmoothPlastic,
+   152→                        CanCollide = false,
+   153→                }).Parent = model
+   154→                local glow = Instance.new("PointLight")
+   155→                glow.Color = fruitColor
+   156→                glow.Range = 8
+   157→                glow.Brightness = 1.2
+   158→                glow.Parent = model.Buah
+   159→        end
+   160→
+   161→        model.Parent = tile.part
+   162→        tile.plant = model
+   163→end
+   164→
+   165→--------------------------------------------------------------------
+   166→-- PROMPT & STATE PETAK
+   167→--------------------------------------------------------------------
+   168→
+   169→local function updateTilePrompt(tile)
+   170→        local prompt = tile.prompt
+   171→        if not prompt then
+   172→                return
+   173→        end
+   174→        local plot = plots[tile.plotIndex]
+   175→        local owner = plot and plot.owner
+   176→
+   177→        if not owner then
+   178→                prompt.Enabled = false
+   179→                return
+   180→        end
+   181→
+   182→        if tile.state == "empty" then
+   183→                prompt.ActionText = "Tanam Bibit"
+   184→                prompt.ObjectText = "Petak Ladang"
+   185→                prompt.HoldDuration = 0
+   186→                prompt.Enabled = true
+   187→        elseif tile.state == "growing" then
+   188→                local data = DataService.get(owner)
+   189→                local canWater = data.Tools.can and not tile.watered
+   190→                if canWater then
+   191→                        prompt.ActionText = "Siram"
+   192→                        prompt.ObjectText = tile.seed .. " tumbuh"
+   193→                        prompt.HoldDuration = 0.4
+   194→                        prompt.Enabled = true
+   195→                else
+   196→                        prompt.Enabled = false
+   197→                end
+   198→        elseif tile.state == "ready" then
+   199→                prompt.ActionText = "Panen"
+   200→                prompt.ObjectText = cropById[tile.seed] and cropById[tile.seed].name or "Hasil"
+   201→                prompt.HoldDuration = 0
+   202→                prompt.Enabled = true
+   203→        end
+   204→end
+   205→
+   206→local function onTileTriggered(player: Player, tile)
+   207→        local plot = plots[tile.plotIndex]
+   208→        if not plot or plot.owner ~= player or not DataService.has(player) then
+   209→                return
+   210→        end
+   211→
+   212→        if tile.state == "empty" then
+   213→                Remotes.get("OpenPlant"):FireClient(player, tile.plotIndex, tile.tileIndex)
+   214→        elseif tile.state == "growing" then
+   215→                local data = DataService.get(player)
+   216→                if not data.Tools.can then
+   217→                        Remotes.get("Notify"):FireClient(player, "Butuh Alat", "Kamu butuh Kaleng Siram - beli di Toko Alat.")
+   218→                        return
+   219→                end
+   220→                if tile.watered then
+   221→                        return
+   222→                end
+   223→                tile.watered = true
+   224→                tile.plantedAt -= tile.growTime * Config.Economy.WaterBoost
+   225→                Remotes.get("Notify"):FireClient(player, "Disiram!", "Tanamanmu tumbuh 25% lebih cepat.")
+   226→                DataService.addXP(player, 2)
+   227→                DataService.push(player)
+   228→        elseif tile.state == "ready" then
+   229→                local crop = cropById[tile.seed]
+   230→                if not crop then
+   231→                        return
+   232→                end
+   233→                -- v20: percikan panen (sekali pakai, ringan untuk mobile)
+   234→                Util.burst(tile.part, Color3.fromRGB(crop.color[1], crop.color[2], crop.color[3]), 10, 6)
+   235→                DataService.giveItem(player, "crop", crop.id, 1)
+   236→                DataService.addXP(player, 4)
+   237→                QuestService.progress(player, "harvest", 1)
+   238→                tile.state = "empty"
+   239→                tile.seed = nil
+   240→                tile.plantedAt = 0
+   241→                tile.growTime = 0
+   242→                tile.watered = false
+   243→                tile.bucket = -1
+   244→                destroyPlant(tile)
+   245→                updateTilePrompt(tile)
+   246→                DataService.push(player)
+   247→        end
+   248→end
+   249→
+   250→--------------------------------------------------------------------
+   251→-- KLAIM LADANG
+   252→--------------------------------------------------------------------
+   253→
+   254→local function priceOfPlot(index: number): number
+   255→        return Balance.LandPrices[index] or 0
+   256→end
+   257→
+   258→local function updateSign(plot)
+   259→        local signText = plot.signText
+   260→        if not signText then
+   261→                return
+   262→        end
+   263→        if plot.owner then
+   264→                signText.Text = "LADANG " .. plot.index .. " - MILIK " .. string.upper(plot.owner.DisplayName)
+   265→                plot.claimPrompt.Enabled = false
+   266→        else
+   267→                local price = priceOfPlot(plot.index)
+   268→                signText.Text = price <= 0
+   269→                        and "LADANG " .. plot.index .. " - AMBIL ALIH (GRATIS)"
+   270→                        or "LADANG " .. plot.index .. " - BELI " .. price .. " MICDA"
+   271→                plot.claimPrompt.Enabled = true
+   272→        end
+   273→end
+   274→
+   275→local function onClaimTriggered(player: Player, plot)
+   276→        if plot.owner then
+   277→                if plot.owner == player then
+   278→                        Remotes.get("Notify"):FireClient(player, "Ladangmu", "Ini sudah ladang milikmu. Tanami bibit di petak!")
+   279→                end
+   280→                return
+   281→        end
+   282→        -- v4 EKONOMI SYARIAH: ladang 1 GRATIS; ladang lain DIBELI dengan Micda
+   283→        -- (bayar penuh di muka - tanpa cicilan, tanpa bunga, tanpa riba)
+   284→        local price = priceOfPlot(plot.index)
+   285→        if price > 0 then
+   286→                local data = DataService.get(player)
+   287→                if data.Coins < price then
+   288→                        Remotes.get("Notify"):FireClient(player, "Micda Kurang",
+   289→                                "Ladang " .. plot.index .. " dijual " .. price .. " Micda (bayar penuh, tanpa bunga). Micdamu: " .. data.Coins .. ".")
+   290→                        return
+   291→                end
+   292→                DataService.addCoins(player, -price, false)
+   293→        end
+   294→        plot.owner = player
+   295→        updateSign(plot)
+   296→        for _, tile in plot.tiles do
+   297→                updateTilePrompt(tile)
+   298→        end
+   299→        local msg = price > 0
+   300→                and "Ladang " .. plot.index .. " kini milikmu (dibeli " .. price .. " Micda, lunas)! Beli bibit di Toko Bibit, lalu dekati petak tanah untuk menanam."
+   301→                or "Ladang " .. plot.index .. " kini milikmu (GRATIS)! Beli bibit di Toko Bibit (Pasar Timur), lalu dekati petak tanah untuk menanam."
+   302→        Remotes.get("Notify"):FireClient(player, "Ladang Baru!", msg)
+   303→        DataService.push(player)
+   304→end
+   305→
+   306→-- v21: klaim langsung oleh sistem (portal Pulau Rumah) tanpa biaya -
+   307→-- biaya pulau ditangani RegionService sekali di muka (persisten).
+   308→function FarmService.claimPlotFor(player: Player, index: number): boolean
+   309→        local plot = plots[index]
+   310→        if not plot or plot.owner then
+   311→                return false
+   312→        end
+   313→        plot.owner = player
+   314→        updateSign(plot)
+   315→        for _, tile in plot.tiles do
+   316→                updateTilePrompt(tile)
+   317→        end
+   318→        return true
+   319→end
+   320→
+   321→--------------------------------------------------------------------
+   322→-- BANGUN LADANG (dipanggil MapService)
+   323→--------------------------------------------------------------------
+   324→
+   325→function FarmService.buildPlot(index: number, center: Vector3)
+   326→        local plot = {
+   327→                index = index,
+   328→                center = center,
+   329→                owner = nil,
+   330→                tiles = {},
+   331→        }
+   332→
+   333→        part({
+   334→                Name = "LadangDasar_" .. index,
+   335→                Size = Vector3.new(26, 1, 26),
+   336→                CFrame = CFrame.new(center),
+   337→                Color = Color3.fromRGB(124, 94, 62),
+   338→                Material = Enum.Material.Ground,
+   339→        })
+   340→
+   341→        -- pagar: 4 tiang + 4 palang
+   342→        local offsets = { Vector3.new(FENCE_HALF, 0, FENCE_HALF), Vector3.new(-FENCE_HALF, 0, FENCE_HALF),
+   343→                Vector3.new(FENCE_HALF, 0, -FENCE_HALF), Vector3.new(-FENCE_HALF, 0, -FENCE_HALF) }
+   344→        for i, off in offsets do
+   345→                part({
+   346→                        Name = "PagarTiang_" .. index .. "_" .. i,
+   347→                        Size = Vector3.new(1.1, 3.4, 1.1),
+   348→                        CFrame = CFrame.new(center + off + Vector3.new(0, 1.7, 0)),
+   349→                        Color = Color3.fromRGB(140, 100, 62),
+   350→                        Material = Enum.Material.WoodPlanks,
+   351→                })
+   352→        end
+   353→        -- palang utara-selatan & timur-barat sederhana
+   354→        for _, cfg in {
+   355→                { off = Vector3.new(FENCE_HALF, 0, 0), size = Vector3.new(0.7, 0.7, FENCE_HALF * 2) },
+   356→                { off = Vector3.new(-FENCE_HALF, 0, 0), size = Vector3.new(0.7, 0.7, FENCE_HALF * 2) },
+   357→                { off = Vector3.new(0, 0, FENCE_HALF), size = Vector3.new(FENCE_HALF * 2, 0.7, 0.7) },
+   358→                { off = Vector3.new(0, 0, -FENCE_HALF), size = Vector3.new(FENCE_HALF * 2, 0.7, 0.7) },
+   359→        } do
+   360→                part({
+   361→                        Name = "PagarPalang_" .. index,
+   362→                        Size = cfg.size,
+   363→                        CFrame = CFrame.new(center + cfg.off + Vector3.new(0, 1.9, 0)),
+   364→                        Color = Color3.fromRGB(140, 100, 62),
+   365→                        Material = Enum.Material.WoodPlanks,
+   366→                })
+   367→        end
+   368→
+   369→        -- papan klaim
+   370→        local board = part({
+   371→                Name = "LadangPapan_" .. index,
+   372→                Size = Vector3.new(11, 2.6, 0.5),
+   373→                CFrame = CFrame.new(center + Vector3.new(0, 3.4, FENCE_HALF + 1)) * CFrame.Angles(0, math.rad(180), 0),
+   374→                Color = Color3.fromRGB(92, 62, 38),
+   375→                Material = Enum.Material.WoodPlanks,
+   376→        })
+   377→        part({
+   378→                Name = "LadangPapanTiang_" .. index,
+   379→                Size = Vector3.new(0.6, 3.4, 0.6),
+   380→                CFrame = CFrame.new(center + Vector3.new(0, 1.7, FENCE_HALF + 1)),
+   381→                Color = Color3.fromRGB(92, 62, 38),
+   382→                Material = Enum.Material.WoodPlanks,
+   383→        })
+   384→
+   385→        local gui = Instance.new("SurfaceGui")
+   386→        gui.Face = Enum.NormalId.Front
+   387→        gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+   388→        gui.PixelsPerStud = 50
+   389→        gui.Parent = board
+   390→        local signText = Util.create("TextLabel", {
+   391→                Size = UDim2.fromScale(1, 1),
+   392→                BackgroundTransparency = 1,
+   393→                Font = Enum.Font.GothamBlack,
+   394→                TextScaled = true,
+   395→                TextColor3 = Color3.fromRGB(255, 209, 102),
+   396→                Text = "LADANG " .. index,
+   397→        }, gui)
+   398→
+   399→        local claimPrompt = Instance.new("ProximityPrompt")
+   400→        claimPrompt.ActionText = priceOfPlot(index) > 0 and "Beli Ladang (Micda)" or "Ambil Alih Ladang"
+   401→        claimPrompt.ObjectText = priceOfPlot(index) > 0
+   402→                and ("Ladang " .. index .. " - " .. priceOfPlot(index) .. " Micda (lunas di muka)")
+   403→                or ("Ladang " .. index .. " (gratis)")
+   404→        claimPrompt.MaxActivationDistance = 12
+   405→        claimPrompt.HoldDuration = 0.3
+   406→        claimPrompt.Parent = board
+   407→        claimPrompt.Triggered:Connect(function(player)
+   408→                onClaimTriggered(player, plot)
+   409→        end)
+   410→
+   411→        -- 4x4 petak tanah
+   412→        local tiles = {}
+   413→        for row = 1, GRID do
+   414→                for col = 1, GRID do
+   415→                        local tileIndex = (row - 1) * GRID + col
+   416→                        local ox = -(GRID - 1) * TILE_SIZE / 2 + (col - 1) * TILE_SIZE
+   417→                        local oz = -(GRID - 1) * TILE_SIZE / 2 + (row - 1) * TILE_SIZE
+   418→                        local tilePart = part({
+   419→                                Name = "Petak_" .. index .. "_" .. tileIndex,
+   420→                                Size = Vector3.new(4.4, 0.5, 4.4),
+   421→                                CFrame = CFrame.new(center + Vector3.new(ox, 0.75, oz)),
+   422→                                Color = Color3.fromRGB(96, 66, 42),
+   423→                                Material = Enum.Material.Ground,
+   424→                        })
+   425→
+   426→                        local prompt = Instance.new("ProximityPrompt")
+   427→                        prompt.ActionText = "Tanam Bibit"
+   428→                        prompt.ObjectText = "Petak Ladang"
+   429→                        prompt.MaxActivationDistance = 8
+   430→                        prompt.HoldDuration = 0
+   431→                        prompt.Enabled = false
+   432→                        prompt.RequiresLineOfSight = false
+   433→                        prompt.Parent = tilePart
+   434→
+   435→                        local tile = {
+   436→                                part = tilePart,
+   437→                                prompt = prompt,
+   438→                                plotIndex = index,
+   439→                                tileIndex = tileIndex,
+   440→                                state = "empty",
+   441→                                seed = nil,
+   442→                                plantedAt = 0,
+   443→                                growTime = 0,
+   444→                                watered = false,
+   445→                                bucket = -1,
+   446→                                plant = nil,
+   447→                        }
+   448→                        prompt.Triggered:Connect(function(player)
+   449→                                onTileTriggered(player, tile)
+   450→                        end)
+   451→                        tiles[tileIndex] = tile
+   452→                end
+   453→        end
+   454→
+   455→        plot.tiles = tiles
+   456→        plot.signText = signText
+   457→        plot.claimPrompt = claimPrompt
+   458→
+   459→        -- v20 PAD KIOS: spot stand jualan milik pemilik di pojok ladang
+   460→        local pad = part({
+   461→                Name = "PadKios_" .. index,
+   462→                Size = Vector3.new(4, 0.5, 4),
+   463→                CFrame = CFrame.new(center + Vector3.new(-11, 0.75, 10.5)),
+   464→                Color = Color3.fromRGB(70, 60, 52),
+   465→                Material = Enum.Material.Concrete,
+   466→        })
+   467→        local kiosPrompt = Instance.new("ProximityPrompt")
+   468→        kiosPrompt.ActionText = "Kios Jual"
+   469→        kiosPrompt.ObjectText = "Pad Kios Pemain"
+   470→        kiosPrompt.MaxActivationDistance = 8
+   471→        kiosPrompt.HoldDuration = 0
+   472→        kiosPrompt.RequiresLineOfSight = false
+   473→        kiosPrompt.Parent = pad
+   474→
+   475→        plot.kiosPad = pad
+   476→        plot.kiosPrompt = kiosPrompt
+   477→
+   478→        plots[index] = plot
+   479→        updateSign(plot)
+   480→        return plot
+   481→end
+   482→
+   483→--------------------------------------------------------------------
+   484→-- AKSES PLOT (dipakai KiosService; tanpa siklus require)
+   485→--------------------------------------------------------------------
+   486→
+   487→function FarmService.getPlot(index: number)
+   488→        return plots[index]
+   489→end
+   490→
+   491→function FarmService.plotCount(): number
+   492→        return PLOT_COUNT
+   493→end
+   494→
+   495→--------------------------------------------------------------------
+   496→-- TANAM (RemoteFunction dari panel pilih bibit)
+   497→--------------------------------------------------------------------
+   498→
+   499→local function onPlantSeed(player: Player, plotIndex: any, tileIndex: any, seedId: any)
+   500→        if not DataService.has(player) then
+   501→                return { ok = false, msg = "Data belum siap." }
+   502→        end
+   503→        if type(plotIndex) ~= "number" or type(tileIndex) ~= "number" or type(seedId) ~= "string" then
+   504→                return { ok = false, msg = "Permintaan tidak valid." }
+   505→        end
+   506→        local plot = plots[math.floor(plotIndex)]
+   507→        local tile = plot and plot.tiles[math.floor(tileIndex)]
+   508→        if not plot or not tile or plot.owner ~= player then
+   509→                return { ok = false, msg = "Petak tidak tersedia." }
+   510→        end
+   511→        if tile.state ~= "empty" then
+   512→                return { ok = false, msg = "Petak sudah ditanami." }
+   513→        end
+   514→        local crop = cropById[seedId]
+   515→        if not crop then
+   516→                return { ok = false, msg = "Bibit tidak dikenal." }
+   517→        end
+   518→        if DataService.levelOf(player) < crop.level then
+   519→                return { ok = false, msg = "Butuh level " .. crop.level .. " untuk bibit ini." }
+   520→        end
+   521→        if not DataService.takeItem(player, "seed", seedId, 1) then
+   522→                return { ok = false, msg = "Bibit habis. Beli lagi di Toko Bibit!" }
+   523→        end
+   524→
+   525→        tile.state = "growing"
+   526→        tile.seed = seedId
+   527→        tile.plantedAt = time()
+   528→        tile.growTime = crop.grow
+   529→        tile.watered = false
+   530→        tile.bucket = 0
+   531→        buildPlantVisual(tile, 0)
+   532→        updateTilePrompt(tile)
+   533→        DataService.addXP(player, 2)
+   534→        DataService.push(player)
+   535→        return { ok = true, msg = crop.name .. " ditanam! Kembali setelah ±" .. crop.grow .. " detik." }
+   536→end
+   537→
+   538→--------------------------------------------------------------------
+   539→-- LOOP PERTUMBUHAN
+   540→--------------------------------------------------------------------
+   541→
+   542→function FarmService.startLoop()
+   543→        task.spawn(function()
+   544→                while true do
+   545→                        task.wait(2)
+   546→                        for _, plot in plots do
+   547→                                if not plot.owner then
+   548→                                        continue
+   549→                                end
+   550→                                for _, tile in plot.tiles do
+   551→                                        if tile.state ~= "growing" then
+   552→                                                continue
+   553→                                        end
+   554→                                        local progress = (time() - tile.plantedAt) / math.max(1, tile.growTime)
+   555→                                        if progress >= 1 then
+   556→                                                tile.state = "ready"
+   557→                                                buildPlantVisual(tile, 3)
+   558→                                                updateTilePrompt(tile)
+   559→                                        else
+   560→                                                local bucket = math.floor(progress * 3) -- 0..2
+   561→                                                if bucket ~= tile.bucket then
+   562→                                                        tile.bucket = bucket
+   563→                                                        buildPlantVisual(tile, bucket)
+   564→                                                end
+   565→                                                local prompt = tile.prompt
+   566→                                                if prompt and not prompt.Enabled then
+   567→                                                        updateTilePrompt(tile) -- misal pemain baru saja beli kaleng siram
+   568→                                                end
+   569→                                        end
+   570→                                end
+   571→                        end
+   572→                end
+   573→        end)
+   574→end
+   575→
+   576→--------------------------------------------------------------------
+   577→-- STATE & PEMBERSIHAN
+   578→--------------------------------------------------------------------
+   579→
+   580→function FarmService.getPlotState(player: Player)
+   581→        for _, plot in plots do
+   582→                if plot.owner == player then
+   583→                        local tilesOut = {}
+   584→                        for i, tile in plot.tiles do
+   585→                                local entry: any = { state = tile.state }
+   586→                                if tile.state ~= "empty" then
+   587→                                        entry.seed = tile.seed
+   588→                                        entry.watered = tile.watered
+   589→                                        if tile.state == "growing" then
+   590→                                                entry.remain = math.max(0, math.ceil(tile.growTime - (time() - tile.plantedAt)))
+   591→                                        end
+   592→                                end
+   593→                                tilesOut[i] = entry
+   594→                        end
+   595→                        return { claimed = true, index = plot.index, tiles = tilesOut }
+   596→                end
+   597→        end
+   598→        return { claimed = false, tiles = {} }
+   599→end
+   600→
+   601→--- Pemain keluar: hasil siap panen otomatis masuk tas,
+   602→--- tanaman yang masih tumbuh hangus (ladang dibebaskan).
+   603→function FarmService.releasePlot(player: Player)
+   604→        for _, plot in plots do
+   605→                if plot.owner == player then
+   606→                        local harvested = 0
+   607→                        for _, tile in plot.tiles do
+   608→                                if tile.state == "ready" and tile.seed then
+   609→                                        DataService.giveItem(player, "crop", tile.seed, 1)
+   610→                                        harvested += 1
+   611→                                end
+   612→                                tile.state = "empty"
+   613→                                tile.seed = nil
+   614→                                tile.plantedAt = 0
+   615→                                tile.growTime = 0
+   616→                                tile.watered = false
+   617→                                tile.bucket = -1
+   618→                                destroyPlant(tile)
+   619→                                updateTilePrompt(tile)
+   620→                        end
+   621→                        if harvested > 0 then
+   622→                                Remotes.get("Notify"):FireClient(player, "Panen Otomatis",
+   623→                                        harvested .. " hasil siap panen otomatis masuk tas sebelum kamu pergi.")
+   624→                        end
+   625→                        plot.owner = nil
+   626→                        updateSign(plot)
+   627→                end
+   628→        end
+   629→end
+   630→
+   631→--------------------------------------------------------------------
+   632→-- INIT
+   633→--------------------------------------------------------------------
+   634→
+   635→function FarmService.init()
+   636→        Remotes.get("PlantSeed").OnServerInvoke = onPlantSeed
+   637→        -- daftarkan snapshot ladang ke DataService (tanpa siklus require)
+   638→        DataService.registerProvider("plot", function(p)
+   639→                return FarmService.getPlotState(p)
+   640→        end)
+   641→end
+   642→
+   643→return FarmService
+   644→
