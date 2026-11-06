@@ -64,7 +64,7 @@ end
 
 local function watchVoid(player: Player, homePos: Vector3)
         task.spawn(function()
-                for _ = 1, 28 do
+                for _ = 1, 60 do
                         task.wait(0.25)
                         local char = player.Character
                         local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
@@ -74,7 +74,6 @@ local function watchVoid(player: Player, homePos: Vector3)
                         if root.Position.Y < -20 then
                                 root.Anchored = false
                                 root.CFrame = CFrame.new(homePos + Vector3.new(0, 4, 0))
-                                return
                         end
                 end
         end)
@@ -87,15 +86,20 @@ local function placeAt(player: Player, pos: Vector3, zone: string, dunia: string
                 return false
         end
         zoneOf[player.UserId] = { zone = zone, dunia = dunia }
+        root.Anchored = true
+        root.CFrame = CFrame.new(pos + Vector3.new(0, 3, 0))
         task.spawn(function()
                 pcall(function()
                         Workspace:RequestStreamAroundAsync(pos, 2)
                 end)
+                task.delay(0.25, function()
+                        if root.Parent then
+                                root.Anchored = false
+                        end
+                end)
         end)
-        root.Anchored = true
-        root.CFrame = CFrame.new(pos + Vector3.new(0, 3, 0))
-        task.delay(1.1, function()
-                if root.Parent then
+        task.delay(5, function()
+                if root.Parent and root.Anchored then
                         root.Anchored = false
                 end
         end)
@@ -157,6 +161,7 @@ local function buildSection(idx: number, ownerId: number, nama: string, ghost: b
         local model = WorldBuilder.buildLahan(Hooks, idx, nama)
         Plot.buildGrid(idx, model)
         Plot.restore(idx, plots)
+        Plot.startLoop(idx)
         Smash.restoreLahan(idx, meja)
         local s: Seksi = {
                 idx = idx,

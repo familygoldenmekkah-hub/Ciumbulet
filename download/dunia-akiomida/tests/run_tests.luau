@@ -2,7 +2,7 @@ local CropData = require("./../src/Shared/CropData")
 local Recipes = require("./../src/Shared/Recipes")
 local TasLogic = require("./../src/Shared/TasLogic")
 local Layout = require("./../src/Shared/Layout")
-local GabungLogic = require("./../src/Shared/GabungLogic")
+local RecipesSame = require("./../src/Shared/Recipes")
 
 local passed, failed = 0, 0
 local function check(name: string, ok: boolean, detail: string?)
@@ -237,25 +237,35 @@ do
         check("Save tiap 60 dtk", DuniaLogic.SaveEvery == 60, tostring(DuniaLogic.SaveEvery))
 end
 
-print("--- Gabung benih di plot ---")
+print("--- Gabung benih di plot yang sama ---")
 do
-        check("Tetangga pojok kiri atas = kanan & bawah", table.concat(GabungLogic.neighbors(0), ",") == "1,25", table.concat(GabungLogic.neighbors(0), ","))
-        check("Tetangga pojok kanan atas = kiri & bawah", table.concat(GabungLogic.neighbors(24), ",") == "23,49", table.concat(GabungLogic.neighbors(24), ","))
-        check("Tetangga pojok kanan bawah = kiri & atas", table.concat(GabungLogic.neighbors(499), ",") == "498,474", table.concat(GabungLogic.neighbors(499), ","))
-        check("Tetangga tepi kiri = 3 arah", table.concat(GabungLogic.neighbors(25), ",") == "26,0,50", table.concat(GabungLogic.neighbors(25), ","))
-        check("Tetangga tengah = 4 arah", #GabungLogic.neighbors(27) == 4, tostring(#GabungLogic.neighbors(27)))
-        check("Idx rusak tanpa tetangga", #GabungLogic.neighbors(-1) == 0 and #GabungLogic.neighbors(500) == 0 and #GabungLogic.neighbors(1.5) == 0, "-")
-        check("Resep kanan+kiri tertangkap", Recipes.matchList("grapefruit", { "jeruk_mandarin" }) == "tangelo", "-")
-        check("Resep urutan terbalik tertangkap", (function()
-                local a, b = Recipes.matchList("jeruk_mandarin", { "grapefruit" })
-                return a == "tangelo" and b == "grapefruit"
+        local pasangan = {
+                { "jeruk_mandarin", "grapefruit", "tangelo" },
+                { "plum", "aprikot", "plumcot" },
+                { "nektarin", "plum", "nectaplum" },
+                { "arachis_duranensis", "arachis_ipaensis", "kacang_tanah" },
+                { "ceri", "plum", "pluerry" },
+                { "brassica_rapa", "brassica_oleracea", "canola" },
+                { "gandum", "rye", "triticale" },
+                { "labu_maxima", "labu_moschata", "tetsukabuto" },
+        }
+        for _, p in ipairs(pasangan) do
+                check("Tanam ulang " .. p[3] .. " urutan bebas", RecipesSame.sameSpot(p[1], p[2]) == p[3] and RecipesSame.sameSpot(p[2], p[1]) == p[3], tostring(RecipesSame.sameSpot(p[1], p[2])))
+                check("Hasil " .. p[3] .. " epic", CropData.byId[p[3]] and CropData.byId[p[3]].rarity == "epic", "-")
+        end
+        check("Benih sama di plot yang sama ditolak", RecipesSame.sameSpot("plum", "plum") == nil, "-")
+        check("Bukan resep ditolak", RecipesSame.sameSpot("wortel", "pisang") == nil, "-")
+        check("Input rusak ditolak", RecipesSame.sameSpot(nil, "plum") == nil and RecipesSame.sameSpot("plum", 5) == nil and RecipesSame.sameSpot(9, "plum") == nil and RecipesSame.sameSpot("plum", nil) == nil, "-")
+        check("Epic tidak jadi bahan resep lain", RecipesSame.sameSpot("tangelo", "plum") == nil, "-")
+        check("Resep kanan+kiri tetap tertangkap", Recipes.matchList("grapefruit", { "jeruk_mandarin" }) == "tangelo", "-")
+        check("Semua bahan resep terdaftar", (function()
+                for _, r in ipairs(Recipes.List) do
+                        if not CropData.byId[r.a] or not CropData.byId[r.b] or not CropData.byId[r.out] then
+                                return false
+                        end
+                end
+                return true
         end)(), "-")
-        check("Bukan resep ditolak", Recipes.matchList("wortel", { "pisang" }) == nil, "-")
-        check("Benih sama ditolak", Recipes.matchList("plum", { "plum" }) == nil, "-")
-        check("Prioritas tetangga pertama", Recipes.matchList("plum", { "aprikot", "nektarin" }) == "plumcot", "-")
-        check("Prioritas tetangga kedua", Recipes.matchList("plum", { "nektarin", "aprikot" }) == "nectaplum", "-")
-        check("Tetangga gabung = 25 kolom x 20 baris", GabungLogic.Cols == Layout.PlotCols and GabungLogic.Rows == Layout.PlotRows, "-")
-        check("Gabung butuh tanaman tetangga", #GabungLogic.neighbors(0) == 2 and Recipes.matchList("grapefruit", {}) == nil, "-")
 end
 
 print(("="):rep(28))

@@ -4,6 +4,7 @@ local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
 local CropData = require(ReplicatedStorage.Shared.CropData)
+local Recipes = require(ReplicatedStorage.Shared.Recipes)
 local Net = require(ReplicatedStorage.Remotes)
 
 local player = Players.LocalPlayer
@@ -138,7 +139,7 @@ for i = 1, 50 do
         slotFrames[i] = { frame = cell, nama = nama, count = count }
 end
 local tasUsedLabel = mk("TextLabel", { AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 8, 1, -6), Size = UDim2.new(0.5, 0, 0, 28), BackgroundTransparency = 1, Text = "0/50 slot", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.fromRGB(200, 200, 205), TextXAlignment = Enum.TextXAlignment.Left }, tasPanel)
-mk("TextLabel", { AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -8, 1, -6), Size = UDim2.new(0.5, -12, 0, 28), BackgroundTransparency = 1, Text = "Mau gabung benih? Tanam 2 benih resep di plot bertetangga di lahanku.", TextWrapped = true, TextScaled = true, Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(150, 200, 130), TextXAlignment = Enum.TextXAlignment.Right }, tasPanel)
+mk("TextLabel", { AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -8, 1, -6), Size = UDim2.new(0.5, -12, 0, 28), BackgroundTransparency = 1, Text = "Mau gabung benih? Tanam satu benih di plot lahanku, lalu tanam benih pasangannya lagi di plot yang sama.", TextWrapped = true, TextScaled = true, Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(150, 200, 130), TextXAlignment = Enum.TextXAlignment.Right }, tasPanel)
 
 local function refreshTas()
         local used = #state.tas
@@ -222,6 +223,29 @@ mk("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.Layout
 local plotCtx = { lahan = nil, idx = nil }
 local countdownToken = 0
 
+local function tampilGabung(cropId: string)
+        local pasangan = {}
+        for _, s in ipairs(state.tas) do
+                if s.kind == "benih" and s.id ~= cropId and Recipes.sameSpot(cropId, s.id) then
+                        table.insert(pasangan, s)
+                end
+        end
+        if #pasangan == 0 then
+                return
+        end
+        mk("TextLabel", { Size = UDim2.new(1, -8, 0, 30), BackgroundTransparency = 1, Text = "Gabung benih di plot ini:", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.fromRGB(150, 200, 130), TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 50 }, plotActions)
+        for order, s in ipairs(pasangan) do
+                local sinfo = CropData.byId[s.id]
+                local hasil = CropData.byId[Recipes.sameSpot(cropId, s.id)]
+                local btn = mk("TextButton", { Size = UDim2.new(1, -8, 0, 40), BackgroundColor3 = Color3.fromRGB(122, 85, 52), Text = "Gabung " .. (sinfo and sinfo.nama or s.id) .. " -> " .. (hasil and hasil.nama or "?"), TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1), LayoutOrder = 50 + order }, plotActions)
+                round(btn, 6)
+                btn.Activated:Connect(function()
+                        local ok, msg = Net.get("PlotAct"):InvokeServer(plotCtx.idx, "plant", s.id)
+                        toast(ok and "Gabung Benih" or "Gagal Gabung", msg)
+                end)
+        end
+end
+
 local function refreshPlotPanel()
         countdownToken += 1
         local token = countdownToken
@@ -276,6 +300,7 @@ local function refreshPlotPanel()
                                 task.wait(0.2)
                         end
                 end)
+                tampilGabung(rec.crop)
         else
                 plotInfo.Text = nama .. " siap panen!"
                 local btn = mk("TextButton", { Size = UDim2.new(1, -8, 0, 46), BackgroundColor3 = Color3.fromRGB(196, 148, 48), Text = "Panen Sekarang", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1), LayoutOrder = 1 }, plotActions)
@@ -287,6 +312,7 @@ local function refreshPlotPanel()
                                 closePanel()
                         end
                 end)
+                tampilGabung(rec.crop)
         end
 end
 
@@ -514,3 +540,5 @@ task.spawn(function()
 end)
 
 print("[AKIOMIDA] UI siap.")
+
+return true

@@ -167,6 +167,53 @@ local function textBoard(parent: Instance, size: Vector3, cf: CFrame, teks: stri
         return papan
 end
 
+local function hingedDoor(model: Instance, size: Vector3, closedCF: CFrame, hingeLocal: Vector3, openAngle: number): Part
+        local leaf = BuildingKit.part(model, size, closedCF, BuildingKit.DARKWOOD, Enum.Material.Wood)
+        leaf:SetAttribute("PintuDaun", true)
+        local prompt = Instance.new("ProximityPrompt")
+        prompt.ActionText = "Buka Pintu"
+        prompt.ObjectText = "Pintu"
+        prompt.HoldDuration = 0.2
+        prompt.MaxActivationDistance = 9
+        prompt.RequiresLineOfSight = false
+        prompt.Parent = leaf
+        local terbuka = false
+        local bergerak = false
+        local storedClosed: CFrame? = nil
+        local function swing(target: CFrame, nextAction: string)
+                bergerak = true
+                prompt.Enabled = false
+                local from = leaf.CFrame
+                task.spawn(function()
+                        for i = 1, 6 do
+                                task.wait(0.04)
+                                leaf.CFrame = from:Lerp(target, i / 6)
+                        end
+                        leaf.CFrame = target
+                        prompt.ActionText = nextAction
+                        prompt.Enabled = true
+                        bergerak = false
+                end)
+        end
+        prompt.Triggered:Connect(function()
+                if bergerak then
+                        return
+                end
+                if not terbuka then
+                        local base = leaf.CFrame
+                        storedClosed = base
+                        local hinge = base * CFrame.new(hingeLocal.X, hingeLocal.Y, hingeLocal.Z)
+                        local openCF = hinge * CFrame.Angles(0, openAngle, 0) * hinge:Inverse() * base
+                        terbuka = true
+                        swing(openCF, "Tutup Pintu")
+                else
+                        terbuka = false
+                        swing(storedClosed or leaf.CFrame, "Buka Pintu")
+                end
+        end)
+        return leaf
+end
+
 function BuildingKit.buildToko(parent: Instance): Model
         local model = Instance.new("Model")
         model.Name = "TokoBenih"
@@ -260,6 +307,58 @@ function BuildingKit.buildToko(parent: Instance): Model
         priceTag(model, CFrame.new(10, 10.6, 11.9), "Benih Pilihan")
         textBoard(model, Vector3.new(10, 3, 0.4), CFrame.new(-8, 12.5, -14.1), "PACK BENIH 3 ISI", Enum.NormalId.Back)
         textBoard(model, Vector3.new(9, 1.6, 0.3), CFrame.new(0, 17.2, -8), "BENIH SEGAR SETIAP HARI", Enum.NormalId.Front)
+
+        local PACK_COLORS = { BAG_A, BAG_B, BAG_C }
+        for sx = -1, 1, 2 do
+                local rx = sx * 10
+                for tier = 0, 1 do
+                        local py = 5.55 + tier * 2.6
+                        for i = 0, 7 do
+                                BuildingKit.part(model, Vector3.new(0.62, 0.85, 0.14), CFrame.new(rx - 3.2 + i * 0.92, py + 0.45, 11.62), PACK_COLORS[(i + tier) % 3 + 1], Enum.Material.SmoothPlastic)
+                        end
+                end
+                BuildingKit.part(model, Vector3.new(2, 2.4, 1.2), CFrame.new(rx - 2, 10.7, 13), PACK_COLORS[sx == 1 and 1 or 2], Enum.Material.Fabric)
+                BuildingKit.part(model, Vector3.new(2, 2.4, 1.2), CFrame.new(rx + 2, 10.7, 13), PACK_COLORS[sx == 1 and 3 or 1], Enum.Material.Fabric)
+                for t2 = 0, 1 do
+                        local sy = 5.55 + t2 * 2.6
+                        BuildingKit.part(model, Vector3.new(1.2, 0.3, 6), CFrame.new(sx * 16.3, sy, 4), FLOORWOOD, Enum.Material.WoodPlanks).CanCollide = false
+                        for i = 0, 5 do
+                                BuildingKit.part(model, Vector3.new(0.14, 0.85, 0.62), CFrame.new(sx * 15.55, sy + 0.58, 1.5 + i * 1.05), PACK_COLORS[(i + t2) % 3 + 1], Enum.Material.SmoothPlastic)
+                        end
+                end
+        end
+        local function crate(cx: number, cy: number, cz: number)
+                BuildingKit.part(model, Vector3.new(2.4, 2.4, 2.4), CFrame.new(cx, cy, cz), Color3.fromRGB(150, 116, 74), Enum.Material.WoodPlanks)
+                BuildingKit.part(model, Vector3.new(1.8, 0.2, 1.8), CFrame.new(cx, cy + 1.3, cz), FLOORWOOD, Enum.Material.WoodPlanks).CanCollide = false
+        end
+        crate(-14, 1.3, -5)
+        crate(-14, 3.7, -5)
+        crate(-11.5, 1.3, -3.5)
+        seedBag(model, CFrame.new(-14, 5.4, -5), BAG_B)
+        seedBag(model, CFrame.new(-13.4, 5.4, -5.2), BAG_A)
+        BuildingKit.part(model, Vector3.new(3.4, 1.1, 2), CFrame.new(-6, 6.55, -10), GLASS, Enum.Material.Glass, 0.4).CanCollide = false
+        BuildingKit.part(model, Vector3.new(0.8, 0.6, 1.4), CFrame.new(-4.2, 6.3, -10), Color3.fromRGB(56, 44, 36), Enum.Material.Wood)
+        seedBag(model, CFrame.new(-6.8, 6.75, -10), BAG_C)
+        seedBag(model, CFrame.new(-5.6, 6.75, -9.6), BAG_A)
+        textBoard(model, Vector3.new(3, 1.4, 0.3), CFrame.new(-8, 7.6, -10), "BUKA", Enum.NormalId.Back)
+        textBoard(model, Vector3.new(0.3, 5, 8), CFrame.new(-19.2, 13, -2), "PANDUAN TANAM 3 DETIK", Enum.NormalId.Right)
+        textBoard(model, Vector3.new(14, 1.6, 0.2), CFrame.new(0, 16, 6), "BENIH UNGGUL SETIAP HARI", Enum.NormalId.Front)
+        BuildingKit.part(model, Vector3.new(0.2, 2.6, 0.2), CFrame.new(-5, 18, 6), DARKWOOD, Enum.Material.Wood).CanCollide = false
+        BuildingKit.part(model, Vector3.new(0.2, 2.6, 0.2), CFrame.new(5, 18, 6), DARKWOOD, Enum.Material.Wood).CanCollide = false
+        local mat = BuildingKit.part(model, Vector3.new(6, 0.1, 3), CFrame.new(0, 2.05, -12.5), BRICKRED, Enum.Material.Fabric)
+        mat.CanCollide = false
+        BuildingKit.part(model, Vector3.new(0.4, 5, 0.4), CFrame.new(6, 2.5, -18), DARKWOOD, Enum.Material.Wood)
+        textBoard(model, Vector3.new(4.2, 3, 0.3), CFrame.new(6, 6.2, -18), "PROMO PACK BENIH", Enum.NormalId.Back)
+        BuildingKit.part(model, Vector3.new(2.2, 2.2, 2.2), CFrame.new(16, 1.3, 10.6), BAG_C, Enum.Material.Fabric)
+        BuildingKit.part(model, Vector3.new(2.2, 2.2, 2.2), CFrame.new(13.6, 1.3, 10.8), BAG_A, Enum.Material.Fabric)
+        BuildingKit.part(model, Vector3.new(2, 1.8, 2), CFrame.new(14.8, 3.2, 10.7), BAG_B, Enum.Material.Fabric)
+        potPlant(model, CFrame.new(-15.5, 2.5, -12.5))
+        potPlant(model, CFrame.new(15.5, 2.5, -12.5))
+
+        BuildingKit.part(model, Vector3.new(6.4, 2, 1), CFrame.new(0, 11, fz), CREAM)
+        hingedDoor(model, Vector3.new(3, 10, 0.5), CFrame.new(-1.5, 5, fz), Vector3.new(-1.55, 0, 0), -math.rad(105))
+        hingedDoor(model, Vector3.new(3, 10, 0.5), CFrame.new(1.5, 5, fz), Vector3.new(1.55, 0, 0), math.rad(105))
+
         BuildingKit.part(model, Vector3.new(0.2, 2.4, 0.2), CFrame.new(-4, 18.6, -8), DARKWOOD, Enum.Material.Wood).CanCollide = false
         BuildingKit.part(model, Vector3.new(0.2, 2.4, 0.2), CFrame.new(4, 18.6, -8), DARKWOOD, Enum.Material.Wood).CanCollide = false
         BuildingKit.lamp(model, -12, 21, 0)
@@ -293,6 +392,9 @@ function BuildingKit.buildSemai(parent: Instance): Model
         BuildingKit.part(model, Vector3.new(12, 4, 4), CFrame.new(0, 4, 2), DARKWOOD, Enum.Material.Wood)
         local pad = BuildingKit.part(model, Vector3.new(8, 0.4, 4), CFrame.new(0, 2.4, -6), BRICKRED, Enum.Material.SmoothPlastic, 0.3)
         pad.CanCollide = false
+        BuildingKit.part(model, Vector3.new(20.4, 2, 1), CFrame.new(0, 11, fz), CREAM)
+        hingedDoor(model, Vector3.new(10, 10, 0.5), CFrame.new(-5, 5, fz), Vector3.new(-5.05, 0, 0), -math.rad(105))
+        hingedDoor(model, Vector3.new(10, 10, 0.5), CFrame.new(5, 5, fz), Vector3.new(5.05, 0, 0), math.rad(105))
         BuildingKit.lamp(model, -6, 21, 0)
         BuildingKit.lamp(model, 6, 21, 0)
         model.Parent = parent

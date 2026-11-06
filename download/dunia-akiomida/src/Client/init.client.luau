@@ -1,1 +1,1 @@
-print("[AKIOMIDA] Klien siap.")
+require(script:WaitForChild("UIController"))

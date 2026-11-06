@@ -1,16 +1,18 @@
 # DUNIA AKIOMIDA (Roblox)
 
-Status: LIVE di Roblox (**versionNumber 29**, 6 Nov 2026) — **TOKO BENIH PUNYA
-RAK ISI + DUNIA SAMBUNG SATU SERVER**. Lima catatan pemilik dieksekusi semua:
-gabung benih pindah ke plot lahan (hapus dari toko/UI), bangunan gabung di
-Pusat Kota dihapus (kota hanya Toko Benih), balik ke dunia lahan kini instan
-dan pasti berhasil, beli benih dari kasir maupun rak, dan rak toko diisi
-pernak-pernik.
-Universe: 10774464946 · Place: 77626159664192 · Label era: 9.2.0 "Dunia Sambung"
+Status: LIVE di Roblox (**versionNumber 30**, 6 Nov 2026) — **PERBAIKAN
+AKAR MASALAH VIA PLAYTEST OTOMATIS**. Sesuai permintaan pemilik ("tes dan
+mainkan agar tahu letak errornya"), seluruh alur pemain kini disimulasikan
+end-to-end (server + UI klien) dalam mesin playtest 51 cek. Playtest
+membuktikan v29 punya cacat fatal yang tidak tertangkap tes lama: UI klien
+tidak pernah dimuat (beli benih & tombol masuk dunia mati di lapangan),
+grid plot dibangun di koordinat kota (bukan di lahan), dan status siap-panen
+tidak pernah tersinkron. Semua diperbaiki di v30 dan diverifikasi hijau.
+Universe: 10774464946 · Place: 77626159664192 · Label era: 9.3.0 "Playtest Fix"
 Build: `tools/rojo build default.project.json -o build/DuniaAkiomida.rbxlx`
-(luau-lsp 0 TypeError, tes offline 98 PASS / 0 FAIL)
+(luau-lsp 0 TypeError, tes offline 106 PASS / 0 FAIL, playtest 51 PASS / 0 FAIL)
 
-Skor banding Toram/Growtopia: **39/100** — lihat `RUBRIC.md`.
+Skor banding Toram/Growtopia: **42/100** — lihat `RUBRIC.md`.
 
 ## Arsitektur v29: satu place, satu server, dunia = seksi koordinat jauh
 
@@ -28,10 +30,13 @@ Skor banding Toram/Growtopia: **39/100** — lihat `RUBRIC.md`.
 - **BALIK PASTI BERHASIL** — seksi pemilik tetap ada selama ia online: pulang
   ke kota lalu kembali = dunia persis seperti ditinggal (tanaman, isi meja).
   Keluar game: dunia disimpan ke DataStore AKM_Dunia dan dimuat lagi nanti.
-- **GABUNG BENIH DI LAHAN** — tanam satu benih, lalu tanam pasangan resepnya
-  di plot bertetangga (kiri/kanan/atas/bawah): plot baru menjadi tanaman hasil
-  gabung (8 resep: Tangelo, Plumcot, Nectaplum, Kacang tanah, Pluerry, Canola,
-  Triticale, Tetsukabuto). Tidak ada tombol/panel/gedung gabung.
+- **GABUNG BENIH DI PLOT YANG SAMA** — sesuai aturan pemilik: tanam satu
+  benih di plot lahan, lalu tanam benih pasangan resepnya LAGI DI PLOT YANG
+  SAMA; plot berubah menjadi tanaman hasil gabung (8 resep: Tangelo, Plumcot,
+  Nectaplum, Kacang tanah, Pluerry, Canola, Triticale, Tetsukabuto). Panel
+  plot yang terisi menampilkan tombol "Gabung <nama> -> <hasil>" hanya untuk
+  benih di tas yang punya resep. Tidak ada tombol/panel/gedung gabung di toko
+  maupun kota.
 - **KUNJUNGI DUNIA ORANG LAIN** — ketik nama di panel Gerbang: pemain di server
   yang sama -> langsung; pemain offline -> seksi hantu baca-saja dari data
   tersimpan. Tamu TIDAK bisa menanam/panen/memukul/menaruh — semua aksi mutasi
@@ -61,7 +66,8 @@ Skor banding Toram/Growtopia: **39/100** — lihat `RUBRIC.md`.
 | v26 | RESET TOTAL diminta pemilik: semua map & sistem dihapus, dunia kosong. |
 | v27 | TAHAP 1 dari nol: lahan + 500 plot + Semai Panen + pusat kota & Toko Benih + gabung benih 8 resep + tas 50x250 + Micda 900.000 persisten. |
 | v28 | TAHAP 2 dunia pribadi ter-instans (ReserveServer). Diganti di v29 karena teleport bisa gagal di lapangan. |
-| v29 | **Dunia sambung satu-server** (seksi koordinat jauh, CFrame instan, balik pasti berhasil) + gabung benih di plot lahan + Pusat Kota hanya Toko Benih + rak toko penuh pernak-pernik + beli dari rak. 98 tes PASS, 0 FAIL (#29). |
+| v29 | Dunia sambung satu-server (seksi koordinat jauh, CFrame instan) + gabung benih di plot + Pusat Kota hanya Toko Benih. CATATAN JUJUR: UI klien ternyata tidak pernah dimuat (bug ditemukan v30 lewat playtest), jadi beli benih & tombol masuk dunia mati di lapangan. |
+| v30 | **Playtest otomatis + perbaikan akar masalah**: (1) UI klien kini benar-benar dimuat (init.client me-require UIController — akar dari "beli gak bisa" & "gak bisa balik ke lahan"); (2) 500 plot per lahan dibangun di koordinat dunia yang benar (X+5000, sebelumnya nyasar ke kota); (3) status siap-panen tersinkron ke semua pemain (tombol Panen muncul); (4) gabung benih = tanam 2 benih resep di PLOT YANG SAMA + tombol Gabung di panel plot; (5) pintu Toko & Semai kini pintu sungguhan berengsel buka-tutup (bukan melompong); (6) interior toko makin penuh: barisan paket benih di rak, peti kayu, etalase kaca kasir, poster, spanduk gantung, papan promo, alas pintu, gunung karung, pot; (7) teleport diperkuat: tunggu streaming selesai sebelum lepas anchor, jangkar gagal-aman 5 dtk, pengawas jurang 15 dtk. Tes 106 PASS, playtest 51 PASS, 0 FAIL (#30). |
 
 ## Sesi update mandiri berikutnya (tanpa menunggu pemilik)
 

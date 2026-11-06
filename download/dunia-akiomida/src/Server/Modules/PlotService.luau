@@ -4,7 +4,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local CropData = require(ReplicatedStorage.Shared.CropData)
 local Layout = require(ReplicatedStorage.Shared.Layout)
-local GabungLogic = require(ReplicatedStorage.Shared.GabungLogic)
 local Recipes = require(ReplicatedStorage.Shared.Recipes)
 
 local PlotService = {}
@@ -95,7 +94,7 @@ function PlotService.buildGrid(index: number, parent: Instance?)
         end
         local folder = Instance.new("Folder")
         folder.Name = "PlotGrid_" .. index
-        local ox, oz = Layout.cellOrigin(index)
+        local o = Land.origin(index)
         local tmpl = Instance.new("Part")
         tmpl.Anchored = true
         tmpl.Size = Vector3.new(Layout.PlotSize, 0.4, Layout.PlotSize)
@@ -105,7 +104,7 @@ function PlotService.buildGrid(index: number, parent: Instance?)
         for idx = 0, Layout.plotCount() - 1 do
                 local p = tmpl:Clone()
                 local x, z = Layout.plotLocal(idx)
-                p.Position = Vector3.new(ox + x, 1.2, oz + z)
+                p.Position = Vector3.new(o.X + x, 1.2, o.Z + z)
                 p:SetAttribute("LahanIdx", index)
                 p:SetAttribute("PlotIdx", idx)
                 p.Parent = folder
@@ -180,16 +179,37 @@ function PlotService.plant(player: Player, idx: number, cropId: string): (boolea
         if not pl then
                 return false, "Lahan belum siap."
         end
-        if pl[idx] then
-                return false, "Plot masih terisi."
-        end
-        if Tas.count(player, "benih", cropId) < 1 then
-                return false, "Benih tidak ada di tas."
-        end
         local char = player.Character
         local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
         if not root or (root.Position - plotPos(index, idx)).Magnitude > 48 then
                 return false, "Terlalu jauh dari plot."
+        end
+        local rec = pl[idx]
+        if rec then
+                local pasangan = Recipes.sameSpot(rec.crop, cropId)
+                if not pasangan then
+                        return false, "Plot masih terisi. Untuk gabung benih, tanam benih pasangan resep di plot yang sama."
+                end
+                if Tas.count(player, "benih", cropId) < 1 then
+                        return false, "Benih tidak ada di tas."
+                end
+                Tas.remove(player, "benih", cropId, 1)
+                local namaLama = CropData.byId[rec.crop].nama
+                if rec.model then
+                        rec.model:Destroy()
+                end
+                rec.crop = pasangan
+                rec.readyAt = now() + CropData.GrowTime
+                rec.ready = false
+                rec.model = makePlantModel(index, idx, pasangan)
+                if World then
+                        World.touch(index)
+                end
+                sync(player, index, idx)
+                return true, "Gabung benih: " .. namaLama .. " + " .. info.nama .. " menjadi " .. CropData.byId[pasangan].nama .. "!"
+        end
+        if Tas.count(player, "benih", cropId) < 1 then
+                return false, "Benih tidak ada di tas."
         end
         Tas.remove(player, "benih", cropId, 1)
         local model = makePlantModel(index, idx, cropId)
@@ -199,32 +219,11 @@ function PlotService.plant(player: Player, idx: number, cropId: string): (boolea
                 model = model,
                 ready = false,
         }
-        local tetangga = {}
-        for _, n in ipairs(GabungLogic.neighbors(idx)) do
-                local r = pl[n]
-                if r then
-                        table.insert(tetangga, r.crop)
-                end
-        end
-        local out, partner = Recipes.matchList(cropId, tetangga)
-        local pesan = "Ditanam."
-        if out and partner and out ~= cropId then
-                pl[idx].crop = out
-                pl[idx].model:Destroy()
-                pl[idx].model = makePlantModel(index, idx, out)
-                pesan = "Gabung benih: "
-                        .. CropData.byId[partner].nama
-                        .. " + "
-                        .. info.nama
-                        .. " menjadi "
-                        .. CropData.byId[out].nama
-                        .. "!"
-        end
         if World then
                 World.touch(index)
         end
         sync(player, index, idx)
-        return true, pesan
+        return true, "Ditanam."
 end
 
 function PlotService.harvest(player: Player, idx: number): (boolean, string)

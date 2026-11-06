@@ -19,35 +19,60 @@ Skor per kriteria 0-10, dikali bobot. Total dihitung dari (skor x bobot) / 10.
 | 8 | Polish & UX (UI, suara, animasi, efek) | 10 | animasi kombat, BGM, partikel | UI rapi & responsif |
 | 9 | Originalitas 100% & aman hak cipta | 5 | - | - |
 
-## Skor v29 (versi LIVE #29, 6 Nov 2026) - TOKO RAKSI PENUH + DUNIA SAMBUNG SATU SERVER
+## Skor v30 (versi LIVE #30, 6 Nov 2026) - PLAYTEST OTOMATIS + PERBAIKAN AKAR MASALAH
 
-Masukan pemilik dieksekusi seluruhnya: (1) gabung benih DIHAPUS dari toko/UI dan
-kini hanya terjadi di plot lahan - tanam satu benih lalu tanam pasangan resepnya
-di plot bertetangga, plot baru berubah jadi hasil gabung; (2) Pusat Kota kini
-hanya punya bangunan Toko Benih (bangunan Meja Gabung dihapus); (3) balik ke
-dunia lahan kini INSTAN - arsitektur baru satu server: seksi dunia pribadi di
-koordinat jauh (5000+ stud) + teleport CFrame, TANPA ReserveServer/Teleport/
-MemoryStore sama sekali (sumber kegagalan teleport v28 dihapus total), seksi
-pemilik bertahan selama ia online jadi pulang-pergi tanpa loading dan tanpa
-kehilangan isi meja; (4) beli benih bisa dari kasir MAUPUN rak; (5) rak toko
-diisi pernak-pernik: karung benih, pot tanaman, keranjang, kasa, papan harga.
+Permintaan pemilik dieksekusi: "tes dan mainkan agar tahu letak errornya."
+Dibangun mesin playtest yang menjalankan kode server ASLI + UI klien ASLI di
+simulator Roblox, lalu memainkan alur lengkap: join -> beli benih lewat UI ->
+masuk dunia lahan lewat gerbang -> tanam -> gabung benih di plot yang sama ->
+panen -> jual -> pukul meja semai -> pulang -> balik lagi -> kunjungan tamu ->
+keluar & cek simpanan. Playtest v30: 51 PASS / 0 FAIL.
+
+Akar masalah yang DIBUKTIKAN playtest (dan diperbaiki):
+1. UI klien MATI sejak v27-v29: init.client hanya print, UIController tidak
+   pernah di-require -> panel toko, tombol beli, tombol masuk dunia tidak ada
+   di lapangan. Ini penyebab laporan pemilik "beli benih gak bisa" dan "gak
+   bisa balik dunia lahan". (Faktanya juga: UIController tidak mengembalikan
+   nilai sehingga require-nya akan selalu gagal di Roblox asli.)
+2. 500 plot per lahan dibangun TANPA offset 5000 stud -> menumpuk di Pusat
+   Kota, lahan tidak punya tanah yang bisa diklik -> tanam/gabung mustahil
+   lewat klik, kota penuh kotak tanah liar. (Faktor lag juga.)
+3. PlotService.startLoop tidak pernah dipanggil -> status "siap panen" tidak
+   pernah dikirim -> tombol Panen tidak pernah muncul di UI.
+4. Pintu toko/semai cuma lubang (melompong) -> kini pintu sungguhan dua daun
+   berengsel dengan animasi buka/tutup via prompt.
+5. Rak toko masih terasa kosong -> ditambah barisan paket benih berwarna di
+   semua rak & rak dinding, peti kayu, etalase kaca di kasir, papan BUKA,
+   poster panduan, spanduk gantung, papan promo luar, alas pintu, tumpukan
+   karung, pot tanaman tambahan.
+6. Gabung benih kini persis aturan pemilik: tanam satu benih, lalu tanam
+   pasangan resepnya DI PLOT YANG SAMA (logika Recipes.sameSpot; tetangga
+   tidak lagi otomatis menggabung). Panel plot terisi menampilkan tombol
+   Gabung untuk benih resep yang ada di tas.
+7. Teleport diperkuat anti-jatuh: tunggu RequestStreamAroundAsync selesai
+   sebelum lepas anchor, gagal-aman 5 dtk, pengawas jurang 15 dtk.
 
 | Kriteria | Skor | Catatan |
 |----------|------|---------|
 | 1 Kombat | 0/10 | Belum ada (sesuai urutan rencana). |
-| 2 Crafting | 1/10 | Gabung benih 8 resep kini murni mekanik lahan (tanam bertetangga, logika murni GabungLogic+Recipes.matchList, 12 tes khusus). |
+| 2 Crafting | 2/10 | Gabung benih 8 resep kini benar-benar bisa dimainkan ujung-ke-ujung (tombol Gabung di panel plot, aturan tanam ulang di plot yang sama) dan terbukti playtest. Belum: crafting bahan lain. |
 | 3 Stat & Progresi | 0/10 | Tanpa sistem level (sesuai arah pemilik). |
-| 4 Ekonomi | 5/10 | Micda 900.000 & tas 50x250 persisten (AKM_T1); pack Common 2.400 / Rare 9.000 isi 3; jual hasil di toko. Belum: pasar dinamis, toko pemain. |
-| 5 Dunia & Peta | 5/10 | Pusat Kota fokus: Toko Benih interior penuh (rak terisi, papan harga, lampu) + Gerbang Dunia + papan & lampu jalan. 24 petak seksi dunia pribadi 240x220 (500 plot, pagar, meja semai, gerbang pulang) di koordinat jauh + SafeFloor anti-jatuh 8000 stud. Belum: rumah/ruangan, air nyata, dungeon. |
-| 6 Multiplayer | 6/10 | Kunjung antar dunia: seksi aktif di server sama (instan) atau salinan tersimpan DataStore (pemain offline); tamu read-only ditolak server per-seksi. Balik ke dunia sendiri kini pasti berhasil (tanpa API teleport). Belum: trade, party, daftar dunia publik. |
-| 7 Bertani | 8/10 | 500 plot per dunia; tumbuh 3 dtk; panen 1-10/1-6/1-4; tanaman & meja persisten (timestamp readyAt); gabung benih terjadi saat menanam. |
-| 8 Polish & UX | 6/10 | Perjalanan kota-dunia INSTAN tanpa loading; rak toko tidak lagi kosong melompong; hint cara gabung di panel tas; label zona hidup via Sync; anti-jatuh streaming (anchor singkat + watchdog + RequestStreamAroundAsync). Belum: BGM, animasi, partikel. |
+| 4 Ekonomi | 5/10 | Micda 900.000 & tas 50x250 persisten (AKM_T1); pack Common 2.400 / Rare 9.000 isi 3; jual hasil di toko; pembelian terbukti jalan lewat UI sungguhan di playtest. Belum: pasar dinamis, toko pemain. |
+| 5 Dunia & Peta | 6/10 | Pusat Kota hanya Toko Benih (aturan pemilik) dengan interior padat pernak-pernik + pintu sungguhan; plot lahan kini benar-benar berada di dunia masing-masing (5000+ stud). Belum: rumah, air, dungeon. |
+| 6 Multiplayer | 6/10 | Kunjung antar dunia instan (seksi sama) atau salinan DataStore (offline); tamu read-only terverifikasi playtest; balik ke dunia sendiri terverifikasi lewat tombol UI asli. Belum: trade, party, daftar dunia publik. |
+| 7 Bertani | 8/10 | 500 plot per dunia di koordinat benar; tumbuh 3 dtk; panen 1-10/1-6/1-4; sinkron siap-panen kini hidup (startLoop); gabung di plot yang sama; tanaman & meja persisten. |
+| 8 Polish & UX | 7/10 | UI kini benar-benar tampil (dibuktikan playtest): HUD Micda, panel toko/tas/plot/gerbang, toast, hitung mundur, tombol panen & gabung; pintu berengsel beranimasi; anti-jatuh diperkuat. Belum: BGM, animasi karakter, partikel. |
 | 9 Originalitas | 10/10 | 100% karya sendiri; tanpa require ID, loadstring, getfenv, HttpService. |
 
-**TOTAL: 39/100** (bobot: 0+15+0+75+50+60+80+60+50 = 390/10)
+**TOTAL: 42/100** (bobot: 0+30+0+75+60+60+80+70+50 = 425/10 = 42,5, dibulatkan
+ke bawah agar jujur)
 
-Riwayat: v10 = 56 -> v11 = 64 -> v20 = 79 -> v21 = 80 -> v25 = 83 -> v26 = 9 (RESET) -> v27 = 33 (TAHAP 1) -> v28 = 40 (TAHAP 2 instans; skor era lama) -> v29 = 39 (dunia sambung satu-server + toko purna; semua catatan pemilik terpenuhi).
-Celah menuju 100: kombat (15), ekonomi pemain (10), dunia lebih kaya (5), polish (4), multiplayer lanjut (4).
+Riwayat: v10 = 56 -> v11 = 64 -> v20 = 79 -> v21 = 80 -> v25 = 83 -> v26 = 9
+(RESET) -> v27 = 33 (TAHAP 1) -> v28 = 40 -> v29 = 39 (klaim UI belum
+terverifikasi) -> v30 = 42 (playtest otomatis, akar masalah diperbaiki,
+semua laporan pemilik dieksekusi dan dibuktikan hijau).
+Celah menuju 100: kombat (15), ekonomi pemain (10), dunia lebih kaya (4),
+polish (3), multiplayer lanjut (4), crafting lanjut (13).
 
 ## Arsitektur dunia sambung (v29) - tanpa ID manual, tanpa teleport API, anti-lag
 
@@ -114,7 +139,10 @@ seketika (CFrame); gerbang di Pusat Kota membuka panel Masuk/Kunjungi dunia.
 1. Semua aset & kode original buatan sendiri - tidak menyalin aset/nama konten pihak ketiga.
 2. Tidak menghadirkan: toggle wawasan, ads.js, donasi, share (permintaan pemilik).
 3. Kode dev tetap server-only (DevCodeVault), kredensial hanya di .secrets/.
-4. Test dulu: `tools/luau tests/run_tests.luau` (harus 0 FAIL) + luau-lsp analyze 0 TypeError.
+4. Test dulu: `tools/luau tests/run_tests.luau` (harus 0 FAIL) + luau-lsp
+   analyze 0 TypeError + playtest 0 FAIL
+   (`cd /home/z/my-project/scripts && python3 sim/gen.py && tools luau
+   sim/gen_playtest.luau` via `tools/luau sim/gen_playtest.luau`).
 5. Publish langsung ke Roblox (jangan kirim file ke pemilik):
    `export ROBLOX_API_KEY="$(grep -E '^ROBLOX_API_KEY=' /home/z/my-project/.secrets/akiomida.env | cut -d= -f2-)"`
    `python3 publish.py --universe-id 10774464946 --place-id 77626159664192 --file build/DuniaAkiomida.rbxlx`
