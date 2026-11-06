@@ -14,7 +14,6 @@ local DEFINITIONS = {
         GetState = "RemoteFunction",
         DuniaAct = "RemoteFunction",
         PlotAct = "RemoteFunction",
-        CombineAct = "RemoteFunction",
         SmashAct = "RemoteFunction",
         ShopAct = "RemoteFunction",
         RedeemDevCode = "RemoteFunction",

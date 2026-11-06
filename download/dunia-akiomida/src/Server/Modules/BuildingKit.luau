@@ -117,6 +117,56 @@ local function trim(parent: Instance, w: number, d: number, y: number)
         BuildingKit.part(parent, Vector3.new(0.5, 1, d + 2), CFrame.new(w / 2 + 0.75, y, 0), BuildingKit.DARKWOOD, Enum.Material.Wood)
 end
 
+local function seedBag(parent: Instance, cf: CFrame, color: Color3)
+        local body = BuildingKit.part(parent, Vector3.new(1.2, 1.4, 0.8), cf, color, Enum.Material.Fabric)
+        local band = BuildingKit.part(parent, Vector3.new(1.3, 0.25, 0.9), cf * CFrame.new(0, 0.35, 0), Color3.fromRGB(84, 62, 44), Enum.Material.Fabric)
+        band.CanCollide = false
+        return body
+end
+
+local function potPlant(parent: Instance, cf: CFrame)
+        local pot = BuildingKit.part(parent, Vector3.new(1.2, 1, 1.2), cf, Color3.fromRGB(172, 96, 66), Enum.Material.SmoothPlastic)
+        local tanah = BuildingKit.part(parent, Vector3.new(1, 0.2, 1), cf * CFrame.new(0, 0.55, 0), Color3.fromRGB(84, 62, 44), Enum.Material.Ground)
+        tanah.CanCollide = false
+        local tanaman = BuildingKit.part(parent, Vector3.new(0.9, 1.2, 0.9), cf * CFrame.new(0, 1.25, 0), Color3.fromRGB(88, 140, 66), Enum.Material.Grass)
+        tanaman.CanCollide = false
+        return pot
+end
+
+local function priceTag(parent: Instance, cf: CFrame, teks: string)
+        local papan = BuildingKit.part(parent, Vector3.new(2.4, 1.2, 0.2), cf, BuildingKit.DARKWOOD, Enum.Material.Wood)
+        local gui = Instance.new("SurfaceGui")
+        gui.Face = Enum.NormalId.Front
+        gui.CanvasSize = Vector2.new(240, 120)
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.fromScale(1, 1)
+        label.BackgroundTransparency = 1
+        label.Text = teks
+        label.TextColor3 = Color3.fromRGB(255, 232, 180)
+        label.TextScaled = true
+        label.Font = Enum.Font.GothamBold
+        label.Parent = gui
+        gui.Parent = papan
+        return papan
+end
+
+local function textBoard(parent: Instance, size: Vector3, cf: CFrame, teks: string, face: Enum.NormalId)
+        local papan = BuildingKit.part(parent, size, cf, BuildingKit.CREAM, Enum.Material.Wood)
+        local gui = Instance.new("SurfaceGui")
+        gui.Face = face
+        gui.CanvasSize = Vector2.new(400, 120)
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.fromScale(1, 1)
+        label.BackgroundTransparency = 1
+        label.Text = teks
+        label.TextColor3 = Color3.fromRGB(84, 62, 44)
+        label.TextScaled = true
+        label.Font = Enum.Font.GothamBold
+        label.Parent = gui
+        gui.Parent = papan
+        return papan
+end
+
 function BuildingKit.buildToko(parent: Instance): Model
         local model = Instance.new("Model")
         model.Name = "TokoBenih"
@@ -163,11 +213,55 @@ function BuildingKit.buildToko(parent: Instance): Model
         label.Parent = gui
         gui.Parent = sign
         BuildingKit.part(model, Vector3.new(12, 4, 3), CFrame.new(-8, 4, -10), DARKWOOD, Enum.Material.Wood)
-        BuildingKit.part(model, Vector3.new(8, 8, 2), CFrame.new(-10, 6, 13), DARKWOOD, Enum.Material.Wood)
-        BuildingKit.part(model, Vector3.new(8, 8, 2), CFrame.new(10, 6, 13), DARKWOOD, Enum.Material.Wood)
+        local rakKiri = BuildingKit.part(model, Vector3.new(8, 8, 2), CFrame.new(-10, 6, 13), DARKWOOD, Enum.Material.Wood)
+        local rakKanan = BuildingKit.part(model, Vector3.new(8, 8, 2), CFrame.new(10, 6, 13), DARKWOOD, Enum.Material.Wood)
         BuildingKit.part(model, Vector3.new(2, 8, 8), CFrame.new(-18, 6, 4), DARKWOOD, Enum.Material.Wood)
         BuildingKit.part(model, Vector3.new(2, 8, 8), CFrame.new(18, 6, 4), DARKWOOD, Enum.Material.Wood)
         BuildingKit.part(model, Vector3.new(6, 4, 3), CFrame.new(0, 4, 2), DARKWOOD, Enum.Material.Wood)
+        rakKiri:SetAttribute("Rak", true)
+        rakKanan:SetAttribute("Rak", true)
+
+        local BAG_A = Color3.fromRGB(150, 108, 62)
+        local BAG_B = Color3.fromRGB(96, 128, 72)
+        local BAG_C = Color3.fromRGB(196, 168, 120)
+
+        for sx = -1, 1, 2 do
+                local rx = sx * 10
+                BuildingKit.part(model, Vector3.new(8, 0.3, 1.6), CFrame.new(rx, 5.4, 11.6), FLOORWOOD, Enum.Material.WoodPlanks).CanCollide = false
+                BuildingKit.part(model, Vector3.new(8, 0.3, 1.6), CFrame.new(rx, 8, 11.6), FLOORWOOD, Enum.Material.WoodPlanks).CanCollide = false
+                seedBag(model, CFrame.new(rx - 2.6, 6.2, 11.6), BAG_A)
+                seedBag(model, CFrame.new(rx, 6.2, 11.6), BAG_B)
+                seedBag(model, CFrame.new(rx + 2.6, 6.2, 11.6), BAG_C)
+                seedBag(model, CFrame.new(rx - 1.6, 8.8, 11.6), BAG_B)
+                seedBag(model, CFrame.new(rx + 1.6, 8.8, 11.6), BAG_A)
+                seedBag(model, CFrame.new(rx - 1.6, 11.4, 13), BAG_A)
+                seedBag(model, CFrame.new(rx + 1.6, 11.4, 13), BAG_B)
+                potPlant(model, CFrame.new(rx + 3.4, 10.5, 13))
+        end
+        seedBag(model, CFrame.new(-18, 10.4, 4), BAG_C)
+        seedBag(model, CFrame.new(-18, 10.4, 5.6), BAG_A)
+        seedBag(model, CFrame.new(18, 10.4, 4), BAG_B)
+        potPlant(model, CFrame.new(18, 10.4, 5.8))
+        potPlant(model, CFrame.new(-10, 5.6, -14))
+        potPlant(model, CFrame.new(10, 5.6, -14))
+        seedBag(model, CFrame.new(-11.4, 5.2, -10.4), BAG_A)
+        seedBag(model, CFrame.new(-4.6, 5.2, -9.6), BAG_B)
+        BuildingKit.part(model, Vector3.new(1.6, 1, 1.2), CFrame.new(-3.4, 4.5, -10), Color3.fromRGB(56, 44, 36), Enum.Material.Wood)
+        BuildingKit.part(model, Vector3.new(1.2, 0.3, 0.9), CFrame.new(-3.4, 5.15, -10), Color3.fromRGB(255, 214, 110), Enum.Material.Neon)
+        BuildingKit.part(model, Vector3.new(2.2, 2.2, 2.2), CFrame.new(2, 3.1, -5.4), BAG_C, Enum.Material.Fabric)
+        BuildingKit.part(model, Vector3.new(2.2, 2.2, 2.2), CFrame.new(4.5, 3.1, -6.4), BAG_A, Enum.Material.Fabric)
+        BuildingKit.part(model, Vector3.new(2.2, 1.6, 2.2), CFrame.new(3.2, 5.2, -5.9), BAG_B, Enum.Material.Fabric)
+        BuildingKit.part(model, Vector3.new(3, 2, 3), CFrame.new(-16.5, 3, -3), Color3.fromRGB(122, 96, 58), Enum.Material.WoodPlanks)
+        seedBag(model, CFrame.new(-16.5, 4.8, -3), BAG_A)
+        seedBag(model, CFrame.new(-15.3, 4.8, -3.4), BAG_B)
+        priceTag(model, CFrame.new(-13.2, 6.4, -8.4) * CFrame.Angles(0, math.rad(90), 0), "Pack Common 2.400")
+        priceTag(model, CFrame.new(-13.2, 4.9, -11.6) * CFrame.Angles(0, math.rad(90), 0), "Pack Rare 9.000")
+        priceTag(model, CFrame.new(-10, 10.6, 11.9), "Benih Aneka")
+        priceTag(model, CFrame.new(10, 10.6, 11.9), "Benih Pilihan")
+        textBoard(model, Vector3.new(10, 3, 0.4), CFrame.new(-8, 12.5, -14.1), "PACK BENIH 3 ISI", Enum.NormalId.Back)
+        textBoard(model, Vector3.new(9, 1.6, 0.3), CFrame.new(0, 17.2, -8), "BENIH SEGAR SETIAP HARI", Enum.NormalId.Front)
+        BuildingKit.part(model, Vector3.new(0.2, 2.4, 0.2), CFrame.new(-4, 18.6, -8), DARKWOOD, Enum.Material.Wood).CanCollide = false
+        BuildingKit.part(model, Vector3.new(0.2, 2.4, 0.2), CFrame.new(4, 18.6, -8), DARKWOOD, Enum.Material.Wood).CanCollide = false
         BuildingKit.lamp(model, -12, 21, 0)
         BuildingKit.lamp(model, 0, 21, 0)
         BuildingKit.lamp(model, 12, 21, 0)

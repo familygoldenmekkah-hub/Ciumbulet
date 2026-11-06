@@ -1,8 +1,8 @@
 local Layout = {}
 
-Layout.LahanCount = 10
-Layout.Cols = 5
-Layout.Rows = 2
+Layout.LahanCount = 24
+Layout.Cols = 6
+Layout.Rows = 4
 Layout.SizeX = 240
 Layout.SizeZ = 220
 Layout.Gap = 40
@@ -34,8 +34,8 @@ function Layout.plotLocal(idx: number): (number, number)
 	return x, z
 end
 
-function Layout.kotaOffsetX(): number
-	return 2600
+function Layout.duniaOffsetX(): number
+	return 5000
 end
 
 return Layout

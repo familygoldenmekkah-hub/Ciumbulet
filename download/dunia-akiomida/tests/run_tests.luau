@@ -2,6 +2,7 @@ local CropData = require("./../src/Shared/CropData")
 local Recipes = require("./../src/Shared/Recipes")
 local TasLogic = require("./../src/Shared/TasLogic")
 local Layout = require("./../src/Shared/Layout")
+local GabungLogic = require("./../src/Shared/GabungLogic")
 
 local passed, failed = 0, 0
 local function check(name: string, ok: boolean, detail: string?)
@@ -14,7 +15,7 @@ local function check(name: string, ok: boolean, detail: string?)
         end
 end
 
-print("=== TES DUNIA AKIOMIDA - TAHAP 2 DUNIA PRIBADI ===")
+print("=== TES DUNIA AKIOMIDA - DUNIA SAMBUNG SATU SERVER ===")
 
 print("--- Data tanaman (34) ---")
 do
@@ -151,21 +152,16 @@ end
 
 print("--- Denah lahan ---")
 do
-        check("10 lahan", Layout.LahanCount == 10, tostring(Layout.LahanCount))
-        check("Grid 2 x 5", Layout.Rows == 2 and Layout.Cols == 5, "-")
+        check("24 lahan per server", Layout.LahanCount == 24, tostring(Layout.LahanCount))
+        check("Grid 4 x 6", Layout.Rows == 4 and Layout.Cols == 6, "-")
         check("Ukuran lahan 240 x 220", Layout.SizeX == 240 and Layout.SizeZ == 220, "-")
         check("Jarak antar lahan 40", Layout.Gap == 40, "-")
         check("500 plot", Layout.plotCount() == 500, tostring(Layout.plotCount()))
         check("Grid plot 25 x 20", Layout.PlotCols == 25 and Layout.PlotRows == 20, "-")
         check("Blok plot 150 x 120", Layout.PlotBlockW == 150 and Layout.PlotBlockD == 120, "-")
         local semuaDalam = true
-        local minX, maxX, minZ, maxZ = math.huge, -math.huge, math.huge, -math.huge
         for idx = 0, Layout.plotCount() - 1 do
                 local x, z = Layout.plotLocal(idx)
-                minX = math.min(minX, x - 2)
-                maxX = math.max(maxX, x + 2)
-                minZ = math.min(minZ, z - 2)
-                maxZ = math.max(maxZ, z + 2)
                 if x - 2 < Layout.PlotBlockX or x + 2 > Layout.PlotBlockX + Layout.PlotBlockW then
                         semuaDalam = false
                 end
@@ -173,7 +169,7 @@ do
                         semuaDalam = false
                 end
         end
-        check("Semua 500 plot di dalam blok", semuaDalam, string.format("x %.1f..%.1f z %.1f..%.1f", minX, maxX, minZ, maxZ))
+        check("Semua 500 plot di dalam blok", semuaDalam, "-")
         check("Pitch antar plot 6 stud", Layout.PlotPitch == 6, tostring(Layout.PlotPitch))
         local x0, z0 = Layout.plotLocal(0)
         local x1, _ = Layout.plotLocal(1)
@@ -181,7 +177,7 @@ do
         local _, z20 = Layout.plotLocal(25)
         check("Baris kedua turun 6", (z20 - z0) == 6, tostring(z20 - z0))
         local inside = true
-        for i = 1, 10 do
+        for i = 1, 24 do
                 local ox, oz = Layout.cellOrigin(i)
                 local row = math.floor((i - 1) / Layout.Cols)
                 local col = (i - 1) % Layout.Cols
@@ -189,11 +185,11 @@ do
                         inside = false
                 end
         end
-        check("Posisi sel 2x5 benar", inside, "-")
+        check("Posisi sel 4x6 benar", inside, "-")
         local o1x = Layout.cellOrigin(1)
         local o2x = Layout.cellOrigin(2)
         check("Jarak sel 1 ke 2 = 280", (o2x - o1x) == 280, tostring(o2x - o1x))
-        check("Kota terpisah 2600 stud", Layout.kotaOffsetX() >= 2600, tostring(Layout.kotaOffsetX()))
+        check("Dunia dipisah 5000 stud dari kota", Layout.duniaOffsetX() >= 5000, tostring(Layout.duniaOffsetX()))
 end
 
 print("--- Batas laju ---")
@@ -215,18 +211,12 @@ do
         RateLimit.clear(999)
 end
 
-print("--- Logika dunia pribadi ---")
+print("--- Logika dunia tersimpan ---")
 do
         local DuniaLogic = require("./../src/Shared/DuniaLogic")
         check("Key dunia dari userId", DuniaLogic.keyFor(42) == "d_42", tostring(DuniaLogic.keyFor(42)))
-        check("Mode hub tanpa data", DuniaLogic.modeOf(nil) == "hub", "-")
-        check("Mode hub data rusak", DuniaLogic.modeOf({ md = "dunia" }) == "hub" and DuniaLogic.modeOf({ md = "dunia", pemilik = 0 }) == "hub" and DuniaLogic.modeOf({ md = "dunia", pemilik = "x" }) == "hub" and DuniaLogic.modeOf("rusak") == "hub", "-")
-        check("Mode dunia valid", DuniaLogic.modeOf({ md = "dunia", pemilik = 7 }) == "dunia", "-")
-        check("Owner dari data join", DuniaLogic.ownerOf({ md = "dunia", pemilik = 7 }) == 7 and DuniaLogic.ownerOf(nil) == 0, "-")
-        check("Role pemilik vs tamu", DuniaLogic.roleFor(7, 7) == "pemilik" and DuniaLogic.roleFor(8, 7) == "tamu" and DuniaLogic.roleFor(8, 0) == "tamu", "-")
-        check("Rendezvous segar diterima", DuniaLogic.fresh({ k = "abc", t = 1000 }, 1030) == true, "-")
-        check("Rendezvous kedaluwarsa ditolak", DuniaLogic.fresh({ k = "abc", t = 1000 }, 1091) == false, "-")
-        check("Rendezvous rusak ditolak", DuniaLogic.fresh(nil, 1000) == false and DuniaLogic.fresh({ t = "x" }, 1000) == false and DuniaLogic.fresh({ k = "a" }, 1000) == false, "-")
+        check("Nama bersih diterima", DuniaLogic.cleanName("  akiomida ") == "akiomida", "-")
+        check("Nama rusak ditolak", DuniaLogic.cleanName("") == nil and DuniaLogic.cleanName(5) == nil and DuniaLogic.cleanName(string.rep("x", 31)) == nil, "-")
         local pl = { [0] = { crop = "wortel", readyAt = 123.7, model = {} }, [499] = { crop = "ceri", readyAt = 99 }, rusak = { crop = "x", readyAt = 1 }, [-1] = { crop = "y", readyAt = 1 }, [3] = { crop = 9, readyAt = 1 } }
         local ser = DuniaLogic.serPlots(pl)
         check("Serialize plot menyaring data", ser[0] ~= nil and ser[0].c == "wortel" and ser[0].r == 123 and ser[499] ~= nil and ser[499].c == "ceri" and ser.rusak == nil and ser[-1] == nil and ser[3] == nil, "-")
@@ -244,7 +234,28 @@ do
                 table.insert(penuh, { crop = "plum", hitsLeft = 2 })
         end
         check("Meja maks 6 slot", #DuniaLogic.serMeja(penuh) == 6 and #DuniaLogic.desMeja(DuniaLogic.serMeja(penuh)) == 6, "-")
-        check("Konstanta anti-lag", DuniaLogic.Ttl == 90 and DuniaLogic.Heartbeat == 30 and DuniaLogic.SaveEvery == 60, "-")
+        check("Save tiap 60 dtk", DuniaLogic.SaveEvery == 60, tostring(DuniaLogic.SaveEvery))
+end
+
+print("--- Gabung benih di plot ---")
+do
+        check("Tetangga pojok kiri atas = kanan & bawah", table.concat(GabungLogic.neighbors(0), ",") == "1,25", table.concat(GabungLogic.neighbors(0), ","))
+        check("Tetangga pojok kanan atas = kiri & bawah", table.concat(GabungLogic.neighbors(24), ",") == "23,49", table.concat(GabungLogic.neighbors(24), ","))
+        check("Tetangga pojok kanan bawah = kiri & atas", table.concat(GabungLogic.neighbors(499), ",") == "498,474", table.concat(GabungLogic.neighbors(499), ","))
+        check("Tetangga tepi kiri = 3 arah", table.concat(GabungLogic.neighbors(25), ",") == "26,0,50", table.concat(GabungLogic.neighbors(25), ","))
+        check("Tetangga tengah = 4 arah", #GabungLogic.neighbors(27) == 4, tostring(#GabungLogic.neighbors(27)))
+        check("Idx rusak tanpa tetangga", #GabungLogic.neighbors(-1) == 0 and #GabungLogic.neighbors(500) == 0 and #GabungLogic.neighbors(1.5) == 0, "-")
+        check("Resep kanan+kiri tertangkap", Recipes.matchList("grapefruit", { "jeruk_mandarin" }) == "tangelo", "-")
+        check("Resep urutan terbalik tertangkap", (function()
+                local a, b = Recipes.matchList("jeruk_mandarin", { "grapefruit" })
+                return a == "tangelo" and b == "grapefruit"
+        end)(), "-")
+        check("Bukan resep ditolak", Recipes.matchList("wortel", { "pisang" }) == nil, "-")
+        check("Benih sama ditolak", Recipes.matchList("plum", { "plum" }) == nil, "-")
+        check("Prioritas tetangga pertama", Recipes.matchList("plum", { "aprikot", "nektarin" }) == "plumcot", "-")
+        check("Prioritas tetangga kedua", Recipes.matchList("plum", { "nektarin", "aprikot" }) == "nectaplum", "-")
+        check("Tetangga gabung = 25 kolom x 20 baris", GabungLogic.Cols == Layout.PlotCols and GabungLogic.Rows == Layout.PlotRows, "-")
+        check("Gabung butuh tanaman tetangga", #GabungLogic.neighbors(0) == 2 and Recipes.matchList("grapefruit", {}) == nil, "-")
 end
 
 print(("="):rep(28))

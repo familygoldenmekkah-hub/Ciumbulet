@@ -10,6 +10,7 @@ local rng = Random.new()
 local MAX_SLOTS = 6
 local tables: { [number]: Vector3 } = {}
 local slots: { [number]: { any } } = {}
+local hasilFolders: { [number]: Folder } = {}
 
 local RARITY_COLOR = {
         common = Color3.fromRGB(96, 168, 74),
@@ -34,6 +35,15 @@ end
 function SmashService.registerTable(index: number, pos: Vector3)
         tables[index] = pos
         slots[index] = {}
+        if not hasilFolders[index] then
+                local root = workspace:FindFirstChild("Dunia")
+                if root then
+                        local f = Instance.new("Folder")
+                        f.Name = "Hasil_" .. index
+                        f.Parent = root
+                        hasilFolders[index] = f
+                end
+        end
 end
 
 function SmashService.tablePos(index: number): Vector3?
@@ -59,6 +69,11 @@ end
 
 function SmashService.clearLahan(index: number)
         slots[index] = {}
+        local f = hasilFolders[index]
+        if f then
+                f:Destroy()
+                hasilFolders[index] = nil
+        end
 end
 
 function SmashService.syncTo(player, index: number)
@@ -83,7 +98,12 @@ local function makeHasilModel(index: number, slotCount: number, info: any): Mode
         part.Material = Enum.Material.SmoothPlastic
         part.Position = tables[index] + Vector3.new(-10 + slotCount * 4, part.Size.Y / 2 + 0.1, 0)
         part.Parent = model
-        model.Parent = workspace:FindFirstChild("Dunia")
+        local f = hasilFolders[index]
+        if f then
+                model.Parent = f
+        else
+                model.Parent = workspace:FindFirstChild("Dunia")
+        end
         return model
 end
 
@@ -111,7 +131,7 @@ function SmashService.place(player, cropId: any): (boolean, string)
         local model = makeHasilModel(index, #slots[index], info)
         table.insert(slots[index], { crop = cropId, hitsLeft = CropData.Smash[info.rarity].hits, model = model })
         if World then
-                World.touch()
+                World.touch(index)
         end
         syncLahan(index, player)
         return true, info.nama .. " diletakkan di meja."
@@ -140,7 +160,7 @@ function SmashService.hit(player, slotIdx: any): (boolean, string)
                 local micda = rng:NextInteger(cfg.micdaMin, cfg.micdaMax)
                 Data.addMicda(player, micda)
                 if World then
-                        World.touch()
+                        World.touch(index)
                 end
                 local pesan = "+" .. micda .. " Micda"
                 if rng:NextNumber() < cfg.seed then
@@ -186,7 +206,7 @@ function SmashService.take(player, slotIdx: any): (boolean, string)
         table.remove(slots[index], slotIdx)
         Tas.add(player, "hasil", s.crop, 1)
         if World then
-                World.touch()
+                World.touch(index)
         end
         syncLahan(index, player)
         return true, "Diambil kembali."

@@ -32,8 +32,8 @@
                 "$className": "Part",
                 "$properties": {
                     "Anchored": true,
-                    "Size": [3200, 1, 800],
-                    "Position": [1400, -50, 250],
+                    "Size": [8000, 1, 1600],
+                    "Position": [3000, -50, 500],
                     "Transparency": 1,
                     "CanCollide": true
                 }

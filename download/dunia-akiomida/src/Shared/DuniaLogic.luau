@@ -1,7 +1,5 @@
 local DuniaLogic = {}
 
-DuniaLogic.Ttl = 90
-DuniaLogic.Heartbeat = 30
 DuniaLogic.SaveEvery = 60
 DuniaLogic.MaxPlots = 500
 DuniaLogic.MaxMeja = 6
@@ -10,38 +8,15 @@ function DuniaLogic.keyFor(userId: number): string
 	return "d_" .. tostring(userId)
 end
 
-function DuniaLogic.modeOf(joinData: any): string
-	if
-		type(joinData) == "table"
-		and joinData.md == "dunia"
-		and type(joinData.pemilik) == "number"
-		and joinData.pemilik > 0
-	then
-		return "dunia"
+function DuniaLogic.cleanName(nama: any): string?
+	if type(nama) ~= "string" then
+		return nil
 	end
-	return "hub"
-end
-
-function DuniaLogic.ownerOf(joinData: any): number
-	if DuniaLogic.modeOf(joinData) == "dunia" then
-		return joinData.pemilik
+	local n = nama:gsub("^%s+", ""):gsub("%s+$", "")
+	if #n < 1 or #n > 30 then
+		return nil
 	end
-	return 0
-end
-
-function DuniaLogic.roleFor(userId: number, ownerId: number): string
-	if ownerId > 0 and userId == ownerId then
-		return "pemilik"
-	end
-	return "tamu"
-end
-
-function DuniaLogic.fresh(rec: any, now: number): boolean
-	if type(rec) ~= "table" or type(rec.t) ~= "number" then
-		return false
-	end
-	local age = now - rec.t
-	return age < DuniaLogic.Ttl and age >= -5
+	return n
 end
 
 function DuniaLogic.serPlots(planted: any): { [number]: { c: string, r: number } }

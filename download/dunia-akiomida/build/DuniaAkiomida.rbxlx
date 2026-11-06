@@ -40,7 +40,6 @@ local DEFINITIONS = {
         GetState = "RemoteFunction",
         DuniaAct = "RemoteFunction",
         PlotAct = "RemoteFunction",
-        CombineAct = "RemoteFunction",
         SmashAct = "RemoteFunction",
         ShopAct = "RemoteFunction",
         RedeemDevCode = "RemoteFunction",
@@ -174,8 +173,6 @@ return CropData
           <string name="Name">DuniaLogic</string>
           <string name="Source"><![CDATA[local DuniaLogic = {}
 
-DuniaLogic.Ttl = 90
-DuniaLogic.Heartbeat = 30
 DuniaLogic.SaveEvery = 60
 DuniaLogic.MaxPlots = 500
 DuniaLogic.MaxMeja = 6
@@ -184,38 +181,15 @@ function DuniaLogic.keyFor(userId: number): string
 	return "d_" .. tostring(userId)
 end
 
-function DuniaLogic.modeOf(joinData: any): string
-	if
-		type(joinData) == "table"
-		and joinData.md == "dunia"
-		and type(joinData.pemilik) == "number"
-		and joinData.pemilik > 0
-	then
-		return "dunia"
+function DuniaLogic.cleanName(nama: any): string?
+	if type(nama) ~= "string" then
+		return nil
 	end
-	return "hub"
-end
-
-function DuniaLogic.ownerOf(joinData: any): number
-	if DuniaLogic.modeOf(joinData) == "dunia" then
-		return joinData.pemilik
+	local n = nama:gsub("^%s+", ""):gsub("%s+$", "")
+	if #n < 1 or #n > 30 then
+		return nil
 	end
-	return 0
-end
-
-function DuniaLogic.roleFor(userId: number, ownerId: number): string
-	if ownerId > 0 and userId == ownerId then
-		return "pemilik"
-	end
-	return "tamu"
-end
-
-function DuniaLogic.fresh(rec: any, now: number): boolean
-	if type(rec) ~= "table" or type(rec.t) ~= "number" then
-		return false
-	end
-	local age = now - rec.t
-	return age < DuniaLogic.Ttl and age >= -5
+	return n
 end
 
 function DuniaLogic.serPlots(planted: any): { [number]: { c: string, r: number } }
@@ -302,12 +276,51 @@ return DuniaLogic
       </Item>
       <Item class="ModuleScript" referent="6">
         <Properties>
+          <string name="Name">GabungLogic</string>
+          <string name="Source"><![CDATA[local GabungLogic = {}
+
+GabungLogic.Cols = 25
+GabungLogic.Rows = 20
+
+function GabungLogic.neighbors(idx: number): { number }
+	local out = {}
+	if
+		type(idx) ~= "number"
+		or idx < 0
+		or idx >= GabungLogic.Cols * GabungLogic.Rows
+		or idx ~= math.floor(idx)
+	then
+		return out
+	end
+	local col = idx % GabungLogic.Cols
+	local row = math.floor(idx / GabungLogic.Cols)
+	if col > 0 then
+		table.insert(out, idx - 1)
+	end
+	if col < GabungLogic.Cols - 1 then
+		table.insert(out, idx + 1)
+	end
+	if row > 0 then
+		table.insert(out, idx - GabungLogic.Cols)
+	end
+	if row < GabungLogic.Rows - 1 then
+		table.insert(out, idx + GabungLogic.Cols)
+	end
+	return out
+end
+
+return GabungLogic
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="7">
+        <Properties>
           <string name="Name">Layout</string>
           <string name="Source"><![CDATA[local Layout = {}
 
-Layout.LahanCount = 10
-Layout.Cols = 5
-Layout.Rows = 2
+Layout.LahanCount = 24
+Layout.Cols = 6
+Layout.Rows = 4
 Layout.SizeX = 240
 Layout.SizeZ = 220
 Layout.Gap = 40
@@ -339,44 +352,59 @@ function Layout.plotLocal(idx: number): (number, number)
 	return x, z
 end
 
-function Layout.kotaOffsetX(): number
-	return 2600
+function Layout.duniaOffsetX(): number
+	return 5000
 end
 
 return Layout
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="7">
+      <Item class="ModuleScript" referent="8">
         <Properties>
           <string name="Name">Recipes</string>
           <string name="Source"><![CDATA[local Recipes = {}
 
 Recipes.List = {
-	{ a = "jeruk_mandarin", b = "grapefruit", out = "tangelo" },
-	{ a = "plum", b = "aprikot", out = "plumcot" },
-	{ a = "nektarin", b = "plum", out = "nectaplum" },
-	{ a = "arachis_duranensis", b = "arachis_ipaensis", out = "kacang_tanah" },
-	{ a = "ceri", b = "plum", out = "pluerry" },
-	{ a = "brassica_rapa", b = "brassica_oleracea", out = "canola" },
-	{ a = "gandum", b = "rye", out = "triticale" },
-	{ a = "labu_maxima", b = "labu_moschata", out = "tetsukabuto" },
+        { a = "jeruk_mandarin", b = "grapefruit", out = "tangelo" },
+        { a = "plum", b = "aprikot", out = "plumcot" },
+        { a = "nektarin", b = "plum", out = "nectaplum" },
+        { a = "arachis_duranensis", b = "arachis_ipaensis", out = "kacang_tanah" },
+        { a = "ceri", b = "plum", out = "pluerry" },
+        { a = "brassica_rapa", b = "brassica_oleracea", out = "canola" },
+        { a = "gandum", b = "rye", out = "triticale" },
+        { a = "labu_maxima", b = "labu_moschata", out = "tetsukabuto" },
 }
 
 function Recipes.find(a: string, b: string): string?
-	for _, r in ipairs(Recipes.List) do
-		if (r.a == a and r.b == b) or (r.a == b and r.b == a) then
-			return r.out
-		end
-	end
-	return nil
+        for _, r in ipairs(Recipes.List) do
+                if (r.a == a and r.b == b) or (r.a == b and r.b == a) then
+                        return r.out
+                end
+        end
+        return nil
+end
+
+function Recipes.matchList(newCrop: string, neighborCrops: { string }): (string?, string?)
+        if type(newCrop) ~= "string" then
+                return nil, nil
+        end
+        for _, other in ipairs(neighborCrops) do
+                if type(other) == "string" then
+                        local out = Recipes.find(newCrop, other)
+                        if out then
+                                return out, other
+                        end
+                end
+        end
+        return nil, nil
 end
 
 return Recipes
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="8">
+      <Item class="ModuleScript" referent="9">
         <Properties>
           <string name="Name">TasLogic</string>
           <string name="Source"><![CDATA[export type Slot = { kind: string, id: string, count: number }
@@ -479,11 +507,11 @@ return TasLogic
       </Item>
     </Item>
   </Item>
-  <Item class="ServerScriptService" referent="9">
+  <Item class="ServerScriptService" referent="10">
     <Properties>
       <string name="Name">ServerScriptService</string>
     </Properties>
-    <Item class="Script" referent="10">
+    <Item class="Script" referent="11">
       <Properties>
         <string name="Name">Server</string>
         <token name="RunContext">0</token>
@@ -491,7 +519,6 @@ return TasLogic
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Net = require(ReplicatedStorage.Remotes)
-local DuniaLogic = require(ReplicatedStorage.Shared.DuniaLogic)
 
 local Modules = script.Modules
 local DevCodeVault = require(Modules.DevCodeVault)
@@ -501,16 +528,11 @@ local TasService = require(Modules.TasService)
 local LandService = require(Modules.LandService)
 local PlotService = require(Modules.PlotService)
 local SmashService = require(Modules.SmashService)
-local CombineService = require(Modules.CombineService)
 local ShopService = require(Modules.ShopService)
-local DuniaService = require(Modules.DuniaService)
+local ZonaService = require(Modules.ZonaService)
 local WorldBuilder = require(Modules.WorldBuilder)
 
 Net.init()
-
-local serverMode: string? = nil
-local duniaReady = false
-local hubReady = false
 
 local function notify(player: Player, title: string, msg: string)
         Net.get("Notify"):FireClient(player, title, msg)
@@ -524,14 +546,13 @@ local deps = {
         Notify = notify,
         Plot = PlotService,
         Smash = SmashService,
-        World = DuniaService,
+        World = ZonaService,
 }
 TasService.bind(DataService)
 PlotService.bind(deps)
 SmashService.bind(deps)
-CombineService.bind(deps)
 ShopService.bind(deps)
-DuniaService.bind(deps)
+ZonaService.bind(deps)
 
 local function openSemai(player: Player, lahanIdx: number)
         if LandService.ownerOf(lahanIdx) ~= player.UserId then
@@ -543,8 +564,8 @@ local function openSemai(player: Player, lahanIdx: number)
 end
 
 local function openShop(player: Player)
-        if not ShopService.near(player, 30) then
-                notify(player, "Toko Benih", "Terlalu jauh dari kasir.")
+        if not ShopService.near(player, 35) then
+                notify(player, "Toko Benih", "Dekati kasir atau rak benih dulu.")
                 return
         end
         Net.get("OpenPanel"):FireClient(player, "toko", {})
@@ -553,78 +574,31 @@ end
 local hooks = {
         onSemaiPrompt = openSemai,
         onShopPrompt = openShop,
-        onGabung = function(player: Player)
-                Net.get("OpenPanel"):FireClient(player, "combine", {})
-        end,
         onGerbangDunia = function(player: Player)
                 Net.get("OpenPanel"):FireClient(player, "gerbang", {})
         end,
         onPulang = function(player: Player)
-                DuniaService.pulang(player)
+                ZonaService.pulang(player)
         end,
         registerTable = SmashService.registerTable,
         setShopPoint = ShopService.setShopPoint,
-        setCombinePoint = CombineService.setCombinePoint,
-        registerUmum = LandService.registerUmum,
         registerKota = LandService.registerKota,
-        registerSpawn = LandService.registerSpawn,
+        registerUmum = LandService.registerUmum,
 }
+ZonaService.setHooks(hooks)
+DataService.setZoneProvider(ZonaService.zoneOf)
 
-local function setupHub()
-        hubReady = true
-        WorldBuilder.buildHub(hooks)
-end
-
-local function setupDunia(pemilik: number, nama: string?)
-        duniaReady = true
-        DuniaService.setOwner(pemilik, nama)
-        WorldBuilder.buildDunia(hooks, DuniaService.ownerName())
-        if not nama or #nama == 0 then
-                task.spawn(function()
-                        local ok, fetched = pcall(function()
-                                return Players:GetNameFromUserIdAsync(pemilik)
-                        end)
-                        if ok and type(fetched) == "string" then
-                                DuniaService.setOwner(pemilik, fetched)
-                        end
-                end)
-        end
-        PlotService.buildGrid(1)
-        DuniaService.loadWorld()
-end
+WorldBuilder.buildHub(hooks)
 
 local function applySpawn(player: Player)
-        local target: SpawnLocation? = nil
-        if serverMode == "dunia" then
-                local idx = LandService.landOf(player)
-                if idx then
-                        target = LandService.spawnOf(idx)
-                end
-                if not target then
-                        target = LandService.umumSpawn()
-                end
-        else
-                target = LandService.kotaSpawn() or LandService.umumSpawn()
-        end
+        local target = LandService.kotaSpawn() or LandService.umumSpawn()
         if target then
                 player.RespawnLocation = target
-                local char = player.Character
-                local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
-                if root then
-                        root.CFrame = target.CFrame + Vector3.new(0, 4, 0)
-                end
         end
 end
 
-local function enterHub(player: Player)
+local function enterServer(player: Player)
         local ok = DataService.load(player)
-        if not ok then
-                task.delay(5, function()
-                        if player.Parent then
-                                notify(player, "Mode Sesi", "Progres sementara hanya tersimpan di sesi ini.")
-                        end
-                end)
-        end
         local leaderstats = Instance.new("Folder")
         leaderstats.Name = "leaderstats"
         local micda = Instance.new("IntValue")
@@ -633,138 +607,37 @@ local function enterHub(player: Player)
         micda.Value = d and math.floor(d.m) or 0
         micda.Parent = leaderstats
         leaderstats.Parent = player
-        DuniaService.setRole(player, "hub")
         applySpawn(player)
         DataService.push(player)
-        notify(player, "Pusat Kota", "Selamat datang! Lewati Gerbang Dunia untuk masuk ke duniamu sendiri.")
-end
-
-local function enterDunia(player: Player, pemilik: number)
-        local ok = DataService.load(player)
-        if not ok then
-                task.delay(5, function()
-                        if player.Parent then
+        task.delay(4, function()
+                if player.Parent then
+                        if ok then
+                                notify(player, "Pusat Kota", "Selamat datang! Lewati Gerbang Dunia untuk masuk ke duniamu sendiri.")
+                        else
                                 notify(player, "Mode Sesi", "Progres sementara hanya tersimpan di sesi ini.")
                         end
-                end)
-        end
-        local leaderstats = Instance.new("Folder")
-        leaderstats.Name = "leaderstats"
-        local micda = Instance.new("IntValue")
-        micda.Name = "Micda"
-        local d = DataService.get(player)
-        micda.Value = d and math.floor(d.m) or 0
-        micda.Parent = leaderstats
-        leaderstats.Parent = player
-        if player.UserId == pemilik and pemilik == DuniaService.ownerId() then
-                DuniaService.setRole(player, "pemilik")
-                local idx = LandService.assign(player)
-                if idx > 0 then
-                        PlotService.buildGrid(idx)
-                        local sp = LandService.spawnOf(idx)
-                        if sp then
-                                sp.Enabled = true
-                        end
-                        SmashService.syncTo(player, idx)
                 end
-                PlotService.startLoop(1)
-                notify(player, "Duniamu", "Semua yang ada di sini milikmu. Tamu tidak bisa mengubah apa pun.")
-        else
-                DuniaService.setRole(player, "tamu")
-                notify(player, "Mode Kunjung", "Dunia milik " .. DuniaService.ownerName() .. ". Kamu bisa melihat-lihat, tapi tidak bisa mengubah.")
-        end
-        DuniaService.startLoops()
-        applySpawn(player)
-        DataService.push(player)
+        end)
 end
 
 local function onPlayerAdded(player: Player)
-        local jd = player:GetJoinData()
-        local joinData = (jd :: any).TeleportData
-        local mode = DuniaLogic.modeOf(joinData)
-        local pemilik = DuniaLogic.ownerOf(joinData)
-        local nama = nil
-        if type(joinData) == "table" and type(joinData.nama) == "string" then
-                nama = joinData.nama
-        end
-
-        if serverMode == nil then
-                serverMode = mode
-        end
-
-        if serverMode == "dunia" then
-                if not duniaReady then
-                        if pemilik <= 0 then
-                                notify(player, "Sambungan Bingung", "Dunia tidak dikenali. Mengembalikanmu ke Pusat Kota.")
-                                DuniaService.pulang(player)
-                                return
-                        end
-                        setupDunia(pemilik, nama)
-                end
-                enterDunia(player, pemilik > 0 and pemilik or DuniaService.ownerId())
-        else
-                if game.PrivateServerId ~= "" then
-                        if duniaReady then
-                                enterDunia(player, DuniaService.ownerId())
-                        else
-                                notify(player, "Sambungan Bingung", "Dunia tidak dikenali. Mengembalikanmu ke Pusat Kota.")
-                                DuniaService.pulang(player)
-                        end
-                        return
-                end
-                if not hubReady then
-                        setupHub()
-                end
-                enterHub(player)
-        end
+        enterServer(player)
 end
 
-Players.PlayerAdded:Connect(function(player)
-        player.CharacterAdded:Connect(function()
-                task.wait(0.1)
-                applySpawn(player)
-        end)
-        onPlayerAdded(player)
-end)
+Players.PlayerAdded:Connect(onPlayerAdded)
 for _, p in ipairs(Players:GetPlayers()) do
-        p.CharacterAdded:Connect(function()
-                task.wait(0.1)
-                applySpawn(p)
-        end)
         task.spawn(onPlayerAdded, p)
 end
 
 Players.PlayerRemoving:Connect(function(player)
-        local idx = LandService.landOf(player)
-        if idx then
-                SmashService.refundLahan(idx, player)
-        end
+        ZonaService.leaveGame(player)
         DataService.save(player)
-        if idx then
-                SmashService.clearLahan(idx)
-                local sp = LandService.spawnOf(idx)
-                if sp then
-                        sp.Enabled = false
-                end
-                LandService.release(player)
-        end
-        DuniaService.forget(player)
         RateLimit.clear(player.UserId)
         DataService.drop(player)
-        if serverMode == "dunia" then
-                if player.UserId == DuniaService.ownerId() then
-                        DuniaService.saveWorld()
-                end
-                if #Players:GetPlayers() <= 1 then
-                        DuniaService.closeWorld()
-                end
-        end
 end)
 
 game:BindToClose(function()
-        if serverMode == "dunia" then
-                DuniaService.closeWorld()
-        end
+        ZonaService.shutdown()
         for _, p in ipairs(Players:GetPlayers()) do
                 DataService.save(p)
         end
@@ -775,13 +648,19 @@ Net.get("GetState").OnServerInvoke = function(player)
         if not d then
                 return nil
         end
+        local zone, dunia = ZonaService.zoneOf(player)
+        local lahan = LandService.landOf(player)
+        local role = "hub"
+        if zone == "dunia" then
+                role = lahan and "pemilik" or "tamu"
+        end
         return {
                 micda = math.floor(d.m),
                 tas = d.t,
-                lahan = LandService.landOf(player),
-                zone = serverMode == "dunia" and "dunia" or "kota",
-                role = DuniaService.roleOf(player),
-                dunia = serverMode == "dunia" and DuniaService.ownerName() or nil,
+                lahan = lahan,
+                zone = zone,
+                role = role,
+                dunia = dunia,
         }
 end
 
@@ -790,11 +669,11 @@ Net.get("DuniaAct").OnServerInvoke = function(player, action, arg)
                 return false, "Terlalu cepat."
         end
         if action == "masuk" then
-                return DuniaService.enter(player)
+                return ZonaService.masuk(player)
         elseif action == "kunjungi" then
-                return DuniaService.visit(player, arg)
+                return ZonaService.visit(player, arg)
         elseif action == "pulang" then
-                return DuniaService.pulang(player)
+                return ZonaService.pulang(player)
         end
         return false, "Aksi tidak dikenal."
 end
@@ -803,8 +682,9 @@ Net.get("PlotAct").OnServerInvoke = function(player, idx, action, cropId)
         if not RateLimit.allow(player.UserId, "plot", 6, 8) then
                 return false, "Terlalu cepat."
         end
-        if DuniaService.roleOf(player) ~= "pemilik" and serverMode == "dunia" then
-                return false, "Dunia ini milik " .. DuniaService.ownerName() .. ". Kamu sedang berkunjung."
+        local deny = ZonaService.mutationDeny(player)
+        if deny then
+                return false, deny
         end
         if action == "plant" then
                 return PlotService.plant(player, idx, cropId)
@@ -814,19 +694,13 @@ Net.get("PlotAct").OnServerInvoke = function(player, idx, action, cropId)
         return false, "Aksi tidak dikenal."
 end
 
-Net.get("CombineAct").OnServerInvoke = function(player, a, b)
-        if not RateLimit.allow(player.UserId, "combine", 2, 3) then
-                return false, "Terlalu cepat."
-        end
-        return CombineService.combine(player, a, b)
-end
-
 Net.get("SmashAct").OnServerInvoke = function(player, action, arg)
         if not RateLimit.allow(player.UserId, "smash", 5, 8) then
                 return false, "Terlalu cepat."
         end
-        if DuniaService.roleOf(player) ~= "pemilik" and serverMode == "dunia" then
-                return false, "Dunia ini milik " .. DuniaService.ownerName() .. ". Kamu sedang berkunjung."
+        local deny = ZonaService.mutationDeny(player)
+        if deny then
+                return false, deny
         end
         if action == "place" then
                 return SmashService.place(player, arg)
@@ -868,19 +742,16 @@ Net.get("RedeemDevCode").OnServerInvoke = function(player, code)
 end
 
 DataService.startLoops()
+ZonaService.startLoops()
 
-if serverMode == "dunia" then
-        print("[AKIOMIDA] Server dunia pribadi siap.")
-else
-        print("[AKIOMIDA] Pusat Kota siap. Gerbang dunia menunggu pemain.")
-end
+print("[AKIOMIDA] Pusat Kota dan dunia pribadi siap dalam satu server. Gerbang instan menunggu pemain.")
 ]]></string>
       </Properties>
-      <Item class="Folder" referent="11">
+      <Item class="Folder" referent="12">
         <Properties>
           <string name="Name">Modules</string>
         </Properties>
-        <Item class="ModuleScript" referent="12">
+        <Item class="ModuleScript" referent="13">
           <Properties>
             <string name="Name">BuildingKit</string>
             <string name="Source"><![CDATA[local BuildingKit = {}
@@ -1002,6 +873,56 @@ local function trim(parent: Instance, w: number, d: number, y: number)
         BuildingKit.part(parent, Vector3.new(0.5, 1, d + 2), CFrame.new(w / 2 + 0.75, y, 0), BuildingKit.DARKWOOD, Enum.Material.Wood)
 end
 
+local function seedBag(parent: Instance, cf: CFrame, color: Color3)
+        local body = BuildingKit.part(parent, Vector3.new(1.2, 1.4, 0.8), cf, color, Enum.Material.Fabric)
+        local band = BuildingKit.part(parent, Vector3.new(1.3, 0.25, 0.9), cf * CFrame.new(0, 0.35, 0), Color3.fromRGB(84, 62, 44), Enum.Material.Fabric)
+        band.CanCollide = false
+        return body
+end
+
+local function potPlant(parent: Instance, cf: CFrame)
+        local pot = BuildingKit.part(parent, Vector3.new(1.2, 1, 1.2), cf, Color3.fromRGB(172, 96, 66), Enum.Material.SmoothPlastic)
+        local tanah = BuildingKit.part(parent, Vector3.new(1, 0.2, 1), cf * CFrame.new(0, 0.55, 0), Color3.fromRGB(84, 62, 44), Enum.Material.Ground)
+        tanah.CanCollide = false
+        local tanaman = BuildingKit.part(parent, Vector3.new(0.9, 1.2, 0.9), cf * CFrame.new(0, 1.25, 0), Color3.fromRGB(88, 140, 66), Enum.Material.Grass)
+        tanaman.CanCollide = false
+        return pot
+end
+
+local function priceTag(parent: Instance, cf: CFrame, teks: string)
+        local papan = BuildingKit.part(parent, Vector3.new(2.4, 1.2, 0.2), cf, BuildingKit.DARKWOOD, Enum.Material.Wood)
+        local gui = Instance.new("SurfaceGui")
+        gui.Face = Enum.NormalId.Front
+        gui.CanvasSize = Vector2.new(240, 120)
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.fromScale(1, 1)
+        label.BackgroundTransparency = 1
+        label.Text = teks
+        label.TextColor3 = Color3.fromRGB(255, 232, 180)
+        label.TextScaled = true
+        label.Font = Enum.Font.GothamBold
+        label.Parent = gui
+        gui.Parent = papan
+        return papan
+end
+
+local function textBoard(parent: Instance, size: Vector3, cf: CFrame, teks: string, face: Enum.NormalId)
+        local papan = BuildingKit.part(parent, size, cf, BuildingKit.CREAM, Enum.Material.Wood)
+        local gui = Instance.new("SurfaceGui")
+        gui.Face = face
+        gui.CanvasSize = Vector2.new(400, 120)
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.fromScale(1, 1)
+        label.BackgroundTransparency = 1
+        label.Text = teks
+        label.TextColor3 = Color3.fromRGB(84, 62, 44)
+        label.TextScaled = true
+        label.Font = Enum.Font.GothamBold
+        label.Parent = gui
+        gui.Parent = papan
+        return papan
+end
+
 function BuildingKit.buildToko(parent: Instance): Model
         local model = Instance.new("Model")
         model.Name = "TokoBenih"
@@ -1048,11 +969,55 @@ function BuildingKit.buildToko(parent: Instance): Model
         label.Parent = gui
         gui.Parent = sign
         BuildingKit.part(model, Vector3.new(12, 4, 3), CFrame.new(-8, 4, -10), DARKWOOD, Enum.Material.Wood)
-        BuildingKit.part(model, Vector3.new(8, 8, 2), CFrame.new(-10, 6, 13), DARKWOOD, Enum.Material.Wood)
-        BuildingKit.part(model, Vector3.new(8, 8, 2), CFrame.new(10, 6, 13), DARKWOOD, Enum.Material.Wood)
+        local rakKiri = BuildingKit.part(model, Vector3.new(8, 8, 2), CFrame.new(-10, 6, 13), DARKWOOD, Enum.Material.Wood)
+        local rakKanan = BuildingKit.part(model, Vector3.new(8, 8, 2), CFrame.new(10, 6, 13), DARKWOOD, Enum.Material.Wood)
         BuildingKit.part(model, Vector3.new(2, 8, 8), CFrame.new(-18, 6, 4), DARKWOOD, Enum.Material.Wood)
         BuildingKit.part(model, Vector3.new(2, 8, 8), CFrame.new(18, 6, 4), DARKWOOD, Enum.Material.Wood)
         BuildingKit.part(model, Vector3.new(6, 4, 3), CFrame.new(0, 4, 2), DARKWOOD, Enum.Material.Wood)
+        rakKiri:SetAttribute("Rak", true)
+        rakKanan:SetAttribute("Rak", true)
+
+        local BAG_A = Color3.fromRGB(150, 108, 62)
+        local BAG_B = Color3.fromRGB(96, 128, 72)
+        local BAG_C = Color3.fromRGB(196, 168, 120)
+
+        for sx = -1, 1, 2 do
+                local rx = sx * 10
+                BuildingKit.part(model, Vector3.new(8, 0.3, 1.6), CFrame.new(rx, 5.4, 11.6), FLOORWOOD, Enum.Material.WoodPlanks).CanCollide = false
+                BuildingKit.part(model, Vector3.new(8, 0.3, 1.6), CFrame.new(rx, 8, 11.6), FLOORWOOD, Enum.Material.WoodPlanks).CanCollide = false
+                seedBag(model, CFrame.new(rx - 2.6, 6.2, 11.6), BAG_A)
+                seedBag(model, CFrame.new(rx, 6.2, 11.6), BAG_B)
+                seedBag(model, CFrame.new(rx + 2.6, 6.2, 11.6), BAG_C)
+                seedBag(model, CFrame.new(rx - 1.6, 8.8, 11.6), BAG_B)
+                seedBag(model, CFrame.new(rx + 1.6, 8.8, 11.6), BAG_A)
+                seedBag(model, CFrame.new(rx - 1.6, 11.4, 13), BAG_A)
+                seedBag(model, CFrame.new(rx + 1.6, 11.4, 13), BAG_B)
+                potPlant(model, CFrame.new(rx + 3.4, 10.5, 13))
+        end
+        seedBag(model, CFrame.new(-18, 10.4, 4), BAG_C)
+        seedBag(model, CFrame.new(-18, 10.4, 5.6), BAG_A)
+        seedBag(model, CFrame.new(18, 10.4, 4), BAG_B)
+        potPlant(model, CFrame.new(18, 10.4, 5.8))
+        potPlant(model, CFrame.new(-10, 5.6, -14))
+        potPlant(model, CFrame.new(10, 5.6, -14))
+        seedBag(model, CFrame.new(-11.4, 5.2, -10.4), BAG_A)
+        seedBag(model, CFrame.new(-4.6, 5.2, -9.6), BAG_B)
+        BuildingKit.part(model, Vector3.new(1.6, 1, 1.2), CFrame.new(-3.4, 4.5, -10), Color3.fromRGB(56, 44, 36), Enum.Material.Wood)
+        BuildingKit.part(model, Vector3.new(1.2, 0.3, 0.9), CFrame.new(-3.4, 5.15, -10), Color3.fromRGB(255, 214, 110), Enum.Material.Neon)
+        BuildingKit.part(model, Vector3.new(2.2, 2.2, 2.2), CFrame.new(2, 3.1, -5.4), BAG_C, Enum.Material.Fabric)
+        BuildingKit.part(model, Vector3.new(2.2, 2.2, 2.2), CFrame.new(4.5, 3.1, -6.4), BAG_A, Enum.Material.Fabric)
+        BuildingKit.part(model, Vector3.new(2.2, 1.6, 2.2), CFrame.new(3.2, 5.2, -5.9), BAG_B, Enum.Material.Fabric)
+        BuildingKit.part(model, Vector3.new(3, 2, 3), CFrame.new(-16.5, 3, -3), Color3.fromRGB(122, 96, 58), Enum.Material.WoodPlanks)
+        seedBag(model, CFrame.new(-16.5, 4.8, -3), BAG_A)
+        seedBag(model, CFrame.new(-15.3, 4.8, -3.4), BAG_B)
+        priceTag(model, CFrame.new(-13.2, 6.4, -8.4) * CFrame.Angles(0, math.rad(90), 0), "Pack Common 2.400")
+        priceTag(model, CFrame.new(-13.2, 4.9, -11.6) * CFrame.Angles(0, math.rad(90), 0), "Pack Rare 9.000")
+        priceTag(model, CFrame.new(-10, 10.6, 11.9), "Benih Aneka")
+        priceTag(model, CFrame.new(10, 10.6, 11.9), "Benih Pilihan")
+        textBoard(model, Vector3.new(10, 3, 0.4), CFrame.new(-8, 12.5, -14.1), "PACK BENIH 3 ISI", Enum.NormalId.Back)
+        textBoard(model, Vector3.new(9, 1.6, 0.3), CFrame.new(0, 17.2, -8), "BENIH SEGAR SETIAP HARI", Enum.NormalId.Front)
+        BuildingKit.part(model, Vector3.new(0.2, 2.4, 0.2), CFrame.new(-4, 18.6, -8), DARKWOOD, Enum.Material.Wood).CanCollide = false
+        BuildingKit.part(model, Vector3.new(0.2, 2.4, 0.2), CFrame.new(4, 18.6, -8), DARKWOOD, Enum.Material.Wood).CanCollide = false
         BuildingKit.lamp(model, -12, 21, 0)
         BuildingKit.lamp(model, 0, 21, 0)
         BuildingKit.lamp(model, 12, 21, 0)
@@ -1095,59 +1060,6 @@ return BuildingKit
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="13">
-          <Properties>
-            <string name="Name">CombineService</string>
-            <string name="Source"><![CDATA[local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local CropData = require(ReplicatedStorage.Shared.CropData)
-local Recipes = require(ReplicatedStorage.Shared.Recipes)
-
-local CombineService = {}
-
-local Tas
-local combinePoint: Vector3? = nil
-
-function CombineService.bind(deps)
-        Tas = deps.Tas
-end
-
-function CombineService.setCombinePoint(pos: Vector3)
-        combinePoint = pos
-end
-
-function CombineService.combine(player, idA: any, idB: any): (boolean, string)
-        if type(idA) ~= "string" or type(idB) ~= "string" then
-                return false, "Permintaan tidak sah."
-        end
-        if not CropData.byId[idA] or not CropData.byId[idB] then
-                return false, "Benih tidak dikenal."
-        end
-        local char = player.Character
-        local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
-        if not root or not combinePoint or (root.Position - combinePoint).Magnitude > 24 then
-                return false, "Gabung benih hanya di Meja Gabung Pusat Kota."
-        end
-        local out = Recipes.find(idA, idB)
-        if not out then
-                return false, "Kombinasi ini tidak menghasilkan apa pun."
-        end
-        if Tas.count(player, "benih", idA) < 1 or Tas.count(player, "benih", idB) < 1 then
-                return false, "Benih tidak cukup."
-        end
-        if Tas.roomFor(player, "benih", out, 1) < 1 then
-                return false, "Tas penuh! Kosongkan slot dulu."
-        end
-        Tas.remove(player, "benih", idA, 1)
-        Tas.remove(player, "benih", idB, 1)
-        Tas.add(player, "benih", out, 1)
-        return true, "Berhasil: " .. CropData.byId[out].nama .. "!"
-end
-
-return CombineService
-]]></string>
-          </Properties>
-        </Item>
         <Item class="ModuleScript" referent="14">
           <Properties>
             <string name="Name">DataService</string>
@@ -1163,110 +1075,121 @@ local DataService = {}
 local store = DataStoreService:GetDataStore("AKM_T1")
 local cache: { [number]: any } = {}
 local dirty: { [number]: boolean } = {}
+local zoneProvider: ((Player) -> (string, string?))? = nil
 
 local function defaultData()
-	return { m = CropData.StartMoney, t = {}, dev = false }
+        return { m = CropData.StartMoney, t = {}, dev = false }
+end
+
+function DataService.setZoneProvider(fn)
+        zoneProvider = fn
 end
 
 local function push(player: Player)
-	local d = cache[player.UserId]
-	if not d then
-		return
-	end
-	Net.get("Sync"):FireClient(player, { micda = math.floor(d.m), tas = d.t })
-	local ls = player:FindFirstChild("leaderstats")
-	if ls then
-		local v = ls:FindFirstChild("Micda")
-		if v then
-			v.Value = math.floor(d.m)
-		end
-	end
+        local d = cache[player.UserId]
+        if not d then
+                return
+        end
+        local payload: any = { micda = math.floor(d.m), tas = d.t }
+        if zoneProvider then
+                local z, dn = zoneProvider(player)
+                payload.zone = z
+                payload.dunia = dn
+        end
+        Net.get("Sync"):FireClient(player, payload)
+        local ls = player:FindFirstChild("leaderstats")
+        if ls then
+                local v = ls:FindFirstChild("Micda")
+                if v then
+                        v.Value = math.floor(d.m)
+                end
+        end
 end
 
 function DataService.get(player: Player)
-	return cache[player.UserId]
+        return cache[player.UserId]
 end
 
 function DataService.markDirty(player: Player)
-	dirty[player.UserId] = true
+        dirty[player.UserId] = true
 end
 
 function DataService.push(player: Player)
-	push(player)
+        push(player)
 end
 
 function DataService.addMicda(player: Player, amount: number)
-	local d = cache[player.UserId]
-	if not d then
-		return
-	end
-	d.m = math.max(0, d.m + amount)
-	dirty[player.UserId] = true
-	push(player)
+        local d = cache[player.UserId]
+        if not d then
+                return
+        end
+        d.m = math.max(0, d.m + amount)
+        dirty[player.UserId] = true
+        push(player)
 end
 
 function DataService.trySpend(player: Player, amount: number): boolean
-	local d = cache[player.UserId]
-	if not d then
-		return false
-	end
-	if d.m < amount then
-		return false
-	end
-	d.m -= amount
-	dirty[player.UserId] = true
-	push(player)
-	return true
+        local d = cache[player.UserId]
+        if not d then
+                return false
+        end
+        if d.m < amount then
+                return false
+        end
+        d.m -= amount
+        dirty[player.UserId] = true
+        push(player)
+        return true
 end
 
 function DataService.load(player: Player): boolean
-	local ok, data = pcall(function()
-		return store:GetAsync("u_" .. player.UserId)
-	end)
-	if ok and type(data) == "table" and type(data.m) == "number" then
-		cache[player.UserId] = {
-			m = data.m,
-			t = type(data.t) == "table" and data.t or {},
-			dev = data.dev == true,
-		}
-	elseif ok then
-		cache[player.UserId] = defaultData()
-	else
-		cache[player.UserId] = defaultData()
-		return false
-	end
-	dirty[player.UserId] = false
-	push(player)
-	return true
+        local ok, data = pcall(function()
+                return store:GetAsync("u_" .. player.UserId)
+        end)
+        if ok and type(data) == "table" and type(data.m) == "number" then
+                cache[player.UserId] = {
+                        m = data.m,
+                        t = type(data.t) == "table" and data.t or {},
+                        dev = data.dev == true,
+                }
+        elseif ok then
+                cache[player.UserId] = defaultData()
+        else
+                cache[player.UserId] = defaultData()
+                return false
+        end
+        dirty[player.UserId] = false
+        push(player)
+        return true
 end
 
 function DataService.save(player: Player)
-	local d = cache[player.UserId]
-	if not d or not dirty[player.UserId] then
-		return
-	end
-	local ok = pcall(function()
-		store:SetAsync("u_" .. player.UserId, { m = math.floor(d.m), t = d.t, dev = d.dev })
-	end)
-	if ok then
-		dirty[player.UserId] = false
-	end
+        local d = cache[player.UserId]
+        if not d or not dirty[player.UserId] then
+                return
+        end
+        local ok = pcall(function()
+                store:SetAsync("u_" .. player.UserId, { m = math.floor(d.m), t = d.t, dev = d.dev })
+        end)
+        if ok then
+                dirty[player.UserId] = false
+        end
 end
 
 function DataService.startLoops()
-	task.spawn(function()
-		while true do
-			task.wait(60)
-			for _, p in ipairs(Players:GetPlayers()) do
-				DataService.save(p)
-			end
-		end
-	end)
+        task.spawn(function()
+                while true do
+                        task.wait(60)
+                        for _, p in ipairs(Players:GetPlayers()) do
+                                DataService.save(p)
+                        end
+                end
+        end)
 end
 
 function DataService.drop(player: Player)
-	cache[player.UserId] = nil
-	dirty[player.UserId] = nil
+        cache[player.UserId] = nil
+        dirty[player.UserId] = nil
 end
 
 return DataService
@@ -1286,325 +1209,104 @@ return DevCodeVault
         </Item>
         <Item class="ModuleScript" referent="16">
           <Properties>
-            <string name="Name">DuniaService</string>
-            <string name="Source"><![CDATA[local Players = game:GetService("Players")
-local TeleportService = game:GetService("TeleportService")
-local MemoryStoreService = game:GetService("MemoryStoreService")
-local DataStoreService = game:GetService("DataStoreService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local DuniaLogic = require(ReplicatedStorage.Shared.DuniaLogic)
-
-local DuniaService = {}
-
-local aktif = MemoryStoreService:GetSortedMap("AKM_DuniaAktif")
-local store = DataStoreService:GetDataStore("AKM_Dunia")
-
-local Plot, Smash
-local roleOf: { [number]: string } = {}
-local ownerId = 0
-local ownerName = "Petani"
-local worldLoaded = false
-local worldDirty = false
-local loopsOn = false
-local lastBeat = 0
-local lastSave = 0
-
-function DuniaService.bind(deps)
-        Plot = deps.Plot
-        Smash = deps.Smash
-end
-
-local function now(): number
-        return workspace:GetServerTimeNow()
-end
-
-local function key(): string
-        return DuniaLogic.keyFor(ownerId)
-end
-
-function DuniaService.setOwner(id: number, nama: string?)
-        ownerId = id
-        if nama and #nama > 0 then
-                ownerName = nama
-        end
-end
-
-function DuniaService.ownerId(): number
-        return ownerId
-end
-
-function DuniaService.ownerName(): string
-        return ownerName
-end
-
-function DuniaService.roleOf(player: Player): string
-        return roleOf[player.UserId] or "hub"
-end
-
-function DuniaService.setRole(player: Player, role: string)
-        roleOf[player.UserId] = role
-end
-
-function DuniaService.forget(player: Player)
-        roleOf[player.UserId] = nil
-end
-
-function DuniaService.touch()
-        worldDirty = true
-end
-
-function DuniaService.loadWorld()
-        worldLoaded = true
-        if ownerId <= 0 then
-                return
-        end
-        local ok, data = pcall(function()
-                return store:GetAsync(key())
-        end)
-        if ok and type(data) == "table" then
-                if type(data.n) == "string" and #data.n > 0 and #data.n <= 30 then
-                        ownerName = data.n
-                end
-                Plot.restore(1, DuniaLogic.desPlots(data.pl))
-                Smash.restoreLahan(1, DuniaLogic.desMeja(data.mj))
-        end
-end
-
-function DuniaService.saveWorld()
-        if not worldLoaded or ownerId <= 0 or not worldDirty then
-                return
-        end
-        local payload = {
-                n = ownerName,
-                pl = DuniaLogic.serPlots(Plot.serialize(1)),
-                mj = DuniaLogic.serMeja(Smash.serializeLahan(1)),
-                t = math.floor(now()),
-        }
-        local ok = pcall(function()
-                store:SetAsync(key(), payload)
-        end)
-        if ok then
-                worldDirty = false
-        end
-end
-
-local function beat()
-        if ownerId <= 0 or game.PrivateServerId == "" then
-                return
-        end
-        pcall(function()
-                aktif:SetAsync(key(), { k = game.PrivateServerId, t = math.floor(now()) }, DuniaLogic.Ttl)
-        end)
-end
-
-function DuniaService.startLoops()
-        if loopsOn then
-                return
-        end
-        loopsOn = true
-        lastBeat = 0
-        lastSave = now()
-        task.spawn(function()
-                while loopsOn do
-                        task.wait(1)
-                        local t = now()
-                        if t - lastBeat >= DuniaLogic.Heartbeat then
-                                lastBeat = t
-                                beat()
-                        end
-                        if t - lastSave >= DuniaLogic.SaveEvery then
-                                lastSave = t
-                                DuniaService.saveWorld()
-                        end
-                end
-        end)
-end
-
-function DuniaService.closeWorld()
-        DuniaService.saveWorld()
-        if ownerId > 0 then
-                pcall(function()
-                        aktif:RemoveAsync(key())
-                end)
-        end
-        loopsOn = false
-end
-
-function DuniaService.enter(player: Player): (boolean, string)
-        if game.PrivateServerId ~= "" then
-                return false, "Kamu sedang berada di dalam dunia."
-        end
-        local pid = game.PlaceId
-        if pid <= 0 then
-                return false, "Teleport belum tersedia di lingkungan ini."
-        end
-        local okR, kode = pcall(function()
-                return TeleportService:ReserveServer(pid)
-        end)
-        if not okR or type(kode) ~= "string" or #kode == 0 then
-                return false, "Gagal menyiapkan dunia. Coba lagi sebentar."
-        end
-        pcall(function()
-                aktif:SetAsync(DuniaLogic.keyFor(player.UserId), { k = kode, t = math.floor(now()) }, DuniaLogic.Ttl)
-        end)
-        local opt = Instance.new("TeleportOptions")
-        opt:SetReservedServerAccessCode(kode)
-        opt:SetTeleportData({ md = "dunia", pemilik = player.UserId, nama = player.Name })
-        local okT = pcall(function()
-                TeleportService:TeleportAsync(pid, { player }, opt)
-        end)
-        if not okT then
-                return false, "Teleport gagal. Coba lagi sebentar."
-        end
-        return true, "Membuka duniamu..."
-end
-
-function DuniaService.visit(player: Player, namaRaw: any): (boolean, string)
-        if type(namaRaw) ~= "string" then
-                return false, "Nama tidak sah."
-        end
-        local nama = namaRaw:gsub("^%s+", ""):gsub("%s+$", "")
-        if #nama < 2 or #nama > 30 then
-                return false, "Nama pemain tidak sah."
-        end
-        local pid = game.PlaceId
-        if pid <= 0 then
-                return false, "Teleport belum tersedia di lingkungan ini."
-        end
-        local okId, targetId = pcall(function()
-                return Players:GetUserIdFromNameAsync(nama)
-        end)
-        if not okId or type(targetId) ~= "number" or targetId <= 0 then
-                return false, "Nama pemain tidak ditemukan."
-        end
-        if targetId == player.UserId then
-                return DuniaService.enter(player)
-        end
-        local okG, rec = pcall(function()
-                return aktif:GetAsync(DuniaLogic.keyFor(targetId))
-        end)
-        local opt = Instance.new("TeleportOptions")
-        local hidup = okG and DuniaLogic.fresh(rec, now()) and type(rec.k) == "string"
-        if hidup then
-                opt:SetReservedServerAccessCode(rec.k)
-        else
-                local okR, kode = pcall(function()
-                        return TeleportService:ReserveServer(pid)
-                end)
-                if not okR or type(kode) ~= "string" or #kode == 0 then
-                        return false, "Gagal menyiapkan kunjungan. Coba lagi sebentar."
-                end
-                opt:SetReservedServerAccessCode(kode)
-        end
-        opt:SetTeleportData({ md = "dunia", pemilik = targetId, nama = nama })
-        local okT = pcall(function()
-                TeleportService:TeleportAsync(pid, { player }, opt)
-        end)
-        if not okT then
-                return false, "Teleport gagal. Coba lagi sebentar."
-        end
-        if hidup then
-                return true, "Menuju dunia " .. nama .. " yang sedang aktif."
-        end
-        return true, "Membuka dunia " .. nama .. " dalam mode kunjung."
-end
-
-function DuniaService.pulang(player: Player): (boolean, string)
-        local ok = pcall(function()
-                TeleportService:TeleportAsync(game.PlaceId, { player })
-        end)
-        if not ok then
-                return false, "Teleport gagal. Coba lagi sebentar."
-        end
-        return true, "Kembali ke Pusat Kota..."
-end
-
-return DuniaService
-]]></string>
-          </Properties>
-        </Item>
-        <Item class="ModuleScript" referent="17">
-          <Properties>
             <string name="Name">LandService</string>
-            <string name="Source"><![CDATA[local Layout = require(game:GetService("ReplicatedStorage").Shared.Layout)
+            <string name="Source"><![CDATA[local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Layout = require(ReplicatedStorage.Shared.Layout)
 
 local LandService = {}
 
 local ownerOf: { [number]: number } = {}
 local landOf: { [number]: number } = {}
-local spawnOf: { [number]: SpawnLocation } = {}
 local umumSpawn: SpawnLocation? = nil
 local kotaSpawn: SpawnLocation? = nil
 
-function LandService.registerSpawn(index: number, spawn: SpawnLocation)
-	spawnOf[index] = spawn
-end
-
 function LandService.registerUmum(spawn: SpawnLocation)
-	umumSpawn = spawn
+        umumSpawn = spawn
 end
 
 function LandService.registerKota(spawn: SpawnLocation)
-	kotaSpawn = spawn
+        kotaSpawn = spawn
 end
 
 function LandService.origin(index: number): Vector3
-	local x, z = Layout.cellOrigin(index)
-	return Vector3.new(x, 0, z)
+        local x, z = Layout.cellOrigin(index)
+        return Vector3.new(x + Layout.duniaOffsetX(), 0, z)
 end
 
 function LandService.ownerOf(index: number): number?
-	return ownerOf[index]
+        return ownerOf[index]
 end
 
 function LandService.landOf(player): number?
-	return landOf[player.UserId]
-end
-
-function LandService.spawnOf(index: number): SpawnLocation?
-	return spawnOf[index]
+        return landOf[player.UserId]
 end
 
 function LandService.umumSpawn(): SpawnLocation?
-	return umumSpawn
+        return umumSpawn
 end
 
 function LandService.kotaSpawn(): SpawnLocation?
-	return kotaSpawn
+        return kotaSpawn
 end
 
-function LandService.assign(player): number
-	for i = 1, Layout.LahanCount do
-		if not ownerOf[i] then
-			ownerOf[i] = player.UserId
-			landOf[player.UserId] = i
-			return i
-		end
-	end
-	return 0
+function LandService.claimFree(userId: number, isTaken: (number) -> boolean): number
+        for i = 1, Layout.LahanCount do
+                if not ownerOf[i] and not isTaken(i) then
+                        ownerOf[i] = userId
+                        landOf[userId] = i
+                        return i
+                end
+        end
+        return 0
 end
 
-function LandService.release(player): number
-	local idx = landOf[player.UserId]
-	if idx and ownerOf[idx] == player.UserId then
-		ownerOf[idx] = nil
-		landOf[player.UserId] = nil
-	end
-	return idx or 0
+function LandService.firstFree(isTaken: (number) -> boolean): number
+        for i = 1, Layout.LahanCount do
+                if not ownerOf[i] and not isTaken(i) then
+                        return i
+                end
+        end
+        return 0
+end
+
+function LandService.reserve(index: number, userId: number): boolean
+        if ownerOf[index] then
+                return false
+        end
+        ownerOf[index] = userId
+        return true
+end
+
+function LandService.claim(index: number, userId: number): boolean
+        if ownerOf[index] and ownerOf[index] ~= userId then
+                return false
+        end
+        ownerOf[index] = userId
+        landOf[userId] = index
+        return true
+end
+
+function LandService.free(index: number, userId: number)
+        if ownerOf[index] == userId then
+                ownerOf[index] = nil
+                if landOf[userId] == index then
+                        landOf[userId] = nil
+                end
+        end
 end
 
 function LandService.isInside(index: number, position: Vector3, margin: number): boolean
-	local o = LandService.origin(index)
-	local p = position - o
-	return p.X >= -margin and p.X <= Layout.SizeX + margin and p.Z >= -margin and p.Z <= Layout.SizeZ + margin
+        local o = LandService.origin(index)
+        local p = position - o
+        return p.X >= -margin and p.X <= Layout.SizeX + margin and p.Z >= -margin and p.Z <= Layout.SizeZ + margin
 end
 
 return LandService
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="18">
+        <Item class="ModuleScript" referent="17">
           <Properties>
             <string name="Name">PlotService</string>
             <string name="Source"><![CDATA[local Workspace = game:GetService("Workspace")
@@ -1613,6 +1315,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local CropData = require(ReplicatedStorage.Shared.CropData)
 local Layout = require(ReplicatedStorage.Shared.Layout)
+local GabungLogic = require(ReplicatedStorage.Shared.GabungLogic)
+local Recipes = require(ReplicatedStorage.Shared.Recipes)
 
 local PlotService = {}
 
@@ -1692,11 +1396,11 @@ local function makePlantModel(index: number, idx: number, cropId: string): Model
         return model
 end
 
-function PlotService.buildGrid(index: number)
+function PlotService.buildGrid(index: number, parent: Instance?)
         if folders[index] then
                 return
         end
-        local root = Workspace:FindFirstChild("Dunia")
+        local root = parent or Workspace:FindFirstChild("Dunia")
         if not root then
                 return
         end
@@ -1806,11 +1510,32 @@ function PlotService.plant(player: Player, idx: number, cropId: string): (boolea
                 model = model,
                 ready = false,
         }
+        local tetangga = {}
+        for _, n in ipairs(GabungLogic.neighbors(idx)) do
+                local r = pl[n]
+                if r then
+                        table.insert(tetangga, r.crop)
+                end
+        end
+        local out, partner = Recipes.matchList(cropId, tetangga)
+        local pesan = "Ditanam."
+        if out and partner and out ~= cropId then
+                pl[idx].crop = out
+                pl[idx].model:Destroy()
+                pl[idx].model = makePlantModel(index, idx, out)
+                pesan = "Gabung benih: "
+                        .. CropData.byId[partner].nama
+                        .. " + "
+                        .. info.nama
+                        .. " menjadi "
+                        .. CropData.byId[out].nama
+                        .. "!"
+        end
         if World then
-                World.touch()
+                World.touch(index)
         end
         sync(player, index, idx)
-        return true, "Ditanam."
+        return true, pesan
 end
 
 function PlotService.harvest(player: Player, idx: number): (boolean, string)
@@ -1843,7 +1568,7 @@ function PlotService.harvest(player: Player, idx: number): (boolean, string)
         planted[index][idx] = nil
         Tas.add(player, "hasil", rec.crop, jumlah)
         if World then
-                World.touch()
+                World.touch(index)
         end
         sync(player, index, idx)
         return true, "Panen " .. jumlah .. " " .. info.nama .. "."
@@ -1886,7 +1611,7 @@ return PlotService
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="19">
+        <Item class="ModuleScript" referent="18">
           <Properties>
             <string name="Name">RateLimit</string>
             <string name="Source"><![CDATA[local RateLimit = {}
@@ -1924,7 +1649,7 @@ return RateLimit
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="20">
+        <Item class="ModuleScript" referent="19">
           <Properties>
             <string name="Name">ShopService</string>
             <string name="Source"><![CDATA[local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -2031,7 +1756,7 @@ return ShopService
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="21">
+        <Item class="ModuleScript" referent="20">
           <Properties>
             <string name="Name">SmashService</string>
             <string name="Source"><![CDATA[local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -2046,6 +1771,7 @@ local rng = Random.new()
 local MAX_SLOTS = 6
 local tables: { [number]: Vector3 } = {}
 local slots: { [number]: { any } } = {}
+local hasilFolders: { [number]: Folder } = {}
 
 local RARITY_COLOR = {
         common = Color3.fromRGB(96, 168, 74),
@@ -2070,6 +1796,15 @@ end
 function SmashService.registerTable(index: number, pos: Vector3)
         tables[index] = pos
         slots[index] = {}
+        if not hasilFolders[index] then
+                local root = workspace:FindFirstChild("Dunia")
+                if root then
+                        local f = Instance.new("Folder")
+                        f.Name = "Hasil_" .. index
+                        f.Parent = root
+                        hasilFolders[index] = f
+                end
+        end
 end
 
 function SmashService.tablePos(index: number): Vector3?
@@ -2095,6 +1830,11 @@ end
 
 function SmashService.clearLahan(index: number)
         slots[index] = {}
+        local f = hasilFolders[index]
+        if f then
+                f:Destroy()
+                hasilFolders[index] = nil
+        end
 end
 
 function SmashService.syncTo(player, index: number)
@@ -2119,7 +1859,12 @@ local function makeHasilModel(index: number, slotCount: number, info: any): Mode
         part.Material = Enum.Material.SmoothPlastic
         part.Position = tables[index] + Vector3.new(-10 + slotCount * 4, part.Size.Y / 2 + 0.1, 0)
         part.Parent = model
-        model.Parent = workspace:FindFirstChild("Dunia")
+        local f = hasilFolders[index]
+        if f then
+                model.Parent = f
+        else
+                model.Parent = workspace:FindFirstChild("Dunia")
+        end
         return model
 end
 
@@ -2147,7 +1892,7 @@ function SmashService.place(player, cropId: any): (boolean, string)
         local model = makeHasilModel(index, #slots[index], info)
         table.insert(slots[index], { crop = cropId, hitsLeft = CropData.Smash[info.rarity].hits, model = model })
         if World then
-                World.touch()
+                World.touch(index)
         end
         syncLahan(index, player)
         return true, info.nama .. " diletakkan di meja."
@@ -2176,7 +1921,7 @@ function SmashService.hit(player, slotIdx: any): (boolean, string)
                 local micda = rng:NextInteger(cfg.micdaMin, cfg.micdaMax)
                 Data.addMicda(player, micda)
                 if World then
-                        World.touch()
+                        World.touch(index)
                 end
                 local pesan = "+" .. micda .. " Micda"
                 if rng:NextNumber() < cfg.seed then
@@ -2222,7 +1967,7 @@ function SmashService.take(player, slotIdx: any): (boolean, string)
         table.remove(slots[index], slotIdx)
         Tas.add(player, "hasil", s.crop, 1)
         if World then
-                World.touch()
+                World.touch(index)
         end
         syncLahan(index, player)
         return true, "Diambil kembali."
@@ -2254,7 +1999,7 @@ return SmashService
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="22">
+        <Item class="ModuleScript" referent="21">
           <Properties>
             <string name="Name">TasService</string>
             <string name="Source"><![CDATA[local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -2327,7 +2072,7 @@ return TasService
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="23">
+        <Item class="ModuleScript" referent="22">
           <Properties>
             <string name="Name">WorldBuilder</string>
             <string name="Source"><![CDATA[local Workspace = game:GetService("Workspace")
@@ -2344,237 +2089,563 @@ local MARKER_A = Color3.fromRGB(120, 180, 220)
 local MARKER_B = Color3.fromRGB(220, 170, 90)
 
 local function groundTop(): number
-        return 1
+	return 1
 end
 
-local function spawnPad(parent: Instance, pos: Vector3, enabled: boolean): SpawnLocation
-        local spawn = Instance.new("SpawnLocation")
-        spawn.Anchored = true
-        spawn.Size = Vector3.new(12, 1, 12)
-        spawn.Position = pos
-        spawn.Color = Color3.fromRGB(235, 200, 110)
-        spawn.Material = Enum.Material.SmoothPlastic
-        spawn.TopSurface = Enum.SurfaceType.Smooth
-        spawn.Duration = 0
-        spawn.Enabled = enabled
-        spawn.Parent = parent
-        return spawn
+local function ensureRoot(): Folder
+	local f = Workspace:FindFirstChild("Dunia")
+	if not f then
+		f = Instance.new("Folder")
+		f.Name = "Dunia"
+		f.Parent = Workspace
+	end
+	return f :: Folder
+end
+
+local function spawnPad(parent: Instance, pos: Vector3): SpawnLocation
+	local spawn = Instance.new("SpawnLocation")
+	spawn.Anchored = true
+	spawn.Size = Vector3.new(12, 1, 12)
+	spawn.Position = pos
+	spawn.Color = Color3.fromRGB(235, 200, 110)
+	spawn.Material = Enum.Material.SmoothPlastic
+	spawn.TopSurface = Enum.SurfaceType.Smooth
+	spawn.Duration = 0
+	spawn.Enabled = true
+	spawn.Parent = parent
+	return spawn
 end
 
 local function archGate(parent: Instance, x: number, z: number, gt: number, action: string, object: string, onTrigger)
-        BuildingKit.part(parent, Vector3.new(2, 10, 2), CFrame.new(x - 12, gt + 5, z), BuildingKit.DARKWOOD, Enum.Material.Wood)
-        BuildingKit.part(parent, Vector3.new(2, 10, 2), CFrame.new(x + 12, gt + 5, z), BuildingKit.DARKWOOD, Enum.Material.Wood)
-        local beam = BuildingKit.part(parent, Vector3.new(26, 2, 2), CFrame.new(x, gt + 11, z), BuildingKit.DARKWOOD, Enum.Material.Wood)
-        local prompt = Instance.new("ProximityPrompt")
-        prompt.ActionText = action
-        prompt.ObjectText = object
-        prompt.HoldDuration = 0.4
-        prompt.MaxActivationDistance = 14
-        prompt.RequiresLineOfSight = false
-        prompt.Parent = beam
-        prompt.Triggered:Connect(function(player)
-                onTrigger(player)
-        end)
+	BuildingKit.part(parent, Vector3.new(2, 10, 2), CFrame.new(x - 12, gt + 5, z), BuildingKit.DARKWOOD, Enum.Material.Wood)
+	BuildingKit.part(parent, Vector3.new(2, 10, 2), CFrame.new(x + 12, gt + 5, z), BuildingKit.DARKWOOD, Enum.Material.Wood)
+	local beam = BuildingKit.part(parent, Vector3.new(26, 2, 2), CFrame.new(x, gt + 11, z), BuildingKit.DARKWOOD, Enum.Material.Wood)
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = action
+	prompt.ObjectText = object
+	prompt.HoldDuration = 0.4
+	prompt.MaxActivationDistance = 14
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = beam
+	prompt.Triggered:Connect(function(player)
+		onTrigger(player)
+	end)
 end
 
 local function signBoard(parent: Instance, x: number, z: number, gt: number, text: string)
-        BuildingKit.part(parent, Vector3.new(1, 8, 1), CFrame.new(x, gt + 4, z), BuildingKit.DARKWOOD, Enum.Material.Wood)
-        local board = BuildingKit.part(parent, Vector3.new(8, 4, 0.5), CFrame.new(x, gt + 10, z), BuildingKit.DARKWOOD, Enum.Material.Wood)
-        local gui = Instance.new("SurfaceGui")
-        gui.Face = Enum.NormalId.Front
-        gui.CanvasSize = Vector2.new(400, 200)
-        local label = Instance.new("TextLabel")
-        label.Name = "NamaLahan"
-        label.Size = UDim2.fromScale(1, 1)
-        label.BackgroundTransparency = 1
-        label.Text = text
-        label.TextColor3 = Color3.fromRGB(255, 240, 200)
-        label.TextScaled = true
-        label.Font = Enum.Font.GothamBold
-        label.Parent = gui
-        gui.Parent = board
-        return board
+	BuildingKit.part(parent, Vector3.new(1, 8, 1), CFrame.new(x, gt + 4, z), BuildingKit.DARKWOOD, Enum.Material.Wood)
+	local board = BuildingKit.part(parent, Vector3.new(8, 4, 0.5), CFrame.new(x, gt + 10, z), BuildingKit.DARKWOOD, Enum.Material.Wood)
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Front
+	gui.CanvasSize = Vector2.new(400, 200)
+	local label = Instance.new("TextLabel")
+	label.Name = "NamaLahan"
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Text = text
+	label.TextColor3 = Color3.fromRGB(255, 240, 200)
+	label.TextScaled = true
+	label.Font = Enum.Font.GothamBold
+	label.Parent = gui
+	gui.Parent = board
+	return board
 end
 
 function WorldBuilder.buildHub(hooks)
-        local root = Instance.new("Folder")
-        root.Name = "Dunia"
-        root.Parent = Workspace
-        local gt = 0
+	local root = ensureRoot()
+	local gt = 0
 
-        BuildingKit.part(root, Vector3.new(400, 1, 400), CFrame.new(0, -0.5, 0), GRASS, Enum.Material.Grass)
-        BuildingKit.part(root, Vector3.new(10, 0.2, 90), CFrame.new(0, gt + 0.1, 10), PATH, Enum.Material.Concrete)
+	BuildingKit.part(root, Vector3.new(400, 1, 400), CFrame.new(0, -0.5, 0), GRASS, Enum.Material.Grass)
+	BuildingKit.part(root, Vector3.new(10, 0.2, 90), CFrame.new(0, gt + 0.1, 10), PATH, Enum.Material.Concrete)
 
-        local spawn = spawnPad(root, Vector3.new(0, gt + 0.5, 44), true)
-        if hooks and hooks.registerKota then
-                hooks.registerKota(spawn)
-        end
-        if hooks and hooks.registerUmum then
-                hooks.registerUmum(spawn)
-        end
+	local spawn = spawnPad(root, Vector3.new(0, gt + 0.5, 44))
+	if hooks and hooks.registerKota then
+		hooks.registerKota(spawn)
+	end
+	if hooks and hooks.registerUmum then
+		hooks.registerUmum(spawn)
+	end
 
-        archGate(root, 0, 20, gt, "Dunia-ku", "Gerbang Dunia", function(player: Player)
-                if hooks and hooks.onGerbangDunia then
-                        hooks.onGerbangDunia(player)
-                end
-        end)
+	archGate(root, 0, 20, gt, "Dunia-ku", "Gerbang Dunia", function(player: Player)
+		if hooks and hooks.onGerbangDunia then
+			hooks.onGerbangDunia(player)
+		end
+	end)
 
-        signBoard(root, -30, 6, gt, "PUSAT KOTA")
+	signBoard(root, -30, 6, gt, "PUSAT KOTA")
 
-        local toko = BuildingKit.buildToko(root)
-        toko:PivotTo(CFrame.new(0, gt, -60) * CFrame.Angles(0, math.rad(180), 0))
-        local kasir
-        for _, p in ipairs(toko:GetDescendants()) do
-                if p:IsA("BasePart") and p.Size == Vector3.new(12, 4, 3) then
-                        kasir = p
-                        break
-                end
-        end
-        if kasir then
-                if hooks and hooks.setShopPoint then
-                        hooks.setShopPoint(kasir.Position)
-                end
-                if hooks and hooks.onShopPrompt then
-                        local prompt = Instance.new("ProximityPrompt")
-                        prompt.ActionText = "Toko Benih"
-                        prompt.ObjectText = "Kasir"
-                        prompt.HoldDuration = 0.3
-                        prompt.MaxActivationDistance = 12
-                        prompt.RequiresLineOfSight = false
-                        prompt.Parent = kasir
-                        prompt.Triggered:Connect(function(player: Player)
-                                hooks.onShopPrompt(player)
-                        end)
-                end
-        end
+	local toko = BuildingKit.buildToko(root)
+	toko:PivotTo(CFrame.new(0, gt, -60) * CFrame.Angles(0, math.rad(180), 0))
+	for _, p in ipairs(toko:GetDescendants()) do
+		if p:IsA("BasePart") and p.Size == Vector3.new(12, 4, 3) then
+			if hooks and hooks.setShopPoint then
+				hooks.setShopPoint(p.Position)
+			end
+			if hooks and hooks.onShopPrompt then
+				local prompt = Instance.new("ProximityPrompt")
+				prompt.ActionText = "Toko Benih"
+				prompt.ObjectText = "Kasir"
+				prompt.HoldDuration = 0.3
+				prompt.MaxActivationDistance = 12
+				prompt.RequiresLineOfSight = false
+				prompt.Parent = p
+				prompt.Triggered:Connect(function(player: Player)
+					hooks.onShopPrompt(player)
+				end)
+			end
+		elseif p:IsA("BasePart") and p:GetAttribute("Rak") == true then
+			if hooks and hooks.onShopPrompt then
+				local prompt = Instance.new("ProximityPrompt")
+				prompt.ActionText = "Beli Benih"
+				prompt.ObjectText = "Rak Benih"
+				prompt.HoldDuration = 0.3
+				prompt.MaxActivationDistance = 10
+				prompt.RequiresLineOfSight = false
+				prompt.Parent = p
+				prompt.Triggered:Connect(function(player: Player)
+					hooks.onShopPrompt(player)
+				end)
+			end
+		end
+	end
 
-        local meja = BuildingKit.buildSemai(root)
-        meja:PivotTo(CFrame.new(56, gt, 20))
-        local tablePart
-        for _, p in ipairs(meja:GetDescendants()) do
-                if p:IsA("BasePart") and p.Size == Vector3.new(12, 4, 4) then
-                        tablePart = p
-                        break
-                end
-        end
-        if tablePart then
-                if hooks and hooks.setCombinePoint then
-                        hooks.setCombinePoint(tablePart.Position + Vector3.new(0, 2, 0))
-                end
-                if hooks and hooks.onGabung then
-                        local prompt = Instance.new("ProximityPrompt")
-                        prompt.ActionText = "Gabung Benih"
-                        prompt.ObjectText = "Meja Gabung"
-                        prompt.HoldDuration = 0.3
-                        prompt.MaxActivationDistance = 12
-                        prompt.RequiresLineOfSight = false
-                        prompt.Parent = tablePart
-                        prompt.Triggered:Connect(function(player: Player)
-                                hooks.onGabung(player)
-                        end)
-                end
-        end
+	BuildingKit.streetLamp(root, 8, gt, 32)
+	BuildingKit.streetLamp(root, -8, gt, 32)
+	BuildingKit.streetLamp(root, 8, gt, -30)
+	BuildingKit.streetLamp(root, -8, gt, -30)
 
-        BuildingKit.streetLamp(root, 8, gt, 32)
-        BuildingKit.streetLamp(root, -8, gt, 32)
-        BuildingKit.streetLamp(root, 8, gt, -30)
-        BuildingKit.streetLamp(root, -8, gt, -30)
-
-        return root
+	return root
 end
 
-function WorldBuilder.buildDunia(hooks, namaPemilik: string)
-        local root = Instance.new("Folder")
-        root.Name = "Dunia"
-        root.Parent = Workspace
+function WorldBuilder.buildLahan(hooks, index: number, namaPemilik: string): Model
+	local root = ensureRoot()
+	local model = Instance.new("Model")
+	model.Name = "Zona_" .. index
+	local folder = Instance.new("Folder")
+	folder.Name = "Isi_" .. index
+	folder.Parent = model
+	local ox, oz = Layout.cellOrigin(index)
+	local dX = Layout.duniaOffsetX()
+	local gt = groundTop()
 
-        local lahanArea = BuildingKit.part(root, Vector3.new(1440, 1, 560), CFrame.new(680, -0.5, 250), GRASS, Enum.Material.Grass)
-        lahanArea.Name = "TanahLahan"
+	BuildingKit.part(folder, Vector3.new(Layout.SizeX, 1, Layout.SizeZ), CFrame.new(dX + ox + Layout.SizeX / 2, gt - 0.5, oz + Layout.SizeZ / 2), GRASS, Enum.Material.Grass)
 
-        WorldBuilder.buildLahan(root, 1, hooks, namaPemilik)
-        return root
-end
+	BuildingKit.part(folder, Vector3.new(Layout.SizeX, 0.2, 10), CFrame.new(dX + ox + Layout.SizeX / 2, gt + 0.1, oz + 25), PATH, Enum.Material.Concrete)
+	BuildingKit.part(folder, Vector3.new(Layout.SizeX, 0.2, 10), CFrame.new(dX + ox + Layout.SizeX / 2, gt + 0.1, oz + 155), PATH, Enum.Material.Concrete)
+	BuildingKit.part(folder, Vector3.new(10, 0.2, 120), CFrame.new(dX + ox + 165, gt + 0.1, oz + 90), PATH, Enum.Material.Concrete)
+	BuildingKit.part(folder, Vector3.new(10, 0.2, 20), CFrame.new(dX + ox + 120, gt + 0.1, oz + 10), PATH, Enum.Material.Concrete)
 
-function WorldBuilder.buildLahan(root: Folder, index: number, hooks, namaPemilik: string?)
-        local ox, oz = Layout.cellOrigin(index)
-        local folder = Instance.new("Folder")
-        folder.Name = "Lahan_" .. index
-        folder.Parent = root
-        local gt = groundTop()
+	BuildingKit.fenceLine(folder, dX + ox, oz, dX + ox, oz + Layout.SizeZ, gt)
+	BuildingKit.fenceLine(folder, dX + ox + Layout.SizeX, oz, dX + ox + Layout.SizeX, oz + Layout.SizeZ, gt)
+	BuildingKit.fenceLine(folder, dX + ox, oz + Layout.SizeZ, dX + ox + Layout.SizeX, oz + Layout.SizeZ, gt)
+	BuildingKit.fenceLine(folder, dX + ox, oz, dX + ox + 108, oz, gt)
+	BuildingKit.fenceLine(folder, dX + ox + 132, oz, dX + ox + Layout.SizeX, oz, gt)
 
-        BuildingKit.part(folder, Vector3.new(Layout.SizeX, 1, Layout.SizeZ), CFrame.new(ox + Layout.SizeX / 2, gt - 0.5, oz + Layout.SizeZ / 2), GRASS, Enum.Material.Grass)
+	archGate(folder, dX + ox + 120, oz, gt, "Pulang ke Kota", "Gerbang Dunia", function(player: Player)
+		if hooks and hooks.onPulang then
+			hooks.onPulang(player)
+		end
+	end)
 
-        BuildingKit.part(folder, Vector3.new(Layout.SizeX, 0.2, 10), CFrame.new(ox + Layout.SizeX / 2, gt + 0.1, oz + 25), PATH, Enum.Material.Concrete)
-        BuildingKit.part(folder, Vector3.new(Layout.SizeX, 0.2, 10), CFrame.new(ox + Layout.SizeX / 2, gt + 0.1, oz + 155), PATH, Enum.Material.Concrete)
-        BuildingKit.part(folder, Vector3.new(10, 0.2, 120), CFrame.new(ox + 165, gt + 0.1, oz + 90), PATH, Enum.Material.Concrete)
-        BuildingKit.part(folder, Vector3.new(10, 0.2, 20), CFrame.new(ox + 120, gt + 0.1, oz + 10), PATH, Enum.Material.Concrete)
+	signBoard(folder, dX + ox + 96, oz + 8, gt, "Dunia " .. (namaPemilik or "Petani"))
 
-        BuildingKit.fenceLine(folder, ox, oz, ox, oz + Layout.SizeZ, gt)
-        BuildingKit.fenceLine(folder, ox + Layout.SizeX, oz, ox + Layout.SizeX, oz + Layout.SizeZ, gt)
-        BuildingKit.fenceLine(folder, ox, oz + Layout.SizeZ, ox + Layout.SizeX, oz + Layout.SizeZ, gt)
-        BuildingKit.fenceLine(folder, ox, oz, ox + 108, oz, gt)
-        BuildingKit.fenceLine(folder, ox + 132, oz, ox + Layout.SizeX, oz, gt)
+	BuildingKit.streetLamp(folder, dX + ox + 104, gt, oz + 24)
+	BuildingKit.streetLamp(folder, dX + ox + 166, gt, oz + 156)
+	BuildingKit.streetLamp(folder, dX + ox + 40, gt, oz + 210)
 
-        archGate(folder, ox + 120, oz, gt, "Pulang ke Kota", "Gerbang Dunia", function(player: Player)
-                if hooks and hooks.onPulang then
-                        hooks.onPulang(player)
-                end
-        end)
+	local semai = BuildingKit.buildSemai(folder)
+	semai:PivotTo(CFrame.new(dX + ox + 185, gt, oz + 50))
+	for _, p in ipairs(semai:GetDescendants()) do
+		if p:IsA("BasePart") and p.Size == Vector3.new(12, 4, 4) then
+			if hooks and hooks.registerTable then
+				hooks.registerTable(index, p.Position + Vector3.new(0, 2, 0))
+			end
+			if hooks and hooks.onSemaiPrompt then
+				local prompt = Instance.new("ProximityPrompt")
+				prompt.ActionText = "Semai Panen"
+				prompt.ObjectText = "Meja Hasil"
+				prompt.HoldDuration = 0.3
+				prompt.MaxActivationDistance = 12
+				prompt.RequiresLineOfSight = false
+				prompt.Parent = p
+				p:SetAttribute("LahanIdx", index)
+				prompt.Triggered:Connect(function(player: Player)
+					hooks.onSemaiPrompt(player, index)
+				end)
+			end
+		end
+	end
 
-        signBoard(folder, ox + 96, oz + 8, gt, "Dunia " .. (namaPemilik or "Petani"))
+	BuildingKit.marker(folder, dX + ox + 185, oz + 85, gt, 30, 30, MARKER_A)
+	BuildingKit.marker(folder, dX + ox + 195, oz + 125, gt, 50, 30, MARKER_A)
+	BuildingKit.marker(folder, dX + ox + 40, oz + 185, gt, 40, 40, MARKER_B)
+	BuildingKit.marker(folder, dX + ox + 82, oz + 177, gt, 24, 24, MARKER_B)
+	BuildingKit.marker(folder, dX + ox + 112, oz + 177, gt, 24, 24, MARKER_B)
+	BuildingKit.marker(folder, dX + ox + 142, oz + 177, gt, 24, 24, MARKER_B)
+	BuildingKit.marker(folder, dX + ox + 172, oz + 177, gt, 24, 24, MARKER_B)
 
-        local spawn = spawnPad(folder, Vector3.new(ox + 120, gt + 0.5, oz + 12), false)
-        if hooks and hooks.registerSpawn then
-                hooks.registerSpawn(index, spawn)
-        end
-        if hooks and hooks.registerUmum then
-                hooks.registerUmum(spawn)
-        end
-
-        BuildingKit.streetLamp(folder, ox + 104, gt, oz + 24)
-        BuildingKit.streetLamp(folder, ox + 166, gt, oz + 156)
-        BuildingKit.streetLamp(folder, ox + 40, gt, oz + 210)
-
-        local semai = BuildingKit.buildSemai(folder)
-        semai:PivotTo(CFrame.new(ox + 185, gt, oz + 50))
-        local tablePart
-        for _, p in ipairs(semai:GetDescendants()) do
-                if p:IsA("BasePart") and p.Size == Vector3.new(12, 4, 4) then
-                        tablePart = p
-                        break
-                end
-        end
-        if tablePart then
-                if hooks and hooks.registerTable then
-                        hooks.registerTable(index, tablePart.Position + Vector3.new(0, 2, 0))
-                end
-                if hooks and hooks.onSemaiPrompt then
-                        local prompt = Instance.new("ProximityPrompt")
-                        prompt.ActionText = "Semai Panen"
-                        prompt.ObjectText = "Meja Hasil"
-                        prompt.HoldDuration = 0.3
-                        prompt.MaxActivationDistance = 12
-                        prompt.RequiresLineOfSight = false
-                        prompt.Parent = tablePart
-                        tablePart:SetAttribute("LahanIdx", index)
-                        prompt.Triggered:Connect(function(player: Player)
-                                hooks.onSemaiPrompt(player, index)
-                        end)
-                end
-        end
-
-        BuildingKit.marker(folder, ox + 185, oz + 85, gt, 30, 30, MARKER_A)
-        BuildingKit.marker(folder, ox + 195, oz + 125, gt, 50, 30, MARKER_A)
-        BuildingKit.marker(folder, ox + 40, oz + 185, gt, 40, 40, MARKER_B)
-        BuildingKit.marker(folder, ox + 82, oz + 177, gt, 24, 24, MARKER_B)
-        BuildingKit.marker(folder, ox + 112, oz + 177, gt, 24, 24, MARKER_B)
-        BuildingKit.marker(folder, ox + 142, oz + 177, gt, 24, 24, MARKER_B)
-        BuildingKit.marker(folder, ox + 172, oz + 177, gt, 24, 24, MARKER_B)
-
-        return folder
+	model.Parent = root
+	return model
 end
 
 return WorldBuilder
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="23">
+          <Properties>
+            <string name="Name">ZonaService</string>
+            <string name="Source"><![CDATA[local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local DataStoreService = game:GetService("DataStoreService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local DuniaLogic = require(ReplicatedStorage.Shared.DuniaLogic)
+local WorldBuilder = require(script.Parent.WorldBuilder)
+
+local ZonaService = {}
+
+local Land, Plot, Smash, Data, Notify, Hooks
+local store = DataStoreService:GetDataStore("AKM_Dunia")
+
+type Seksi = {
+        idx: number,
+        ownerId: number,
+        ownerName: string,
+        ghost: boolean,
+        savedOk: boolean,
+        canSave: boolean,
+        dirty: boolean,
+        model: Model,
+        lastSeen: number,
+}
+
+local seksi: { [number]: Seksi } = {}
+local byOwner: { [number]: number } = {}
+local zoneOf: { [number]: { zone: string, dunia: string? } } = {}
+
+function ZonaService.bind(deps)
+        Land = deps.Land
+        Plot = deps.Plot
+        Smash = deps.Smash
+        Data = deps.Data
+        Notify = deps.Notify
+end
+
+function ZonaService.setHooks(hooks)
+        Hooks = hooks
+end
+
+local function taken(idx: number): boolean
+        return seksi[idx] ~= nil
+end
+
+local function ownerSection(userId: number): Seksi?
+        for _, s in pairs(seksi) do
+                if s.ownerId == userId then
+                        return s
+                end
+        end
+        return nil
+end
+
+local function arrivalPos(idx: number): Vector3
+        local o = Land.origin(idx)
+        return Vector3.new(o.X + 120, 4, o.Z + 12)
+end
+
+local function kotaPos(): Vector3
+        local sp = Land.kotaSpawn() or Land.umumSpawn()
+        return sp and (sp.Position + Vector3.new(0, 3, 0)) or Vector3.new(0, 6, 44)
+end
+
+local function watchVoid(player: Player, homePos: Vector3)
+        task.spawn(function()
+                for _ = 1, 28 do
+                        task.wait(0.25)
+                        local char = player.Character
+                        local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+                        if not root then
+                                return
+                        end
+                        if root.Position.Y < -20 then
+                                root.Anchored = false
+                                root.CFrame = CFrame.new(homePos + Vector3.new(0, 4, 0))
+                                return
+                        end
+                end
+        end)
+end
+
+local function placeAt(player: Player, pos: Vector3, zone: string, dunia: string?): boolean
+        local char = player.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+        if not root then
+                return false
+        end
+        zoneOf[player.UserId] = { zone = zone, dunia = dunia }
+        task.spawn(function()
+                pcall(function()
+                        Workspace:RequestStreamAroundAsync(pos, 2)
+                end)
+        end)
+        root.Anchored = true
+        root.CFrame = CFrame.new(pos + Vector3.new(0, 3, 0))
+        task.delay(1.1, function()
+                if root.Parent then
+                        root.Anchored = false
+                end
+        end)
+        watchVoid(player, pos)
+        Data.push(player)
+        return true
+end
+
+function ZonaService.zoneOf(player: Player): (string, string?)
+        local z = zoneOf[player.UserId]
+        if z then
+                return z.zone, z.dunia
+        end
+        return "kota", nil
+end
+
+function ZonaService.touch(index: number)
+        local s = seksi[index]
+        if s and s.canSave then
+                s.dirty = true
+        end
+end
+
+local function payloadOf(s: Seksi)
+        return {
+                n = s.ownerName,
+                pl = DuniaLogic.serPlots(Plot.serialize(s.idx)),
+                mj = DuniaLogic.serMeja(Smash.serializeLahan(s.idx)),
+                t = os.time(),
+        }
+end
+
+local function saveSeksi(s: Seksi, force: boolean)
+        if s.ghost or not s.canSave or (not s.dirty and not force) then
+                return
+        end
+        local ok = pcall(function()
+                store:SetAsync(DuniaLogic.keyFor(s.ownerId), payloadOf(s))
+        end)
+        if ok then
+                s.dirty = false
+        end
+end
+
+local function loadWorld(ownerId: number): (boolean, string?, any, any)
+        local ok, data = pcall(function()
+                return store:GetAsync(DuniaLogic.keyFor(ownerId))
+        end)
+        if not ok then
+                return false, nil, {}, {}
+        end
+        if type(data) ~= "table" then
+                return true, nil, {}, {}
+        end
+        return true, DuniaLogic.cleanName(data.n), DuniaLogic.desPlots(data.pl), DuniaLogic.desMeja(data.mj)
+end
+
+local function buildSection(idx: number, ownerId: number, nama: string, ghost: boolean, savedOk: boolean, plots: any, meja: any): Seksi
+        local model = WorldBuilder.buildLahan(Hooks, idx, nama)
+        Plot.buildGrid(idx, model)
+        Plot.restore(idx, plots)
+        Smash.restoreLahan(idx, meja)
+        local s: Seksi = {
+                idx = idx,
+                ownerId = ownerId,
+                ownerName = nama,
+                ghost = ghost,
+                savedOk = savedOk,
+                canSave = savedOk and not ghost,
+                dirty = false,
+                model = model,
+                lastSeen = os.clock(),
+        }
+        seksi[idx] = s
+        return s
+end
+
+local function destroySection(idx: number)
+        local s = seksi[idx]
+        if not s then
+                return
+        end
+        Plot.clearGrid(idx)
+        Smash.clearLahan(idx)
+        s.model:Destroy()
+        seksi[idx] = nil
+        if byOwner[s.ownerId] == idx then
+                byOwner[s.ownerId] = nil
+        end
+        Land.free(idx, s.ownerId)
+end
+
+function ZonaService.masuk(player: Player): (boolean, string)
+        local s = ownerSection(player.UserId)
+        if s and not s.ghost then
+                placeAt(player, arrivalPos(s.idx), "dunia", s.ownerName)
+                return true, "Kamu kembali ke duniamu."
+        end
+        if s and s.ghost then
+                s.ghost = false
+                s.canSave = s.savedOk
+                s.dirty = false
+                byOwner[player.UserId] = s.idx
+                Land.claim(s.idx, player.UserId)
+                placeAt(player, arrivalPos(s.idx), "dunia", s.ownerName)
+                return true, "Kamu kembali ke duniamu."
+        end
+        local loadOk, namaTersimpan, plots, meja = loadWorld(player.UserId)
+        local nama = namaTersimpan or player.Name
+        local idx = Land.claimFree(player.UserId, taken)
+        if idx <= 0 then
+                return false, "Semua petak dunia di server ini sedang terpakai. Coba lagi sebentar."
+        end
+        buildSection(idx, player.UserId, nama, false, loadOk, plots, meja)
+        byOwner[player.UserId] = idx
+        placeAt(player, arrivalPos(idx), "dunia", nama)
+        return true, "Duniamu siap. Masuk dan pulang kini tanpa loading."
+end
+
+function ZonaService.visit(player: Player, namaRaw: any): (boolean, string)
+        local nama = DuniaLogic.cleanName(namaRaw)
+        if not nama then
+                return false, "Nama pemain tidak sah."
+        end
+        if nama == player.Name then
+                return ZonaService.masuk(player)
+        end
+        for _, p in ipairs(Players:GetPlayers()) do
+                if p.Name == nama then
+                        local s = ownerSection(p.UserId)
+                        if s then
+                                placeAt(player, arrivalPos(s.idx), "dunia", s.ownerName)
+                                Notify(p, "Tamu Datang", player.Name .. " sedang berkunjung ke duniamu.")
+                                return true, "Kamu berkunjung ke dunia " .. s.ownerName .. ". Semua aksi perubahan terkunci."
+                        end
+                        break
+                end
+        end
+        local okId, targetId = pcall(function()
+                return Players:GetUserIdFromNameAsync(nama)
+        end)
+        if not okId or type(targetId) ~= "number" or targetId <= 0 then
+                return false, "Nama pemain tidak ditemukan."
+        end
+        local s = ownerSection(targetId)
+        if s then
+                placeAt(player, arrivalPos(s.idx), "dunia", s.ownerName)
+                return true, "Kamu berkunjung ke dunia " .. s.ownerName .. "."
+        end
+        local loadOk, namaTersimpan, plots, meja = loadWorld(targetId)
+        if not loadOk then
+                return false, "Dunia " .. nama .. " tidak bisa dikunjungi sekarang."
+        end
+        if next(plots) == nil and next(meja) == nil and not namaTersimpan then
+                return false, nama .. " belum punya dunia."
+        end
+        local idx = Land.firstFree(taken)
+        if idx <= 0 then
+                return false, "Semua petak dunia di server ini sedang terpakai."
+        end
+        if not Land.reserve(idx, targetId) then
+                return false, "Petak dunia habis. Coba lagi sebentar."
+        end
+        local namaDunia = namaTersimpan or nama
+        buildSection(idx, targetId, namaDunia, true, loadOk, plots, meja)
+        placeAt(player, arrivalPos(idx), "dunia", namaDunia)
+        return true, "Kamu berkunjung ke dunia " .. namaDunia .. " (salinan tersimpan)."
+end
+
+function ZonaService.pulang(player: Player): (boolean, string)
+        if placeAt(player, kotaPos(), "kota", nil) then
+                return true, "Kembali ke Pusat Kota."
+        end
+        return false, "Titik kota belum siap."
+end
+
+function ZonaService.mutationDeny(player: Player): string?
+        if Land.landOf(player) then
+                return nil
+        end
+        local char = player.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+        if root then
+                for _, s in pairs(seksi) do
+                        if Land.isInside(s.idx, root.Position, 8) then
+                                return "Dunia ini milik " .. s.ownerName .. ". Kamu sedang berkunjung."
+                        end
+                end
+        end
+        return nil
+end
+
+local function insideCount(s: Seksi): number
+        local n = 0
+        for _, p in ipairs(Players:GetPlayers()) do
+                local char = p.Character
+                local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+                if root and Land.isInside(s.idx, root.Position, 30) then
+                        n += 1
+                end
+        end
+        return n
+end
+
+function ZonaService.leaveGame(player: Player)
+        zoneOf[player.UserId] = nil
+        local idx = byOwner[player.UserId]
+        if not idx then
+                return
+        end
+        local s = seksi[idx]
+        if s then
+                saveSeksi(s, true)
+        end
+        destroySection(idx)
+end
+
+function ZonaService.startLoops()
+        task.spawn(function()
+                local t = 0
+                while true do
+                        task.wait(20)
+                        t += 20
+                        for _, s in pairs(seksi) do
+                                if s.ghost then
+                                        if insideCount(s) > 0 then
+                                                s.lastSeen = os.clock()
+                                        elseif os.clock() - s.lastSeen > 120 then
+                                                destroySection(s.idx)
+                                        end
+                                end
+                        end
+                        if t >= DuniaLogic.SaveEvery then
+                                t = 0
+                                for _, s in pairs(seksi) do
+                                        if not s.ghost then
+                                                saveSeksi(s, false)
+                                        end
+                                end
+                        end
+                end
+        end)
+end
+
+function ZonaService.shutdown()
+        for _, s in pairs(seksi) do
+                if not s.ghost then
+                        saveSeksi(s, true)
+                end
+        end
+end
+
+return ZonaService
 ]]></string>
           </Properties>
         </Item>
@@ -2640,7 +2711,6 @@ local RARITY_COLOR = {
 }
 local PANEL_TITLES = {
         tas = "Tas (50 slot, maks 250 per slot)",
-        combine = "Gabung Benih",
         plot = "Plot Tanam",
         semai = "Semai Panen",
         toko = "Toko Benih",
@@ -2739,8 +2809,7 @@ for i = 1, 50 do
         slotFrames[i] = { frame = cell, nama = nama, count = count }
 end
 local tasUsedLabel = mk("TextLabel", { AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 8, 1, -6), Size = UDim2.new(0.5, 0, 0, 28), BackgroundTransparency = 1, Text = "0/50 slot", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.fromRGB(200, 200, 205), TextXAlignment = Enum.TextXAlignment.Left }, tasPanel)
-local gabungBtn = mk("TextButton", { AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -8, 1, -6), Size = UDim2.new(0, 190, 0, 34), BackgroundColor3 = Color3.fromRGB(46, 110, 62), Text = "Gabung Benih", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1) }, tasPanel)
-round(gabungBtn)
+mk("TextLabel", { AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -8, 1, -6), Size = UDim2.new(0.5, -12, 0, 28), BackgroundTransparency = 1, Text = "Mau gabung benih? Tanam 2 benih resep di plot bertetangga di lahanku.", TextWrapped = true, TextScaled = true, Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(150, 200, 130), TextXAlignment = Enum.TextXAlignment.Right }, tasPanel)
 
 local function refreshTas()
         local used = #state.tas
@@ -2761,22 +2830,8 @@ local function refreshTas()
         tasUsedLabel.Text = used .. "/50 slot terpakai"
 end
 
-local combinePanel = makePanel("combine")
-mk("TextLabel", { Size = UDim2.new(1, -16, 0, 44), Position = UDim2.new(0, 8, 0, 4), BackgroundTransparency = 1, Text = "Pilih 2 benih dari tas. Hanya resep tertentu yang valid, salah resep tidak mengurangi benih.", TextWrapped = true, TextScaled = true, Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(200, 200, 205), TextXAlignment = Enum.TextXAlignment.Left }, combinePanel)
-local colA = mk("ScrollingFrame", { Size = UDim2.new(0.5, -14, 1, -140), Position = UDim2.new(0, 8, 0, 52), BackgroundColor3 = Color3.fromRGB(30, 33, 40), ScrollBarThickness = 6, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(0, 0, 0, 0) }, combinePanel)
-local colB = mk("ScrollingFrame", { Size = UDim2.new(0.5, -14, 1, -140), Position = UDim2.new(0.5, 6, 0, 52), BackgroundColor3 = Color3.fromRGB(30, 33, 40), ScrollBarThickness = 6, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(0, 0, 0, 0) }, combinePanel)
-for _, col in ipairs({ colA, colB }) do
-        mk("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, col)
-end
-local selA: string? = nil
-local selB: string? = nil
-local selALabel = mk("TextLabel", { Size = UDim2.new(0.5, -14, 0, 30), Position = UDim2.new(0, 8, 1, -78), BackgroundTransparency = 1, Text = "Benih A: -", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.fromRGB(255, 214, 110), TextXAlignment = Enum.TextXAlignment.Left }, combinePanel)
-local selBLabel = mk("TextLabel", { Size = UDim2.new(0.5, -14, 0, 30), Position = UDim2.new(0.5, 6, 1, -78), BackgroundTransparency = 1, Text = "Benih B: -", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.fromRGB(255, 214, 110), TextXAlignment = Enum.TextXAlignment.Left }, combinePanel)
-local combineBtn = mk("TextButton", { Size = UDim2.new(1, -16, 0, 40), Position = UDim2.new(0, 8, 1, -34), BackgroundColor3 = Color3.fromRGB(46, 110, 62), Text = "Gabung Sekarang", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1) }, combinePanel)
-round(combineBtn)
-
 local gerbangPanel = makePanel("gerbang")
-mk("TextLabel", { Size = UDim2.new(1, -16, 0, 56), Position = UDim2.new(0, 8, 0, 4), BackgroundTransparency = 1, Text = "Setiap pemain punya dunia pribadi terpisah. Tamu bisa berkunjung tanpa bisa mengubah apa pun. Tidak perlu mengatur ID apa pun.", TextWrapped = true, TextScaled = true, Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(200, 200, 205), TextXAlignment = Enum.TextXAlignment.Left }, gerbangPanel)
+mk("TextLabel", { Size = UDim2.new(1, -16, 0, 56), Position = UDim2.new(0, 8, 0, 4), BackgroundTransparency = 1, Text = "Duniamu terbuka seketika tanpa loading dan tanpa ID. Tamu bisa berkunjung dan tidak bisa mengubah apa pun.", TextWrapped = true, TextScaled = true, Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(200, 200, 205), TextXAlignment = Enum.TextXAlignment.Left }, gerbangPanel)
 local masukBtn = mk("TextButton", { Size = UDim2.new(1, -16, 0, 52), Position = UDim2.new(0, 8, 0, 68), BackgroundColor3 = Color3.fromRGB(46, 110, 62), Text = "Masuk Dunia-ku", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1) }, gerbangPanel)
 round(masukBtn)
 mk("TextLabel", { Size = UDim2.new(1, -16, 0, 26), Position = UDim2.new(0, 8, 0, 130), BackgroundTransparency = 1, Text = "Kunjungi dunia pemain lain:", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.fromRGB(255, 214, 110), TextXAlignment = Enum.TextXAlignment.Left }, gerbangPanel)
@@ -2784,13 +2839,40 @@ local kunjungiNama = mk("TextBox", { Size = UDim2.new(1, -16, 0, 44), Position =
 round(kunjungiNama, 6)
 local kunjungiBtn = mk("TextButton", { Size = UDim2.new(1, -16, 0, 44), Position = UDim2.new(0, 8, 0, 210), BackgroundColor3 = Color3.fromRGB(58, 84, 138), Text = "Kunjungi", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1) }, gerbangPanel)
 round(kunjungiBtn)
+local function syncState()
+        task.spawn(function()
+                local st = Net.get("GetState"):InvokeServer()
+                if st then
+                        state.micda = st.micda or 0
+                        state.tas = st.tas or {}
+                        state.lahan = st.lahan
+                        state.zone = st.zone or "kota"
+                        state.dunia = st.dunia
+                        state.role = st.role or "hub"
+                        micdaLabel.Text = fmt(state.micda) .. " Micda"
+                        if state.zone == "dunia" then
+                                zonaLabel.Text = "Dunia " .. tostring(state.dunia or "Petani")
+                        else
+                                zonaLabel.Text = "Pusat Kota"
+                        end
+                        refreshTas()
+                end
+        end)
+end
+
 masukBtn.Activated:Connect(function()
         local ok, msg = Net.get("DuniaAct"):InvokeServer("masuk")
         toast(ok and "Gerbang Dunia" or "Gagal", msg)
+        if ok then
+                syncState()
+        end
 end)
 kunjungiBtn.Activated:Connect(function()
         local ok, msg = Net.get("DuniaAct"):InvokeServer("kunjungi", kunjungiNama.Text)
         toast(ok and "Kunjungan" or "Gagal", msg)
+        if ok then
+                syncState()
+        end
 end)
 
 local function seedList(): { any }
@@ -2802,53 +2884,6 @@ local function seedList(): { any }
         end
         return out
 end
-
-local function buildSeedColumn(col: ScrollingFrame, isA: boolean)
-        for _, c in ipairs(col:GetChildren()) do
-                if c:IsA("TextButton") then
-                        c:Destroy()
-                end
-        end
-        local list = seedList()
-        for order, s in ipairs(list) do
-                local info = CropData.byId[s.id]
-                local btn = mk("TextButton", { Size = UDim2.new(1, -8, 0, 34), BackgroundColor3 = Color3.fromRGB(40, 44, 54), Text = (info and info.nama or s.id) .. " x" .. s.count, TextScaled = true, Font = Enum.Font.Gotham, TextColor3 = RARITY_COLOR[info.rarity] or Color3.new(1, 1, 1), LayoutOrder = order }, col)
-                round(btn, 6)
-                btn.Activated:Connect(function()
-                        if isA then
-                                selA = s.id
-                                selALabel.Text = "Benih A: " .. (info and info.nama or s.id)
-                        else
-                                selB = s.id
-                                selBLabel.Text = "Benih B: " .. (info and info.nama or s.id)
-                        end
-                end)
-        end
-        if #list == 0 then
-                mk("TextLabel", { Size = UDim2.new(1, -8, 0, 34), BackgroundTransparency = 1, Text = "Tidak ada benih", TextScaled = true, Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(150, 150, 155), LayoutOrder = 1 }, col)
-        end
-end
-
-local function refreshCombine()
-        selALabel.Text = "Benih A: -"
-        selBLabel.Text = "Benih B: -"
-        selA = nil
-        selB = nil
-        buildSeedColumn(colA, true)
-        buildSeedColumn(colB, false)
-end
-
-combineBtn.Activated:Connect(function()
-        if not selA or not selB then
-                toast("Gabung Benih", "Pilih dua benih dulu.")
-                return
-        end
-        local ok, msg = Net.get("CombineAct"):InvokeServer(selA, selB)
-        toast(ok and "Gabung Berhasil" or "Gabung Gagal", msg)
-        if ok then
-                closePanel()
-        end
-end)
 
 local plotPanel = makePanel("plot")
 local plotInfo = mk("TextLabel", { Size = UDim2.new(1, -16, 0, 64), Position = UDim2.new(0, 8, 0, 6), BackgroundTransparency = 1, Text = "", TextWrapped = true, TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1), TextXAlignment = Enum.TextXAlignment.Left }, plotPanel)
@@ -2990,7 +3025,7 @@ local function refreshSemai()
 end
 
 local tokoPanel = makePanel("toko")
-mk("TextLabel", { Size = UDim2.new(1, -16, 0, 30), Position = UDim2.new(0, 8, 0, 2), BackgroundTransparency = 1, Text = "Pack berisi 3 benih acak sesuai kategori. Toko juga membeli hasil panenmu.", TextWrapped = true, TextScaled = true, Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(200, 200, 205), TextXAlignment = Enum.TextXAlignment.Left }, tokoPanel)
+mk("TextLabel", { Size = UDim2.new(1, -16, 0, 30), Position = UDim2.new(0, 8, 0, 2), BackgroundTransparency = 1, Text = "Ambil pack benih lewat kasir atau rak berisi benih. Pack berisi 3 benih acak; toko juga membeli hasil panenmu.", TextWrapped = true, TextScaled = true, Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(200, 200, 205), TextXAlignment = Enum.TextXAlignment.Left }, tokoPanel)
 local tokoBuy = mk("Frame", { Size = UDim2.new(1, -16, 0, 100), Position = UDim2.new(0, 8, 0, 38), BackgroundColor3 = Color3.fromRGB(30, 33, 40) }, tokoPanel)
 round(tokoBuy, 8)
 local tokoSell = mk("ScrollingFrame", { Size = UDim2.new(1, -16, 1, -160), Position = UDim2.new(0, 8, 0, 146), BackgroundColor3 = Color3.fromRGB(30, 33, 40), ScrollBarThickness = 6, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(0, 0, 0, 0) }, tokoPanel)
@@ -3046,11 +3081,6 @@ tasBtn.Activated:Connect(function()
         refreshTas()
 end)
 
-gabungBtn.Activated:Connect(function()
-        openPanel("combine")
-        refreshCombine()
-end)
-
 local camera = Workspace.CurrentCamera
 local function onTap(inputPos: Vector2)
         if dim.Visible then
@@ -3086,10 +3116,17 @@ Net.get("Sync").OnClientEvent:Connect(function(payload)
         state.micda = payload.micda
         state.tas = payload.tas or {}
         micdaLabel.Text = fmt(state.micda) .. " Micda"
+        if payload.zone then
+                state.zone = payload.zone
+                state.dunia = payload.dunia
+                if state.zone == "dunia" then
+                        zonaLabel.Text = "Dunia " .. tostring(state.dunia or "Petani")
+                else
+                        zonaLabel.Text = "Pusat Kota"
+                end
+        end
         refreshTas()
-        if currentPanel == "combine" then
-                refreshCombine()
-        elseif currentPanel == "semai" then
+        if currentPanel == "semai" then
                 refreshSemai()
         elseif currentPanel == "toko" then
                 refreshToko()
@@ -3125,9 +3162,6 @@ Net.get("OpenPanel").OnClientEvent:Connect(function(name)
                 refreshToko()
         elseif name == "gerbang" then
                 openPanel("gerbang")
-        elseif name == "combine" then
-                openPanel("combine")
-                refreshCombine()
         end
 end)
 
@@ -3169,14 +3203,14 @@ print("[AKIOMIDA] UI siap.")
         <bool name="Anchored">true</bool>
         <bool name="CanCollide">true</bool>
         <Vector3 name="Position">
-          <X>1400</X>
+          <X>3000</X>
           <Y>-50</Y>
-          <Z>250</Z>
+          <Z>500</Z>
         </Vector3>
         <Vector3 name="size">
-          <X>3200</X>
+          <X>8000</X>
           <Y>1</Y>
-          <Z>800</Z>
+          <Z>1600</Z>
         </Vector3>
         <float name="Transparency">1</float>
       </Properties>

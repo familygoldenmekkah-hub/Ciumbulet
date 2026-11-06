@@ -4,6 +4,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local CropData = require(ReplicatedStorage.Shared.CropData)
 local Layout = require(ReplicatedStorage.Shared.Layout)
+local GabungLogic = require(ReplicatedStorage.Shared.GabungLogic)
+local Recipes = require(ReplicatedStorage.Shared.Recipes)
 
 local PlotService = {}
 
@@ -83,11 +85,11 @@ local function makePlantModel(index: number, idx: number, cropId: string): Model
         return model
 end
 
-function PlotService.buildGrid(index: number)
+function PlotService.buildGrid(index: number, parent: Instance?)
         if folders[index] then
                 return
         end
-        local root = Workspace:FindFirstChild("Dunia")
+        local root = parent or Workspace:FindFirstChild("Dunia")
         if not root then
                 return
         end
@@ -197,11 +199,32 @@ function PlotService.plant(player: Player, idx: number, cropId: string): (boolea
                 model = model,
                 ready = false,
         }
+        local tetangga = {}
+        for _, n in ipairs(GabungLogic.neighbors(idx)) do
+                local r = pl[n]
+                if r then
+                        table.insert(tetangga, r.crop)
+                end
+        end
+        local out, partner = Recipes.matchList(cropId, tetangga)
+        local pesan = "Ditanam."
+        if out and partner and out ~= cropId then
+                pl[idx].crop = out
+                pl[idx].model:Destroy()
+                pl[idx].model = makePlantModel(index, idx, out)
+                pesan = "Gabung benih: "
+                        .. CropData.byId[partner].nama
+                        .. " + "
+                        .. info.nama
+                        .. " menjadi "
+                        .. CropData.byId[out].nama
+                        .. "!"
+        end
         if World then
-                World.touch()
+                World.touch(index)
         end
         sync(player, index, idx)
-        return true, "Ditanam."
+        return true, pesan
 end
 
 function PlotService.harvest(player: Player, idx: number): (boolean, string)
@@ -234,7 +257,7 @@ function PlotService.harvest(player: Player, idx: number): (boolean, string)
         planted[index][idx] = nil
         Tas.add(player, "hasil", rec.crop, jumlah)
         if World then
-                World.touch()
+                World.touch(index)
         end
         sync(player, index, idx)
         return true, "Panen " .. jumlah .. " " .. info.nama .. "."
