@@ -3410,9 +3410,9 @@ local STEEL_DARK = Color3.fromRGB(86, 92, 102)
 local STEEL_BLUE = Color3.fromRGB(96, 118, 138)
 local ACCENT_ORANGE = Color3.fromRGB(214, 128, 58)
 local STRIPE_KUNING = Color3.fromRGB(232, 186, 60)
-local KABEL_MERAH = Color3.fromRGB(214, 64, 56)
-local KABEL_BIRU = Color3.fromRGB(58, 122, 214)
-local KABEL_KUNING = Color3.fromRGB(240, 196, 60)
+local DAYA_MERAH = Color3.fromRGB(214, 64, 56)
+local DAYA_BIRU = Color3.fromRGB(58, 122, 214)
+local DAYA_KUNING = Color3.fromRGB(240, 196, 60)
 local HIJAU_BTN = Color3.fromRGB(108, 220, 116)
 local LAMPU_OFF = Color3.fromRGB(72, 76, 84)
 
@@ -3575,12 +3575,12 @@ function BuildingKit.buildMesinSemai(parent: Instance, index: number, hooks): Mo
         labelKecil.Parent = guiKecil
         guiKecil.Parent = layarKecil
 
-        local kabelJalur = {
-                { KABEL_MERAH, 6.35, 3.6 },
-                { KABEL_BIRU, 6.65, 3.0 },
-                { KABEL_KUNING, 6.95, 2.4 },
+        local jalurDaya = {
+                { DAYA_MERAH, 6.35, 3.6 },
+                { DAYA_BIRU, 6.65, 3.0 },
+                { DAYA_KUNING, 6.95, 2.4 },
         }
-        for _, k in ipairs(kabelJalur) do
+        for _, k in ipairs(jalurDaya) do
                 local naik = BuildingKit.part(model, Vector3.new(1.3, 0.22, 0.22), CFrame.new(-8.6, k[2], k[3]), k[1], Enum.Material.SmoothPlastic)
                 naik.Shape = Enum.PartType.Cylinder
                 naik.CFrame = CFrame.new(-8.6, k[2], k[3]) * CFrame.Angles(0, 0, math.rad(90))

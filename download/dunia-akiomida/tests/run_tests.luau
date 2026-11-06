@@ -965,7 +965,7 @@ do
         check("Ayunan kembali nol di akhir", math.abs(fe.sudut) < 0.02, tostring(fe.sudut))
 end
 
-print("--- P: Mesin semai (atur jumlah, kabel, hasil) ---")
+print("--- P: Mesin semai (atur jumlah, tuas, hasil) ---")
 do
         local SemaiLogic = require("./../src/Shared/SemaiLogic")
         check("Jumlah sah diterima", SemaiLogic.saringJumlah("20", 100, 2000) == 20, "-")

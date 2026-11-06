@@ -19,7 +19,7 @@ Skor per kriteria 0-10, dikali bobot. Total dihitung dari (skor x bobot) / 10.
 | 8 | Polish & UX (UI, suara, animasi, efek) | 10 | animasi kombat, BGM, partikel | UI rapi & responsif |
 | 9 | Originalitas 100% & aman hak cipta | 5 | - | - |
 
-## Skor v45 (versi LIVE #45, 7 Nov 2026) - DUA TUAS KANAN-KIRI MENGGANTIKAN KABEL + POP-UP SEMAI LEBIH BESAR & JELAS
+## Skor v45 (versi LIVE #46, 7 Nov 2026 — #46 republish rename internal tanpa perubahan perilaku) - DUA TUAS KANAN-KIRI MENGGANTIKAN KABEL + POP-UP SEMAI LEBIH BESAR & JELAS
 
 Permintaan pemilik (pesan langsung): (1) ganti mekanisme sambung kabel dengan
 dua TUAS fisik di ujung kanan & ujung kiri mesin — aktifkan tuas kanan dulu,
