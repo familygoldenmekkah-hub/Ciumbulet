@@ -2,7 +2,6 @@ local CropData = require("./../src/Shared/CropData")
 local Recipes = require("./../src/Shared/Recipes")
 local TasLogic = require("./../src/Shared/TasLogic")
 local Layout = require("./../src/Shared/Layout")
-local RecipesSame = require("./../src/Shared/Recipes")
 
 local passed, failed = 0, 0
 local function check(name: string, ok: boolean, detail: string?)
@@ -237,35 +236,81 @@ do
         check("Save tiap 60 dtk", DuniaLogic.SaveEvery == 60, tostring(DuniaLogic.SaveEvery))
 end
 
-print("--- Gabung benih di plot yang sama ---")
+print("--- Bentuk model tiap tanaman ---")
 do
-        local pasangan = {
-                { "jeruk_mandarin", "grapefruit", "tangelo" },
-                { "plum", "aprikot", "plumcot" },
-                { "nektarin", "plum", "nectaplum" },
-                { "arachis_duranensis", "arachis_ipaensis", "kacang_tanah" },
-                { "ceri", "plum", "pluerry" },
-                { "brassica_rapa", "brassica_oleracea", "canola" },
-                { "gandum", "rye", "triticale" },
-                { "labu_maxima", "labu_moschata", "tetsukabuto" },
-        }
-        for _, p in ipairs(pasangan) do
-                check("Tanam ulang " .. p[3] .. " urutan bebas", RecipesSame.sameSpot(p[1], p[2]) == p[3] and RecipesSame.sameSpot(p[2], p[1]) == p[3], tostring(RecipesSame.sameSpot(p[1], p[2])))
-                check("Hasil " .. p[3] .. " epic", CropData.byId[p[3]] and CropData.byId[p[3]].rarity == "epic", "-")
+        local JENIS = { akar = true, daun = true, bulat = true, tangkai = true, pohon = true, semak = true, kacang = true, cendawan = true }
+        local kurang, rusak, sama = {}, {}, {}
+        for _, c in ipairs(CropData.Crops) do
+                local b = CropData.Bentuk[c.id]
+                if not b then
+                        table.insert(kurang, c.id)
+                elseif not JENIS[b.jenis] then
+                        table.insert(rusak, c.id .. ":jenis")
+                elseif type(b.t) ~= "number" or b.t <= 0 or type(b.w) ~= "number" or b.w <= 0 then
+                        table.insert(rusak, c.id .. ":ukuran")
+                elseif b.warna[1] == b.siap[1] and b.warna[2] == b.siap[2] and b.warna[3] == b.siap[3] then
+                        table.insert(sama, c.id)
+                end
         end
-        check("Benih sama di plot yang sama ditolak", RecipesSame.sameSpot("plum", "plum") == nil, "-")
-        check("Bukan resep ditolak", RecipesSame.sameSpot("wortel", "pisang") == nil, "-")
-        check("Input rusak ditolak", RecipesSame.sameSpot(nil, "plum") == nil and RecipesSame.sameSpot("plum", 5) == nil and RecipesSame.sameSpot(9, "plum") == nil and RecipesSame.sameSpot("plum", nil) == nil, "-")
-        check("Epic tidak jadi bahan resep lain", RecipesSame.sameSpot("tangelo", "plum") == nil, "-")
-        check("Resep kanan+kiri tetap tertangkap", Recipes.matchList("grapefruit", { "jeruk_mandarin" }) == "tangelo", "-")
-        check("Semua bahan resep terdaftar", (function()
-                for _, r in ipairs(Recipes.List) do
-                        if not CropData.byId[r.a] or not CropData.byId[r.b] or not CropData.byId[r.out] then
+        check("34 tanaman semua punya bentuk", #kurang == 0, table.concat(kurang, ", "))
+        check("Jenis bentuk valid & ukuran masuk akal", #rusak == 0, table.concat(rusak, ", "))
+        check("Warna tumbuh beda dari warna siap (34)", #sama == 0, table.concat(sama, ", "))
+        check("Hybrid punya bentuk sendiri", (function()
+                local ids = { tangelo = true, plumcot = true, nectaplum = true, kacang_tanah = true, pluerry = true, canola = true, triticale = true, tetsukabuto = true }
+                for id in pairs(ids) do
+                        if not CropData.Bentuk[id] then
                                 return false
                         end
                 end
                 return true
         end)(), "-")
+        check("Warna siap kacang tanah kekuningan", CropData.Bentuk.kacang_tanah.siap[1] > 200 and CropData.Bentuk.kacang_tanah.siap[2] > 150, "-")
+end
+
+print("--- Pukul tanaman masih tumbuh ---")
+do
+        local PukulLogic = require("./../src/Shared/PukulLogic")
+        check("Batas pukul 5", PukulLogic.MaksPukul == 5, tostring(PukulLogic.MaksPukul))
+        local n1, h1 = PukulLogic.catat(0, 0, 100)
+        check("Pukulan pertama hitungan 1", n1 == 1 and not h1, tostring(n1))
+        local n2 = PukulLogic.catat(n1, 100, 101)
+        local n3 = PukulLogic.catat(n2, 101, 102)
+        local n4 = PukulLogic.catat(n3, 102, 103)
+        local n5, h5 = PukulLogic.catat(n4, 103, 104)
+        check("5x beruntun tanaman hancur", n5 == 5 and h5 == true, tostring(n5) .. "/" .. tostring(h5))
+        local r1 = PukulLogic.catat(0, 0, 50)
+        local r2 = PukulLogic.catat(r1, 50, 51)
+        local r3 = PukulLogic.catat(r2, 51, 52)
+        local r4 = PukulLogic.catat(r3, 52, 53)
+        check("4x beruntun belum hancur", r4 == 4, tostring(r4))
+        local s1 = PukulLogic.catat(4, 200, 500)
+        check("Jeda lewat jendela reset hitungan", s1 == 1, tostring(s1))
+        check("Masih tumbuh tidak membuka pukulan ke-6", PukulLogic.catat(PukulLogic.MaksPukul, 0, 10) == 1, "-")
+end
+
+print("--- Status papan tanam ---")
+do
+        local PanenStatus = require("./../src/Shared/PanenStatus")
+        check("Lahan kosong -> daftar kosong", #PanenStatus.hitung({}, 100) == 0, "-")
+        check("Input rusak -> daftar kosong", #PanenStatus.hitung(nil, 100) == 0 and #PanenStatus.hitung("x", 100) == 0, "-")
+        local recs = {
+                [0] = { crop = "wortel", readyAt = 90 },
+                [1] = { crop = "wortel", readyAt = 200 },
+                [2] = { crop = "gandum", readyAt = 50 },
+                [3] = { crop = "tangelo", readyAt = 150 },
+                [4] = { crop = "tangelo", readyAt = 151 },
+                [5] = { crop = "tangelo", readyAt = 90 },
+                rusak = { crop = 9, readyAt = 1 },
+        }
+        local daftar = PanenStatus.hitung(recs, 100)
+        local per = {}
+        for _, row in ipairs(daftar) do
+                per[row.id] = row
+        end
+        check("Wortel 1 siap 1 tumbuh", per.wortel and per.wortel.siap == 1 and per.wortel.tumbuh == 1, "-")
+        check("Gandum 1 siap", per.gandum and per.gandum.siap == 1 and per.gandum.tumbuh == 0, "-")
+        check("Tangelo 1 siap 2 tumbuh", per.tangelo and per.tangelo.siap == 1 and per.tangelo.tumbuh == 2, "-")
+        check("Record rusak diabaikan", #daftar == 3, tostring(#daftar))
 end
 
 print("--- Soal matematika tanam ---")

@@ -1,6 +1,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local CropData = require(ReplicatedStorage.Shared.CropData)
+local Recipes = require(ReplicatedStorage.Shared.Recipes)
 local SoalLogic = require(ReplicatedStorage.Shared.SoalLogic)
 
 local TanamService = {}
@@ -80,7 +81,7 @@ function TanamService.start(player, cropId: any, jumlahRaw: any): (boolean, stri
         end
         local targets = Plot.scanTargets(index, cropId)
         if #targets < 1 then
-                return false, "Tidak ada plot kosong (atau plot pasangan gabung) yang bisa ditanam."
+                return false, "Tidak ada plot kosong yang bisa ditanam."
         end
         local jumlah = math.floor(tonumber(jumlahRaw) or 0)
         if jumlah < 1 then
@@ -173,8 +174,43 @@ function TanamService.batal(player): (boolean, string)
         return true, "Sesi tanam dibatalkan. Benih yang belum ditanam tetap di tas."
 end
 
+function TanamService.gabung(player, a: any, b: any): (boolean, string)
+        local index = Land.landOf(player)
+        if not index then
+                return false, "Masuk duniamu dulu lewat Gerbang Dunia."
+        end
+        if not near(player, index) then
+                return false, "Dekati Papan Tanam dulu."
+        end
+        if type(a) ~= "string" or type(b) ~= "string" or not CropData.byId[a] or not CropData.byId[b] then
+                return false, "Tidak bisa di-combine"
+        end
+        if a == b then
+                return false, "Tidak bisa di-combine"
+        end
+        local hasil = Recipes.find(a, b)
+        if not hasil then
+                return false, "Tidak bisa di-combine"
+        end
+        if Tas.count(player, "benih", a) < 1 or Tas.count(player, "benih", b) < 1 then
+                return false, "Benih tidak cukup di tas."
+        end
+        if Tas.roomFor(player, "benih", hasil, 1) < 1 then
+                return false, "Tas penuh. Kosongkan satu slot dulu."
+        end
+        Tas.remove(player, "benih", a, 1)
+        Tas.remove(player, "benih", b, 1)
+        Tas.add(player, "benih", hasil, 1)
+        return true, "Combine berhasil: benih " .. CropData.byId[hasil].nama .. " masuk tas."
+end
+
 function TanamService.statusPayload(player)
-        return payload(sesi[player.UserId])
+        local p = payload(sesi[player.UserId])
+        local index = Land.landOf(player)
+        p.status = index and Plot.statusPanen(index) or {}
+        p.tertanamTotal = index and Plot.filledCount(index) or 0
+        p.plotTotal = Plot.plotTotal()
+        return p
 end
 
 function TanamService.leave(player)

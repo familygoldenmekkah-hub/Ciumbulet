@@ -81,33 +81,22 @@ local function buildPapan(folder: Instance, x: number, z: number, gt: number, in
                 BuildingKit.part(folder, Vector3.new(1, 9, 1), CFrame.new(x + sx * 6, gt + 4.5, z), BuildingKit.DARKWOOD, Enum.Material.Wood)
         end
         local panel = BuildingKit.part(folder, Vector3.new(14, 5, 0.8), CFrame.new(x, gt + 9.5, z), BuildingKit.DARKWOOD, Enum.Material.Wood)
-        local label
+        local labels = {}
         for _, face in ipairs({ Enum.NormalId.Front, Enum.NormalId.Back }) do
                 local gui = Instance.new("SurfaceGui")
                 gui.Face = face
                 gui.CanvasSize = Vector2.new(560, 200)
                 local l = Instance.new("TextLabel")
-                l.Size = UDim2.new(1, -16, 0.66, 0)
-                l.Position = UDim2.new(0, 8, 0, 6)
+                l.Size = UDim2.new(1, -16, 0.86, 0)
+                l.Position = UDim2.new(0, 8, 0.07, 0)
                 l.BackgroundTransparency = 1
                 l.Text = "TERTANAM 0/500"
                 l.TextColor3 = Color3.fromRGB(255, 226, 140)
                 l.TextScaled = true
                 l.Font = Enum.Font.GothamBlack
                 l.Parent = gui
-                local h = Instance.new("TextLabel")
-                h.Size = UDim2.new(1, -16, 0.24, 0)
-                h.Position = UDim2.new(0, 8, 0.72, 0)
-                h.BackgroundTransparency = 1
-                h.Text = "DEKATI PAPAN UNTUK MENANAM"
-                h.TextColor3 = Color3.fromRGB(224, 224, 224)
-                h.TextScaled = true
-                h.Font = Enum.Font.GothamBold
-                h.Parent = gui
                 gui.Parent = panel
-                if face == Enum.NormalId.Front then
-                        label = l
-                end
+                table.insert(labels, l)
         end
         local prompt = Instance.new("ProximityPrompt")
         prompt.ActionText = "Mulai Tanam"
@@ -121,7 +110,7 @@ local function buildPapan(folder: Instance, x: number, z: number, gt: number, in
                         hooks.onPapanPrompt(player, index)
                 end
         end)
-        return label
+        return labels
 end
 
 local function buildGudang(folder: Instance, x: number, z: number, gt: number, index: number, hooks)
@@ -183,19 +172,6 @@ local function buildGudang(folder: Instance, x: number, z: number, gt: number, i
         labelPapan.Font = Enum.Font.GothamBold
         labelPapan.Parent = guiPapan
         guiPapan.Parent = papan
-        local infoPapan = BuildingKit.part(model, Vector3.new(6, 2.2, 0.4), CFrame.new(0, 8.2, -(d / 2 + 0.4)), BuildingKit.DARKWOOD, Enum.Material.Wood)
-        local guiInfo = Instance.new("SurfaceGui")
-        guiInfo.Face = Enum.NormalId.Front
-        guiInfo.CanvasSize = Vector2.new(360, 130)
-        local labelInfo = Instance.new("TextLabel")
-        labelInfo.Size = UDim2.fromScale(1, 1)
-        labelInfo.BackgroundTransparency = 1
-        labelInfo.Text = "SETOR 1-250 = 1 TAMPUNGAN\nMAKS 1000"
-        labelInfo.TextColor3 = Color3.fromRGB(255, 226, 140)
-        labelInfo.TextScaled = true
-        labelInfo.Font = Enum.Font.GothamBold
-        labelInfo.Parent = guiInfo
-        guiInfo.Parent = infoPapan
         BuildingKit.lamp(model, 0, h + 1, 0)
         BuildingKit.lamp(model, -6, h + 1, 4)
         BuildingKit.lamp(model, 6, h + 1, 4)
@@ -282,20 +258,6 @@ function WorldBuilder.buildHub(hooks)
         BuildingKit.streetLamp(root, -8, gt, 32)
         BuildingKit.streetLamp(root, 8, gt, -30)
         BuildingKit.streetLamp(root, -8, gt, -30)
-
-        local papanKota = BuildingKit.part(root, Vector3.new(8, 4, 0.5), CFrame.new(-30, gt + 8, 12), BuildingKit.DARKWOOD, Enum.Material.Wood)
-        local guiPapanKota = Instance.new("SurfaceGui")
-        guiPapanKota.Face = Enum.NormalId.Back
-        guiPapanKota.CanvasSize = Vector2.new(320, 160)
-        local labelKota = Instance.new("TextLabel")
-        labelKota.Size = UDim2.fromScale(1, 1)
-        labelKota.BackgroundTransparency = 1
-        labelKota.Text = "TANAM LEWAT PAPAN DI LAHANMU\nPUKUL HASIL PANEN DENGAN PUNCH"
-        labelKota.TextColor3 = Color3.fromRGB(255, 232, 180)
-        labelKota.TextScaled = true
-        labelKota.Font = Enum.Font.GothamBold
-        labelKota.Parent = guiPapanKota
-        guiPapanKota.Parent = papanKota
 
         return root
 end

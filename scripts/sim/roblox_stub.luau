@@ -49,6 +49,7 @@ local SignalNames = {
         PlayerRemoving = true,
         CharacterAdded = true,
         CharacterRemoving = true,
+        Touched = true,
 }
 
 Vector3 = {}
@@ -212,6 +213,31 @@ function Color3.fromRGB(r, g, b)
         return Color3.new(r / 255, g / 255, b / 255)
 end
 
+TweenInfo = {}
+function TweenInfo.new(t, style, dir, repeatCount)
+        return { t = t, style = style, dir = dir, repeatCount = repeatCount }
+end
+
+ColorSequence = {}
+function ColorSequence.new(c)
+        return { c = c }
+end
+
+NumberRange = {}
+function NumberRange.new(a, b)
+        return { a = a, b = b }
+end
+
+NumberSequence = {}
+function NumberSequence.new(a, b)
+        return { a = a, b = b }
+end
+
+PhysicalProperties = {}
+function PhysicalProperties.new(a, b, c, d, e)
+        return { a = a, b = b, c = c, d = d, e = e }
+end
+
 UDim = {}
 UDim.__index = UDim
 function UDim.new(s, o)
@@ -254,6 +280,9 @@ Enum = {
         AutomaticSize = makeEnum("AutomaticSize", { "None", "X", "Y", "XY" }),
         HorizontalAlignment = makeEnum("HorizontalAlignment", { "Left", "Center", "Right" }),
         VerticalAlignment = makeEnum("VerticalAlignment", { "Top", "Center", "Bottom" }),
+        PartType = makeEnum("PartType", { "Ball", "Cylinder", "Block" }),
+        EasingStyle = makeEnum("EasingStyle", { "Linear", "Sine", "Quad", "Back", "Bounce", "Elastic" }),
+        EasingDirection = makeEnum("EasingDirection", { "In", "Out", "InOut" }),
 }
 
 task = {}
@@ -604,6 +633,14 @@ function Instance.new(class)
                         end
                         return self.OnServerInvoke(lp, ...)
                 end
+        elseif class == "ParticleEmitter" then
+                function inst:Emit(n)
+                        return nil
+                end
+        elseif class == "Sound" then
+                function inst:Play()
+                        return nil
+                end
         end
         return inst
 end
@@ -632,6 +669,14 @@ function Stub.install()
                 end
                 return out
         end
+        function Players:GetPlayerFromCharacter(char)
+                for _, p in ipairs(playerList) do
+                        if p.Character == char then
+                                return p
+                        end
+                end
+                return nil
+        end
 
         local Workspace = Instance.new("Workspace")
         local camera = Instance.new("Camera")
@@ -657,7 +702,7 @@ function Stub.install()
         local shared = Instance.new("Folder")
         shared.Name = "Shared"
         shared.Parent = ReplicatedStorage
-        for _, n in ipairs({ "CropData", "Recipes", "TasLogic", "Layout", "DuniaLogic" }) do
+        for _, n in ipairs({ "CropData", "Recipes", "TasLogic", "Layout", "DuniaLogic", "SoalLogic", "GudangLogic", "PukulLogic", "PanenStatus" }) do
                 local m = moduleScript(n, "./../download/dunia-akiomida/src/Shared/" .. n)
                 m.Parent = shared
         end
@@ -690,6 +735,25 @@ function Stub.install()
 
         local UserInputService = Instance.new("UserInputService")
 
+        local TweenService = Instance.new("TweenService")
+        function TweenService:Create(target, info, props)
+                local tween = {}
+                local completed = newSignal()
+                tween.Completed = completed
+                function tween:Play()
+                        for k, v in pairs(props) do
+                                target[k] = v
+                        end
+                        completed:Fire(Enum and "Completed" or "Completed")
+                end
+                return tween
+        end
+
+        local Debris = Instance.new("Debris")
+        function Debris:AddItem(item, t)
+                return nil
+        end
+
         local services = {
                 Players = Players,
                 Workspace = Workspace,
@@ -697,6 +761,8 @@ function Stub.install()
                 DataStoreService = DataStoreService,
                 RunService = RunService,
                 UserInputService = UserInputService,
+                TweenService = TweenService,
+                Debris = Debris,
         }
 
         game = Instance.new("DataModel")
@@ -755,7 +821,7 @@ function Stub.serverScript()
         local modules = Instance.new("Folder")
         modules.Name = "Modules"
         modules.Parent = script
-        for _, n in ipairs({ "LandService", "DataService", "SmashService", "PlotService", "ShopService", "WorldBuilder", "RateLimit", "DevCodeVault", "BuildingKit", "TasService", "ZonaService" }) do
+        for _, n in ipairs({ "LandService", "DataService", "SmashService", "PlotService", "ShopService", "WorldBuilder", "RateLimit", "DevCodeVault", "BuildingKit", "TasService", "ZonaService", "TanamService", "GudangService", "DropService", "PlantModels" }) do
                 local m = moduleScript(n, "./../download/dunia-akiomida/src/Server/Modules/" .. n)
                 m.Parent = modules
         end

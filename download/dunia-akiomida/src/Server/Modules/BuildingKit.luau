@@ -341,7 +341,6 @@ function BuildingKit.buildToko(parent: Instance): Model
         seedBag(model, CFrame.new(-6.8, 6.75, -10), BAG_C)
         seedBag(model, CFrame.new(-5.6, 6.75, -9.6), BAG_A)
         textBoard(model, Vector3.new(3, 1.4, 0.3), CFrame.new(-8, 7.6, -10), "BUKA", Enum.NormalId.Back)
-        textBoard(model, Vector3.new(0.3, 5, 8), CFrame.new(-19.2, 13, -2), "PANDUAN TANAM 3 DETIK", Enum.NormalId.Right)
         textBoard(model, Vector3.new(14, 1.6, 0.2), CFrame.new(0, 16, 6), "BENIH UNGGUL SETIAP HARI", Enum.NormalId.Front)
         BuildingKit.part(model, Vector3.new(0.2, 2.6, 0.2), CFrame.new(-5, 18, 6), DARKWOOD, Enum.Material.Wood).CanCollide = false
         BuildingKit.part(model, Vector3.new(0.2, 2.6, 0.2), CFrame.new(5, 18, 6), DARKWOOD, Enum.Material.Wood).CanCollide = false

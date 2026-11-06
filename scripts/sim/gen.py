@@ -15,7 +15,7 @@ SIM = ROOT / "scripts/sim"
 STUB = (SIM / "roblox_stub.luau").read_text()
 SCENARIO = (ROOT / "scripts/playtest.luau").read_text()
 
-MODULES_SHARED = ["CropData", "Recipes", "TasLogic", "Layout", "DuniaLogic"]
+MODULES_SHARED = ["CropData", "Recipes", "TasLogic", "Layout", "DuniaLogic", "SoalLogic", "GudangLogic", "PukulLogic", "PanenStatus"]
 MODULES_SERVER = [
     "RateLimit",
     "DevCodeVault",
@@ -24,10 +24,14 @@ MODULES_SERVER = [
     "DataService",
     "TasService",
     "SmashService",
+    "PlantModels",
     "PlotService",
     "ShopService",
     "WorldBuilder",
     "ZonaService",
+    "TanamService",
+    "GudangService",
+    "DropService",
 ]
 LAZY_UI = "UIController"
 

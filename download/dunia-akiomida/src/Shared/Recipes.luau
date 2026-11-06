@@ -20,29 +20,4 @@ function Recipes.find(a: string, b: string): string?
         return nil
 end
 
-function Recipes.sameSpot(currentCrop: any, newCrop: any): string?
-	if type(currentCrop) ~= "string" or type(newCrop) ~= "string" then
-		return nil
-	end
-	if currentCrop == newCrop then
-		return nil
-	end
-	return Recipes.find(currentCrop, newCrop)
-end
-
-function Recipes.matchList(newCrop: string, neighborCrops: { string }): (string?, string?)
-        if type(newCrop) ~= "string" then
-                return nil, nil
-        end
-        for _, other in ipairs(neighborCrops) do
-                if type(other) == "string" then
-                        local out = Recipes.find(newCrop, other)
-                        if out then
-                                return out, other
-                        end
-                end
-        end
-        return nil, nil
-end
-
 return Recipes
