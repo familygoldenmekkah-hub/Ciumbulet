@@ -19,6 +19,68 @@ Skor per kriteria 0-10, dikali bobot. Total dihitung dari (skor x bobot) / 10.
 | 8 | Polish & UX (UI, suara, animasi, efek) | 10 | animasi kombat, BGM, partikel | UI rapi & responsif |
 | 9 | Originalitas 100% & aman hak cipta | 5 | - | - |
 
+## Skor v45 (versi LIVE #45, 7 Nov 2026) - DUA TUAS KANAN-KIRI MENGGANTIKAN KABEL + POP-UP SEMAI LEBIH BESAR & JELAS
+
+Permintaan pemilik (pesan langsung): (1) ganti mekanisme sambung kabel dengan
+dua TUAS fisik di ujung kanan & ujung kiri mesin — aktifkan tuas kanan dulu,
+kemudian tuas kiri; di tiap tuas ada tombol "Tekan Tuas" dan saat ditekan
+tuasnya berpindah sendiri; keduanya selesai -> mesin langsung aktif; (2) label
+"sambungkan kabel" dibuang semua; (3) pop-up semai panen terlalu kaku, kecil,
+dan sulit dipahami — perlu lebih besar dan jelas.
+
+Diterapkan di #45:
+
+A. **Dua tuas baja fisik di mesin**: pedestal DiamondPlate di x=+12 (ujung
+   kanan) dan x=-12 (ujung kiri), garpu baja, pin engsel, lengan tuas 3.4 stud
+   dengan kenop neon merah; label "TUAS KANAN" / "TUAS KIRI" di tiap pedestal;
+   lampu indikator per tuas (abu = diam, kuning = giliranmu, hijau = selesai);
+   pipa penghubung ke badan mesin + garis peringatan kuning-hitam.
+B. **Tombol "Tekan Tuas" nyata**: ProximityPrompt di tiap tuas (HoldDuration
+   0.2, jarak 9 stud). Ditekan -> server memvalidasi (pemilik lahan, tahap
+   tuas, urutan, jarak) lalu Lengan tuas beranimasi sendiri pindah ke posisi
+   turun (tween server 0.45 dtk) + bunyi klak. Prompt tuas hanya AKTIF pada
+   tuas yang sedang jadi giliran (kanan dulu -> baru kiri), jadi urutan tidak
+   mungkin salah dari sisi UI.
+C. **Server-authoritative penuh**: status tuas disimpan server (tuas.kanan /
+   tuas.kiri); SemaiAct("tuas", sisi) menolak sisi asing, tekan ulang, dan
+   KIRI sebelum KANAN dengan pesan jelas; kedua tuas selesai -> mesin LANGSUNG
+   masuk tahap giling 3 dtk tanpa aksi tambahan.
+D. **Kabel dihapus total**: minigame kabel (modal seret-soket), fungsi
+   SemaiLogic buatKabel/saringSambung/putuskanKabel/kabelSelesai/WarnaKabel,
+   aksi remote "kabel", dan label "Sambungkan Kabel" semuanya dihapus dari
+   kode; papan mesin kini "TEKAN TUAS KANAN LALU KIRI".
+E. **Pop-up semai dirancang ulang**: panel diperluas (maks 760x620 saat panel
+   semai terbuka); strip 3 langkah bernomor (Pilih -> Isi jumlah -> Tekan 2
+   tuas); baris hasil panen lebih tinggi; bagian "Atur jumlah" baru dengan
+   tombol besar -/+ , chip jumlah 1/10/50/100/500, tombol Maks aksen, kotak
+   jumlah besar; saat menunggu tuas tampil kartu langkah 1/2 dengan status
+   SELESAI / TEKAN! / TUNGGU berwarna; tombol Isi & Klaim lebih besar.
+F. **BUG DITEMUKAN & DIPERBAIKI saat ujian massa**: setelah rename variabel
+   lokal "pedestal", prompt/suara/label tuas ternyata menempel ke pedestal
+   panel kontrol (shadow variabel lama) sehingga prompt tak pernah aktif —
+   terdeteksi ujian massa (prompt Enabled tidak berubah), akarnya ditemukan,
+   diparent ulang ke pedestal tuas, massa kembali 0 FAIL.
+G. **Pengujian**: tes offline 293 PASS / 0 FAIL (seksi P+Q baru: urutan
+   kanan-kiri, 40 percobaan loncat urutan ditolak, saring sisi, tekan ulang);
+   playtest 130 PASS / 0 FAIL; ujian massa 119 PASS / 0 FAIL dengan alur dari
+   dunia nyata: prompt tuas kanan aktif duluan -> ditekan -> prompt pindah ke
+   kiri -> tekan ulang kanan DITOLAK server -> kiri ditekan -> mesin langsung
+   MENGGILING -> tuntas -> klaim; luau-lsp 0 temuan.
+
+| # | Kriteria | Skor | Alasan |
+|---|----------|------|--------|
+| 1 Kombat | 0/10 | Belum ada monster/AI/bos. |
+| 2 Crafting | 4/10 | Stasiun olah kini berbasis dua tuas fisik beranimasi yang dijaga server; konten crafting belum bertambah. |
+| 3 Stat & Progresi | 1/10 | Tanpa level (sesuai arah pemilik); soal matematika tetap gerbang tanam. |
+| 4 Ekonomi | 6.5/10 | Alur jual-beli + mesin semai tetap terjaga server; pasar dinamis & toko pemain belum ada. |
+| 5 Dunia & Peta | 7/10 | Mesin kini punya dua tuas interaktif berlabel + lampu status di kedua ujung; belum: rumah, air, dungeon. |
+| 6 Multiplayer | 6.5/10 | Semua aksi mutasi (termasuk tuas) divalidasi per-pemilik; trade/party belum ada. |
+| 7 Bertani | 10/10 | Alur tanam -> panen -> isi mesin -> 2 tuas -> klaim teruji end-to-end (119 cek massa). |
+| 8 Polish & UX | 10/10 | Pop-up semai jauh lebih lega dan jelas (langkah bernomor, kartu tuas berstatus, tombol besar); umpan balik tuas visual + suara. Sisa: BGM/ambience, uji perangkat fisik. |
+| 9 Originalitas | 10/10 | Semua part, animasi tuas, dan interaksi dibangun asli; tanpa aset/require luar. |
+
+**TOTAL: 55.25/100** (bobot: 0+60+10+97.5+70+65+100+100+50 = 552.5/10 = 55.25)
+
 ## Skor v44 (versi LIVE #44, 7 Nov 2026) - KABEL SERVER-AUTHORITATIVE (BUG INTEGRASI DITEMUKAN & DIPERBAIKI) + TIANG KANOPI 4X KARAKTER
 
 Permintaan pemilik (pesan langsung): (1) tiang kanopi baja mesin semai

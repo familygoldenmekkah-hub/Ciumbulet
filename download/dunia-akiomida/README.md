@@ -1,35 +1,36 @@
 # DUNIA AKIOMIDA (Roblox)
 
-Status: LIVE di Roblox (**versionNumber 44**, 7 Nov 2026) — **KABEL
-SERVER-AUTHORITATIVE (BUG INTEGRASI DITEMUKAN & DIPERBAIKI) + TIANG KANOPI
-MESIN 4X TINGGI KARAKTER**:
+Status: LIVE di Roblox (**versionNumber 45**, 7 Nov 2026) — **DUA TUAS
+KANAN-KIRI MENGGANTIKAN KABEL + POP-UP SEMAI LEBIH BESAR & JELAS**:
 
-1. **BUG KABEL DITEMUKAN SAAT DIUJI** — hasil ujian sambung kabel acak:
-   layout selama ini dibuat di KLIEN dan server tidak pernah membuat atau
-   memvalidasi kabel; `SemaiAct("kabel")` polos tanpa argumen langsung
-   mengaktifkan mesin, jadi minigame penjodohan bisa dilewati exploiter.
-2. **KABEL KINI DIJAGA SERVER** — susunan kabel dibuat server saat "Isi
-   Mesin Semai"; pengajuan "kabel jadi" WAJIB membawa mapping soket
-   kiri->kanan dan divalidasi server (saringSambung + kabelSelesai);
-   tanpa mapping, kosong, bolong, di luar rentang, pecahan, atau tertukar
-   semuanya DITOLAK.
-3. **PENJODOHAN ULANG ANTI TEBAK** — 3x pengajuan salah -> server mengacak
-   ulang susunan (versi naik) dan modal klien otomatis terbangun ulang
-   dengan pesan "Susunan kabel berubah!"; pada 1-2x salah jodohan parsial
-   pemain TIDAK hilang.
-4. **LEBIH MUDAH** — saat menyeret kabel, soket kanan yang dilewati
-   menyala HIJAU bila warnanya jodoh, MERAH bila bukan; tetap bisa drag
-   atau ketuk kiri lalu kanan; radius lepas 36 px.
-5. **TIANG KANOPI 4X TINGGI KARAKTER** — 4 tiang baja 20 stud (karakter
-   acuan 5 stud; sebelumnya 8 stud) dengan pelat dasar, balok ikat atas
-   empat sisi, penyokong silang X di kedua sisi; atap + garis merah-krem
-   naik ke 21,3 stud; lampu kini gantung tali panjang neon hangat agar
-   tetap menerangi mesin.
+1. **DUA TUAS FISIK DI UJUNG MESIN** — minigame sambung kabel DIHAPUS TOTAL
+   (modal, fungsi SemaiLogic kabel, remote "kabel", dan label "Sambungkan
+   Kabel" semua dibuang). Kini ada dua tuas baja berlabel TUAS KANAN (ujung
+   kanan) & TUAS KIRI (ujung kiri) dengan garpu, pin engsel, kenop neon merah,
+   lampu indikator per tuas, pipa penghubung, dan garis peringatan.
+2. **TOMBOL "TEKAN TUAS" NYATA & BERFUNGSI** — ProximityPrompt di tiap tuas;
+   ditekan -> server memvalidasi (pemilik, tahap, urutan, jarak) lalu lengan
+   tuas BERPINDAH SENDIRI ke posisi turun (tween 0.45 dtk) + bunyi klak.
+   Urutan WAJIB: tuas KANAN dulu, lalu tuas KIRI — prompt hanya aktif pada
+   tuas yang jadi giliran, dan server menolak tekan-ulang / kiri-duluan /
+   sisi asing. Lampu tuas: abu diam, kuning giliran, hijau selesai.
+3. **KEDUANYA SELESAI -> MESIN LANGSUNG MENYALA** — tanpa aksi tambahan masuk
+   tahap giling 3 dtk -> "SEMAI TUNTAS - KLAIM HASIL" -> klaim Micda + benih +
+   blok sesuai tanaman. Papan mesin kini berbunyi "TEKAN TUAS KANAN LALU KIRI".
+4. **POP-UP SEMAI DIRANCANG ULANG (keluhan: kaku, kecil, sulit dipahami)** —
+   panel diperluas sampai 760x620; strip 3 langkah bernomor (Pilih -> Isi
+   jumlah -> Tekan 2 tuas); bagian "Atur jumlah" baru dengan tombol besar -/+
+   , chip 1/10/50/100/500, Maks aksen, kotak jumlah besar; saat menunggu tuas
+   tampil kartu langkah 1/2 berstatus SELESAI / TEKAN! / TUNGGU; tombol Isi
+   & Klaim lebih besar.
+5. **BUG DITEMUKAN & DIPERBAIKI UJI MASSA** — setelah rename variabel lokal,
+   prompt/suara/label tuas menempel ke pedestal panel kontrol (shadow
+   variabel) sehingga prompt tak pernah aktif; terdeteksi ujian massa (Enabled
+   tak berubah), diparent ulang ke pedestal tuas, semua tes kembali 0 FAIL.
 
-Isi v43 tetap: mesin giling 3 detik + papan "SEMAI TUNTAS - KLAIM HASIL",
-klaim Micda + benih + blok SESUAI tanaman (bug blok_panen dihapus total),
-kapasitas mesin 2000, mesin berkanopi terhias (pagar, tong, peti, karung,
-kotak alat, pipa, garis peringatan kuning-hitam).
+Isi v44 tetap: tiang kanopi 4x tinggi karakter, mesin giling 3 detik, klaim
+Micda + benih + blok SESUAI tanaman, kapasitas mesin 2000, mesin berkanopi
+terhias.
 
 Isi v42 tetap: punch tahan tombol + tinju boks terlihat, Atur Jual
 berkonfirmasi, jalan & toko dihias, beli pack berkonfirmasi + struk, popup
@@ -61,11 +62,12 @@ Isi v41 tetap: beli pack berkonfirmasi (Ya/Batal) + struk daftar benih yang
 didapat; popup Gerbang Dunia langsung tertutup saat pemain memilih tujuan;
 bug badai sync (kick pemain sah) diperbaiki; alat uji playtest/massa hidup.
 
-Universe: 10774464946 · Place: 77626159664192 · Label era: 10.0.1 "Kabel Terjaga Server"
+Universe: 10774464946 · Place: 77626159664192 · Label era: 10.0.2 "Dua Tuas"
 Build: `tools/rojo build default.project.json -o build/DuniaAkiomida.rbxlx`
-(luau-lsp 0 temuan, tes offline 291 PASS / 0 FAIL, playtest 130 PASS / 0 FAIL,
-ujian massa 113 PASS / 0 FAIL — termasuk ujian kabel end-to-end: 3 penolakan,
-susunan acak ulang terlihat di layar, jodoh dari layar)
+(luau-lsp 0 temuan, tes offline 293 PASS / 0 FAIL, playtest 130 PASS / 0 FAIL,
+ujian massa 119 PASS / 0 FAIL — termasuk alur tuas end-to-end: prompt kanan
+aktif duluan, kiri-duluan & tekan-ulang DITOLAK server, dua tuas -> langsung
+menggiling)
 
 Skor banding Toram/Growtopia: **55.25/100** — lihat `RUBRIC.md`.
 
@@ -215,6 +217,7 @@ Skor banding Toram/Growtopia: **51/100** — lihat `RUBRIC.md`.
 | v41 | **PEMBELIAN BERKONFIRMASI + GERBANG OTOMATIS TERTUTUP + BUG BADAI SYNC DIPERBAIKI** (permintaan pemilik): (1) TOKO BENIH — tekan Pack Common/Rare TIDAK langsung membeli: muncul pop up "Konfirmasi Pembelian" berisi isi pack, kategori, dan harga dengan tombol Ya, Beli / Batal; setelah Ya, server merapatkan benih (tetap server-authoritative) lalu pop up "Pembelian Berhasil" menampilkan STRUK daftar benih yang didapat per jenis (ikon + nama + jumlah) plus total Micda — modul baru Shared/StrukBeli merangkum picks jadi baris struk; (2) GERBANG DUNIA — memilih Masuk/Pulang/Kunjungi yang berhasil langsung menutup pop up (tidak lagi menggantung setelah teleport); (3) BUG BADAI SYNC — panel Papan Tanam pada tab Status memanggil TanamAct("status") ulang di SETIAP Sync/TanamSync (50 pukulan = 50+ panggilan, rate limit 3/6 dtk meluap, AuditService mencatat 20 insiden dan MENENDANG pemain); kini tab Status hanya memuat ulang lewat klik tab atau tombol "Perbarui" — badai sync hilang; (4) ALAT UJI DIHIDUPKAN KEMBALI (jujur): generator playtest/massa ternyata membeku sejak v39 (daftar modul tidak pernah diperbarui + stub DataStore tanpa UpdateAsync sehingga semua load dianggap kunci sesi) — kini diperbaiki dan seluruh skenario disesuaikan dengan UI v39-v41 (tombol punch ikon, baris tanam klik-baris, tombol jumlah, teks status "Siap/Tumbuh", atribut drop DropId/LahanIdx, jarak & arah pukul server); playtest 130 PASS / 0 FAIL, ujian massa 93 PASS / 0 FAIL, tes offline 251 PASS / 0 FAIL (8 tes StrukBeli baru), luau-lsp 0 temuan (#41). |
 | v43 | **MESIN SEMAI PANEN** (permintaan pemilik): meja pukul diganti mesin giling — pilih hasil panen + atur jumlah (kapasitas 2000, total pukulan = jumlah x pukulan/item), batch dipotong & digulung server; aktif hanya setelah penjodohan kabel 4-6 pasang warna (drag atau ketuk), giling 3 dtk (drum/gir/roda putar, asap, suara), papan "SEMAI TUNTAS - KLAIM HASIL", klaim Micda + benih + blok SESUAI tanaman; item bug "blok_panen" dihapus total; area mesin dihias penuh. Ditemukan & diperbaiki: variabel menimpa fungsi warna modal kabel. Tes 279 offline, massa 108, playtest 130; luau-lsp 0 (#43). |
 | v44 | **KABEL SERVER-AUTHORITATIVE + TIANG KANOPI 4X KARAKTER** (permintaan pemilik): ujian sambung kabel acak MENEMUKAN bug integrasi kritis — layout kabel dibuat di klien dan server tidak pernah memvalidasi ("kabel" polos langsung aktif, minigame bisa dilewati exploiter); kini layout dibuat server saat atur, pengajuan wajib membawa mapping kiri->kanan dan divalidasi server (saringSambung + kabelSelesai), 3x salah = susunan diacak ulang (versi naik) dan modal dibangun ulang otomatis, jodohan parsial aman di 1-2x salah; soket target menyala hijau/merah saat kabel diseret; tiang kanopi kini 20 stud = 4x tinggi karakter (karakter acuan 5 stud) dengan pelat dasar, balok ikat empat sisi, penyokong X, atap naik ke 21,3 stud, lampu gantung tali panjang. Tes offline 291 (+12 seksi Q), massa 113 (alur kabel dari layar: tanpa mapping/kosong/tertukar DITOLAK, acak ulang terlihat, jodoh dari layar -> klaim), playtest 130; luau-lsp 0 temuan (#44). |
+| v45 | **DUA TUAS KANAN-KIRI + POP-UP SEMAI LEBAR & JELAS** (permintaan pemilik): kabel dihapus total (modal, fungsi SemaiLogic kabel, remote "kabel", label); dua tuas baja fisik berlabel di ujung kanan & kiri mesin dengan lampu status, tombol "Tekan Tuas" per tuas; ditekan -> server validasi urutan (KANAN dulu, lalu KIRI; tekan-ulang/kiri-duluan/sisi asing DITOLAK) -> lengan tuas berpindah sendiri (tween) + bunyi; keduanya selesai -> mesin LANGSUNG menggiling 3 dtk; prompt hanya aktif pada tuas bergiliran; panel semai diperluas 760x620 dengan strip 3 langkah, tombol -/+ & chip jumlah, kartu langkah tuas berstatus SELESAI/TEKAN!/TUNGGU; BUG shadow variabel (prompt menempel ke pedestal salah) ditemukan ujian massa & diperbaiki. Tes offline 293, massa 119 (alur tuas end-to-end dari dunia), playtest 130; luau-lsp 0 temuan (#45). |
 
 ## Sesi update mandiri berikutnya (tanpa menunggu pemilik)
 

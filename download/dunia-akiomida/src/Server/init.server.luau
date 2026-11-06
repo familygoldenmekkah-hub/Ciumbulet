@@ -90,6 +90,12 @@ end
 
 local hooks = {
         onSemaiPrompt = openSemai,
+        onTuasPrompt = function(player: Player, _lahanIdx: number, sisi: string)
+                local ok, msg = MesinSemaiService.tekan(player, sisi)
+                if not ok then
+                        notify(player, "Mesin Semai", tostring(msg))
+                end
+        end,
         onShopPrompt = openShop,
         onGerbangDunia = function(player: Player)
                 Net.get("OpenPanel"):FireClient(player, "gerbang", {})
@@ -273,8 +279,8 @@ Net.get("SemaiAct").OnServerInvoke = function(player, action, a, b)
         end
         if action == "atur" then
                 return MesinSemaiService.atur(player, a, b)
-        elseif action == "kabel" then
-                return MesinSemaiService.kabelJadi(player, a)
+        elseif action == "tuas" then
+                return MesinSemaiService.tekan(player, a)
         elseif action == "klaim" then
                 return MesinSemaiService.klaim(player)
         end

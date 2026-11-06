@@ -2543,167 +2543,116 @@ end)()
 local MOD_SemaiLogic = (function()
 local SemaiLogic = {}
 
-SemaiLogic.KabelMin = 4
-SemaiLogic.KabelMaks = 6
-SemaiLogic.WarnaKabel = {
-        { 214, 64, 56 },
-        { 76, 168, 82 },
-        { 58, 122, 214 },
-        { 240, 196, 60 },
-        { 168, 92, 224 },
-        { 240, 138, 44 },
-        { 60, 190, 190 },
-        { 232, 92, 150 },
-}
+SemaiLogic.UrutanTuas = { "kanan", "kiri" }
 
 function SemaiLogic.saringJumlah(teks: any, dimiliki: any, kapasitas: number): number?
-        if type(teks) ~= "string" and type(teks) ~= "number" then
-                return nil
-        end
-        local n = tonumber(teks)
-        if not n or n ~= n or n % 1 ~= 0 or n < 1 then
-                return nil
-        end
-        n = math.floor(n)
-        if type(dimiliki) ~= "number" or dimiliki < 1 then
-                return nil
-        end
-        local maks = math.floor(dimiliki)
-        if type(kapasitas) == "number" and kapasitas >= 1 and maks > kapasitas then
-                maks = math.floor(kapasitas)
-        end
-        if n > maks then
-                n = maks
-        end
-        if n < 1 then
-                return nil
-        end
-        return n
+	if type(teks) ~= "string" and type(teks) ~= "number" then
+		return nil
+	end
+	local n = tonumber(teks)
+	if not n or n ~= n or n % 1 ~= 0 or n < 1 then
+		return nil
+	end
+	n = math.floor(n)
+	if type(dimiliki) ~= "number" or dimiliki < 1 then
+		return nil
+	end
+	local maks = math.floor(dimiliki)
+	if type(kapasitas) == "number" and kapasitas >= 1 and maks > kapasitas then
+		maks = math.floor(kapasitas)
+	end
+	if n > maks then
+		n = maks
+	end
+	if n < 1 then
+		return nil
+	end
+	return n
 end
 
 function SemaiLogic.pukulanPerItem(cfg: any): number
-        if type(cfg) ~= "table" or type(cfg.hits) ~= "number" or cfg.hits < 1 then
-                return 1
-        end
-        return math.floor(cfg.hits)
+	if type(cfg) ~= "table" or type(cfg.hits) ~= "number" or cfg.hits < 1 then
+		return 1
+	end
+	return math.floor(cfg.hits)
 end
 
 function SemaiLogic.pukulanTotal(jumlah: number, perItem: number): number
-        return math.floor(jumlah) * math.floor(perItem)
+	return math.floor(jumlah) * math.floor(perItem)
 end
 
 function SemaiLogic.gulung(rng: any, cfg: any, jumlah: number): { micda: number, benih: number, blok: number }
-        local jml = math.max(1, math.floor(jumlah))
-        local mMin = 1
-        local mMax = 1
-        local pBenih = 0
-        local pBlok = 0
-        if type(cfg) == "table" then
-                mMin = type(cfg.micdaMin) == "number" and math.max(0, cfg.micdaMin) or 1
-                mMax = type(cfg.micdaMax) == "number" and math.max(mMin, cfg.micdaMax) or mMin
-                pBenih = type(cfg.seed) == "number" and cfg.seed or 0
-                pBlok = type(cfg.blok) == "number" and cfg.blok or 0
-        end
-        local micda = 0
-        local benih = 0
-        local blok = 0
-        for _ = 1, jml do
-                micda += rng:NextInteger(mMin, mMax)
-                if rng:NextNumber() < pBenih then
-                        benih += 1
-                end
-                if rng:NextNumber() < pBlok then
-                        blok += 1
-                end
-        end
-        return { micda = micda, benih = benih, blok = blok }
+	local jml = math.max(1, math.floor(jumlah))
+	local mMin = 1
+	local mMax = 1
+	local pBenih = 0
+	local pBlok = 0
+	if type(cfg) == "table" then
+		mMin = type(cfg.micdaMin) == "number" and math.max(0, cfg.micdaMin) or 1
+		mMax = type(cfg.micdaMax) == "number" and math.max(mMin, cfg.micdaMax) or mMin
+		pBenih = type(cfg.seed) == "number" and cfg.seed or 0
+		pBlok = type(cfg.blok) == "number" and cfg.blok or 0
+	end
+	local micda = 0
+	local benih = 0
+	local blok = 0
+	for _ = 1, jml do
+		micda += rng:NextInteger(mMin, mMax)
+		if rng:NextNumber() < pBenih then
+			benih += 1
+		end
+		if rng:NextNumber() < pBlok then
+			blok += 1
+		end
+	end
+	return { micda = micda, benih = benih, blok = blok }
 end
 
-local function acakUrutan(rng: any, daftar: { number }): { number }
-        local out = {}
-        for i, v in ipairs(daftar) do
-                out[i] = v
-        end
-        for i = #out, 2, -1 do
-                local j = rng:NextInteger(1, i)
-                local tmp = out[i]
-                out[i] = out[j]
-                out[j] = tmp
-        end
-        return out
+function SemaiLogic.tuasBaru(): { kanan: boolean, kiri: boolean }
+	return { kanan = false, kiri = false }
 end
 
-function SemaiLogic.buatKabel(rng: any): { n: number, kiri: { number }, kanan: { number } }
-        local palet = {}
-        for i = 1, #SemaiLogic.WarnaKabel do
-                table.insert(palet, i)
-        end
-        local pilihan = acakUrutan(rng, palet)
-        local n = rng:NextInteger(SemaiLogic.KabelMin, SemaiLogic.KabelMaks)
-        if n > #pilihan then
-                n = #pilihan
-        end
-        local kiri = {}
-        for i = 1, n do
-                kiri[i] = pilihan[i]
-        end
-        local kanan = acakUrutan(rng, kiri)
-        return { n = n, kiri = kiri, kanan = kanan }
+function SemaiLogic.saringSisi(sisi: any): string?
+	if sisi == "kanan" or sisi == "kiri" then
+		return sisi
+	end
+	return nil
 end
 
-function SemaiLogic.saringSambung(kabel: any, masuk: any): { [number]: number }?
-        if type(kabel) ~= "table" or type(masuk) ~= "table" then
-                return nil
-        end
-        local n = kabel.n
-        if type(n) ~= "number" or n ~= n or n % 1 ~= 0 or n < 1 then
-                return nil
-        end
-        local out = {}
-        for i = 1, n do
-                local t = masuk[i]
-                if type(t) ~= "number" or t ~= t or t % 1 ~= 0 or t < 1 or t > n then
-                        return nil
-                end
-                out[i] = t
-        end
-        return out
+function SemaiLogic.tuasBerikut(tuas: any): string?
+	if type(tuas) ~= "table" then
+		return nil
+	end
+	if tuas.kanan ~= true then
+		return "kanan"
+	end
+	if tuas.kiri ~= true then
+		return "kiri"
+	end
+	return nil
 end
 
-function SemaiLogic.putuskanKabel(kabel: any, masuk: any, salah: number, rng: any): (string, any, number)
-        local hitung = type(salah) == "number" and salah or 0
-        local sambung = SemaiLogic.saringSambung(kabel, masuk)
-        if sambung and SemaiLogic.kabelSelesai(kabel, sambung) then
-                return "jodoh", kabel, 0
-        end
-        hitung += 1
-        if hitung >= 3 then
-                return "acak_ulang", SemaiLogic.buatKabel(rng), 0
-        end
-        return "salah", kabel, hitung
+function SemaiLogic.tuasSelesai(tuas: any): boolean
+	return type(tuas) == "table" and tuas.kanan == true and tuas.kiri == true
 end
 
-function SemaiLogic.kabelSelesai(kabel: any, sambung: any): boolean
-        if type(kabel) ~= "table" or type(sambung) ~= "table" then
-                return false
-        end
-        local kiri = kabel.kiri
-        local kanan = kabel.kanan
-        if type(kiri) ~= "table" or type(kanan) ~= "table" or kabel.n ~= #kiri or kabel.n ~= #kanan or kabel.n < 1 then
-                return false
-        end
-        local dipakai = {}
-        for i = 1, kabel.n do
-                local t = sambung[i]
-                if type(t) ~= "number" or t ~= math.floor(t) or t < 1 or t > kabel.n or dipakai[t] then
-                        return false
-                end
-                if kiri[i] ~= kanan[t] then
-                        return false
-                end
-                dipakai[t] = true
-        end
-        return true
+function SemaiLogic.prosesTekan(tuas: any, sisi: any): (boolean, string)
+	local sisiBersih = SemaiLogic.saringSisi(sisi)
+	if not sisiBersih then
+		return false, "sisi"
+	end
+	if type(tuas) ~= "table" then
+		return false, "tuas"
+	end
+	if tuas[sisiBersih] == true then
+		return false, "sudah"
+	end
+	local berikut = SemaiLogic.tuasBerikut(tuas)
+	if berikut ~= sisiBersih then
+		return false, "urutan"
+	end
+	tuas[sisiBersih] = true
+	return true, "ok"
 end
 
 return SemaiLogic
@@ -3640,6 +3589,77 @@ function BuildingKit.buildMesinSemai(parent: Instance, index: number, hooks): Mo
                 datar.CanCollide = false
         end
 
+        for sisi, s in ipairs({ { nama = "Kanan", arah = 1 }, { nama = "Kiri", arah = -1 } }) do
+                local x = s.arah * 12
+                local z = 9.5
+                local _alas = BuildingKit.part(model, Vector3.new(2.8, 0.35, 2.8), CFrame.new(x, 1.32, z), STEEL_DARK, Enum.Material.DiamondPlate)
+                for i = 0, 2 do
+                        BuildingKit.part(model, Vector3.new(0.85, 0.14, 0.62), CFrame.new(x - 0.9 + i * 0.9, 1.22, z + 1.75), (i % 2 == 0) and STRIPE_KUNING or STEEL_DARK, Enum.Material.SmoothPlastic).CanCollide = false
+                end
+                local tiangTuas = BuildingKit.part(model, Vector3.new(1.6, 2.1, 1.6), CFrame.new(x, 2.55, z), STEEL_DARK, Enum.Material.DiamondPlate)
+                tiangTuas.Name = "Tuas" .. s.nama .. "Pedestal"
+                for pz = -1, 1, 2 do
+                        BuildingKit.part(model, Vector3.new(1.4, 1.5, 0.35), CFrame.new(x, 4.1, z + pz * 0.62), STEEL, Enum.Material.Metal)
+                end
+                local pin = BuildingKit.part(model, Vector3.new(0.55, 1.7, 1.7), CFrame.new(x, 4.15, z), STEEL, Enum.Material.Metal)
+                pin.Shape = Enum.PartType.Cylinder
+                pin.CFrame = CFrame.new(x, 4.15, z) * CFrame.Angles(0, math.rad(90), 0)
+                pin.CanCollide = false
+                local pivot = CFrame.new(x, 4.15, z)
+                local naik = (s.arah == 1) and -52 or 52
+                local turun = (s.arah == 1) and 40 or -40
+                local arm = BuildingKit.part(model, Vector3.new(0.5, 3.4, 0.5), pivot * CFrame.Angles(0, 0, math.rad(naik)) * CFrame.new(0, 1.7, 0), STEEL, Enum.Material.Metal)
+                arm.Name = "Tuas" .. s.nama .. "Arm"
+                arm:SetAttribute("CFNaik", pivot * CFrame.Angles(0, 0, math.rad(naik)) * CFrame.new(0, 1.7, 0))
+                arm:SetAttribute("CFTurun", pivot * CFrame.Angles(0, 0, math.rad(turun)) * CFrame.new(0, 1.7, 0))
+                local knob = BuildingKit.part(model, Vector3.new(0.9, 0.9, 0.9), pivot * CFrame.Angles(0, 0, math.rad(naik)) * CFrame.new(0, 3.78, 0), BRICKRED, Enum.Material.Neon)
+                knob.Shape = Enum.PartType.Ball
+                knob.Name = "Tuas" .. s.nama .. "Knob"
+                knob:SetAttribute("CFNaik", pivot * CFrame.Angles(0, 0, math.rad(naik)) * CFrame.new(0, 3.78, 0))
+                knob:SetAttribute("CFTurun", pivot * CFrame.Angles(0, 0, math.rad(turun)) * CFrame.new(0, 3.78, 0))
+                local lampu = BuildingKit.part(model, Vector3.new(0.42, 0.42, 0.42), CFrame.new(x, 3.35, z + 0.95), LAMPU_OFF, Enum.Material.Neon)
+                lampu.Shape = Enum.PartType.Ball
+                lampu.Name = "Tuas" .. s.nama .. "Lampu"
+                lampu.CanCollide = false
+                local label = Instance.new("SurfaceGui")
+                label.Face = Enum.NormalId.Front
+                label.CanvasSize = Vector2.new(160, 90)
+                local teksLabel = Instance.new("TextLabel")
+                teksLabel.Size = UDim2.fromScale(1, 1)
+                teksLabel.BackgroundTransparency = 1
+                teksLabel.Text = "TUAS " .. string.upper(s.nama)
+                teksLabel.TextColor3 = Color3.fromRGB(255, 232, 180)
+                teksLabel.TextScaled = true
+                teksLabel.Font = Enum.Font.GothamBold
+                teksLabel.Parent = label
+                label.Parent = tiangTuas
+                BuildingKit.part(model, Vector3.new(7.9, 0.45, 0.45), CFrame.new(s.arah * 7.25, 2, z), STEEL_DARK, Enum.Material.Metal)
+                for _, px in ipairs({ 5.4, 9 }) do
+                        BuildingKit.part(model, Vector3.new(0.35, 1.3, 0.35), CFrame.new(s.arah * px, 1.9, z), STEEL, Enum.Material.Metal)
+                end
+                local suaraTuas = Instance.new("Sound")
+                suaraTuas.Name = "SuaraTuas" .. s.nama
+                suaraTuas.SoundId = "rbxasset://sounds/electronicpingshort.wav"
+                suaraTuas.Volume = 0.65
+                suaraTuas.PlaybackSpeed = 0.5
+                suaraTuas.RollOffMaxDistance = 90
+                suaraTuas.Parent = tiangTuas
+                local promptTuas = Instance.new("ProximityPrompt")
+                promptTuas.Name = "PromptTuas" .. s.nama
+                promptTuas.ActionText = "Tekan Tuas"
+                promptTuas.ObjectText = "Tuas " .. s.nama
+                promptTuas.HoldDuration = 0.2
+                promptTuas.MaxActivationDistance = 9
+                promptTuas.RequiresLineOfSight = false
+                promptTuas.Enabled = false
+                promptTuas.Parent = tiangTuas
+                promptTuas.Triggered:Connect(function(player: Player)
+                        if hooks and hooks.onTuasPrompt then
+                                hooks.onTuasPrompt(player, index, string.lower(s.nama))
+                        end
+                end)
+        end
+
         local corong = BuildingKit.part(model, Vector3.new(2.8, 0.35, 2.2), CFrame.new(-4.6, 6.9, 3) * CFrame.Angles(0, 0, math.rad(32)), STEEL_DARK, Enum.Material.Metal)
         corong.CanCollide = false
         BuildingKit.part(model, Vector3.new(0.35, 2.4, 2), CFrame.new(-5.75, 5.7, 3), STEEL_DARK, Enum.Material.Metal).CanCollide = false
@@ -4122,6 +4142,7 @@ end)()
 local MOD_MesinSemaiService = (function()
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 
 local CropData = MOD_CropData
 local SemaiLogic = MOD_SemaiLogic
@@ -4136,13 +4157,15 @@ local batch: { [number]: any } = {}
 
 local TEKS_TAHAP = {
         kosong = { teks = "NONAKTIF", warna = { 208, 210, 216 } },
-        kabel = { teks = "SAMBUNGKAN KABEL", warna = { 255, 214, 110 } },
+        tuas = { teks = "TEKAN TUAS KANAN LALU KIRI", warna = { 255, 214, 110 } },
         giling = { teks = "MENGGILING...", warna = { 255, 158, 74 } },
         tuntas = { teks = "SEMAI TUNTAS - KLAIM HASIL", warna = { 122, 232, 130 } },
 }
 
 local LAMPU_MATI = 0.55
 local LAMPU_NYALA = 0
+
+local WAKTU_ANIM_TUAS = 0.45
 
 local function bagian(model: Instance, nama: string): any
         local d = model:FindFirstChild(nama, true)
@@ -4162,6 +4185,26 @@ function MesinSemaiService.bind(deps)
         Uang = deps.Uang
         Net = deps.Net
         World = deps.World
+end
+
+local function daftarTuas(model: Model, nama: string): any
+        local pedestal = bagian(model, "Tuas" .. nama .. "Pedestal")
+        local arm = bagian(model, "Tuas" .. nama .. "Arm")
+        local knob = bagian(model, "Tuas" .. nama .. "Knob")
+        if not arm or not arm:GetAttribute("CFNaik") then
+                return nil
+        end
+        return {
+                arm = arm,
+                knob = knob,
+                lampu = bagian(model, "Tuas" .. nama .. "Lampu"),
+                prompt = pedestal and pedestal:FindFirstChild("PromptTuas" .. nama),
+                suara = pedestal and pedestal:FindFirstChild("SuaraTuas" .. nama),
+                cfNaik = arm:GetAttribute("CFNaik"),
+                cfTurun = arm:GetAttribute("CFTurun"),
+                knobNaik = knob and knob:GetAttribute("CFNaik"),
+                knobTurun = knob and knob:GetAttribute("CFTurun"),
+        }
 end
 
 function MesinSemaiService.registerMesin(index: number, model: Model)
@@ -4190,6 +4233,8 @@ function MesinSemaiService.registerMesin(index: number, model: Model)
                 suaraGiling = bagian(model, "SuaraGiling"),
                 suaraDing = bagian(model, "SuaraDing"),
                 suaraStart = bagian(model, "SuaraStart"),
+                tuasKanan = daftarTuas(model, "Kanan"),
+                tuasKiri = daftarTuas(model, "Kiri"),
                 blink = false,
                 mode = "",
         }
@@ -4226,6 +4271,21 @@ local KUNING_ON = Color3.fromRGB(255, 206, 84)
 local HIJAU_ON = Color3.fromRGB(108, 220, 116)
 local LAMPU_OFF = Color3.fromRGB(72, 76, 84)
 
+local function lampuTuas(index: number, nama: string, t: any, kuningBlink: boolean)
+        local m = mesin[index]
+        local tuas = m and m["tuas" .. nama]
+        if not tuas or not tuas.lampu then
+                return
+        end
+        if type(t) == "table" and t[string.lower(nama)] == true then
+                setLampu(tuas.lampu, HIJAU_ON, true)
+        elseif kuningBlink then
+                setLampu(tuas.lampu, KUNING_ON, true)
+        else
+                setLampu(tuas.lampu, LAMPU_OFF, false)
+        end
+end
+
 local function lampuUpdate(index: number)
         local m = mesin[index]
         if not m then
@@ -4237,17 +4297,39 @@ local function lampuUpdate(index: number)
                 m.mode = tahap
                 m.blink = false
         end
+        local tuasAktif = tahap == "tuas"
         local merahNyala = tahap == "kosong"
-        local kuningNyala = tahap == "giling" or (tahap == "kabel" and m.blink)
+        local kuningNyala = tahap == "giling" or (tuasAktif and m.blink)
         local hijauNyala = tahap == "tuntas"
         setLampu(m.lampuMerah, merahNyala and MERAH_ON or LAMPU_OFF, merahNyala)
         setLampu(m.lampuKuning, kuningNyala and KUNING_ON or LAMPU_OFF, kuningNyala)
         setLampu(m.lampuHijau, hijauNyala and HIJAU_ON or LAMPU_OFF, hijauNyala)
+        local t = tuasAktif and b.tuas or nil
+        lampuTuas(index, "Kanan", t, tuasAktif and m.blink)
+        lampuTuas(index, "Kiri", t, tuasAktif and m.blink and (type(t) == "table" and t.kanan == true))
+end
+
+local function aturPromptTuas(index: number)
+        local m = mesin[index]
+        if not m then
+                return
+        end
+        local b = batch[index]
+        local tahap = b and b.tahap or "kosong"
+        local t = b and b.tuas
+        local berikut = (tahap == "tuas") and SemaiLogic.tuasBerikut(t) or nil
+        if m.tuasKanan and m.tuasKanan.prompt then
+                m.tuasKanan.prompt.Enabled = berikut == "kanan"
+        end
+        if m.tuasKiri and m.tuasKiri.prompt then
+                m.tuasKiri.prompt.Enabled = berikut == "kiri"
+        end
 end
 
 function MesinSemaiService.terapkanTahap(index: number)
         setStatus(index)
         lampuUpdate(index)
+        aturPromptTuas(index)
         local m = mesin[index]
         if not m then
                 return
@@ -4266,6 +4348,20 @@ function MesinSemaiService.terapkanTahap(index: number)
         end
         if tahap == "giling" and m.suaraStart then
                 m.suaraStart:Play()
+        end
+end
+
+local function animasiTuas(m: any, nama: string, turun: boolean)
+        local tuas = m and m["tuas" .. nama]
+        if not tuas or not tuas.cfTurun or not tuas.cfNaik then
+                return
+        end
+        local target = turun and tuas.cfTurun or tuas.cfNaik
+        local targetKnob = turun and tuas.knobTurun or tuas.knobNaik
+        local info = TweenInfo.new(WAKTU_ANIM_TUAS, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        TweenService:Create(tuas.arm, info, { CFrame = target }):Play()
+        if tuas.knob and targetKnob then
+                TweenService:Create(tuas.knob, info, { CFrame = targetKnob }):Play()
         end
 end
 
@@ -4307,7 +4403,7 @@ task.spawn(function()
                 for index, m in pairs(mesin) do
                         local b = batch[index]
                         local tahap = b and b.tahap or "kosong"
-                        if tahap == "kabel" then
+                        if tahap == "tuas" then
                                 m.blink = not m.blink
                         elseif m.blink then
                                 m.blink = false
@@ -4327,9 +4423,8 @@ local function syncLahan(index: number, player: Player?)
                 p.micda = b.hasil.micda
                 p.benih = b.hasil.benih
                 p.blok = b.hasil.blok
-                if b.tahap == "kabel" then
-                        p.kabel = b.kabel
-                        p.kabelVersi = b.versi or 0
+                if b.tahap == "tuas" then
+                        p.tuas = { kanan = b.tuas.kanan, kiri = b.tuas.kiri }
                 end
         end
         local ev = Net.get("SemaiSync")
@@ -4355,6 +4450,7 @@ function MesinSemaiService.clearLahan(index: number)
                 m.mode = ""
                 m.blink = false
         end
+        MesinSemaiService.terapkanTahap(index)
 end
 
 local function dekatMesin(player: Player, index: number): boolean
@@ -4368,6 +4464,22 @@ local function dekatMesin(player: Player, index: number): boolean
                 return false
         end
         return true
+end
+
+local function resetTuas(index: number)
+        local m = mesin[index]
+        if not m then
+                return
+        end
+        for _, nama in ipairs({ "Kanan", "Kiri" }) do
+                local tuas = m["tuas" .. nama]
+                if tuas and tuas.cfNaik then
+                        tuas.arm.CFrame = tuas.cfNaik
+                        if tuas.knob and tuas.knobNaik then
+                                tuas.knob.CFrame = tuas.knobNaik
+                        end
+                end
+        end
 end
 
 function MesinSemaiService.atur(player, cropId: any, jumlah: any): (boolean, string)
@@ -4405,23 +4517,22 @@ function MesinSemaiService.atur(player, cropId: any, jumlah: any): (boolean, str
                 return false, "Hasil panen tidak bisa diambil dari tas."
         end
         local hasil = SemaiLogic.gulung(rng, cfg, diambil)
+        resetTuas(index)
         batch[index] = {
                 pemilik = player.UserId,
                 crop = cropId,
                 jumlah = diambil,
                 pukulan = SemaiLogic.pukulanTotal(diambil, SemaiLogic.pukulanPerItem(cfg)),
                 hasil = hasil,
-                tahap = "kabel",
-                kabel = SemaiLogic.buatKabel(rng),
-                kabelSalah = 0,
-                versi = 0,
+                tahap = "tuas",
+                tuas = SemaiLogic.tuasBaru(),
         }
         if World then
                 World.touch(index)
         end
         MesinSemaiService.terapkanTahap(index)
         syncLahan(index)
-        return true, info.nama .. " x" .. tostring(diambil) .. " masuk mesin. Sambungkan kabelnya!", {
+        return true, info.nama .. " x" .. tostring(diambil) .. " masuk mesin. Tekan tuas KANAN, lalu tuas KIRI!", {
                 crop = cropId,
                 jumlah = diambil,
                 pukulan = batch[index].pukulan,
@@ -4429,7 +4540,7 @@ function MesinSemaiService.atur(player, cropId: any, jumlah: any): (boolean, str
         }
 end
 
-function MesinSemaiService.kabelJadi(player, masuk): (boolean, string)
+function MesinSemaiService.tekan(player, sisi: any): (boolean, string)
         local index = Land.landOf(player)
         if not index then
                 return false, "Kamu tidak punya lahan."
@@ -4441,39 +4552,54 @@ function MesinSemaiService.kabelJadi(player, masuk): (boolean, string)
         if b.pemilik ~= player.UserId then
                 return false, "Bukan semaianmu."
         end
-        if b.tahap ~= "kabel" then
-                return false, "Kabel sudah tersambung."
+        if b.tahap ~= "tuas" then
+                return false, "Tuas sudah selesai ditekan."
         end
         if not dekatMesin(player, index) then
                 return false, "Terlalu jauh dari mesin."
         end
-        local putus, kabelHasil, salahBaru = SemaiLogic.putuskanKabel(b.kabel, masuk, b.kabelSalah or 0, rng)
-        if putus ~= "jodoh" then
-                b.kabelSalah = salahBaru
-                if putus == "acak_ulang" then
-                        b.kabel = kabelHasil
-                        b.versi = (b.versi or 0) + 1
-                        syncLahan(index)
-                        return false, "Susunan kabel diacak ulang. Sambungkan lagi dari awal."
+        local ok, kode = SemaiLogic.prosesTekan(b.tuas, sisi)
+        if not ok then
+                if kode == "urutan" then
+                        local berikut = SemaiLogic.tuasBerikut(b.tuas)
+                        return false, "Urutan salah! Tekan tuas " .. string.upper(berikut or "kanan") .. " dulu."
+                elseif kode == "sudah" then
+                        return false, "Tuas ini sudah ditekan."
+                elseif kode == "sisi" then
+                        return false, "Sisi tuas tidak dikenal."
                 end
-                return false, "Kabel belum terjodohkan semua dengan warna yang sama."
+                return false, "Tuas tidak bisa ditekan."
         end
-        b.tahap = "giling"
+        local namaBesar = (sisi == "kanan") and "Kanan" or "Kiri"
+        animasiTuas(mesin[index], namaBesar, true)
+        local tuasM = mesin[index] and mesin[index]["tuas" .. namaBesar]
+        if tuasM and tuasM.suara then
+                tuasM.suara:Play()
+        end
+        if SemaiLogic.tuasSelesai(b.tuas) then
+                b.tahap = "giling"
+                MesinSemaiService.terapkanTahap(index)
+                syncLahan(index)
+                local waktu = CropData.MesinSemai.WaktuGiling
+                task.delay(waktu, function()
+                        local b2 = batch[index]
+                        if b2 and b2.tahap == "giling" then
+                                b2.tahap = "tuntas"
+                                if World then
+                                        World.touch(index)
+                                end
+                                MesinSemaiService.terapkanTahap(index)
+                                syncLahan(index)
+                        end
+                end)
+                return true, "Kedua tuas aktif! Mesin menyala dan menggiling selama " .. tostring(waktu) .. " detik."
+        end
         MesinSemaiService.terapkanTahap(index)
         syncLahan(index)
-        local waktu = CropData.MesinSemai.WaktuGiling
-        task.delay(waktu, function()
-                local b2 = batch[index]
-                if b2 and b2.tahap == "giling" then
-                        b2.tahap = "tuntas"
-                        if World then
-                                World.touch(index)
-                        end
-                        MesinSemaiService.terapkanTahap(index)
-                        syncLahan(index)
-                end
-        end)
-        return true, "Mesin aktif! Menggiling selama " .. tostring(waktu) .. " detik."
+        if sisi == "kanan" then
+                return true, "Tuas KANAN aktif! Sekarang tekan tuas KIRI."
+        end
+        return true, "Tuas aktif."
 end
 
 function MesinSemaiService.klaim(player): (boolean, string, any)
@@ -4488,8 +4614,8 @@ function MesinSemaiService.klaim(player): (boolean, string, any)
         if b.pemilik ~= player.UserId then
                 return false, "Bukan semaianmu."
         end
-        if b.tahap == "kabel" then
-                return false, "Sambungkan kabel mesin dulu."
+        if b.tahap == "tuas" then
+                return false, "Tekan kedua tuas mesin dulu."
         elseif b.tahap == "giling" then
                 return false, "Mesin masih menggiling. Tunggu sebentar."
         end
@@ -4562,6 +4688,7 @@ function MesinSemaiService.restoreLahan(index: number, arr: any, ownerId: number
                                 benih = type(rec.b) == "number" and math.max(0, math.floor(rec.b)) or 0
                                 blok = type(rec.k) == "number" and math.max(0, math.floor(rec.k)) or 0
                         end
+                        resetTuas(index)
                         batch[index] = {
                                 pemilik = ownerId,
                                 crop = rec.c,
@@ -7025,7 +7152,6 @@ local DropBentuk = MOD_DropBentuk
 local IkonJempol = MOD_IkonJempol
 local JualLogic = MOD_JualLogic
 local SemaiLogic = MOD_SemaiLogic
-local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -7231,7 +7357,7 @@ end
 local dim = mk("Frame", { Name = "DimLayar", Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, Visible = false }, gui)
 local panelHolder = mk("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.5, 0), Size = UDim2.fromScale(0.94, 0.88), BackgroundColor3 = warna(UIStyle.Latar) }, dim)
 round(panelHolder, 12)
-mk("UISizeConstraint", { MinSize = Vector2.new(300, 240), MaxSize = Vector2.new(UIStyle.LebarPanelMaks, UIStyle.TinggiPanelMaks) }, panelHolder)
+local panelBatas = mk("UISizeConstraint", { MinSize = Vector2.new(300, 240), MaxSize = Vector2.new(UIStyle.LebarPanelMaks, UIStyle.TinggiPanelMaks) }, panelHolder)
 mk("UIPadding", {
         PaddingTop = UDim.new(0, UIStyle.AmanAtas),
         PaddingBottom = UDim.new(0, 14),
@@ -7262,6 +7388,11 @@ local function openPanel(name: string)
                 f.Visible = n == name
         end
         panelTitle.Text = PANEL_TITLES[name] or ""
+        if name == "semai" then
+                panelBatas.MaxSize = Vector2.new(760, 620)
+        else
+                panelBatas.MaxSize = Vector2.new(UIStyle.LebarPanelMaks, UIStyle.TinggiPanelMaks)
+        end
         dim.Visible = true
         currentPanel = name
 end
@@ -7424,32 +7555,46 @@ travelBtn.Activated:Connect(function()
 end)
 
 local semaiPanel = makePanel("semai")
-mk("TextLabel", { Size = UDim2.new(1, -8, 0, 30), Position = UDim2.new(0, 4, 0, 0), BackgroundTransparency = 1, Text = "Pilih hasil panen, atur jumlah, isi mesin, lalu jodohkan kabel warnanya. Setelah gilingan tuntas, klaim Micda, benih, dan blok hasil semai.", TextWrapped = true, TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left }, semaiPanel)
-local semaiScroll = mk("ScrollingFrame", { Size = UDim2.new(1, -8, 1, -206), Position = UDim2.new(0, 4, 0, 34), BackgroundTransparency = 1, ScrollBarThickness = 6, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(0, 0, 0, 0) }, semaiPanel)
+mk("TextLabel", { Size = UDim2.new(1, -8, 0, 46), Position = UDim2.new(0, 4, 0, 0), BackgroundTransparency = 1, Text = "Mesin semai mengubah hasil panen jadi Micda, benih, dan blok. Pilih hasil panen, atur jumlah, isi mesin, lalu tekan dua tuas sampai SEMAI TUNTAS.", TextWrapped = true, TextSize = UIStyle.UkuranIsi, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left }, semaiPanel)
+local semaiLangkah = mk("Frame", { Size = UDim2.new(1, -8, 0, 54), Position = UDim2.new(0, 4, 0, 50), BackgroundTransparency = 1 }, semaiPanel)
+mk("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, semaiLangkah)
+for li, lt in ipairs({ { "1", "Pilih hasil panen" }, { "2", "Isi jumlah" }, { "3", "Tekan 2 tuas" } }) do
+        local kartu = mk("Frame", { Size = UDim2.new(0.333, -6, 1, 0), BackgroundColor3 = warna(UIStyle.Permukaan), LayoutOrder = li }, semaiLangkah)
+        round(kartu, UIStyle.SudutKecil)
+        local badge = mk("Frame", { Size = UDim2.new(0, 26, 0, 26), Position = UDim2.new(0, 8, 0.5, -13), BackgroundColor3 = warna(UIStyle.Aksen) }, kartu)
+        mk("UICorner", { CornerRadius = UDim.new(0.5, 0) }, badge)
+        mk("TextLabel", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Text = lt[1], Font = FONTB, TextSize = UIStyle.UkuranIsi, TextColor3 = warna(UIStyle.Latar), ZIndex = 2 }, badge)
+        mk("TextLabel", { Size = UDim2.new(1, -46, 1, -8), Position = UDim2.new(0, 42, 0, 4), BackgroundTransparency = 1, Text = lt[2], TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true }, kartu)
+end
+local semaiScroll = mk("ScrollingFrame", { Size = UDim2.new(1, -8, 1, -352), Position = UDim2.new(0, 4, 0, 110), BackgroundTransparency = 1, ScrollBarThickness = 6, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(0, 0, 0, 0) }, semaiPanel)
 mk("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, semaiScroll)
-local semaiAtur = mk("Frame", { Size = UDim2.new(1, -8, 0, 164), Position = UDim2.new(0, 4, 1, -168), BackgroundColor3 = warna(UIStyle.Permukaan) }, semaiPanel)
+local semaiAtur = mk("Frame", { Size = UDim2.new(1, -8, 0, 234), Position = UDim2.new(0, 4, 1, -238), BackgroundColor3 = warna(UIStyle.Permukaan) }, semaiPanel)
 round(semaiAtur)
-mk("TextLabel", { Size = UDim2.new(0, 76, 0, 30), Position = UDim2.new(0, 10, 0, 8), BackgroundTransparency = 1, Text = "Jumlah:", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left }, semaiAtur)
-local semaiQty = mk("TextBox", { Size = UDim2.new(0, 86, 0, 30), Position = UDim2.new(0, 86, 0, 8), BackgroundColor3 = warna(UIStyle.PermukaanAktif), Text = "1", PlaceholderText = "1", TextSize = UIStyle.UkuranIsi, Font = FON, TextColor3 = warna(UIStyle.Teks), ClearTextOnFocus = false }, semaiAtur)
+mk("TextLabel", { Size = UDim2.new(1, -20, 0, 22), Position = UDim2.new(0, 10, 0, 6), BackgroundTransparency = 1, Text = "Atur jumlah semai", TextSize = UIStyle.UkuranJudul, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left }, semaiAtur)
+local semaiKurang = mk("TextButton", { Size = UDim2.new(0, 46, 0, 42), Position = UDim2.new(0, 10, 0, 34), BackgroundColor3 = warna(UIStyle.Latar), Text = "-", TextSize = UIStyle.UkuranJudul, Font = FONTB, TextColor3 = warna(UIStyle.Teks) }, semaiAtur)
+round(semaiKurang, UIStyle.SudutKecil)
+local semaiQty = mk("TextBox", { Size = UDim2.new(0, 104, 0, 42), Position = UDim2.new(0, 62, 0, 34), BackgroundColor3 = warna(UIStyle.PermukaanAktif), Text = "1", PlaceholderText = "1", TextSize = UIStyle.UkuranJudul, Font = FONTB, TextColor3 = warna(UIStyle.Teks), ClearTextOnFocus = false }, semaiAtur)
 round(semaiQty, UIStyle.SudutKecil)
-local semaiPresets = mk("Frame", { Size = UDim2.new(1, -196, 0, 30), Position = UDim2.new(0, 182, 0, 8), BackgroundTransparency = 1 }, semaiAtur)
+local semaiTambah = mk("TextButton", { Size = UDim2.new(0, 46, 0, 42), Position = UDim2.new(0, 172, 0, 34), BackgroundColor3 = warna(UIStyle.Latar), Text = "+", TextSize = UIStyle.UkuranJudul, Font = FONTB, TextColor3 = warna(UIStyle.Teks) }, semaiAtur)
+round(semaiTambah, UIStyle.SudutKecil)
+local semaiMaksBtn = mk("TextButton", { Size = UDim2.new(0, 66, 0, 42), Position = UDim2.new(0, 226, 0, 34), BackgroundColor3 = warna(UIStyle.Aksen), Text = "Maks", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Latar) }, semaiAtur)
+round(semaiMaksBtn, UIStyle.SudutKecil)
+mk("TextLabel", { Size = UDim2.new(1, -310, 0, 42), Position = UDim2.new(0, 300, 0, 34), BackgroundTransparency = 1, Text = "Kapasitas mesin: 2000", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true, TextYAlignment = Enum.TextYAlignment.Center }, semaiAtur)
+local semaiPresets = mk("Frame", { Size = UDim2.new(1, -20, 0, 36), Position = UDim2.new(0, 10, 0, 86), BackgroundTransparency = 1 }, semaiAtur)
 mk("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, semaiPresets)
 for pi, pn in ipairs({ 1, 10, 50, 100, 500 }) do
-        local pb = mk("TextButton", { Size = UDim2.new(0.2, -6, 1, 0), BackgroundColor3 = warna(UIStyle.Latar), Text = tostring(pn), TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Teks), LayoutOrder = pi }, semaiPresets)
+        local pb = mk("TextButton", { Size = UDim2.new(0.2, -6, 1, 0), BackgroundColor3 = warna(UIStyle.Latar), Text = tostring(pn), TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks), LayoutOrder = pi }, semaiPresets)
         round(pb, UIStyle.SudutKecil)
         pb.Activated:Connect(function()
                 semaiQty.Text = tostring(pn)
         end)
 end
-local semaiMaksBtn = mk("TextButton", { Size = UDim2.new(0, 86, 0, 24), Position = UDim2.new(0, 86, 0, 42), BackgroundColor3 = warna(UIStyle.Latar), Text = "Maks", TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Teks) }, semaiAtur)
-round(semaiMaksBtn, UIStyle.SudutKecil)
-local semaiPreview1 = mk("TextLabel", { Size = UDim2.new(1, -20, 0, 20), Position = UDim2.new(0, 10, 0, 72), BackgroundTransparency = 1, Text = "", TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, semaiAtur)
-local semaiPreview2 = mk("TextLabel", { Size = UDim2.new(1, -20, 0, 20), Position = UDim2.new(0, 10, 0, 94), BackgroundTransparency = 1, Text = "", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, semaiAtur)
-local semaiIsiBtn = mk("TextButton", { Size = UDim2.new(1, -20, 0, 38), Position = UDim2.new(0, 10, 1, -44), BackgroundColor3 = warna(UIStyle.Hijau), Text = "Isi Mesin Semai", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = Color3.new(1, 1, 1) }, semaiAtur)
+local semaiPreview1 = mk("TextLabel", { Size = UDim2.new(1, -20, 0, 22), Position = UDim2.new(0, 10, 0, 128), BackgroundTransparency = 1, Text = "", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, semaiAtur)
+local semaiPreview2 = mk("TextLabel", { Size = UDim2.new(1, -20, 0, 20), Position = UDim2.new(0, 10, 0, 152), BackgroundTransparency = 1, Text = "", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, semaiAtur)
+local semaiIsiBtn = mk("TextButton", { Size = UDim2.new(1, -20, 0, 48), Position = UDim2.new(0, 10, 1, -58), BackgroundColor3 = warna(UIStyle.Hijau), Text = "Isi Mesin Semai", TextSize = UIStyle.UkuranJudul, Font = FONTB, TextColor3 = Color3.new(1, 1, 1) }, semaiAtur)
 round(semaiIsiBtn, UIStyle.SudutKecil)
 
 local semaiPilih: string? = nil
-local bukaKabel: () -> ()
 local bukaStrukKlaim: (any) -> ()
 
 local function semaiDimiliki(): number
@@ -7477,273 +7622,24 @@ local function perbaruiSemaiPreview()
         else
                 semaiPreview1.Text = "Pukulan per item: " .. tostring(per)
         end
-        semaiPreview2.Text = "Dimiliki: " .. tostring(dimiliki) .. " — Kapasitas mesin: " .. tostring(CropData.MesinSemai.Kapasitas)
+        semaiPreview2.Text = "Dimiliki: " .. tostring(dimiliki) .. " hasil panen di tas"
 end
 
 semaiQty:GetPropertyChangedSignal("Text"):Connect(perbaruiSemaiPreview)
+semaiKurang.Activated:Connect(function()
+        local n = tonumber(semaiQty.Text) or 1
+        semaiQty.Text = tostring(math.max(1, math.floor(n) - 1))
+end)
+semaiTambah.Activated:Connect(function()
+        local dimiliki = semaiDimiliki()
+        local maks = math.max(1, math.min(dimiliki, CropData.MesinSemai.Kapasitas))
+        local n = tonumber(semaiQty.Text) or 1
+        semaiQty.Text = tostring(math.min(maks, math.floor(n) + 1))
+end)
 semaiMaksBtn.Activated:Connect(function()
         local dimiliki = semaiDimiliki()
         if dimiliki > 0 then
                 semaiQty.Text = tostring(math.min(dimiliki, CropData.MesinSemai.Kapasitas))
-        end
-end)
-
-local kabelDim = mk("Frame", { Name = "ModalKabel", Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.55, Visible = false, ZIndex = 30 }, gui)
-local kabelBox = mk("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.new(0.92, 0, 0.82, 0), BackgroundColor3 = warna(UIStyle.Latar), ZIndex = 31 }, kabelDim)
-round(kabelBox, 12)
-mk("UISizeConstraint", { MinSize = Vector2.new(300, 300), MaxSize = Vector2.new(480, 580) }, kabelBox)
-mk("TextLabel", { Size = UDim2.new(1, -56, 0, 28), Position = UDim2.new(0, 12, 0, 8), BackgroundTransparency = 1, Text = "Sambungkan Kabel Mesin", TextSize = UIStyle.UkuranJudul, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 32 }, kabelBox)
-mk("TextLabel", { Size = UDim2.new(1, -24, 0, 32), Position = UDim2.new(0, 12, 0, 38), BackgroundTransparency = 1, Text = "Tarik kabel dari soket kiri ke soket warna yang sama di kanan (atau ketuk kiri lalu kanan). Susunan selalu acak.", TextWrapped = true, TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 32 }, kabelBox)
-local kabelArea = mk("Frame", { Size = UDim2.new(1, -24, 1, -144), Position = UDim2.new(0, 12, 0, 76), BackgroundColor3 = warna(UIStyle.Permukaan), ZIndex = 32 }, kabelBox)
-round(kabelArea, UIStyle.SudutKecil)
-local kabelGaris = mk("Frame", { Name = "GarisKabel", Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ZIndex = 40 }, kabelArea)
-local kabelStatus = mk("TextLabel", { Size = UDim2.new(1, -24, 0, 22), Position = UDim2.new(0, 12, 1, -30), BackgroundTransparency = 1, Text = "", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Aksen), TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 33 }, kabelBox)
-local kabelTutup = mk("TextButton", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -10, 0, 8), Size = UDim2.new(0, 40, 0, 30), BackgroundColor3 = warna(UIStyle.Permukaan), Text = "X", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks), ZIndex = 33 }, kabelBox)
-round(kabelTutup, UIStyle.SudutKecil)
-local kabelSfx = mk("Sound", { SoundId = "rbxasset://sounds/electronicpingshort.wav", Volume = 0.4, PlaybackSpeed = 1.15 }, gui)
-
-local kabelCfg: any = nil
-local kabelVersi = 0
-local kabelSambung: { [number]: number } = {}
-local kabelPilihKiri: number? = nil
-local kabelDrag: any = nil
-local soketKiri: { any } = {}
-local soketKanan: { any } = {}
-
-local function warnaKabel(i: number): Color3
-        local w = SemaiLogic.WarnaKabel[i] or { 200, 200, 200 }
-        return Color3.fromRGB(w[1], w[2], w[3])
-end
-
-local function pusatSoket(f: any): (number, number)
-        local ap = kabelArea.AbsolutePosition or { X = 0, Y = 0 }
-        local fp = f.AbsolutePosition or { X = 0, Y = 0 }
-        local fs = f.AbsoluteSize or { X = 48, Y = 48 }
-        return fp.X - ap.X + fs.X / 2, fp.Y - ap.Y + fs.Y / 2
-end
-
-local function gambarGaris(dariX: number, dariY: number, keX: number, keY: number, color: Color3, tebal: number, transparansi: number): Frame
-        local mx, my = (dariX + keX) / 2, (dariY + keY) / 2
-        local dx, dy = keX - dariX, keY - dariY
-        local panjang = math.sqrt(dx * dx + dy * dy)
-        local f = mk("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromOffset(mx, my), Size = UDim2.fromOffset(math.max(4, panjang), tebal), BackgroundColor3 = color, BackgroundTransparency = transparansi, BorderSizePixel = 0, ZIndex = 41 }, kabelGaris)
-        round(f, math.floor(tebal / 2))
-        f.Rotation = math.deg(math.atan2(dy, dx))
-        return f
-end
-
-local function tandaiPilih()
-        for i, s in ipairs(soketKiri) do
-                s.frame.BackgroundColor3 = (kabelPilihKiri == i) and warna(UIStyle.PermukaanAktif) or warna(UIStyle.AbuGelap)
-                s.inti.BackgroundTransparency = kabelSambung[i] and 0 or 0.35
-        end
-        for j, s in ipairs(soketKanan) do
-                s.inti.BackgroundTransparency = 0.35
-                for _, terhubung in pairs(kabelSambung) do
-                        if terhubung == j then
-                                s.inti.BackgroundTransparency = 0
-                        end
-                end
-        end
-end
-
-local function terhubungKe(j: number): boolean
-        for _, v in pairs(kabelSambung) do
-                if v == j then
-                        return true
-                end
-        end
-        return false
-end
-
-local function soketDi(x: number, y: number): number?
-        for j, s in ipairs(soketKanan) do
-                local cx, cy = pusatSoket(s.frame)
-                if math.abs(x - cx) <= 36 and math.abs(y - cy) <= 36 then
-                        return j
-                end
-        end
-        return nil
-end
-
-local function sorotTarget(dari: number, hover: number?)
-        if kabelDrag and kabelDrag.over and soketKanan[kabelDrag.over] then
-                soketKanan[kabelDrag.over].frame.BackgroundColor3 = warna(UIStyle.AbuGelap)
-        end
-        if hover and soketKanan[hover] and not terhubungKe(hover) then
-                local cocok = kabelCfg and kabelCfg.kiri[dari] == soketKanan[hover].warna
-                soketKanan[hover].frame.BackgroundColor3 = cocok and warna(UIStyle.Hijau) or warna(UIStyle.Merah)
-        end
-end
-
-local function cobaSambung(i: number, j: number)
-        if not kabelCfg or kabelSambung[i] then
-                return
-        end
-        if kabelCfg.kiri[i] == kabelCfg.kanan[j] then
-                kabelSambung[i] = j
-                local sx, sy = pusatSoket(soketKiri[i].frame)
-                local tx, ty = pusatSoket(soketKanan[j].frame)
-                gambarGaris(sx, sy, tx, ty, warnaKabel(kabelCfg.kiri[i]), 10, 0)
-                soketKiri[i].inti.BackgroundTransparency = 0
-                soketKanan[j].inti.BackgroundTransparency = 0
-                kabelSfx:Play()
-                kabelPilihKiri = nil
-                tandaiPilih()
-                local terhubung = 0
-                for _ in pairs(kabelSambung) do
-                        terhubung += 1
-                end
-                kabelStatus.TextColor3 = warna(UIStyle.Aksen)
-                kabelStatus.Text = "Terhubung " .. tostring(terhubung) .. "/" .. tostring(kabelCfg.n)
-                if SemaiLogic.kabelSelesai(kabelCfg, kabelSambung) then
-                        kabelStatus.Text = "Semua kabel terjodohkan! Mesin aktif..."
-                        task.delay(0.4, function()
-                                kabelDim.Visible = false
-                                task.spawn(function()
-                                        local ok, msg = Net.get("SemaiAct"):InvokeServer("kabel", kabelSambung)
-                                        toast(ok and "Mesin Semai" or "Gagal", msg)
-                                end)
-                        end)
-                end
-        else
-                kabelStatus.TextColor3 = warna(UIStyle.Merah)
-                kabelStatus.Text = "Warna tidak cocok! Jodohkan kabel dengan warna yang sama."
-        end
-end
-
-local function buatSoket(sisi: string, warnaIdx: number, yf: number, jitter: number): (Frame, Frame, UIStroke)
-        local warnaSoket = warnaKabel(warnaIdx)
-        local f = mk("Frame", {
-                AnchorPoint = Vector2.new(0.5, 0.5),
-                Position = (sisi == "kiri") and UDim2.new(0, 52, yf, jitter) or UDim2.new(1, -52, yf, jitter),
-                Size = UDim2.fromOffset(48, 48),
-                BackgroundColor3 = warna(UIStyle.AbuGelap),
-                ZIndex = 45,
-        }, kabelArea)
-        round(f, 24)
-        local stroke = mk("UIStroke", { Color = warnaSoket, Thickness = 3, Transparency = 0.1 }, f)
-        local inti = mk("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0.52, 0.52), BackgroundColor3 = warnaSoket, BackgroundTransparency = 0.35, ZIndex = 46 }, f)
-        round(inti, 12)
-        return f, inti, stroke
-end
-
-local function bangunKabel()
-        for _, c in ipairs(kabelGaris:GetChildren()) do
-                c:Destroy()
-        end
-        for _, c in ipairs(kabelArea:GetChildren()) do
-                if c ~= kabelGaris then
-                        c:Destroy()
-                end
-        end
-        soketKiri, soketKanan = {}, {}
-        kabelSambung = {}
-        kabelPilihKiri = nil
-        kabelDrag = nil
-        local jr = Random.new()
-        for i = 1, kabelCfg.n do
-                local yf = (i - 0.5) / kabelCfg.n
-                local jKiri = jr:NextNumber() * 16 - 8
-                local jKanan = jr:NextNumber() * 16 - 8
-                local fk, intiK, _s1 = buatSoket("kiri", kabelCfg.kiri[i], yf, jKiri)
-                local fn, intiN, _s2 = buatSoket("kanan", kabelCfg.kanan[i], yf, jKanan)
-                soketKiri[i] = { frame = fk, inti = intiK, warna = kabelCfg.kiri[i] }
-                soketKanan[i] = { frame = fn, inti = intiN, warna = kabelCfg.kanan[i] }
-                fk.InputBegan:Connect(function(input)
-                        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-                                if input.UserInputState ~= Enum.UserInputState.Begin or kabelSambung[i] then
-                                        return
-                                end
-                                kabelDrag = { dari = i }
-                                kabelPilihKiri = i
-                                tandaiPilih()
-                        end
-                end)
-                fk.Activated:Connect(function()
-                        if kabelSambung[i] then
-                                return
-                        end
-                        if kabelPilihKiri == i then
-                                kabelPilihKiri = nil
-                        else
-                                kabelPilihKiri = i
-                        end
-                        tandaiPilih()
-                end)
-                fn.Activated:Connect(function()
-                        if kabelPilihKiri then
-                                cobaSambung(kabelPilihKiri, i)
-                        end
-                end)
-        end
-        tandaiPilih()
-end
-
-bukaKabel = function()
-        if not (state.semai and state.semai.tahap == "kabel" and state.semai.kabel) then
-                return
-        end
-        kabelCfg = state.semai.kabel
-        kabelVersi = state.semai.kabelVersi or 0
-        bangunKabel()
-        kabelStatus.TextColor3 = warna(UIStyle.Aksen)
-        kabelStatus.Text = "Terhubung 0/" .. tostring(kabelCfg.n)
-        kabelDim.Visible = true
-end
-
-kabelTutup.Activated:Connect(function()
-        kabelDim.Visible = false
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-        if not kabelDrag then
-                return
-        end
-        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-                local ap = kabelArea.AbsolutePosition or { X = 0, Y = 0 }
-                local x = input.Position.X - ap.X
-                local y = input.Position.Y - ap.Y
-                if kabelDrag.garis then
-                        kabelDrag.garis:Destroy()
-                end
-                local sx, sy = pusatSoket(soketKiri[kabelDrag.dari].frame)
-                kabelDrag.garis = gambarGaris(sx, sy, x, y, warnaKabel(kabelCfg.kiri[kabelDrag.dari]), 8, 0.25)
-                local hover = soketDi(x, y)
-                if kabelDrag.over ~= hover then
-                        sorotTarget(kabelDrag.dari, hover)
-                        kabelDrag.over = hover
-                end
-        end
-end)
-
-UserInputService.InputEnded:Connect(function(input)
-        if not kabelDrag then
-                return
-        end
-        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-                local ap = kabelArea.AbsolutePosition or { X = 0, Y = 0 }
-                local x = input.Position.X - ap.X
-                local y = input.Position.Y - ap.Y
-                local target: number? = nil
-                for j, s in ipairs(soketKanan) do
-                        local cx, cy = pusatSoket(s.frame)
-                        if math.abs(x - cx) <= 36 and math.abs(y - cy) <= 36 then
-                                target = j
-                                break
-                        end
-                end
-                if kabelDrag.over and soketKanan[kabelDrag.over] then
-                        soketKanan[kabelDrag.over].frame.BackgroundColor3 = warna(UIStyle.AbuGelap)
-                end
-                if kabelDrag.garis then
-                        kabelDrag.garis:Destroy()
-                end
-                local dari = kabelDrag.dari
-                kabelDrag = nil
-                if target then
-                        cobaSambung(dari, target :: number)
-                end
         end
 end)
 
@@ -7786,13 +7682,6 @@ semaiIsiBtn.Activated:Connect(function()
                 toast(ok and "Mesin Semai" or "Gagal", msg)
                 if ok then
                         syncState()
-                        for _ = 1, 12 do
-                                if state.semai and state.semai.tahap == "kabel" then
-                                        break
-                                end
-                                task.wait(0.1)
-                        end
-                        bukaKabel()
                 end
         end)
 end)
@@ -7824,7 +7713,7 @@ local function refreshSemai()
                                 local info = CropData.byId[s.id]
                                 local cfg = info and CropData.Giling[info.rarity]
                                 local per = cfg and SemaiLogic.pukulanPerItem(cfg) or 0
-                                local row = mk("TextButton", { Size = UDim2.new(1, -8, 0, 46), BackgroundColor3 = warna(s.id == semaiPilih and UIStyle.PermukaanAktif or UIStyle.Permukaan), Text = "", AutoButtonColor = true, LayoutOrder = order }, semaiScroll)
+                                local row = mk("TextButton", { Size = UDim2.new(1, -8, 0, 54), BackgroundColor3 = warna(s.id == semaiPilih and UIStyle.PermukaanAktif or UIStyle.Permukaan), Text = "", AutoButtonColor = true, LayoutOrder = order }, semaiScroll)
                                 round(row, UIStyle.SudutKecil)
                                 ikonSlot(row, s)
                                 if s.id == semaiPilih then
@@ -7850,24 +7739,33 @@ local function refreshSemai()
         end
         local info = CropData.byId[b.crop]
         local nama = info and info.nama or tostring(b.crop)
-        local kepala = mk("Frame", { Size = UDim2.new(1, -8, 0, 40), BackgroundColor3 = warna(UIStyle.PermukaanAktif), LayoutOrder = 1 }, semaiScroll)
+        local kepala = mk("Frame", { Size = UDim2.new(1, -8, 0, 48), BackgroundColor3 = warna(UIStyle.PermukaanAktif), LayoutOrder = 1 }, semaiScroll)
         round(kepala, UIStyle.SudutKecil)
         mk("TextLabel", { Size = UDim2.new(0.62, -12, 1, -8), Position = UDim2.new(0, 8, 0, 4), BackgroundTransparency = 1, Text = "Isi mesin: " .. tostring(b.jumlah) .. " x " .. UIStyle.potong(nama, 14), TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, kepala)
         mk("TextLabel", { Size = UDim2.new(0.38, -12, 1, -8), Position = UDim2.new(0.62, 8, 0, 4), BackgroundTransparency = 1, Text = "Total " .. tostring(b.pukulan) .. " pukulan", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Right }, kepala)
-        if b.tahap == "kabel" then
-                mk("TextLabel", { Size = UDim2.new(1, -8, 0, 34), BackgroundTransparency = 1, Text = "Mesin menunggu kabel. Jodohkan semua kabel warnanya untuk mengaktifkan mesin.", TextWrapped = true, TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Kuning), LayoutOrder = 2 }, semaiScroll)
-                local btnKabel = mk("TextButton", { Size = UDim2.new(1, -8, 0, 42), BackgroundColor3 = warna(UIStyle.Hijau), Text = "Sambungkan Kabel", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = Color3.new(1, 1, 1), LayoutOrder = 3 }, semaiScroll)
-                round(btnKabel)
-                btnKabel.Activated:Connect(function()
-                        bukaKabel()
-                end)
+        if b.tahap == "tuas" then
+                local tuas = type(b.tuas) == "table" and b.tuas or {}
+                mk("TextLabel", { Size = UDim2.new(1, -8, 0, 30), BackgroundTransparency = 1, Text = "AKTIFKAN MESIN — tekan dua tuas di pinggir mesin:", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Kuning), LayoutOrder = 2 }, semaiScroll)
+                local urutanTuas = 3
+                for _, L in ipairs({ { sisi = "kanan", nomor = "1", judul = "Tuas KANAN", ket = "Pinggir kanan mesin" }, { sisi = "kiri", nomor = "2", judul = "Tuas KIRI", ket = "Pinggir kiri mesin" } }) do
+                        local selesai = tuas[L.sisi] == true
+                        local row = mk("Frame", { Size = UDim2.new(1, -8, 0, 54), BackgroundColor3 = warna(selesai and UIStyle.Hijau or UIStyle.Permukaan), LayoutOrder = urutanTuas }, semaiScroll)
+                        urutanTuas += 1
+                        round(row, UIStyle.SudutKecil)
+                        local badge = mk("Frame", { Size = UDim2.new(0, 30, 0, 30), Position = UDim2.new(0, 10, 0.5, -15), BackgroundColor3 = warna(selesai and UIStyle.Latar or UIStyle.AbuGelap) }, row)
+                        mk("UICorner", { CornerRadius = UDim.new(0.5, 0) }, badge)
+                        mk("TextLabel", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Text = selesai and "OK" or L.nomor, Font = FONTB, TextSize = UIStyle.UkuranJudul, TextColor3 = warna(selesai and UIStyle.Hijau or UIStyle.Teks), ZIndex = 2 }, badge)
+                        mk("TextLabel", { Size = UDim2.new(1, -130, 1, -8), Position = UDim2.new(0, 50, 0, 4), BackgroundTransparency = 1, Text = L.judul .. " — " .. L.ket, TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(selesai and UIStyle.Latar or UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, row)
+                        mk("TextLabel", { Size = UDim2.new(0, 72, 1, -8), Position = UDim2.new(1, -78, 0, 4), BackgroundTransparency = 1, Text = selesai and "SELESAI" or (SemaiLogic.tuasBerikut(tuas) == L.sisi and "TEKAN!" or "TUNGGU"), TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(selesai and UIStyle.Latar or UIStyle.Kuning), TextXAlignment = Enum.TextXAlignment.Right }, row)
+                end
+                mk("TextLabel", { Size = UDim2.new(1, -8, 0, 56), BackgroundTransparency = 1, Text = "Dekati tiap tuas di ujung kanan & kiri mesin, lalu tahan tombol [Tekan Tuas]. Urutan: KANAN dulu, baru KIRI. Keduanya selesai = mesin langsung menyala.", TextWrapped = true, TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), LayoutOrder = 5 }, semaiScroll)
         elseif b.tahap == "giling" then
                 mk("TextLabel", { Size = UDim2.new(1, -8, 0, 34), BackgroundTransparency = 1, Text = "Mesin sedang menggiling " .. tostring(b.jumlah) .. " x " .. UIStyle.potong(nama, 12) .. ". Tunggu sebentar sampai label SEMAI TUNTAS menyala.", TextWrapped = true, TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), LayoutOrder = 2 }, semaiScroll)
         elseif b.tahap == "tuntas" then
                 mk("TextLabel", { Size = UDim2.new(1, -8, 0, 26), BackgroundTransparency = 1, Text = "SEMAI TUNTAS! Hasil gilingan siap diambil:", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Kuning), LayoutOrder = 2 }, semaiScroll)
                 local urut = 3
                 local function barisHasil(ikonData: any?, teks: string, kanan: string)
-                        local row = mk("Frame", { Size = UDim2.new(1, -8, 0, 38), BackgroundColor3 = warna(UIStyle.Permukaan), LayoutOrder = urut }, semaiScroll)
+                        local row = mk("Frame", { Size = UDim2.new(1, -8, 0, 46), BackgroundColor3 = warna(UIStyle.Permukaan), LayoutOrder = urut }, semaiScroll)
                         urut += 1
                         round(row, UIStyle.SudutKecil)
                         if ikonData then
@@ -7887,7 +7785,7 @@ local function refreshSemai()
                 if (b.blok or 0) > 0 then
                         barisHasil({ kind = "blok", id = CropData.blokIdFor(b.crop), count = b.blok }, CropData.blokNamaFor(b.crop), "x" .. tostring(b.blok))
                 end
-                local btnKlaim = mk("TextButton", { Size = UDim2.new(1, -8, 0, 46), BackgroundColor3 = warna(UIStyle.Hijau), Text = "Klaim Semua", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = Color3.new(1, 1, 1), LayoutOrder = 9 }, semaiScroll)
+                local btnKlaim = mk("TextButton", { Size = UDim2.new(1, -8, 0, 52), BackgroundColor3 = warna(UIStyle.Hijau), Text = "Klaim Semua", TextSize = UIStyle.UkuranJudul, Font = FONTB, TextColor3 = Color3.new(1, 1, 1), LayoutOrder = 9 }, semaiScroll)
                 round(btnKlaim)
                 btnKlaim.Activated:Connect(klaimSemai)
         end
@@ -8813,13 +8711,6 @@ end)
 Net.get("SemaiSync").OnClientEvent:Connect(function(p)
         if p.lahan == state.lahan then
                 state.semai = p
-                if kabelDim.Visible and p.tahap == "kabel" and p.kabel and (p.kabelVersi or 0) ~= kabelVersi then
-                        kabelCfg = p.kabel
-                        kabelVersi = p.kabelVersi or 0
-                        bangunKabel()
-                        kabelStatus.TextColor3 = warna(UIStyle.Merah)
-                        kabelStatus.Text = "Susunan kabel berubah! Sambungkan ulang dari awal."
-                end
                 if currentPanel == "semai" then
                         refreshSemai()
                 end
@@ -8988,6 +8879,12 @@ end
 
 local hooks = {
         onSemaiPrompt = openSemai,
+        onTuasPrompt = function(player: Player, _lahanIdx: number, sisi: string)
+                local ok, msg = MesinSemaiService.tekan(player, sisi)
+                if not ok then
+                        notify(player, "Mesin Semai", tostring(msg))
+                end
+        end,
         onShopPrompt = openShop,
         onGerbangDunia = function(player: Player)
                 Net.get("OpenPanel"):FireClient(player, "gerbang", {})
@@ -9171,8 +9068,8 @@ Net.get("SemaiAct").OnServerInvoke = function(player, action, a, b)
         end
         if action == "atur" then
                 return MesinSemaiService.atur(player, a, b)
-        elseif action == "kabel" then
-                return MesinSemaiService.kabelJadi(player, a)
+        elseif action == "tuas" then
+                return MesinSemaiService.tekan(player, a)
         elseif action == "klaim" then
                 return MesinSemaiService.klaim(player)
         end
@@ -9948,7 +9845,7 @@ if dt then
 end
 check("Hasil Tangelo masuk tas lewat sentuhan", tasCount(P1, "hasil", "tangelo") >= 1, tostring(tasCount(P1, "hasil", "tangelo")))
 
-section("MESIN SEMAI: atur jumlah -> kabel -> giling -> klaim")
+section("MESIN SEMAI: atur jumlah -> tuas kanan -> tuas kiri -> klaim")
 moveTo(P1, 5185, 5, 50)
 Stub.Scheduler.advance(0.1)
 firePrompt(dunia, { action = "Semai Panen", object = "Mesin Semai" }, P1)
@@ -9958,12 +9855,12 @@ local stSemai0 = serverCall("GetState", P1)
 local hasilWortel0 = 0
 local adaBlokPanen = false
 for _, slot in ipairs(stSemai0.tas) do
-        if slot.kind == "hasil" and slot.id == "wortel" then
-                hasilWortel0 += slot.count
-        end
-        if slot.id == "blok_panen" then
-                adaBlokPanen = true
-        end
+	if slot.kind == "hasil" and slot.id == "wortel" then
+		hasilWortel0 += slot.count
+	end
+	if slot.id == "blok_panen" then
+		adaBlokPanen = true
+	end
 end
 check("Item bug blok_panen tidak ada di tas", not adaBlokPanen, "-")
 check("Ada hasil wortel untuk mesin", hasilWortel0 >= 10, tostring(hasilWortel0))
@@ -9972,105 +9869,92 @@ check("Preset jumlah 10 diklik", tombolJumlah(gui, "10"), "-")
 local isiBtn = findGui(gui, "TextButton", "Isi Mesin Semai")
 check("Tombol Isi Mesin Semai ada", isiBtn ~= nil, "-")
 if isiBtn then
-        isiBtn.Activated:Fire()
-        Stub.Scheduler.advance(0.3)
+	isiBtn.Activated:Fire()
+	Stub.Scheduler.advance(0.3)
 end
-check("Modal kabel mesin terbuka", findGui(gui, "TextLabel", "Sambungkan Kabel Mesin") ~= nil, "-")
-local PALET = { { 214, 64, 56 }, { 76, 168, 82 }, { 58, 122, 214 }, { 240, 196, 60 }, { 168, 92, 224 }, { 240, 138, 44 }, { 60, 190, 190 }, { 232, 92, 150 } }
-local function warnaIdxKabel(c)
-        if not c then
-                return nil
-        end
-        for wi, w in ipairs(PALET) do
-                if math.abs(c.r - w[1] / 255) < 0.004 and math.abs(c.g - w[2] / 255) < 0.004 and math.abs(c.b - w[3] / 255) < 0.004 then
-                        return wi
-                end
-        end
-        return nil
+check("Papan mesin minta dua tuas", findGui(dunia, "TextLabel", "TEKAN TUAS KANAN LALU KIRI") ~= nil, "-")
+check("Panel menampilkan langkah Tuas KANAN", findGui(gui, "TextLabel", "Tuas KANAN — Pinggir kanan mesin") ~= nil, "-")
+check("Panel menampilkan langkah Tuas KIRI", findGui(gui, "TextLabel", "Tuas KIRI — Pinggir kiri mesin") ~= nil, "-")
+local tolak1, tolakMsg1 = serverCall("SemaiAct", P1, "tuas")
+check("Tekan tuas tanpa sisi DITOLAK server", tolak1 == false and type(tolakMsg1) == "string", tostring(tolakMsg1))
+local tolak2, tolakMsg2 = serverCall("SemaiAct", P1, "tuas", "kiri")
+check("Tuas KIRI sebelum KANAN DITOLAK server", tolak2 == false and string.find(tostring(tolakMsg2), "KANAN", 1, true) ~= nil, tostring(tolakMsg2))
+local promptKanan, promptKiri
+for _, p in ipairs(findPrompts(dunia)) do
+	if p.ActionText == "Tekan Tuas" and p.ObjectText == "Tuas Kanan" then
+		promptKanan = p
+	end
+	if p.ActionText == "Tekan Tuas" and p.ObjectText == "Tuas Kiri" then
+		promptKiri = p
+	end
 end
-local function bacaKabelGui()
-        local area = nil
-        for _, d in ipairs(gui:GetDescendants()) do
-                if d:IsA("Frame") and d.Name == "GarisKabel" then
-                        area = d.Parent
-                        break
-                end
-        end
-        if not area then
-                return nil
-        end
-        local kiri, kanan = {}, {}
-        for _, d in ipairs(area:GetChildren()) do
-                if d:IsA("Frame") and d.Size.xo == 48 then
-                        local stroke = nil
-                        for _, c in ipairs(d:GetChildren()) do
-                                if c:IsA("UIStroke") then
-                                        stroke = c
-                                end
-                        end
-                        local wi = stroke and warnaIdxKabel(stroke.Color) or nil
-                        if wi then
-                                local wadah = (d.Position.xs == 0) and kiri or kanan
-                                table.insert(wadah, { y = d.Position.ys, w = wi })
-                        end
-                end
-        end
-        if #kiri == 0 or #kiri ~= #kanan then
-                return nil
-        end
-        table.sort(kiri, function(a, b)
-                return a.y < b.y
-        end)
-        table.sort(kanan, function(a, b)
-                return a.y < b.y
-        end)
-        local sambung, kiriW, kananW = {}, {}, {}
-        for i = 1, #kiri do
-                kiriW[i] = kiri[i].w
-                kananW[i] = kanan[i].w
-                for j = 1, #kanan do
-                        if kanan[j].w == kiri[i].w then
-                                sambung[i] = j
-                        end
-                end
-                if not sambung[i] then
-                        return nil
-                end
-        end
-        return sambung, kiriW, kananW
+check("Dua prompt Tekan Tuas ada di mesin", promptKanan ~= nil and promptKiri ~= nil, "-")
+local tolak1, tolakMsg1 = serverCall("SemaiAct", P1, "tuas")
+check("Tekan tuas tanpa sisi DITOLAK server", tolak1 == false and type(tolakMsg1) == "string", tostring(tolakMsg1))
+local tolak2, tolakMsg2 = serverCall("SemaiAct", P1, "tuas", "kiri")
+check("Tuas KIRI sebelum KANAN DITOLAK server", tolak2 == false and string.find(tostring(tolakMsg2), "KANAN", 1, true) ~= nil, tostring(tolakMsg2))
+local promptKanan, promptKiri
+for _, p in ipairs(findPrompts(dunia)) do
+	if p.ActionText == "Tekan Tuas" and p.ObjectText == "Tuas Kanan" then
+		promptKanan = p
+	end
+	if p.ActionText == "Tekan Tuas" and p.ObjectText == "Tuas Kiri" then
+		promptKiri = p
+	end
 end
-local s0, kiri0, kanan0 = bacaKabelGui()
-check("Soket kabel acak terbaca dari layar (kiri & kanan)", s0 ~= nil, "-")
-local tolak1, tolakMsg1 = serverCall("SemaiAct", P1, "kabel")
-check("Kabel tanpa mapping DITOLAK server", tolak1 == false and type(tolakMsg1) == "string", tostring(tolakMsg1))
-local tolak2 = serverCall("SemaiAct", P1, "kabel", {})
-check("Mapping kosong DITOLAK server", tolak2 == false, "-")
-local tukar = {}
-for i = 1, #s0 do
-        tukar[i] = s0[i]
+check("Dua prompt Tekan Tuas ada di mesin", promptKanan ~= nil and promptKiri ~= nil, "-")
+local jmlMesin, jmlPromptTuas = 0, 0
+for _, d in ipairs(dunia:GetDescendants()) do
+	if d:IsA("Model") and d.Name == "MesinSemaiPanen" then
+		jmlMesin += 1
+	end
+	if d:IsA("ProximityPrompt") and d.ActionText == "Tekan Tuas" then
+		jmlPromptTuas += 1
+	end
 end
-tukar[1], tukar[2] = tukar[2], tukar[1]
-local tolak3, tolakMsg3 = serverCall("SemaiAct", P1, "kabel", tukar)
-check("Mapping jodoh tertukar DITOLAK server", tolak3 == false, tostring(tolakMsg3))
-Stub.Scheduler.advance(0.4)
-local s1, kiri1, kanan1 = bacaKabelGui()
-check("3x gagal -> soket diacak ulang & terlihat beda di layar", s1 ~= nil and (table.concat(kiri0, ",") ~= table.concat(kiri1, ",") or table.concat(kanan0, ",") ~= table.concat(kanan1, ",")), "-")
-local okKabel, msgKabel = serverCall("SemaiAct", P1, "kabel", s1)
-check("Jodoh kabel dari layar -> mesin aktif", okKabel, tostring(msgKabel))
+print("  DEBUG mesin=" .. tostring(jmlMesin) .. " promptTuas=" .. tostring(jmlPromptTuas) .. " kananEnabled=" .. tostring(promptKanan and promptKanan.Enabled) .. " kiriEnabled=" .. tostring(promptKiri and promptKiri.Enabled) .. " kananObj=" .. tostring(promptKanan and promptKanan.ObjectText))
+local mesinModel
+for _, d in ipairs(dunia:GetDescendants()) do
+	if d:IsA("Model") and d.Name == "MesinSemaiPanen" then
+		mesinModel = d
+		break
+	end
+end
+local armK = mesinModel and mesinModel:FindFirstChild("TuasKananArm", true)
+local pedK = mesinModel and mesinModel:FindFirstChild("TuasKananPedestal", true)
+print("  DEBUG2 arm=" .. tostring(armK ~= nil) .. " cfNaik=" .. tostring(armK and armK:GetAttribute("CFNaik") ~= nil) .. " ped=" .. tostring(pedK ~= nil) .. " promptAnak=" .. tostring(pedK and pedK:FindFirstChild("PromptTuasKanan") ~= nil) .. " promptAttr=" .. tostring(promptKanan and promptKanan:GetAttribute("x") ~= nil))
+if armK then
+	local n = 0
+	for _, c in ipairs(pedK:GetChildren()) do n += 1 end
+	print("  DEBUG3 pedAnak=" .. tostring(n))
+end
+check("Prompt tuas KANAN aktif duluan", promptKanan ~= nil and promptKanan.Enabled == true and promptKiri ~= nil and promptKiri.Enabled == false, "-")
+if promptKanan then
+	promptKanan.Triggered:Fire(P1)
+	Stub.Scheduler.advance(0.3)
+end
+check("Tuas KANAN ditekan dari dunia -> prompt pindah ke KIRI", promptKanan ~= nil and promptKanan.Enabled == false and promptKiri ~= nil and promptKiri.Enabled == true, "-")
+local tolak3, tolakMsg3 = serverCall("SemaiAct", P1, "tuas", "kanan")
+check("Tuas KANAN ditekan dua kali DITOLAK server", tolak3 == false, tostring(tolakMsg3))
+if promptKiri then
+	promptKiri.Triggered:Fire(P1)
+	Stub.Scheduler.advance(0.3)
+end
+check("Kedua tuas selesai -> mesin langsung MENGGILING", findGui(dunia, "TextLabel", "MENGGILING...") ~= nil, "-")
 Stub.Scheduler.advance(3.5)
 local stSemai1 = serverCall("GetState", P1)
 check("Batch mesin tercatat di papan", findGui(dunia, "TextLabel", "SEMAI TUNTAS - KLAIM HASIL") ~= nil, "-")
 local klaimBtn = findGui(gui, "TextButton", "Klaim Semua")
 check("Tombol Klaim Semua tampil setelah tuntas", klaimBtn ~= nil and tampakPenuh(klaimBtn), "-")
 local function micdaOf(pl)
-        local ls = pl:FindFirstChild("leaderstats")
-        local mv = ls and ls:FindFirstChild("Micda")
-        return mv and mv.Value or 0
+	local ls = pl:FindFirstChild("leaderstats")
+	local mv = ls and ls:FindFirstChild("Micda")
+	return mv and mv.Value or 0
 end
 local micda0 = micdaOf(P1)
 if klaimBtn then
-        klaimBtn.Activated:Fire()
-        Stub.Scheduler.advance(0.3)
+	klaimBtn.Activated:Fire()
+	Stub.Scheduler.advance(0.3)
 end
 check("Struk klaim tampil", findGui(gui, "TextLabel", "Hasil Diklaim") ~= nil, "-")
 local micda1 = micdaOf(P1)
@@ -10078,29 +9962,30 @@ check("Micda bertambah setelah klaim", micda1 > micda0, tostring(micda0) .. "->"
 local stSemai2 = serverCall("GetState", P1)
 local hasilWortel1 = 0
 local blokWortel = 0
+adaBlokPanen = false
 for _, slot in ipairs(stSemai2.tas) do
-        if slot.kind == "hasil" and slot.id == "wortel" then
-                hasilWortel1 += slot.count
-        end
-        if slot.kind == "blok" and slot.id == "blok_wortel" then
-                blokWortel += slot.count
-        end
-        if slot.id == "blok_panen" then
-                adaBlokPanen = true
-        end
+	if slot.kind == "hasil" and slot.id == "wortel" then
+		hasilWortel1 += slot.count
+	end
+	if slot.kind == "blok" and slot.id == "blok_wortel" then
+		blokWortel += slot.count
+	end
+	if slot.id == "blok_panen" then
+		adaBlokPanen = true
+	end
 end
 check("10 wortel hasil dipakai mesin", hasilWortel1 == hasilWortel0 - 10, tostring(hasilWortel0) .. "->" .. tostring(hasilWortel1))
 check("Hasil blok sesuai tanaman (blok_wortel)", blokWortel >= 0 and not adaBlokPanen, tostring(blokWortel))
 check("Papan mesin kembali NONAKTIF setelah klaim", findGui(dunia, "TextLabel", "NONAKTIF") ~= nil, "-")
 local okeStruk = findGui(gui, "TextButton", "Oke")
 if okeStruk and tampakPenuh(okeStruk) then
-        okeStruk.Activated:Fire()
-        Stub.Scheduler.advance(0.1)
+	okeStruk.Activated:Fire()
+	Stub.Scheduler.advance(0.1)
 end
 local tutupPanel = findGui(gui, "TextButton", "X")
 if tutupPanel and tampakPenuh(tutupPanel) then
-        tutupPanel.Activated:Fire()
-        Stub.Scheduler.advance(0.1)
+	tutupPanel.Activated:Fire()
+	Stub.Scheduler.advance(0.1)
 end
 
 section("Gudang: 250 -> 999 -> 998 tetap presisi")

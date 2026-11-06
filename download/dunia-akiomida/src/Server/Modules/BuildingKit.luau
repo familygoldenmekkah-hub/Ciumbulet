@@ -624,6 +624,77 @@ function BuildingKit.buildMesinSemai(parent: Instance, index: number, hooks): Mo
                 datar.CanCollide = false
         end
 
+        for sisi, s in ipairs({ { nama = "Kanan", arah = 1 }, { nama = "Kiri", arah = -1 } }) do
+                local x = s.arah * 12
+                local z = 9.5
+                local _alas = BuildingKit.part(model, Vector3.new(2.8, 0.35, 2.8), CFrame.new(x, 1.32, z), STEEL_DARK, Enum.Material.DiamondPlate)
+                for i = 0, 2 do
+                        BuildingKit.part(model, Vector3.new(0.85, 0.14, 0.62), CFrame.new(x - 0.9 + i * 0.9, 1.22, z + 1.75), (i % 2 == 0) and STRIPE_KUNING or STEEL_DARK, Enum.Material.SmoothPlastic).CanCollide = false
+                end
+                local tiangTuas = BuildingKit.part(model, Vector3.new(1.6, 2.1, 1.6), CFrame.new(x, 2.55, z), STEEL_DARK, Enum.Material.DiamondPlate)
+                tiangTuas.Name = "Tuas" .. s.nama .. "Pedestal"
+                for pz = -1, 1, 2 do
+                        BuildingKit.part(model, Vector3.new(1.4, 1.5, 0.35), CFrame.new(x, 4.1, z + pz * 0.62), STEEL, Enum.Material.Metal)
+                end
+                local pin = BuildingKit.part(model, Vector3.new(0.55, 1.7, 1.7), CFrame.new(x, 4.15, z), STEEL, Enum.Material.Metal)
+                pin.Shape = Enum.PartType.Cylinder
+                pin.CFrame = CFrame.new(x, 4.15, z) * CFrame.Angles(0, math.rad(90), 0)
+                pin.CanCollide = false
+                local pivot = CFrame.new(x, 4.15, z)
+                local naik = (s.arah == 1) and -52 or 52
+                local turun = (s.arah == 1) and 40 or -40
+                local arm = BuildingKit.part(model, Vector3.new(0.5, 3.4, 0.5), pivot * CFrame.Angles(0, 0, math.rad(naik)) * CFrame.new(0, 1.7, 0), STEEL, Enum.Material.Metal)
+                arm.Name = "Tuas" .. s.nama .. "Arm"
+                arm:SetAttribute("CFNaik", pivot * CFrame.Angles(0, 0, math.rad(naik)) * CFrame.new(0, 1.7, 0))
+                arm:SetAttribute("CFTurun", pivot * CFrame.Angles(0, 0, math.rad(turun)) * CFrame.new(0, 1.7, 0))
+                local knob = BuildingKit.part(model, Vector3.new(0.9, 0.9, 0.9), pivot * CFrame.Angles(0, 0, math.rad(naik)) * CFrame.new(0, 3.78, 0), BRICKRED, Enum.Material.Neon)
+                knob.Shape = Enum.PartType.Ball
+                knob.Name = "Tuas" .. s.nama .. "Knob"
+                knob:SetAttribute("CFNaik", pivot * CFrame.Angles(0, 0, math.rad(naik)) * CFrame.new(0, 3.78, 0))
+                knob:SetAttribute("CFTurun", pivot * CFrame.Angles(0, 0, math.rad(turun)) * CFrame.new(0, 3.78, 0))
+                local lampu = BuildingKit.part(model, Vector3.new(0.42, 0.42, 0.42), CFrame.new(x, 3.35, z + 0.95), LAMPU_OFF, Enum.Material.Neon)
+                lampu.Shape = Enum.PartType.Ball
+                lampu.Name = "Tuas" .. s.nama .. "Lampu"
+                lampu.CanCollide = false
+                local label = Instance.new("SurfaceGui")
+                label.Face = Enum.NormalId.Front
+                label.CanvasSize = Vector2.new(160, 90)
+                local teksLabel = Instance.new("TextLabel")
+                teksLabel.Size = UDim2.fromScale(1, 1)
+                teksLabel.BackgroundTransparency = 1
+                teksLabel.Text = "TUAS " .. string.upper(s.nama)
+                teksLabel.TextColor3 = Color3.fromRGB(255, 232, 180)
+                teksLabel.TextScaled = true
+                teksLabel.Font = Enum.Font.GothamBold
+                teksLabel.Parent = label
+                label.Parent = tiangTuas
+                BuildingKit.part(model, Vector3.new(7.9, 0.45, 0.45), CFrame.new(s.arah * 7.25, 2, z), STEEL_DARK, Enum.Material.Metal)
+                for _, px in ipairs({ 5.4, 9 }) do
+                        BuildingKit.part(model, Vector3.new(0.35, 1.3, 0.35), CFrame.new(s.arah * px, 1.9, z), STEEL, Enum.Material.Metal)
+                end
+                local suaraTuas = Instance.new("Sound")
+                suaraTuas.Name = "SuaraTuas" .. s.nama
+                suaraTuas.SoundId = "rbxasset://sounds/electronicpingshort.wav"
+                suaraTuas.Volume = 0.65
+                suaraTuas.PlaybackSpeed = 0.5
+                suaraTuas.RollOffMaxDistance = 90
+                suaraTuas.Parent = tiangTuas
+                local promptTuas = Instance.new("ProximityPrompt")
+                promptTuas.Name = "PromptTuas" .. s.nama
+                promptTuas.ActionText = "Tekan Tuas"
+                promptTuas.ObjectText = "Tuas " .. s.nama
+                promptTuas.HoldDuration = 0.2
+                promptTuas.MaxActivationDistance = 9
+                promptTuas.RequiresLineOfSight = false
+                promptTuas.Enabled = false
+                promptTuas.Parent = tiangTuas
+                promptTuas.Triggered:Connect(function(player: Player)
+                        if hooks and hooks.onTuasPrompt then
+                                hooks.onTuasPrompt(player, index, string.lower(s.nama))
+                        end
+                end)
+        end
+
         local corong = BuildingKit.part(model, Vector3.new(2.8, 0.35, 2.2), CFrame.new(-4.6, 6.9, 3) * CFrame.Angles(0, 0, math.rad(32)), STEEL_DARK, Enum.Material.Metal)
         corong.CanCollide = false
         BuildingKit.part(model, Vector3.new(0.35, 2.4, 2), CFrame.new(-5.75, 5.7, 3), STEEL_DARK, Enum.Material.Metal).CanCollide = false

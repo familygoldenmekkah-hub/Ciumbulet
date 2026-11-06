@@ -995,132 +995,57 @@ do
         check("Gulung hasil deterministik per benih acak", a.micda == b.micda and a.benih == b.benih and a.blok == b.blok, tostring(a.micda))
         check("Gulung micda dalam rentang rarity", a.micda >= 500 and a.micda <= 2500, tostring(a.micda))
         check("Gulung benih & blok tak melebihi jumlah", a.benih <= 500 and a.blok <= 500, "-")
-        local k = SemaiLogic.buatKabel(shimSemai(3))
-        check("Jumlah pasangan kabel 4-6", k.n >= 4 and k.n <= 6 and #k.kiri == k.n and #k.kanan == k.n, tostring(k.n))
-        local unik = true
-        for i = 1, k.n do
-                for jx = i + 1, k.n do
-                        if k.kiri[i] == k.kiri[jx] then
-                                unik = false
-                        end
-                end
-        end
-        check("Warna kaki kiri semuanya beda", unik, "-")
-        local sama = true
-        local hitung = {}
-        for _, w in ipairs(k.kiri) do
-                hitung[w] = (hitung[w] or 0) + 1
-        end
-        for _, w in ipairs(k.kanan) do
-                hitung[w] = (hitung[w] or 0) - 1
-        end
-        for _, v in pairs(hitung) do
-                if v ~= 0 then
-                        sama = false
-                end
-        end
-        check("Kanan pasangan sama dengan kiri (urutan acak)", sama, "-")
-        local sambungBenar = {}
-        for i = 1, k.n do
-                for jx = 1, k.n do
-                        if k.kanan[jx] == k.kiri[i] then
-                                sambungBenar[i] = jx
-                        end
-                end
-        end
-        check("Kabel selesai diterima saat semua jodoh", SemaiLogic.kabelSelesai(k, sambungBenar), "-")
-        check("Kabel belum lengkap ditolak", not SemaiLogic.kabelSelesai(k, {}), "-")
-        local salah = {}
-        for i = 1, k.n do
-                salah[i] = (i % k.n) + 1
-        end
-        local adaSalah = false
-        for i = 1, k.n do
-                if k.kiri[i] ~= k.kanan[salah[i]] then
-                        adaSalah = true
-                end
-        end
-        if adaSalah then
-                check("Sambungan warna salah ditolak", not SemaiLogic.kabelSelesai(k, salah), "-")
-        else
-                check("Sambungan warna salah ditolak", true, "-")
-        end
+        local t = SemaiLogic.tuasBaru()
+        check("Tuas baru: kanan & kiri belum aktif", t.kanan == false and t.kiri == false, "-")
+        check("Sisi tidak dikenal ditolak", SemaiLogic.saringSisi("atas") == nil and SemaiLogic.saringSisi(1) == nil and SemaiLogic.saringSisi(nil) == nil, "-")
+        local okK, kodeK = SemaiLogic.prosesTekan(t, "kanan")
+        check("Tekan tuas KANAN dulu diterima", okK and t.kanan == true and t.kiri == false, tostring(kodeK))
+        local okKK, kodeKK = SemaiLogic.prosesTekan(t, "kanan")
+        check("Tekan tuas KANAN dua kali ditolak", not okKK and kodeKK == "sudah", tostring(kodeKK))
+        local okDur, kodeDur = SemaiLogic.prosesTekan(t, "hax")
+        check("Sisi asing ditolak saat menekan", not okDur and kodeDur == "sisi", tostring(kodeDur))
+        local okUrut, kodeUrut = SemaiLogic.prosesTekan({ kanan = false, kiri = false }, "kiri")
+        check("Urutan KIRI sebelum KANAN ditolak", not okUrut and kodeUrut == "urutan", tostring(kodeUrut))
+        local okLK, kodeLK = SemaiLogic.prosesTekan(t, "kiri")
+        check("Tekan tuas KIRI setelah KANAN diterima", okLK and kodeLK == "ok", tostring(kodeLK))
+        check("Kedua tuas aktif = selesai", SemaiLogic.tuasSelesai(t), "-")
+        check("tuasBerikut kosong saat selesai", SemaiLogic.tuasBerikut(t) == nil, "-")
+        check("tuasBerikut mulai dari kanan", SemaiLogic.tuasBerikut(SemaiLogic.tuasBaru()) == "kanan", "-")
+        check("tuasSelesai menolak input bukan tabel", not SemaiLogic.tuasSelesai(nil) and not SemaiLogic.tuasSelesai("kanan"), "-")
+        check("prosesTekan menolak tuas bukan tabel", select(1, SemaiLogic.prosesTekan(nil, "kanan")) == false, "-")
 end
 
-print("--- Q: Kabel server-authoritative (saring, putuskan, acak ulang) ---")
+print("--- Q: Tuas server-authoritative (urutan kanan-kiri, saring sisi) ---")
 do
         local SemaiLogic = require("./../src/Shared/SemaiLogic")
-        local function shimK(seed: number)
-                local s0 = seed % 2147483647
-                if s0 == 0 then
-                        s0 = 12345
-                end
-                return {
-                        NextInteger = function(_, a: number, b: number)
-                                s0 = (s0 * 48271) % 2147483647
-                                return a + (s0 % (b - a + 1))
-                        end,
-                        NextNumber = function(_)
-                                s0 = (s0 * 48271) % 2147483647
-                                return s0 / 2147483647
-                        end,
-                }
-        end
-        local k = SemaiLogic.buatKabel(shimK(11))
-        local benar = {}
-        for i = 1, k.n do
-                for jx = 1, k.n do
-                        if k.kanan[jx] == k.kiri[i] then
-                                benar[i] = jx
-                        end
+        local alur = SemaiLogic.tuasBaru()
+        check("Alur penuh: kosong -> tuasBerikut kanan", SemaiLogic.tuasBerikut(alur) == "kanan", "-")
+        SemaiLogic.prosesTekan(alur, "kanan")
+        check("Alur penuh: setelah kanan -> tuasBerikut kiri", SemaiLogic.tuasBerikut(alur) == "kiri", "-")
+        SemaiLogic.prosesTekan(alur, "kiri")
+        check("Alur penuh: kanan lalu kiri = mesin siap giling", SemaiLogic.tuasSelesai(alur), "-")
+        local bolak = 0
+        for _ = 1, 40 do
+                local x = SemaiLogic.tuasBaru()
+                if SemaiLogic.prosesTekan(x, "kiri") then
+                        bolak += 1
                 end
         end
-        check("saringSambung menerima mapping jodoh", SemaiLogic.saringSambung(k, benar) ~= nil and SemaiLogic.kabelSelesai(k, SemaiLogic.saringSambung(k, benar)), "-")
-        check("putuskanKabel menerima jodoh", select(1, SemaiLogic.putuskanKabel(k, benar, 0, shimK(1))) == "jodoh" and select(3, SemaiLogic.putuskanKabel(k, benar, 2, shimK(1))) == 0, "-")
-        check("saringSambung menolak nil dan teks", SemaiLogic.saringSambung(k, nil) == nil and SemaiLogic.saringSambung(k, "hax") == nil, "-")
-        check("saringSambung menolak mapping kosong", SemaiLogic.saringSambung(k, {}) == nil, "-")
-        local bolong = {}
-        for i = 1, k.n - 1 do
-                bolong[i] = benar[i]
-        end
-        check("saringSambung menolak mapping bolong", SemaiLogic.saringSambung(k, bolong) == nil, "-")
-        check("saringSambung menolak indeks luar rentang", SemaiLogic.saringSambung(k, { [1] = 0, [2] = k.n + 1 }) == nil, "-")
-        check("saringSambung menolak pecahan & teks", SemaiLogic.saringSambung(k, { [1] = 1.5, [2] = "2" }) == nil, "-")
-        local rusak = {}
-        for i = 1, k.n do
-                rusak[i] = benar[i]
-        end
-        local t1, t2 = rusak[1], rusak[2]
-        rusak[1], rusak[2] = t2, t1
-        local st1, kb1, sl1 = SemaiLogic.putuskanKabel(k, rusak, 0, shimK(21))
-        check("Pasangan tertukar ditolak & dihitung", st1 == "salah" and sl1 == 1 and kb1 == k, tostring(st1))
-        local st2, _kb2, sl2 = SemaiLogic.putuskanKabel(k, rusak, sl1, shimK(21))
-        check("Percobaan salah kedua tetap ditolak", st2 == "salah" and sl2 == 2, tostring(st2))
-        local st3, kb3, sl3 = SemaiLogic.putuskanKabel(k, rusak, sl2, shimK(21))
-        check("Percobaan salah ketiga memicu acak ulang", st3 == "acak_ulang" and sl3 == 0 and kb3 ~= k, tostring(st3))
-        local unikBaru = true
-        for i = 1, kb3.n do
-                for jx = i + 1, kb3.n do
-                        if kb3.kiri[i] == kb3.kiri[jx] then
-                                unikBaru = false
-                        end
+        check("40 percobaan loncat urutan semuanya ditolak", bolak == 0, tostring(bolak))
+        check("Saring sisi menolak nil", SemaiLogic.saringSisi(nil) == nil, "-")
+        local tidakSah = { "atas", 1, "KANAN", "kanan " }
+        local tolakSisi = 0
+        for _, v in ipairs(tidakSah) do
+                if not SemaiLogic.saringSisi(v) then
+                        tolakSisi += 1
                 end
         end
-        check("Layout acak ulang tetap sah (4-6, warna unik)", kb3.n >= 4 and kb3.n <= 6 and unikBaru, tostring(kb3.n))
-        local urutan = {}
-        for seed = 1, 6 do
-                local kk = SemaiLogic.buatKabel(shimK(seed * 97))
-                table.insert(urutan, table.concat(kk.kanan, ",") .. "|" .. table.concat(kk.kiri, ","))
-        end
-        local beda = 0
-        for i = 1, #urutan do
-                for jx = i + 1, #urutan do
-                        if urutan[i] ~= urutan[jx] then
-                                beda += 1
-                        end
-                end
-        end
-        check("Susunan kabel selalu beda tiap sesi (15 pasang banding)", beda >= 14, tostring(beda))
+        check("Saring sisi menolak 4 bentuk tidak sah", tolakSisi == 4, tostring(tolakSisi))
+        check("Saring sisi menerima kanan & kiri", SemaiLogic.saringSisi("kanan") == "kanan" and SemaiLogic.saringSisi("kiri") == "kiri", "-")
+        local dua = SemaiLogic.tuasBaru()
+        SemaiLogic.prosesTekan(dua, "kanan")
+        local ok2, kode2 = SemaiLogic.prosesTekan(dua, "kiri")
+        check("Alur dua langkah berurutan sukses tanpa galat", ok2 and kode2 == "ok" and dua.kanan and dua.kiri, tostring(kode2))
 end
 
 print(("="):rep(28))

@@ -1,5 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 
 local CropData = require(ReplicatedStorage.Shared.CropData)
 local SemaiLogic = require(ReplicatedStorage.Shared.SemaiLogic)
@@ -14,13 +15,15 @@ local batch: { [number]: any } = {}
 
 local TEKS_TAHAP = {
         kosong = { teks = "NONAKTIF", warna = { 208, 210, 216 } },
-        kabel = { teks = "SAMBUNGKAN KABEL", warna = { 255, 214, 110 } },
+        tuas = { teks = "TEKAN TUAS KANAN LALU KIRI", warna = { 255, 214, 110 } },
         giling = { teks = "MENGGILING...", warna = { 255, 158, 74 } },
         tuntas = { teks = "SEMAI TUNTAS - KLAIM HASIL", warna = { 122, 232, 130 } },
 }
 
 local LAMPU_MATI = 0.55
 local LAMPU_NYALA = 0
+
+local WAKTU_ANIM_TUAS = 0.45
 
 local function bagian(model: Instance, nama: string): any
         local d = model:FindFirstChild(nama, true)
@@ -40,6 +43,26 @@ function MesinSemaiService.bind(deps)
         Uang = deps.Uang
         Net = deps.Net
         World = deps.World
+end
+
+local function daftarTuas(model: Model, nama: string): any
+        local pedestal = bagian(model, "Tuas" .. nama .. "Pedestal")
+        local arm = bagian(model, "Tuas" .. nama .. "Arm")
+        local knob = bagian(model, "Tuas" .. nama .. "Knob")
+        if not arm or not arm:GetAttribute("CFNaik") then
+                return nil
+        end
+        return {
+                arm = arm,
+                knob = knob,
+                lampu = bagian(model, "Tuas" .. nama .. "Lampu"),
+                prompt = pedestal and pedestal:FindFirstChild("PromptTuas" .. nama),
+                suara = pedestal and pedestal:FindFirstChild("SuaraTuas" .. nama),
+                cfNaik = arm:GetAttribute("CFNaik"),
+                cfTurun = arm:GetAttribute("CFTurun"),
+                knobNaik = knob and knob:GetAttribute("CFNaik"),
+                knobTurun = knob and knob:GetAttribute("CFTurun"),
+        }
 end
 
 function MesinSemaiService.registerMesin(index: number, model: Model)
@@ -68,6 +91,8 @@ function MesinSemaiService.registerMesin(index: number, model: Model)
                 suaraGiling = bagian(model, "SuaraGiling"),
                 suaraDing = bagian(model, "SuaraDing"),
                 suaraStart = bagian(model, "SuaraStart"),
+                tuasKanan = daftarTuas(model, "Kanan"),
+                tuasKiri = daftarTuas(model, "Kiri"),
                 blink = false,
                 mode = "",
         }
@@ -104,6 +129,21 @@ local KUNING_ON = Color3.fromRGB(255, 206, 84)
 local HIJAU_ON = Color3.fromRGB(108, 220, 116)
 local LAMPU_OFF = Color3.fromRGB(72, 76, 84)
 
+local function lampuTuas(index: number, nama: string, t: any, kuningBlink: boolean)
+        local m = mesin[index]
+        local tuas = m and m["tuas" .. nama]
+        if not tuas or not tuas.lampu then
+                return
+        end
+        if type(t) == "table" and t[string.lower(nama)] == true then
+                setLampu(tuas.lampu, HIJAU_ON, true)
+        elseif kuningBlink then
+                setLampu(tuas.lampu, KUNING_ON, true)
+        else
+                setLampu(tuas.lampu, LAMPU_OFF, false)
+        end
+end
+
 local function lampuUpdate(index: number)
         local m = mesin[index]
         if not m then
@@ -115,17 +155,39 @@ local function lampuUpdate(index: number)
                 m.mode = tahap
                 m.blink = false
         end
+        local tuasAktif = tahap == "tuas"
         local merahNyala = tahap == "kosong"
-        local kuningNyala = tahap == "giling" or (tahap == "kabel" and m.blink)
+        local kuningNyala = tahap == "giling" or (tuasAktif and m.blink)
         local hijauNyala = tahap == "tuntas"
         setLampu(m.lampuMerah, merahNyala and MERAH_ON or LAMPU_OFF, merahNyala)
         setLampu(m.lampuKuning, kuningNyala and KUNING_ON or LAMPU_OFF, kuningNyala)
         setLampu(m.lampuHijau, hijauNyala and HIJAU_ON or LAMPU_OFF, hijauNyala)
+        local t = tuasAktif and b.tuas or nil
+        lampuTuas(index, "Kanan", t, tuasAktif and m.blink)
+        lampuTuas(index, "Kiri", t, tuasAktif and m.blink and (type(t) == "table" and t.kanan == true))
+end
+
+local function aturPromptTuas(index: number)
+        local m = mesin[index]
+        if not m then
+                return
+        end
+        local b = batch[index]
+        local tahap = b and b.tahap or "kosong"
+        local t = b and b.tuas
+        local berikut = (tahap == "tuas") and SemaiLogic.tuasBerikut(t) or nil
+        if m.tuasKanan and m.tuasKanan.prompt then
+                m.tuasKanan.prompt.Enabled = berikut == "kanan"
+        end
+        if m.tuasKiri and m.tuasKiri.prompt then
+                m.tuasKiri.prompt.Enabled = berikut == "kiri"
+        end
 end
 
 function MesinSemaiService.terapkanTahap(index: number)
         setStatus(index)
         lampuUpdate(index)
+        aturPromptTuas(index)
         local m = mesin[index]
         if not m then
                 return
@@ -144,6 +206,20 @@ function MesinSemaiService.terapkanTahap(index: number)
         end
         if tahap == "giling" and m.suaraStart then
                 m.suaraStart:Play()
+        end
+end
+
+local function animasiTuas(m: any, nama: string, turun: boolean)
+        local tuas = m and m["tuas" .. nama]
+        if not tuas or not tuas.cfTurun or not tuas.cfNaik then
+                return
+        end
+        local target = turun and tuas.cfTurun or tuas.cfNaik
+        local targetKnob = turun and tuas.knobTurun or tuas.knobNaik
+        local info = TweenInfo.new(WAKTU_ANIM_TUAS, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        TweenService:Create(tuas.arm, info, { CFrame = target }):Play()
+        if tuas.knob and targetKnob then
+                TweenService:Create(tuas.knob, info, { CFrame = targetKnob }):Play()
         end
 end
 
@@ -185,7 +261,7 @@ task.spawn(function()
                 for index, m in pairs(mesin) do
                         local b = batch[index]
                         local tahap = b and b.tahap or "kosong"
-                        if tahap == "kabel" then
+                        if tahap == "tuas" then
                                 m.blink = not m.blink
                         elseif m.blink then
                                 m.blink = false
@@ -205,9 +281,8 @@ local function syncLahan(index: number, player: Player?)
                 p.micda = b.hasil.micda
                 p.benih = b.hasil.benih
                 p.blok = b.hasil.blok
-                if b.tahap == "kabel" then
-                        p.kabel = b.kabel
-                        p.kabelVersi = b.versi or 0
+                if b.tahap == "tuas" then
+                        p.tuas = { kanan = b.tuas.kanan, kiri = b.tuas.kiri }
                 end
         end
         local ev = Net.get("SemaiSync")
@@ -233,6 +308,7 @@ function MesinSemaiService.clearLahan(index: number)
                 m.mode = ""
                 m.blink = false
         end
+        MesinSemaiService.terapkanTahap(index)
 end
 
 local function dekatMesin(player: Player, index: number): boolean
@@ -246,6 +322,22 @@ local function dekatMesin(player: Player, index: number): boolean
                 return false
         end
         return true
+end
+
+local function resetTuas(index: number)
+        local m = mesin[index]
+        if not m then
+                return
+        end
+        for _, nama in ipairs({ "Kanan", "Kiri" }) do
+                local tuas = m["tuas" .. nama]
+                if tuas and tuas.cfNaik then
+                        tuas.arm.CFrame = tuas.cfNaik
+                        if tuas.knob and tuas.knobNaik then
+                                tuas.knob.CFrame = tuas.knobNaik
+                        end
+                end
+        end
 end
 
 function MesinSemaiService.atur(player, cropId: any, jumlah: any): (boolean, string)
@@ -283,23 +375,22 @@ function MesinSemaiService.atur(player, cropId: any, jumlah: any): (boolean, str
                 return false, "Hasil panen tidak bisa diambil dari tas."
         end
         local hasil = SemaiLogic.gulung(rng, cfg, diambil)
+        resetTuas(index)
         batch[index] = {
                 pemilik = player.UserId,
                 crop = cropId,
                 jumlah = diambil,
                 pukulan = SemaiLogic.pukulanTotal(diambil, SemaiLogic.pukulanPerItem(cfg)),
                 hasil = hasil,
-                tahap = "kabel",
-                kabel = SemaiLogic.buatKabel(rng),
-                kabelSalah = 0,
-                versi = 0,
+                tahap = "tuas",
+                tuas = SemaiLogic.tuasBaru(),
         }
         if World then
                 World.touch(index)
         end
         MesinSemaiService.terapkanTahap(index)
         syncLahan(index)
-        return true, info.nama .. " x" .. tostring(diambil) .. " masuk mesin. Sambungkan kabelnya!", {
+        return true, info.nama .. " x" .. tostring(diambil) .. " masuk mesin. Tekan tuas KANAN, lalu tuas KIRI!", {
                 crop = cropId,
                 jumlah = diambil,
                 pukulan = batch[index].pukulan,
@@ -307,7 +398,7 @@ function MesinSemaiService.atur(player, cropId: any, jumlah: any): (boolean, str
         }
 end
 
-function MesinSemaiService.kabelJadi(player, masuk): (boolean, string)
+function MesinSemaiService.tekan(player, sisi: any): (boolean, string)
         local index = Land.landOf(player)
         if not index then
                 return false, "Kamu tidak punya lahan."
@@ -319,39 +410,54 @@ function MesinSemaiService.kabelJadi(player, masuk): (boolean, string)
         if b.pemilik ~= player.UserId then
                 return false, "Bukan semaianmu."
         end
-        if b.tahap ~= "kabel" then
-                return false, "Kabel sudah tersambung."
+        if b.tahap ~= "tuas" then
+                return false, "Tuas sudah selesai ditekan."
         end
         if not dekatMesin(player, index) then
                 return false, "Terlalu jauh dari mesin."
         end
-        local putus, kabelHasil, salahBaru = SemaiLogic.putuskanKabel(b.kabel, masuk, b.kabelSalah or 0, rng)
-        if putus ~= "jodoh" then
-                b.kabelSalah = salahBaru
-                if putus == "acak_ulang" then
-                        b.kabel = kabelHasil
-                        b.versi = (b.versi or 0) + 1
-                        syncLahan(index)
-                        return false, "Susunan kabel diacak ulang. Sambungkan lagi dari awal."
+        local ok, kode = SemaiLogic.prosesTekan(b.tuas, sisi)
+        if not ok then
+                if kode == "urutan" then
+                        local berikut = SemaiLogic.tuasBerikut(b.tuas)
+                        return false, "Urutan salah! Tekan tuas " .. string.upper(berikut or "kanan") .. " dulu."
+                elseif kode == "sudah" then
+                        return false, "Tuas ini sudah ditekan."
+                elseif kode == "sisi" then
+                        return false, "Sisi tuas tidak dikenal."
                 end
-                return false, "Kabel belum terjodohkan semua dengan warna yang sama."
+                return false, "Tuas tidak bisa ditekan."
         end
-        b.tahap = "giling"
+        local namaBesar = (sisi == "kanan") and "Kanan" or "Kiri"
+        animasiTuas(mesin[index], namaBesar, true)
+        local tuasM = mesin[index] and mesin[index]["tuas" .. namaBesar]
+        if tuasM and tuasM.suara then
+                tuasM.suara:Play()
+        end
+        if SemaiLogic.tuasSelesai(b.tuas) then
+                b.tahap = "giling"
+                MesinSemaiService.terapkanTahap(index)
+                syncLahan(index)
+                local waktu = CropData.MesinSemai.WaktuGiling
+                task.delay(waktu, function()
+                        local b2 = batch[index]
+                        if b2 and b2.tahap == "giling" then
+                                b2.tahap = "tuntas"
+                                if World then
+                                        World.touch(index)
+                                end
+                                MesinSemaiService.terapkanTahap(index)
+                                syncLahan(index)
+                        end
+                end)
+                return true, "Kedua tuas aktif! Mesin menyala dan menggiling selama " .. tostring(waktu) .. " detik."
+        end
         MesinSemaiService.terapkanTahap(index)
         syncLahan(index)
-        local waktu = CropData.MesinSemai.WaktuGiling
-        task.delay(waktu, function()
-                local b2 = batch[index]
-                if b2 and b2.tahap == "giling" then
-                        b2.tahap = "tuntas"
-                        if World then
-                                World.touch(index)
-                        end
-                        MesinSemaiService.terapkanTahap(index)
-                        syncLahan(index)
-                end
-        end)
-        return true, "Mesin aktif! Menggiling selama " .. tostring(waktu) .. " detik."
+        if sisi == "kanan" then
+                return true, "Tuas KANAN aktif! Sekarang tekan tuas KIRI."
+        end
+        return true, "Tuas aktif."
 end
 
 function MesinSemaiService.klaim(player): (boolean, string, any)
@@ -366,8 +472,8 @@ function MesinSemaiService.klaim(player): (boolean, string, any)
         if b.pemilik ~= player.UserId then
                 return false, "Bukan semaianmu."
         end
-        if b.tahap == "kabel" then
-                return false, "Sambungkan kabel mesin dulu."
+        if b.tahap == "tuas" then
+                return false, "Tekan kedua tuas mesin dulu."
         elseif b.tahap == "giling" then
                 return false, "Mesin masih menggiling. Tunggu sebentar."
         end
@@ -440,6 +546,7 @@ function MesinSemaiService.restoreLahan(index: number, arr: any, ownerId: number
                                 benih = type(rec.b) == "number" and math.max(0, math.floor(rec.b)) or 0
                                 blok = type(rec.k) == "number" and math.max(0, math.floor(rec.k)) or 0
                         end
+                        resetTuas(index)
                         batch[index] = {
                                 pemilik = ownerId,
                                 crop = rec.c,
