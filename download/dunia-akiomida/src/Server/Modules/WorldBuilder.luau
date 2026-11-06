@@ -10,6 +10,13 @@ local GRASS = Color3.fromRGB(106, 148, 79)
 local PATH = Color3.fromRGB(168, 162, 150)
 local MARKER_A = Color3.fromRGB(120, 180, 220)
 local MARKER_B = Color3.fromRGB(220, 170, 90)
+local BUNGA = {
+        Color3.fromRGB(232, 96, 84),
+        Color3.fromRGB(240, 190, 70),
+        Color3.fromRGB(150, 190, 240),
+        Color3.fromRGB(226, 120, 200),
+        Color3.fromRGB(240, 240, 240),
+}
 
 local function groundTop(): number
         return 1
@@ -72,6 +79,84 @@ local function signBoard(parent: Instance, x: number, z: number, gt: number, tex
         label.Parent = gui
         gui.Parent = board
         return board
+end
+
+local function bedBunga(folder: Instance, x: number, z: number, gt: number, w: number, d: number, bibit: number)
+        for _, sx in ipairs({ -1, 1 }) do
+                local tepi1 = BuildingKit.part(folder, Vector3.new(w + 0.8, 0.9, 0.5), CFrame.new(x, gt + 0.45, z + sx * d / 2), Color3.fromRGB(168, 160, 148), Enum.Material.Concrete)
+                tepi1.CanCollide = false
+                local tepi2 = BuildingKit.part(folder, Vector3.new(0.5, 0.9, d + 0.8), CFrame.new(x + sx * w / 2, gt + 0.45, z), Color3.fromRGB(168, 160, 148), Enum.Material.Concrete)
+                tepi2.CanCollide = false
+        end
+        BuildingKit.part(folder, Vector3.new(w, 0.5, d), CFrame.new(x, gt + 0.55, z), Color3.fromRGB(84, 62, 44), Enum.Material.Ground).CanCollide = false
+        for i = 0, bibit - 1 do
+                local fx = x - w / 2 + (w / bibit) * (i + 0.5)
+                local fz = z + (((i % 2) == 0) and -d / 4 or d / 4)
+                BuildingKit.part(folder, Vector3.new(0.16, 0.6, 0.16), CFrame.new(fx, gt + 1.05, fz), Color3.fromRGB(74, 128, 60), Enum.Material.Grass).CanCollide = false
+                local b = BuildingKit.part(folder, Vector3.new(0.55, 0.55, 0.55), CFrame.new(fx, gt + 1.45, fz), BUNGA[(i + math.floor(x) + math.floor(z)) % #BUNGA + 1], Enum.Material.SmoothPlastic)
+                b.Shape = Enum.PartType.Ball
+                b.CanCollide = false
+        end
+end
+
+local function pohonHias(folder: Instance, x: number, z: number, gt: number)
+        BuildingKit.part(folder, Vector3.new(1.6, 7, 1.6), CFrame.new(x, gt + 3.5, z), Color3.fromRGB(112, 80, 52), Enum.Material.Wood)
+        local a = BuildingKit.part(folder, Vector3.new(6.4, 6.4, 6.4), CFrame.new(x, gt + 8.6, z), Color3.fromRGB(66, 118, 58), Enum.Material.Grass)
+        a.Shape = Enum.PartType.Ball
+        a.CanCollide = false
+        local b = BuildingKit.part(folder, Vector3.new(4.2, 4.2, 4.2), CFrame.new(x + 1.7, gt + 10.4, z + 1.1), Color3.fromRGB(84, 140, 70), Enum.Material.Grass)
+        b.Shape = Enum.PartType.Ball
+        b.CanCollide = false
+        local c = BuildingKit.part(folder, Vector3.new(3.4, 3.4, 3.4), CFrame.new(x - 1.8, gt + 9.9, z - 1.2), Color3.fromRGB(92, 150, 76), Enum.Material.Grass)
+        c.Shape = Enum.PartType.Ball
+        c.CanCollide = false
+end
+
+local function bangkuTaman(folder: Instance, x: number, z: number, gt: number, yaw: number)
+        local cf = CFrame.new(x, gt, z) * CFrame.Angles(0, yaw, 0)
+        BuildingKit.part(folder, Vector3.new(4.4, 0.4, 1.6), cf * CFrame.new(0, 1.5, 0), BuildingKit.FLOORWOOD, Enum.Material.WoodPlanks)
+        BuildingKit.part(folder, Vector3.new(4.4, 1.5, 0.3), cf * CFrame.new(0, 2.4, -0.65), BuildingKit.FLOORWOOD, Enum.Material.WoodPlanks)
+        BuildingKit.part(folder, Vector3.new(0.4, 1.5, 1.4), cf * CFrame.new(-1.8, 0.75, 0), BuildingKit.DARKWOOD, Enum.Material.Wood)
+        BuildingKit.part(folder, Vector3.new(0.4, 1.5, 1.4), cf * CFrame.new(1.8, 0.75, 0), BuildingKit.DARKWOOD, Enum.Material.Wood)
+end
+
+local function tiangBendera(folder: Instance, x: number, z: number, gt: number, arah: number, warnaBendera: Color3)
+        BuildingKit.part(folder, Vector3.new(0.4, 9, 0.4), CFrame.new(x, gt + 4.5, z), BuildingKit.DARKWOOD, Enum.Material.Wood)
+        BuildingKit.part(folder, Vector3.new(2.2, 1.1, 0.14), CFrame.new(x + arah * 1.3, gt + 8.2, z), warnaBendera, Enum.Material.SmoothPlastic).CanCollide = false
+        BuildingKit.part(folder, Vector3.new(1.2, 0.7, 0.14), CFrame.new(x + arah * 1.75, gt + 7.2, z), warnaBendera, Enum.Material.SmoothPlastic).CanCollide = false
+end
+
+local function lampuTaman(folder: Instance, x: number, z: number, gt: number)
+        BuildingKit.part(folder, Vector3.new(0.5, 3.2, 0.5), CFrame.new(x, gt + 1.6, z), BuildingKit.DARKWOOD, Enum.Material.Wood)
+        local kepala = BuildingKit.part(folder, Vector3.new(0.8, 0.8, 0.8), CFrame.new(x, gt + 3.6, z), Color3.fromRGB(255, 224, 178), Enum.Material.Neon)
+        kepala.Shape = Enum.PartType.Ball
+        kepala.CanCollide = false
+        local cahaya = Instance.new("PointLight")
+        cahaya.Range = 12
+        cahaya.Brightness = 0.45
+        cahaya.Color = Color3.fromRGB(255, 224, 178)
+        cahaya.Parent = kepala
+end
+
+local function lindung(folder: Instance, x: number, z: number, gt: number, panjang: number, yaw: number)
+        local cf = CFrame.new(x, gt, z) * CFrame.Angles(0, yaw, 0)
+        BuildingKit.part(folder, Vector3.new(panjang, 2.2, 1.6), cf * CFrame.new(0, 1.5, 0), Color3.fromRGB(74, 122, 62), Enum.Material.Grass).CanCollide = false
+        BuildingKit.part(folder, Vector3.new(panjang, 0.5, 1.7), cf * CFrame.new(0, 2.75, 0), Color3.fromRGB(88, 140, 72), Enum.Material.Grass).CanCollide = false
+end
+
+local function gerbangRambate(folder: Instance, x: number, z: number, gt: number)
+        BuildingKit.part(folder, Vector3.new(0.8, 8, 0.8), CFrame.new(x - 6.5, gt + 4, z), BuildingKit.DARKWOOD, Enum.Material.Wood)
+        BuildingKit.part(folder, Vector3.new(0.8, 8, 0.8), CFrame.new(x + 6.5, gt + 4, z), BuildingKit.DARKWOOD, Enum.Material.Wood)
+        BuildingKit.part(folder, Vector3.new(14.5, 0.8, 1.2), CFrame.new(x, gt + 8.2, z), BuildingKit.DARKWOOD, Enum.Material.Wood)
+        for i = -1, 1 do
+                local bx = x + i * 4.2
+                BuildingKit.part(folder, Vector3.new(0.12, 1.4, 0.12), CFrame.new(bx, gt + 7.1, z), BuildingKit.DARKWOOD, Enum.Material.Wood).CanCollide = false
+                local pot = BuildingKit.part(folder, Vector3.new(1.2, 1, 1.2), CFrame.new(bx, gt + 5.9, z), Color3.fromRGB(172, 96, 66), Enum.Material.SmoothPlastic)
+                pot.CanCollide = false
+                local bunga = BuildingKit.part(folder, Vector3.new(0.9, 0.9, 0.9), CFrame.new(bx, gt + 6.65, z), BUNGA[i + 2], Enum.Material.SmoothPlastic)
+                bunga.Shape = Enum.PartType.Ball
+                bunga.CanCollide = false
+        end
 end
 
 local function buildPapan(folder: Instance, x: number, z: number, gt: number, index: number, hooks)
@@ -258,6 +343,36 @@ function WorldBuilder.buildHub(hooks)
         BuildingKit.streetLamp(root, -8, gt, 32)
         BuildingKit.streetLamp(root, 8, gt, -30)
         BuildingKit.streetLamp(root, -8, gt, -30)
+
+        for _, sx in ipairs({ -1, 1 }) do
+                lindung(root, sx * 7.4, 48, gt, 5, math.pi / 2)
+                lindung(root, sx * 7.4, 44, gt, 5, math.pi / 2)
+                lindung(root, sx * 7.4, 20, gt, 5, math.pi / 2)
+                lindung(root, sx * 7.4, 16, gt, 5, math.pi / 2)
+                lindung(root, sx * 7.4, -6, gt, 5, math.pi / 2)
+                lindung(root, sx * 7.4, -10, gt, 5, math.pi / 2)
+                lindung(root, sx * 7.4, -26, gt, 5, math.pi / 2)
+                lindung(root, sx * 7.4, -35, gt, 5, math.pi / 2)
+        end
+        bedBunga(root, -8, 40, gt, 5, 2.4, 4)
+        bedBunga(root, 8, 24, gt, 5, 2.4, 4)
+        bedBunga(root, -8, 12, gt, 5, 2.4, 5)
+        bedBunga(root, 8, 0, gt, 5, 2.4, 4)
+        bedBunga(root, -8, -14, gt, 5, 2.4, 5)
+        bedBunga(root, 8, -24, gt, 5, 2.4, 4)
+        pohonHias(root, -13, 36, gt)
+        pohonHias(root, 13, 36, gt)
+        pohonHias(root, -13, -12, gt)
+        pohonHias(root, 13, -12, gt)
+        bangkuTaman(root, -7.5, -40, gt, math.pi / 2)
+        bangkuTaman(root, 7.5, -40, gt, -math.pi / 2)
+        tiangBendera(root, -5.5, -43, gt, -1, MARKER_A)
+        tiangBendera(root, 5.5, -43, gt, 1, MARKER_B)
+        lampuTaman(root, -9.5, 46, gt)
+        lampuTaman(root, 9.5, 46, gt)
+        lampuTaman(root, -9.5, -20, gt)
+        lampuTaman(root, 9.5, -20, gt)
+        gerbangRambate(root, 0, -38, gt)
 
         return root
 end

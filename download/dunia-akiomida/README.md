@@ -1,14 +1,42 @@
 # DUNIA AKIOMIDA (Roblox)
 
-Status: LIVE di Roblox (**versionNumber 41**, 6 Nov 2026) — **PEMBELIAN
-SESUAI PERMINTAAN PEMILIK**: beli pack di Toko Benih kini berkonfirmasi
-(Ya/Batal) dulu, lalu pop up struk menampilkan daftar benih yang didapat;
-pop up Gerbang Dunia langsung tertutup begitu pemain memilih tujuan.
-Sekaligus: **BUG BADAI SYNC DITEMUKAN & DIPERBAIKI** (tab Status papan tanam
-memanggil server ulang di setiap sync — membanjiri rate limit sampai
-memicu kick otomatis AuditService) dan **seluruh alat uji dihidupkan kembali**
-(generator playtest/massa ternyata sudah tidak jalan sejak v39; kini benar-benar
-dijalankan lagi). Isi v39 tetap:
+Status: LIVE di Roblox (**versionNumber 42**, 6 Nov 2026) — **PUNCH TAHAN
+TOMBOL + TINJU BOKS, ATUR JUAL BERKONFIRMASI, JALAN & TOKO DIHIAS**:
+
+1. **PUNCH TAHAN TOMBOL** — tombol PUNCH kini berbasis InputBegan/
+   InputEnded: ditekan langsung memukul, DITAHA = memukul terus tiap 0,38
+   dtk sampai jari dilepas (tap singkat = satu pukulan). Interval selalu di
+   atas kooldown server 0,35 dtk sehingga tanpa "Terlalu cepat".
+2. **TINJU BOKS YANG TERLIHAT** — ayunan baru: tangan diangkat ke belakang,
+   dihantam ke depan penuh (~106°), kembali nol; dieksekusi lewat
+   BindToRenderStep prioritas Character+1 sehingga menang dari animasi
+   default Roblox (akar masalah "efek visualnya gak nampak"); tinju
+   bergantian kanan-kiri, mendukung R15 & R6; plus jejak sabetan neon
+   tangan->sasaran dan kilau memuai di titik kena (membesar saat kombo naik).
+3. **ATUR JUAL + KONFIRMASI WAJIB** — "Jual 1" diganti "Atur Jual": pemain
+   menulis jumlahnya, pratinjau total Micda langsung muncul, baru "Ya, Jual"
+   / "Batal"; "Jual Semua" ikut berkonfirmasi. Validasi jumlah di modul baru
+   Shared/JualLogic; uang & stok tetap dihitung server.
+4. **JALAN KE TOKO DIHIAS** — bed bunga berbingkai batu (6), lindung semak
+   (16), pohon hias (4), bangku taman (2), tiang bendera biru/emas (2),
+   lampu taman hangat (4), dan gerbang rambate kayu berpot bunga di ambang
+   toko — semua tidak menghalangi jalan.
+5. **BANGUNAN TOKO LEBIH INDAH** — kanopi bergaris merah-krem, kotak bunga
+   jendela, lentera dinding menyala, bendera pennant di atap, lambang bundar
+   fasad, tali lampu bohlam teras, pot mengapit pintu.
+
+Isi v41 tetap: beli pack berkonfirmasi (Ya/Batal) + struk daftar benih yang
+didapat; popup Gerbang Dunia langsung tertutup saat pemain memilih tujuan;
+bug badai sync (kick pemain sah) diperbaiki; alat uji playtest/massa hidup.
+
+Universe: 10774464946 · Place: 77626159664192 · Label era: 9.9.0 "Toko Rasa Produk"
+Build: `tools/rojo build default.project.json -o build/DuniaAkiomida.rbxlx`
+(luau-lsp 0 temuan, tes offline 262 PASS / 0 FAIL, playtest 130 PASS / 0 FAIL,
+ujian massa 93 PASS / 0 FAIL)
+
+Skor banding Toram/Growtopia: **53.25/100** — lihat `RUBRIC.md`.
+
+Isi era 9.8 (tetap berlaku):
 
 1. **D — DROP SESUAI TANAMAN** — drop panen kini model mini produce per
    arketipe (akar/pohon/tangkai/kacang/cendawan/dst, 8 pembentuk) memakai

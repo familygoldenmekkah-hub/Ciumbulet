@@ -1,0 +1,1205 @@
+     1→local Players = game:GetService("Players")
+     2→local ReplicatedStorage = game:GetService("ReplicatedStorage")
+     3→local Workspace = game:GetService("Workspace")
+     4→local RunService = game:GetService("RunService")
+     5→local GuiService = game:GetService("GuiService")
+     6→local TweenService = game:GetService("TweenService")
+     7→
+     8→local CropData = require(ReplicatedStorage.Shared.CropData)
+     9→local Net = require(ReplicatedStorage.Remotes)
+    10→local UIStyle = require(ReplicatedStorage.Shared.UIStyle)
+    11→local PukulAnim = require(ReplicatedStorage.Shared.PukulAnim)
+    12→local ArahPukul = require(ReplicatedStorage.Shared.ArahPukul)
+    13→local KontrolHP = require(ReplicatedStorage.Shared.KontrolHP)
+    14→local HUDLayout = require(ReplicatedStorage.Shared.HUDLayout)
+    15→local DropBentuk = require(ReplicatedStorage.Shared.DropBentuk)
+    16→local IkonJempol = require(ReplicatedStorage.Shared.IkonJempol)
+    17→
+    18→local player = Players.LocalPlayer
+    19→local playerGui = player:WaitForChild("PlayerGui")
+    20→
+    21→local state = {
+    22→        micda = 0,
+    23→        tas = {},
+    24→        lahan = nil,
+    25→        semai = {},
+    26→        zone = "kota",
+    27→        dunia = nil,
+    28→        role = "hub",
+    29→        gudang = nil,
+    30→        tanam = nil,
+    31→}
+    32→
+    33→local function fmt(n: number): string
+    34→        local s = tostring(math.floor(n))
+    35→        local rev = string.reverse(s)
+    36→        rev = rev:gsub("(%d%d%d)", "%1.")
+    37→        rev = rev:gsub("%.$", "")
+    38→        return string.reverse(rev)
+    39→end
+    40→
+    41→local function warna(t: { number }): Color3
+    42→        return Color3.fromRGB(t[1] or 255, t[2] or 255, t[3] or 255)
+    43→end
+    44→
+    45→local function warna3b(t: any): Color3
+    46→        if type(t) == "table" then
+    47→                return Color3.fromRGB(t[1] or 200, t[2] or 200, t[3] or 200)
+    48→        end
+    49→        return warna(UIStyle.Abu)
+    50→end
+    51→
+    52→local FON = Enum.Font[UIStyle.Font]
+    53→local FONTB = Enum.Font[UIStyle.FontTebal]
+    54→
+    55→local PANEL_TITLES = {
+    56→        tas = "Tas",
+    57→        semai = "Semai Panen",
+    58→        toko = "Toko Benih",
+    59→        gerbang = "Gerbang Dunia",
+    60→        tanam = "Papan Tanam",
+    61→        gudang = "Gudang Hasil Panen",
+    62→}
+    63→
+    64→local function mk(class: string, props: { [string]: any }, parent: Instance?): Instance
+    65→        local inst = Instance.new(class)
+    66→        for k, v in props do
+    67→                (inst :: any)[k] = v
+    68→        end
+    69→        inst.Parent = parent
+    70→        return inst
+    71→end
+    72→
+    73→local function round(inst: Instance, r: number?)
+    74→        mk("UICorner", { CornerRadius = UDim.new(0, r or UIStyle.Sudut) }, inst)
+    75→end
+    76→
+    77→local gui = mk("ScreenGui", {
+    78→        Name = "DuniaAkiomida",
+    79→        ResetOnSpawn = false,
+    80→        IgnoreGuiInset = true,
+    81→        ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+    82→}, playerGui)
+    83→
+    84→local camera = Workspace.CurrentCamera
+    85→
+    86→local aman = mk("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1) }, gui)
+    87→local amanPad = mk("UIPadding", { PaddingTop = UDim.new(0, 0), PaddingLeft = UDim.new(0, 0), PaddingRight = UDim.new(0, 0), PaddingBottom = UDim.new(0, 0) }, aman)
+    88→
+    89→local function teksSkala(props: { [string]: any }, parent: Instance): TextLabel
+    90→        props.TextScaled = true
+    91→        local l = mk("TextLabel", props, parent)
+    92→        mk("UITextSizeConstraint", { MaxTextSize = HUDLayout.TeksMaks, MinTextSize = HUDLayout.TeksMin }, l)
+    93→        return l :: TextLabel
+    94→end
+    95→
+    96→local kolomKiri = mk("Frame", { Name = "KolomKiri", Position = UDim2.fromScale(HUDLayout.SaldoSkalaX, 0), Size = UDim2.fromScale(HUDLayout.SaldoSkalaLebar, 1), BackgroundTransparency = 1 }, aman)
+    97→mk("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder, HorizontalAlignment = Enum.HorizontalAlignment.Left, VerticalAlignment = Enum.VerticalAlignment.Top }, kolomKiri)
+    98→
+    99→local saldo = mk("Frame", { LayoutOrder = 1, Size = UDim2.fromScale(1, HUDLayout.SaldoSkalaTinggi), BackgroundColor3 = warna(UIStyle.Latar), BackgroundTransparency = 0.12 }, kolomKiri)
+   100→round(saldo)
+   101→local saldoUkuran = mk("UISizeConstraint", { MinSize = Vector2.new(150, 30), MaxSize = Vector2.new(320, 64) }, saldo)
+   102→
+   103→local ikonSaldo = mk("Frame", { Position = UDim2.fromScale(HUDLayout.IkonSkalaX, HUDLayout.IkonSkalaY), Size = UDim2.fromScale(HUDLayout.IkonSkalaLebar, HUDLayout.IkonSkalaTinggi), BackgroundColor3 = warna(UIStyle.Aksen) }, saldo)
+   104→mk("UICorner", { CornerRadius = UDim.new(0.5, 0) }, ikonSaldo)
+   105→teksSkala({ Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Text = "M", Font = FONTB, TextColor3 = warna(UIStyle.Latar) }, ikonSaldo)
+   106→local angkaLabel = teksSkala({ Position = UDim2.fromScale(HUDLayout.AngkaSkalaX, 0), Size = UDim2.fromScale(HUDLayout.AngkaSkalaLebar, 1), BackgroundTransparency = 1, Text = "0", Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left }, saldo)
+   107→teksSkala({ Position = UDim2.fromScale(HUDLayout.SatuanSkalaX, 0), Size = UDim2.fromScale(HUDLayout.SatuanSkalaLebar, 1), BackgroundTransparency = 1, Text = "Micda", Font = FONTB, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left }, saldo)
+   108→
+   109→local travelBtn = mk("TextButton", { LayoutOrder = 2, Size = UDim2.fromScale(1, HUDLayout.NavSkalaTinggi), AutomaticSize = Enum.AutomaticSize.X, BackgroundColor3 = warna(UIStyle.Permukaan), Text = "Masuk Dunia-ku", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextTruncate = Enum.TextTruncate.AtEnd, TextXAlignment = Enum.TextXAlignment.Center }, kolomKiri)
+   110→round(travelBtn)
+   111→mk("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12) }, travelBtn)
+   112→local navUkuran = mk("UISizeConstraint", { MinSize = Vector2.new(120, 26), MaxSize = Vector2.new(220, 26) }, travelBtn)
+   113→
+   114→local tasBtn = mk("TextButton", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.fromScale(0.992, HUDLayout.SaldoSkalaY), Size = UDim2.fromScale(HUDLayout.TasSkalaLebar, HUDLayout.SaldoSkalaTinggi), BackgroundColor3 = warna(UIStyle.PermukaanAktif), Text = "Tas", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks) }, aman)
+   115→round(tasBtn)
+   116→local tasUkuran = mk("UISizeConstraint", { MinSize = Vector2.new(90, 30), MaxSize = Vector2.new(200, 64) }, tasBtn)
+   117→
+   118→local punchShadow = mk("Frame", { Name = "BayanganPunch", AnchorPoint = Vector2.new(1, 1), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.62, BorderSizePixel = 0, ZIndex = 0 }, gui)
+   119→round(punchShadow, 46)
+   120→local punchBtn = mk("TextButton", {
+   121→        Name = "TombolPunch",
+   122→        AnchorPoint = Vector2.new(1, 1),
+   123→        BackgroundColor3 = warna(UIStyle.Hijau),
+   124→        Text = "",
+   125→        AutoButtonColor = false,
+   126→        ZIndex = 2,
+   127→}, gui)
+   128→round(punchBtn, 46)
+   129→mk("UIGradient", { Color = ColorSequence.new(Color3.fromRGB(88, 178, 114), Color3.fromRGB(46, 108, 72)), Rotation = 90 }, punchBtn)
+   130→mk("UIStroke", { Color = Color3.fromRGB(214, 226, 218), Thickness = 1.5, Transparency = 0.55 }, punchBtn)
+   131→local punchSkalaUI = mk("UIScale", { Scale = 1 }, punchBtn)
+   132→local ikonPunch = mk("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0.62, 0.62), BackgroundTransparency = 1 }, punchBtn)
+   133→for _, g in ipairs(IkonJempol.bagian()) do
+   134→        local f = mk("Frame", { Position = UDim2.fromScale(g.dx, g.dy), Size = UDim2.fromScale(g.dw, g.dh), BackgroundColor3 = warna(UIStyle.Teks), BorderSizePixel = 0, ZIndex = 3 }, ikonPunch)
+   135→        if g.bentuk == "lingkaran" then
+   136→                mk("UICorner", { CornerRadius = UDim.new(1, 0) }, f)
+   137→        end
+   138→end
+   139→
+   140→local function efekTekan(turun: boolean)
+   141→        TweenService:Create(punchSkalaUI, TweenInfo.new(0.07, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Scale = turun and 0.9 or 1 }):Play()
+   142→end
+   143→punchBtn.InputBegan:Connect(function(input)
+   144→        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+   145→                efekTekan(true)
+   146→        end
+   147→end)
+   148→punchBtn.InputEnded:Connect(function(input)
+   149→        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+   150→                efekTekan(false)
+   151→        end
+   152→end)
+   153→
+   154→local jumpPxNyata: number? = nil
+   155→local function aturPunch()
+   156→        local vp = camera.ViewportSize
+   157→        local pos = KontrolHP.posisiPunch(vp.X, vp.Y, jumpPxNyata)
+   158→        punchBtn.Position = UDim2.fromScale(pos.skalaX, pos.skalaY)
+   159→        punchBtn.Size = UDim2.fromScale(pos.skalaLebar, pos.skalaTinggi)
+   160→        punchShadow.Position = UDim2.new(pos.skalaX, 0, pos.skalaY, 3)
+   161→        punchShadow.Size = UDim2.fromScale(pos.skalaLebar, pos.skalaTinggi)
+   162→end
+   163→
+   164→local function aturUkuranAman()
+   165→        local inset = GuiService.TopbarInset
+   166→        amanPad.PaddingTop = UDim.new(0, inset.Min.Y + 10)
+   167→        amanPad.PaddingLeft = UDim.new(0, inset.Min.X)
+   168→        local vp = camera.ViewportSize
+   169→        local a = HUDLayout.areaAman(vp.X, vp.Y, inset.Min.X, inset.Min.Y)
+   170→        local bs = HUDLayout.batasSaldo(a)
+   171→        saldoUkuran.MinSize = Vector2.new(bs.lebar, bs.tinggi)
+   172→        saldoUkuran.MaxSize = Vector2.new(bs.lebar, bs.tinggi)
+   173→        local bn = HUDLayout.batasNav(a)
+   174→        navUkuran.MinSize = Vector2.new(bn.minim, bn.tinggi)
+   175→        navUkuran.MaxSize = Vector2.new(bn.maks, bn.tinggi)
+   176→        local bt = HUDLayout.batasTas(a)
+   177→        tasUkuran.MinSize = Vector2.new(bt.lebar, bs.tinggi)
+   178→        tasUkuran.MaxSize = Vector2.new(bt.lebar, bs.tinggi)
+   179→        aturPunch()
+   180→end
+   181→
+   182→GuiService:GetPropertyChangedSignal("TopbarInset"):Connect(aturUkuranAman)
+   183→camera:GetPropertyChangedSignal("ViewportSize"):Connect(aturUkuranAman)
+   184→aturUkuranAman()
+   185→
+   186→task.spawn(function()
+   187→        local ui = playerGui:WaitForChild("TouchGui", 8)
+   188→        if not ui then
+   189→                return
+   190→        end
+   191→        task.wait(0.1)
+   192→        local tcf = ui:FindFirstChild("TouchControlFrame")
+   193→        local jump = tcf and tcf:FindFirstChild("JumpButton")
+   194→        if not jump or not jump:IsA("GuiObject") then
+   195→                return
+   196→        end
+   197→        jumpPxNyata = jump.AbsoluteSize.X
+   198→        aturPunch()
+   199→end)
+   200→
+   201→local toastHolder = mk("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromScale(0.5, 0.2), Size = UDim2.fromScale(0.7, 0.42), BackgroundTransparency = 1 }, aman)
+   202→mk("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder, HorizontalAlignment = Enum.HorizontalAlignment.Center }, toastHolder)
+   203→
+   204→local zonaLabel = teksSkala({ AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromScale(0.5, HUDLayout.SaldoSkalaY), Size = UDim2.fromScale(0.24, HUDLayout.NavSkalaTinggi), BackgroundColor3 = warna(UIStyle.Latar), BackgroundTransparency = 0.2, Text = "Pusat Kota", Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextTruncate = Enum.TextTruncate.AtEnd }, aman)
+   205→round(zonaLabel, UIStyle.SudutKecil)
+   206→
+   207→local toastOrder = 0
+   208→local function toast(title: string, msg: string)
+   209→        toastOrder += 1
+   210→        local f = mk("Frame", { Size = UDim2.new(1, 0, 0, 52), BackgroundColor3 = warna(UIStyle.Latar), BackgroundTransparency = 0.08, LayoutOrder = -toastOrder }, toastHolder)
+   211→        round(f)
+   212→        mk("TextLabel", { Size = UDim2.new(1, -16, 0, 20), Position = UDim2.new(0, 10, 0, 4), BackgroundTransparency = 1, Text = title, TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left }, f)
+   213→        mk("TextLabel", { Size = UDim2.new(1, -20, 0, 26), Position = UDim2.new(0, 10, 0, 24), BackgroundTransparency = 1, Text = msg, TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true }, f)
+   214→        task.delay(3.2, function()
+   215→                f:Destroy()
+   216→        end)
+   217→end
+   218→
+   219→local dim = mk("Frame", { Name = "DimLayar", Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, Visible = false }, gui)
+   220→local panelHolder = mk("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.5, 0), Size = UDim2.fromScale(0.94, 0.88), BackgroundColor3 = warna(UIStyle.Latar) }, dim)
+   221→round(panelHolder, 12)
+   222→mk("UISizeConstraint", { MinSize = Vector2.new(300, 240), MaxSize = Vector2.new(UIStyle.LebarPanelMaks, UIStyle.TinggiPanelMaks) }, panelHolder)
+   223→mk("UIPadding", {
+   224→        PaddingTop = UDim.new(0, UIStyle.AmanAtas),
+   225→        PaddingBottom = UDim.new(0, 14),
+   226→        PaddingLeft = UDim.new(0, 14),
+   227→        PaddingRight = UDim.new(0, 14),
+   228→}, panelHolder)
+   229→
+   230→local panelTitle = mk("TextLabel", { Size = UDim2.new(1, -60, 0, 34), Position = UDim2.new(0, 2, 0, 2), BackgroundTransparency = 1, Text = "", TextSize = UIStyle.UkuranJudul, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, panelHolder)
+   231→local closeBtn = mk("TextButton", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, 0), Size = UDim2.new(0, 44, 0, 36), BackgroundColor3 = warna(UIStyle.Permukaan), Text = "X", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks) }, panelHolder)
+   232→round(closeBtn, UIStyle.SudutKecil)
+   233→
+   234→local panels = {}
+   235→local currentPanel: string? = nil
+   236→
+   237→local function closePanel()
+   238→        dim.Visible = false
+   239→        currentPanel = nil
+   240→end
+   241→
+   242→local function makePanel(name: string): Frame
+   243→        local f = mk("Frame", { Size = UDim2.new(1, 0, 1, -44), Position = UDim2.new(0, 0, 0, 42), BackgroundTransparency = 1, Visible = false }, panelHolder)
+   244→        panels[name] = f
+   245→        return f
+   246→end
+   247→
+   248→local function openPanel(name: string)
+   249→        for n, f in pairs(panels) do
+   250→                f.Visible = n == name
+   251→        end
+   252→        panelTitle.Text = PANEL_TITLES[name] or ""
+   253→        dim.Visible = true
+   254→        currentPanel = name
+   255→end
+   256→
+   257→closeBtn.Activated:Connect(closePanel)
+   258→
+   259→local function bersihkan(parent: Instance)
+   260→        for _, c in ipairs(parent:GetChildren()) do
+   261→                if c:IsA("Frame") or c:IsA("TextLabel") or c:IsA("TextButton") then
+   262→                        c:Destroy()
+   263→                end
+   264→        end
+   265→end
+   266→
+   267→local tasPanel = makePanel("tas")
+   268→local tasGrid = mk("ScrollingFrame", { Size = UDim2.new(1, -8, 1, -40), Position = UDim2.new(0, 4, 0, 4), BackgroundTransparency = 1, ScrollBarThickness = 6, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(0, 0, 0, 0) }, tasPanel)
+   269→mk("UIGridLayout", { CellSize = UDim2.new(0, 96, 0, 88), CellPadding = UDim2.new(0, 8, 0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, tasGrid)
+   270→local slotFrames = {}
+   271→for i = 1, 50 do
+   272→        local cell = mk("Frame", { BackgroundColor3 = warna(UIStyle.Permukaan), LayoutOrder = i }, tasGrid)
+   273→        round(cell, UIStyle.SudutKecil)
+   274→        local nama = mk("TextLabel", { Size = UDim2.new(1, -10, 0, 28), Position = UDim2.new(0, 5, 0, 36), BackgroundTransparency = 1, Text = "", TextWrapped = true, TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Teks) }, cell)
+   275→        local count = mk("TextLabel", { Size = UDim2.new(1, -10, 0, 16), Position = UDim2.new(0, 5, 1, -20), BackgroundTransparency = 1, Text = "", TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Aksen) }, cell)
+   276→        slotFrames[i] = { frame = cell, nama = nama, count = count }
+   277→end
+   278→local tasUsedLabel = mk("TextLabel", { AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 4, 1, -2), Size = UDim2.new(0.6, 0, 0, 26), BackgroundTransparency = 1, Text = "0/50 slot", TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left }, tasPanel)
+   279→
+   280→local function ikonSlot(cell: Frame, s: any?)
+   281→        local lama = cell:FindFirstChild("Ikon")
+   282→        if lama then
+   283→                lama:Destroy()
+   284→        end
+   285→        if not s then
+   286→                return
+   287→        end
+   288→        local wadah = mk("Frame", { Name = "Ikon", Size = UDim2.new(0, 28, 0, 28), Position = UDim2.new(0, 6, 0, 5), BackgroundTransparency = 1 }, cell)
+   289→        if s.kind == "blok" then
+   290→                mk("Frame", { Size = UDim2.fromScale(0.62, 0.62), Position = UDim2.fromScale(0.19, 0.19), BackgroundColor3 = warna(UIStyle.AbuGelap), BorderSizePixel = 0 }, wadah)
+   291→                return
+   292→        end
+   293→        local info = CropData.byId[s.id]
+   294→        local b = info and CropData.Bentuk[info.id]
+   295→        local buahC = warna3b(b and b.siap)
+   296→        local aksenC = warna3b(b and b.aksen)
+   297→        local bagian = DropBentuk.ikonBagian(b and b.jenis or "daun") or {}
+   298→        for _, g in ipairs(bagian) do
+   299→                local f = mk("Frame", { Position = UDim2.fromScale(g.dx, g.dy), Size = UDim2.fromScale(g.dw, g.dh), BackgroundColor3 = g.warna == "buah" and buahC or aksenC, BorderSizePixel = 0, ZIndex = 2 }, wadah)
+   300→                if g.bentuk == "lingkaran" then
+   301→                        mk("UICorner", { CornerRadius = UDim.new(1, 0) }, f)
+   302→                elseif g.bentuk == "topi" then
+   303→                        mk("UICorner", { CornerRadius = UDim.new(0.5, 0) }, f)
+   304→                elseif g.bentuk == "kotak" then
+   305→                        f.Rotation = 45
+   306→                end
+   307→        end
+   308→end
+   309→
+   310→local function refreshTas()
+   311→        local used = #state.tas
+   312→        for i = 1, 50 do
+   313→                local s = state.tas[i]
+   314→                local slot = slotFrames[i]
+   315→                if s then
+   316→                        local info = CropData.byId[s.id]
+   317→                        slot.frame.BackgroundColor3 = s.kind == "benih" and warna(UIStyle.Permukaan) or warna(UIStyle.PermukaanAktif)
+   318→                        slot.nama.Text = UIStyle.potong(s.kind == "blok" and "Blok Panen" or (info and info.nama or s.id))
+   319→                        slot.count.Text = "x" .. s.count
+   320→                        ikonSlot(slot.frame, s)
+   321→                else
+   322→                        slot.frame.BackgroundColor3 = warna(UIStyle.Permukaan)
+   323→                        slot.nama.Text = ""
+   324→                        slot.count.Text = ""
+   325→                        ikonSlot(slot.frame, nil)
+   326→                end
+   327→        end
+   328→        tasUsedLabel.Text = used .. "/50 slot terpakai"
+   329→end
+   330→
+   331→local gerbangPanel = makePanel("gerbang")
+   332→local gerbangScroll = mk("ScrollingFrame", { Size = UDim2.new(1, -8, 1, -8), Position = UDim2.new(0, 4, 0, 4), BackgroundTransparency = 1, ScrollBarThickness = 6, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(0, 0, 0, 0) }, gerbangPanel)
+   333→mk("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, gerbangScroll)
+   334→mk("TextLabel", { Size = UDim2.new(1, -12, 0, 56), BackgroundTransparency = 1, Text = "Duniamu terbuka seketika tanpa loading dan tanpa ID. Tamu bisa berkunjung dan tidak bisa mengubah apa pun. Tombol kiri atas juga bisa dipakai untuk pergi-pulang.", TextWrapped = true, TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 1 }, gerbangScroll)
+   335→local masukBtn = mk("TextButton", { Size = UDim2.new(1, -12, 0, 46), BackgroundColor3 = warna(UIStyle.Hijau), Text = "Masuk Dunia-ku", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = Color3.new(1, 1, 1), LayoutOrder = 2 }, gerbangScroll)
+   336→round(masukBtn)
+   337→local pulangBtn = mk("TextButton", { Size = UDim2.new(1, -12, 0, 40), BackgroundColor3 = warna(UIStyle.PermukaanAktif), Text = "Pulang ke Pusat Kota", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks), LayoutOrder = 3 }, gerbangScroll)
+   338→round(pulangBtn)
+   339→mk("TextLabel", { Size = UDim2.new(1, -12, 0, 22), BackgroundTransparency = 1, Text = "Kunjungi dunia pemain lain:", TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 4 }, gerbangScroll)
+   340→local kunjungiNama = mk("TextBox", { Size = UDim2.new(1, -12, 0, 40), BackgroundColor3 = warna(UIStyle.Permukaan), Text = "", PlaceholderText = "Ketik nama pemain...", TextSize = UIStyle.UkuranIsi, Font = FON, TextColor3 = warna(UIStyle.Teks), ClearTextOnFocus = false, LayoutOrder = 5 }, gerbangScroll)
+   341→round(kunjungiNama, UIStyle.SudutKecil)
+   342→local kunjungiBtn = mk("TextButton", { Size = UDim2.new(1, -12, 0, 40), BackgroundColor3 = warna(UIStyle.PermukaanAktif), Text = "Kunjungi", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks), LayoutOrder = 6 }, gerbangScroll)
+   343→round(kunjungiBtn)
+   344→
+   345→local function syncState()
+   346→        task.spawn(function()
+   347→                local st = Net.get("GetState"):InvokeServer()
+   348→                if st then
+   349→                        state.micda = st.micda or 0
+   350→                        state.tas = st.tas or {}
+   351→                        state.lahan = st.lahan
+   352→                        state.zone = st.zone or "kota"
+   353→                        state.dunia = st.dunia
+   354→                        state.role = st.role or "hub"
+   355→                        angkaLabel.Text = fmt(state.micda)
+   356→                        refreshTas()
+   357→                end
+   358→        end)
+   359→end
+   360→
+   361→masukBtn.Activated:Connect(function()
+   362→        local ok, msg = Net.get("DuniaAct"):InvokeServer("masuk")
+   363→        if ok then
+   364→                closePanel()
+   365→                syncState()
+   366→        end
+   367→        toast(ok and "Gerbang Dunia" or "Gagal", msg)
+   368→end)
+   369→pulangBtn.Activated:Connect(function()
+   370→        local ok, msg = Net.get("DuniaAct"):InvokeServer("pulang")
+   371→        if ok then
+   372→                closePanel()
+   373→                syncState()
+   374→        end
+   375→        toast(ok and "Pulang" or "Gagal", msg)
+   376→end)
+   377→kunjungiBtn.Activated:Connect(function()
+   378→        local ok, msg = Net.get("DuniaAct"):InvokeServer("kunjungi", kunjungiNama.Text)
+   379→        if ok then
+   380→                closePanel()
+   381→                syncState()
+   382→        end
+   383→        toast(ok and "Kunjungan" or "Gagal", msg)
+   384→end)
+   385→
+   386→travelBtn.Activated:Connect(function()
+   387→        if state.zone == "dunia" then
+   388→                local ok, msg = Net.get("DuniaAct"):InvokeServer("pulang")
+   389→                toast(ok and "Pulang" or "Gagal", msg)
+   390→                if ok then
+   391→                        syncState()
+   392→                end
+   393→        else
+   394→                local ok, msg = Net.get("DuniaAct"):InvokeServer("masuk")
+   395→                toast(ok and "Gerbang Dunia" or "Gagal", msg)
+   396→                if ok then
+   397→                        syncState()
+   398→                end
+   399→        end
+   400→end)
+   401→
+   402→local semaiPanel = makePanel("semai")
+   403→mk("TextLabel", { Size = UDim2.new(1, -8, 0, 34), Position = UDim2.new(0, 4, 0, 2), BackgroundTransparency = 1, Text = "Letakkan hasil panen di meja, lalu pukul hingga hancur untuk Micda + peluang benih & blok panen.", TextWrapped = true, TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left }, semaiPanel)
+   404→local semaiLeft = mk("ScrollingFrame", { Size = UDim2.new(0.5, -10, 1, -52), Position = UDim2.new(0, 4, 0, 42), BackgroundColor3 = warna(UIStyle.Permukaan), ScrollBarThickness = 6, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(0, 0, 0, 0) }, semaiPanel)
+   405→local semaiRight = mk("ScrollingFrame", { Size = UDim2.new(0.5, -10, 1, -52), Position = UDim2.new(0.5, 6, 0, 42), BackgroundColor3 = warna(UIStyle.Permukaan), ScrollBarThickness = 6, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(0, 0, 0, 0) }, semaiPanel)
+   406→mk("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, semaiLeft)
+   407→mk("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, semaiRight)
+   408→
+   409→local function actionBtn(parent, text: string, order: number)
+   410→        local holder = mk("Frame", { Size = UDim2.new(1, -8, 0, 60), BackgroundColor3 = warna(UIStyle.Latar), LayoutOrder = order }, parent)
+   411→        round(holder, UIStyle.SudutKecil)
+   412→        mk("TextLabel", { Size = UDim2.new(1, -12, 0, 24), Position = UDim2.new(0, 8, 0, 3), BackgroundTransparency = 1, Text = text, TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, holder)
+   413→        return holder
+   414→end
+   415→
+   416→local function subBtn(parent: Frame, text: string, posX: number, width: number, warnaBtn: Color3, onAct)
+   417→        local btn = mk("TextButton", { Position = UDim2.new(posX, 0, 1, -28), Size = UDim2.new(width, -6, 0, 24), BackgroundColor3 = warnaBtn, Text = text, TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = Color3.new(1, 1, 1) }, parent)
+   418→        round(btn, UIStyle.SudutKecil)
+   419→        btn.Activated:Connect(onAct)
+   420→        return btn
+   421→end
+   422→
+   423→local function refreshSemai()
+   424→        for _, col in ipairs({ semaiLeft, semaiRight }) do
+   425→                bersihkan(col)
+   426→        end
+   427→        local order = 0
+   428→        local adaHasil = false
+   429→        for _, s in ipairs(state.tas) do
+   430→                if s.kind == "hasil" then
+   431→                        adaHasil = true
+   432→                        order += 1
+   433→                        local info = CropData.byId[s.id]
+   434→                        local holder = actionBtn(semaiLeft, (info and info.nama or s.id) .. " x" .. s.count, order)
+   435→                        subBtn(holder, "Letakkan 1", 0.5, 0.5, warna(UIStyle.Hijau), function()
+   436→                                local ok, msg = Net.get("SmashAct"):InvokeServer("place", s.id)
+   437→                                toast(ok and "Meja" or "Gagal", msg)
+   438→                        end)
+   439→                end
+   440→        end
+   441→        if not adaHasil then
+   442→                mk("TextLabel", { Size = UDim2.new(1, -8, 0, 40), BackgroundTransparency = 1, Text = "Tidak ada hasil panen di tas.", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), LayoutOrder = 1 }, semaiLeft)
+   443→        end
+   444→        if #state.semai == 0 then
+   445→                mk("TextLabel", { Size = UDim2.new(1, -8, 0, 40), BackgroundTransparency = 1, Text = "Meja kosong.", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), LayoutOrder = 1 }, semaiRight)
+   446→        end
+   447→        for i, slot in ipairs(state.semai) do
+   448→                local info = CropData.byId[slot.crop]
+   449→                local cfg = info and CropData.Smash[info.rarity]
+   450→                local holder = actionBtn(semaiRight, (info and info.nama or slot.crop) .. " — pukul " .. tostring(slot.hits) .. "/" .. tostring(cfg and cfg.hits or "?"), i)
+   451→                subBtn(holder, "Pukul", 0, 0.5, warna(UIStyle.Merah), function()
+   452→                        local ok, msg = Net.get("SmashAct"):InvokeServer("hit", i)
+   453→                        toast(ok and "Pukul" or "Gagal", msg)
+   454→                end)
+   455→                subBtn(holder, "Ambil", 0.5, 0.5, warna(UIStyle.PermukaanAktif), function()
+   456→                        local ok, msg = Net.get("SmashAct"):InvokeServer("take", i)
+   457→                        toast(ok and "Meja" or "Gagal", msg)
+   458→                end)
+   459→        end
+   460→end
+   461→
+   462→local tokoPanel = makePanel("toko")
+   463→mk("TextLabel", { Size = UDim2.new(1, -8, 0, 30), Position = UDim2.new(0, 4, 0, 2), BackgroundTransparency = 1, Text = "Ambil pack benih lewat kasir atau rak berisi benih. Toko juga membeli hasil panenmu.", TextWrapped = true, TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left }, tokoPanel)
+   464→local tokoBuy = mk("Frame", { Size = UDim2.new(1, -8, 0, 64), Position = UDim2.new(0, 4, 0, 36), BackgroundColor3 = warna(UIStyle.Permukaan) }, tokoPanel)
+   465→round(tokoBuy)
+   466→local tokoSell = mk("ScrollingFrame", { Size = UDim2.new(1, -8, 1, -112), Position = UDim2.new(0, 4, 0, 106), BackgroundColor3 = warna(UIStyle.Permukaan), ScrollBarThickness = 6, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(0, 0, 0, 0) }, tokoPanel)
+   467→mk("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, tokoSell)
+   468→
+   469→local function refreshToko()
+   470→        bersihkan(tokoSell)
+   471→        local order = 0
+   472→        local ada = false
+   473→        for _, s in ipairs(state.tas) do
+   474→                if s.kind == "hasil" then
+   475→                        ada = true
+   476→                        order += 1
+   477→                        local info = CropData.byId[s.id]
+   478→                        local holder = actionBtn(tokoSell, (info and info.nama or s.id) .. " x" .. s.count .. " — " .. (info and info.jual or 0) .. " Micda/unit", order)
+   479→                        subBtn(holder, "Jual 1", 0, 0.34, warna(UIStyle.Hijau), function()
+   480→                                local ok, msg = Net.get("ShopAct"):InvokeServer("sell", s.id, 1)
+   481→                                toast(ok and "Terjual" or "Gagal", msg)
+   482→                        end)
+   483→                        subBtn(holder, "Jual Semua", 0.34, 0.33, warna(UIStyle.Hijau), function()
+   484→                                local ok, msg = Net.get("ShopAct"):InvokeServer("sell", s.id)
+   485→                                toast(ok and "Terjual" or "Gagal", msg)
+   486→                        end)
+   487→                end
+   488→        end
+   489→        if not ada then
+   490→                mk("TextLabel", { Size = UDim2.new(1, -8, 0, 40), BackgroundTransparency = 1, Text = "Tidak ada hasil panen untuk dijual.", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), LayoutOrder = 1 }, tokoSell)
+   491→        end
+   492→end
+   493→
+   494→local modalDim = mk("Frame", { Name = "ModalBeli", Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.5, Visible = false }, gui)
+   495→local modalBox = mk("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.5, 0), Size = UDim2.new(0.88, 0, 0, 268), BackgroundColor3 = warna(UIStyle.Latar) }, modalDim)
+   496→round(modalBox, 12)
+   497→mk("UISizeConstraint", { MinSize = Vector2.new(280, 240), MaxSize = Vector2.new(420, 360) }, modalBox)
+   498→local modalTitle = mk("TextLabel", { Size = UDim2.new(1, -24, 0, 30), Position = UDim2.new(0, 12, 0, 10), BackgroundTransparency = 1, Text = "Konfirmasi Pembelian", TextSize = UIStyle.UkuranJudul, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left }, modalBox)
+   499→local modalIsi = mk("Frame", { Size = UDim2.new(1, -24, 1, -110), Position = UDim2.new(0, 12, 0, 46), BackgroundTransparency = 1 }, modalBox)
+   500→mk("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, modalIsi)
+   501→local modalYa = mk("TextButton", { Size = UDim2.new(0.5, -9, 0, 42), Position = UDim2.new(0, 12, 1, -54), BackgroundColor3 = warna(UIStyle.Hijau), Text = "Ya, Beli", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = Color3.new(1, 1, 1) }, modalBox)
+   502→round(modalYa, UIStyle.SudutKecil)
+   503→local modalBatal = mk("TextButton", { Size = UDim2.new(0.5, -9, 0, 42), Position = UDim2.new(0.5, 9, 1, -54), BackgroundColor3 = warna(UIStyle.PermukaanAktif), Text = "Batal", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks) }, modalBox)
+   504→round(modalBatal, UIStyle.SudutKecil)
+   505→local modalOke = mk("TextButton", { Size = UDim2.new(1, -24, 0, 42), Position = UDim2.new(0, 12, 1, -54), BackgroundColor3 = warna(UIStyle.Hijau), Text = "Oke", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = Color3.new(1, 1, 1), Visible = false }, modalBox)
+   506→round(modalOke, UIStyle.SudutKecil)
+   507→
+   508→local konfirmPackId: string? = nil
+   509→
+   510→local function bersihkanModalIsi()
+   511→        for _, c in ipairs(modalIsi:GetChildren()) do
+   512→                if c:IsA("Frame") or c:IsA("TextLabel") or c:IsA("TextButton") then
+   513→                        c:Destroy()
+   514→                end
+   515→        end
+   516→end
+   517→
+   518→local function tutupModal()
+   519→        konfirmPackId = nil
+   520→        modalDim.Visible = false
+   521→end
+   522→
+   523→local function aturModalTombol(mode: string)
+   524→        modalYa.Visible = mode == "konfirmasi"
+   525→        modalBatal.Visible = mode == "konfirmasi"
+   526→        modalOke.Visible = mode == "struk"
+   527→end
+   528→
+   529→local function bukaStrukBeli(rows: { any }, total: number)
+   530→        bersihkanModalIsi()
+   531→        modalTitle.Text = "Pembelian Berhasil"
+   532→        local urutan = 0
+   533→        for _, r in ipairs(rows) do
+   534→                urutan += 1
+   535→                local baris = mk("Frame", { Size = UDim2.new(1, 0, 0, 36), BackgroundColor3 = warna(UIStyle.Permukaan) }, modalIsi)
+   536→                round(baris, UIStyle.SudutKecil)
+   537→                ikonSlot(baris, { kind = "benih", id = r.id, count = r.count })
+   538→                mk("TextLabel", { Size = UDim2.new(1, -100, 0, 36), Position = UDim2.new(0, 42, 0, 0), BackgroundTransparency = 1, Text = UIStyle.potong(r.nama), TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, baris)
+   539→                mk("TextLabel", { Size = UDim2.new(0, 52, 0, 36), Position = UDim2.new(1, -56, 0, 0), BackgroundTransparency = 1, Text = "x" .. tostring(r.count), TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Aksen), TextXAlignment = Enum.TextXAlignment.Right }, baris)
+   540→                local skala = mk("UIScale", { Scale = 0.01 }, baris)
+   541→                task.delay(0.07 * urutan, function()
+   542→                        if baris.Parent then
+   543→                                TweenService:Create(skala, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+   544→                        end
+   545→                end)
+   546→        end
+   547→        mk("TextLabel", { Size = UDim2.new(1, 0, 0, 24), BackgroundTransparency = 1, Text = "Total " .. fmt(total) .. " Micda · benih sudah masuk tas", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left }, modalIsi)
+   548→        aturModalTombol("struk")
+   549→        modalDim.Visible = true
+   550→end
+   551→
+   552→local function bukaKonfirmasiBeli(packId: string)
+   553→        local pack = CropData.Packs[packId]
+   554→        if not pack then
+   555→                return
+   556→        end
+   557→        bersihkanModalIsi()
+   558→        konfirmPackId = packId
+   559→        modalTitle.Text = "Konfirmasi Pembelian"
+   560→        mk("TextLabel", { Size = UDim2.new(1, 0, 0, 24), BackgroundTransparency = 1, Text = "Pack " .. (packId == "rare" and "Rare" or "Common"), TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 1 }, modalIsi)
+   561→        mk("TextLabel", { Size = UDim2.new(1, 0, 0, 20), BackgroundTransparency = 1, Text = tostring(pack.count) .. " benih acak kategori " .. packId, TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 2 }, modalIsi)
+   562→        mk("TextLabel", { Size = UDim2.new(1, 0, 0, 24), BackgroundTransparency = 1, Text = "Harga: " .. fmt(pack.price) .. " Micda", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Aksen), TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 3 }, modalIsi)
+   563→        mk("TextLabel", { Size = UDim2.new(1, 0, 0, 36), BackgroundTransparency = 1, Text = "Ya = benih langsung dirapatkan server dan masuk tas.", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true, LayoutOrder = 4 }, modalIsi)
+   564→        aturModalTombol("konfirmasi")
+   565→        modalDim.Visible = true
+   566→end
+   567→
+   568→modalBatal.Activated:Connect(tutupModal)
+   569→modalOke.Activated:Connect(tutupModal)
+   570→modalYa.Activated:Connect(function()
+   571→        local packId = konfirmPackId
+   572→        if not packId then
+   573→                return
+   574→        end
+   575→        tutupModal()
+   576→        task.spawn(function()
+   577→                local ok, msg, struk = Net.get("ShopAct"):InvokeServer("buy", packId)
+   578→                local pack = CropData.Packs[packId]
+   579→                if ok and type(struk) == "table" and pack then
+   580→                        syncState()
+   581→                        bukaStrukBeli(struk, pack.price)
+   582→                else
+   583→                        toast(ok and "Pembelian" or "Gagal", tostring(msg))
+   584→                end
+   585→        end)
+   586→end)
+   587→
+   588→local function buyBtn(parent: Frame, text: string, posX: number, packId: string)
+   589→        local btn = mk("TextButton", { Position = UDim2.new(posX, 6, 0, 8), Size = UDim2.new(0.5, -18, 1, -16), BackgroundColor3 = warna(UIStyle.Hijau), Text = text, TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = Color3.new(1, 1, 1), TextWrapped = true }, parent)
+   590→        round(btn, UIStyle.SudutKecil)
+   591→        btn.Activated:Connect(function()
+   592→                bukaKonfirmasiBeli(packId)
+   593→        end)
+   594→end
+   595→
+   596→buyBtn(tokoBuy, "Pack Common\n2.400 Micda (3 benih)", 0, "common")
+   597→buyBtn(tokoBuy, "Pack Rare\n9.000 Micda (3 benih)", 0.5, "rare")
+   598→
+   599→local tanamPanel = makePanel("tanam")
+   600→local tamuMode = false
+   601→
+   602→local tamuNotice = mk("TextLabel", { Size = UDim2.new(1, -8, 1, -8), Position = UDim2.new(0, 4, 0, 4), BackgroundTransparency = 1, Text = "Hanya pemilik dunia yang bisa memakai papan ini.", TextWrapped = true, TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Abu), Visible = false }, tanamPanel)
+   603→
+   604→local tabRow = mk("Frame", { Size = UDim2.new(1, 0, 0, 34), Position = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 1 }, tanamPanel)
+   605→mk("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, tabRow)
+   606→
+   607→local function tabBtn(teks: string, order: number): (TextButton, Frame)
+   608→        local b = mk("TextButton", { Size = UDim2.new(1 / 3, -8, 1, 0), BackgroundTransparency = 1, Text = teks, TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Abu), LayoutOrder = order }, tabRow)
+   609→        local garis = mk("Frame", { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -1), Size = UDim2.new(0.7, 0, 0, 2), BackgroundColor3 = warna(UIStyle.Aksen), BorderSizePixel = 0, Visible = false }, b)
+   610→        return b, garis
+   611→end
+   612→
+   613→local tabTanamBtn, garisTanam = tabBtn("Tanam", 1)
+   614→local tabGabungBtn, garisGabung = tabBtn("Combine Seed", 2)
+   615→local tabStatusBtn, garisStatus = tabBtn("Status", 3)
+   616→
+   617→local tanamBody = mk("Frame", { Size = UDim2.new(1, 0, 1, -42), Position = UDim2.new(0, 0, 0, 40), BackgroundTransparency = 1 }, tanamPanel)
+   618→
+   619→local tanamTab = mk("Frame", { Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Visible = true }, tanamBody)
+   620→mk("TextLabel", { Size = UDim2.new(0.55, 0, 0, 18), Position = UDim2.new(0, 2, 0, 0), BackgroundTransparency = 1, Text = "Pilih benih untuk ditanam", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, tanamTab)
+   621→local jumlahLabel = mk("TextLabel", { Size = UDim2.new(0.45, -4, 0, 18), Position = UDim2.new(0.55, 4, 0, 0), BackgroundTransparency = 1, Text = "Jumlah: -", TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Aksen), TextXAlignment = Enum.TextXAlignment.Right }, tanamTab)
+   622→local tanamList = mk("ScrollingFrame", { Size = UDim2.new(1, 0, 1, -118), Position = UDim2.new(0, 0, 0, 22), BackgroundTransparency = 1, ScrollBarThickness = 6, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(0, 0, 0, 0) }, tanamTab)
+   623→mk("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, tanamList)
+   624→local tanamFeedback = mk("TextLabel", { Size = UDim2.new(1, 0, 0, 16), Position = UDim2.new(0, 2, 1, -98), BackgroundTransparency = 1, Text = "", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, tanamTab)
+   625→
+   626→local angkaRow = mk("Frame", { Size = UDim2.new(1, 0, 0, 34), Position = UDim2.new(0, 0, 1, -78), BackgroundTransparency = 1 }, tanamTab)
+   627→mk("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, angkaRow)
+   628→local selectedSeed: string? = nil
+   629→local selectedQty: number? = 10
+   630→local angkaPilih: { TextButton } = {}
+   631→local refreshTanam: () -> ()
+   632→
+   633→local function tombolAngka(teks: string, order: number, nilai: number?): TextButton
+   634→        local b = mk("TextButton", { Size = UDim2.new(1 / 6, -6, 1, 0), BackgroundColor3 = warna(UIStyle.Permukaan), Text = teks, TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Teks), LayoutOrder = order }, angkaRow)
+   635→        round(b, UIStyle.SudutKecil)
+   636→        b.Activated:Connect(function()
+   637→                selectedQty = nilai
+   638→                refreshTanam()
+   639→        end)
+   640→        return b
+   641→end
+   642→
+   643→local tombolMaks = tombolAngka("Maks", 6, nil)
+   644→for i, n in ipairs({ 1, 10, 50, 100, 250 }) do
+   645→        angkaPilih[i] = tombolAngka(tostring(n), i + 1, n)
+   646→end
+   647→
+   648→local mulaiBtn = mk("TextButton", { Size = UDim2.new(1, 0, 0, 36), Position = UDim2.new(0, 0, 1, -38), BackgroundColor3 = warna(UIStyle.Hijau), Text = "Mulai Tanam", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = Color3.new(1, 1, 1) }, tanamTab)
+   649→round(mulaiBtn)
+   650→
+   651→local soalView = mk("Frame", { Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Visible = false }, tanamBody)
+   652→local soalNomor = mk("TextLabel", { Size = UDim2.new(1, 0, 0, 18), Position = UDim2.new(0, 2, 0, 0), BackgroundTransparency = 1, Text = "", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left }, soalView)
+   653→local soalTeks = mk("TextLabel", { Size = UDim2.new(1, 0, 0, 58), Position = UDim2.new(0, 0, 0, 24), BackgroundColor3 = warna(UIStyle.Permukaan), Text = "?", TextSize = UIStyle.UkuranJudul, Font = FONTB, TextColor3 = warna(UIStyle.Teks) }, soalView)
+   654→round(soalTeks)
+   655→local soalJawab = mk("TextBox", { Size = UDim2.new(0.6, 0, 0, 42), Position = UDim2.new(0.2, 0, 0, 92), BackgroundColor3 = warna(UIStyle.Permukaan), Text = "", PlaceholderText = "Tulis jawaban angka", TextSize = UIStyle.UkuranIsi, Font = FON, TextColor3 = warna(UIStyle.Teks), ClearTextOnFocus = true }, soalView)
+   656→round(soalJawab, UIStyle.SudutKecil)
+   657→local soalBtn = mk("TextButton", { Size = UDim2.new(0.6, 0, 0, 38), Position = UDim2.new(0.2, 0, 0, 140), BackgroundColor3 = warna(UIStyle.Hijau), Text = "Jawab", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = Color3.new(1, 1, 1) }, soalView)
+   658→round(soalBtn)
+   659→local soalFeedback = mk("TextLabel", { Size = UDim2.new(1, 0, 0, 28), Position = UDim2.new(0, 2, 0, 186), BackgroundTransparency = 1, Text = "", TextWrapped = true, TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left }, soalView)
+   660→local batalBtn = mk("TextButton", { AnchorPoint = Vector2.new(0.5, 1), Size = UDim2.new(0.6, 0, 0, 26), Position = UDim2.new(0.5, 0, 1, -2), BackgroundTransparency = 1, Text = "Batalkan Sesi Tanam", TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Merah) }, soalView)
+   661→
+   662→local gabungTab = mk("Frame", { Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Visible = false }, tanamBody)
+   663→mk("TextLabel", { Size = UDim2.new(1, 0, 0, 16), Position = UDim2.new(0, 2, 0, 0), BackgroundTransparency = 1, Text = "Benih A", TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left }, gabungTab)
+   664→local slotAList = mk("ScrollingFrame", { Size = UDim2.new(1, 0, 0, 64), Position = UDim2.new(0, 0, 0, 18), BackgroundTransparency = 1, ScrollBarThickness = 6, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(0, 0, 0, 0) }, gabungTab)
+   665→mk("UIListLayout", { Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder }, slotAList)
+   666→mk("TextLabel", { Size = UDim2.new(1, 0, 0, 16), Position = UDim2.new(0, 2, 0, 88), BackgroundTransparency = 1, Text = "Benih B", TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left }, gabungTab)
+   667→local slotBList = mk("ScrollingFrame", { Size = UDim2.new(1, 0, 0, 64), Position = UDim2.new(0, 0, 0, 106), BackgroundTransparency = 1, ScrollBarThickness = 6, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(0, 0, 0, 0) }, gabungTab)
+   668→mk("UIListLayout", { Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder }, slotBList)
+   669→local slotA: string? = nil
+   670→local slotB: string? = nil
+   671→local gabungBtn = mk("TextButton", { Size = UDim2.new(1, 0, 0, 36), Position = UDim2.new(0, 0, 1, -52), BackgroundColor3 = warna(UIStyle.Hijau), Text = "Gabung", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = Color3.new(1, 1, 1) }, gabungTab)
+   672→round(gabungBtn)
+   673→local gabungFeedback = mk("TextLabel", { Size = UDim2.new(1, 0, 0, 16), Position = UDim2.new(0, 2, 1, -14), BackgroundTransparency = 1, Text = "", TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, gabungTab)
+   674→
+   675→local statusTab = mk("Frame", { Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Visible = false }, tanamBody)
+   676→local statusSummary = mk("TextLabel", { Size = UDim2.new(1, -100, 0, 26), Position = UDim2.new(0, 2, 0, 0), BackgroundTransparency = 1, Text = "", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, statusTab)
+   677→local statusRefresh = mk("TextButton", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, 0), Size = UDim2.new(0, 92, 0, 26), BackgroundColor3 = warna(UIStyle.PermukaanAktif), Text = "Perbarui", TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Teks) }, statusTab)
+   678→round(statusRefresh, UIStyle.SudutKecil)
+   679→mk("TextLabel", { Size = UDim2.new(1, -8, 0, 30), Position = UDim2.new(0, 2, 0, 27), BackgroundTransparency = 1, Text = "Ambil hasil panen segera dan jangan biarkan tergeletak terlalu lama karena bisa hilang!", TextWrapped = true, TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Kuning), TextXAlignment = Enum.TextXAlignment.Left }, statusTab)
+   680→local statusList = mk("ScrollingFrame", { Size = UDim2.new(1, 0, 1, -94), Position = UDim2.new(0, 0, 0, 60), BackgroundTransparency = 1, ScrollBarThickness = 6, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(0, 0, 0, 0) }, statusTab)
+   681→mk("UIListLayout", { Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder }, statusList)
+   682→
+   683→local tabAktif = "tanam"
+   684→
+   685→local function muatStatus()
+   686→        task.spawn(function()
+   687→                local ok, res = Net.get("TanamAct"):InvokeServer("status")
+   688→                if not ok or type(res) ~= "table" then
+   689→                        return
+   690→                end
+   691→                statusSummary.Text = "Tertanam " .. tostring(res.tertanamTotal or 0) .. "/" .. tostring(res.plotTotal or 500)
+   692→                bersihkan(statusList)
+   693→                local daftar = res.status or {}
+   694→                if #daftar == 0 then
+   695→                        mk("TextLabel", { Size = UDim2.new(1, -8, 0, 36), BackgroundTransparency = 1, Text = "Belum ada tanaman di lahan.", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), LayoutOrder = 1 }, statusList)
+   696→                        return
+   697→                end
+   698→                local order = 0
+   699→                for _, row in ipairs(daftar) do
+   700→                        order += 1
+   701→                        local holder = mk("Frame", { Size = UDim2.new(1, -8, 0, 38), BackgroundColor3 = warna(UIStyle.Permukaan), LayoutOrder = order }, statusList)
+   702→                        round(holder, UIStyle.SudutKecil)
+   703→                        mk("TextLabel", { Size = UDim2.new(0.4, -8, 1, -8), Position = UDim2.new(0, 8, 0, 4), BackgroundTransparency = 1, Text = UIStyle.potong(row.nama or row.id), TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, holder)
+   704→                        mk("TextLabel", { Size = UDim2.new(0.32, -8, 1, -8), Position = UDim2.new(0.4, 8, 0, 4), BackgroundTransparency = 1, Text = "Siap " .. tostring(row.siap or 0), TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Aksen), TextXAlignment = Enum.TextXAlignment.Left }, holder)
+   705→                        mk("TextLabel", { Size = UDim2.new(0.28, -8, 1, -8), Position = UDim2.new(0.72, 8, 0, 4), BackgroundTransparency = 1, Text = "Tumbuh " .. tostring(row.tumbuh or 0), TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left }, holder)
+   706→                end
+   707→        end)
+   708→end
+   709→
+   710→local function refreshGabung()
+   711→        for _, col in ipairs({ slotAList, slotBList }) do
+   712→                bersihkan(col)
+   713→        end
+   714→        local order = 0
+   715→        for _, s in ipairs(state.tas) do
+   716→                if s.kind == "benih" then
+   717→                        order += 1
+   718→                        local info = CropData.byId[s.id]
+   719→                        local nama = info and info.nama or s.id
+   720→                        local pilihA = mk("TextButton", { Size = UDim2.new(1, -8, 0, 34), BackgroundColor3 = warna(s.id == slotA and UIStyle.PermukaanAktif or UIStyle.Permukaan), Text = "", AutoButtonColor = true, LayoutOrder = order }, slotAList)
+   721→                        round(pilihA, UIStyle.SudutKecil)
+   722→                        if s.id == slotA then
+   723→                                mk("Frame", { Size = UDim2.new(0, 3, 1, -8), Position = UDim2.new(0, 4, 0, 4), BackgroundColor3 = warna(UIStyle.Aksen), BorderSizePixel = 0 }, pilihA)
+   724→                        end
+   725→                        mk("TextLabel", { Size = UDim2.new(0.68, -8, 1, -8), Position = UDim2.new(0, 12, 0, 4), BackgroundTransparency = 1, Text = UIStyle.potong(nama), TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, pilihA)
+   726→                        mk("TextLabel", { Size = UDim2.new(0.24, -8, 1, -8), Position = UDim2.new(0.68, 8, 0, 4), BackgroundTransparency = 1, Text = "x" .. s.count, TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Right }, pilihA)
+   727→                        pilihA.Activated:Connect(function()
+   728→                                slotA = s.id
+   729→                                refreshGabung()
+   730→                        end)
+   731→                        local pilihB = mk("TextButton", { Size = UDim2.new(1, -8, 0, 34), BackgroundColor3 = warna(s.id == slotB and UIStyle.PermukaanAktif or UIStyle.Permukaan), Text = "", AutoButtonColor = true, LayoutOrder = order }, slotBList)
+   732→                        round(pilihB, UIStyle.SudutKecil)
+   733→                        if s.id == slotB then
+   734→                                mk("Frame", { Size = UDim2.new(0, 3, 1, -8), Position = UDim2.new(0, 4, 0, 4), BackgroundColor3 = warna(UIStyle.Aksen), BorderSizePixel = 0 }, pilihB)
+   735→                        end
+   736→                        mk("TextLabel", { Size = UDim2.new(0.68, -8, 1, -8), Position = UDim2.new(0, 12, 0, 4), BackgroundTransparency = 1, Text = UIStyle.potong(nama), TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, pilihB)
+   737→                        mk("TextLabel", { Size = UDim2.new(0.24, -8, 1, -8), Position = UDim2.new(0.68, 8, 0, 4), BackgroundTransparency = 1, Text = "x" .. s.count, TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Right }, pilihB)
+   738→                        pilihB.Activated:Connect(function()
+   739→                                slotB = s.id
+   740→                                refreshGabung()
+   741→                        end)
+   742→                end
+   743→        end
+   744→        if order == 0 then
+   745→                mk("TextLabel", { Size = UDim2.new(1, -8, 0, 34), BackgroundTransparency = 1, Text = "Tidak ada benih di tas.", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), LayoutOrder = 1 }, slotAList)
+   746→                mk("TextLabel", { Size = UDim2.new(1, -8, 0, 34), BackgroundTransparency = 1, Text = "Tidak ada benih di tas.", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), LayoutOrder = 1 }, slotBList)
+   747→        end
+   748→end
+   749→
+   750→local function setTab(nama: string)
+   751→        tabAktif = nama
+   752→        bersihkan(tanamList)
+   753→        bersihkan(statusList)
+   754→        bersihkan(slotAList)
+   755→        bersihkan(slotBList)
+   756→        tanamTab.Visible = nama == "tanam"
+   757→        soalView.Visible = false
+   758→        gabungTab.Visible = nama == "gabung"
+   759→        statusTab.Visible = nama == "status"
+   760→        tabTanamBtn.TextColor3 = warna(nama == "tanam" and UIStyle.Teks or UIStyle.Abu)
+   761→        tabGabungBtn.TextColor3 = warna(nama == "gabung" and UIStyle.Teks or UIStyle.Abu)
+   762→        tabStatusBtn.TextColor3 = warna(nama == "status" and UIStyle.Teks or UIStyle.Abu)
+   763→        garisTanam.Visible = nama == "tanam"
+   764→        garisGabung.Visible = nama == "gabung"
+   765→        garisStatus.Visible = nama == "status"
+   766→        if nama == "status" then
+   767→                muatStatus()
+   768→        elseif nama == "gabung" then
+   769→                refreshGabung()
+   770→        else
+   771→                refreshTanam()
+   772→        end
+   773→end
+   774→
+   775→refreshTanam = function()
+   776→        tabRow.Visible = not tamuMode
+   777→        tanamBody.Visible = not tamuMode
+   778→        tamuNotice.Visible = tamuMode
+   779→        if tamuMode then
+   780→                return
+   781→        end
+   782→        local t = state.tanam or {}
+   783→        local aktif = t.aktif == true
+   784→        tanamTab.Visible = not aktif
+   785→        soalView.Visible = aktif
+   786→        local benihAda = 0
+   787→        for _, s in ipairs(state.tas) do
+   788→                if s.kind == "benih" and s.id == selectedSeed then
+   789→                        benihAda = s.count
+   790→                end
+   791→        end
+   792→        jumlahLabel.Text = selectedQty and ("Jumlah: " .. tostring(selectedQty)) or ("Jumlah: Maks (" .. tostring(benihAda) .. ")")
+   793→        for i, n in ipairs({ 1, 10, 50, 100, 250 }) do
+   794→                angkaPilih[i].BackgroundColor3 = warna(selectedQty == n and UIStyle.PermukaanAktif or UIStyle.Permukaan)
+   795→        end
+   796→        tombolMaks.BackgroundColor3 = warna(selectedQty == nil and UIStyle.PermukaanAktif or UIStyle.Permukaan)
+   797→        if aktif then
+   798→                soalNomor.Text = "Soal " .. tostring(t.soal and t.soal.nomor or 1) .. " dari " .. tostring(t.totalSoal) .. " — tertanam " .. tostring(t.tertanam) .. "/" .. tostring(t.jumlah)
+   799→                if t.soal then
+   800→                        soalTeks.Text = t.soal.teks
+   801→                end
+   802→        else
+   803→                tanamFeedback.Text = ""
+   804→        end
+   805→        bersihkan(tanamList)
+   806→        local order = 0
+   807→        for _, s in ipairs(state.tas) do
+   808→                if s.kind == "benih" then
+   809→                        order += 1
+   810→                        local info = CropData.byId[s.id]
+   811→                        local row = mk("TextButton", { Size = UDim2.new(1, -8, 0, 40), BackgroundColor3 = warna(s.id == selectedSeed and UIStyle.PermukaanAktif or UIStyle.Permukaan), Text = "", AutoButtonColor = true, LayoutOrder = order }, tanamList)
+   812→                        round(row, UIStyle.SudutKecil)
+   813→                        if s.id == selectedSeed then
+   814→                                mk("Frame", { Size = UDim2.new(0, 3, 1, -8), Position = UDim2.new(0, 4, 0, 4), BackgroundColor3 = warna(UIStyle.Aksen), BorderSizePixel = 0 }, row)
+   815→                        end
+   816→                        mk("TextLabel", { Size = UDim2.new(0.66, -8, 1, -8), Position = UDim2.new(0, 12, 0, 4), BackgroundTransparency = 1, Text = UIStyle.potong(info and info.nama or s.id), TextSize = UIStyle.UkuranIsi, Font = FON, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, row)
+   817→                        mk("TextLabel", { Size = UDim2.new(0.26, -8, 1, -8), Position = UDim2.new(0.66, 8, 0, 4), BackgroundTransparency = 1, Text = "x" .. s.count, TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Right }, row)
+   818→                        row.Activated:Connect(function()
+   819→                                selectedSeed = s.id
+   820→                                refreshTanam()
+   821→                        end)
+   822→                end
+   823→        end
+   824→        if order == 0 then
+   825→                mk("TextLabel", { Size = UDim2.new(1, -8, 0, 36), BackgroundTransparency = 1, Text = "Tidak ada benih di tas. Beli pack benih di Toko Benih, Pusat Kota.", TextWrapped = true, TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), LayoutOrder = 1 }, tanamList)
+   826→        end
+   827→end
+   828→
+   829→mulaiBtn.Activated:Connect(function()
+   830→        if not selectedSeed then
+   831→                tanamFeedback.TextColor3 = warna(UIStyle.Merah)
+   832→                tanamFeedback.Text = "Pilih benih dulu di daftar."
+   833→                return
+   834→        end
+   835→        local jumlah = selectedQty
+   836→        if jumlah == nil then
+   837→                for _, s in ipairs(state.tas) do
+   838→                        if s.kind == "benih" and s.id == selectedSeed then
+   839→                                jumlah = s.count
+   840→                                break
+   841→                        end
+   842→                end
+   843→        end
+   844→        local ok, msg = Net.get("TanamAct"):InvokeServer("start", selectedSeed, jumlah)
+   845→        tanamFeedback.TextColor3 = warna(ok and UIStyle.Aksen or UIStyle.Merah)
+   846→        tanamFeedback.Text = msg
+   847→        if ok then
+   848→                refreshTanam()
+   849→        end
+   850→end)
+   851→
+   852→soalBtn.Activated:Connect(function()
+   853→        local n = tonumber(soalJawab.Text)
+   854→        if not n then
+   855→                soalFeedback.TextColor3 = warna(UIStyle.Merah)
+   856→                soalFeedback.Text = "Masukkan angka dulu."
+   857→                return
+   858→        end
+   859→        local ok, msg = Net.get("TanamAct"):InvokeServer("jawab", n)
+   860→        soalFeedback.TextColor3 = warna(ok and UIStyle.Aksen or UIStyle.Merah)
+   861→        soalFeedback.Text = msg
+   862→        if ok then
+   863→                soalJawab.Text = ""
+   864→        end
+   865→end)
+   866→
+   867→batalBtn.Activated:Connect(function()
+   868→        local ok = Net.get("TanamAct"):InvokeServer("batal")
+   869→        if ok then
+   870→                state.tanam = nil
+   871→                refreshTanam()
+   872→        end
+   873→end)
+   874→
+   875→gabungBtn.Activated:Connect(function()
+   876→        if not slotA or not slotB then
+   877→                gabungFeedback.TextColor3 = warna(UIStyle.Merah)
+   878→                gabungFeedback.Text = "Pilih benih untuk kedua slot."
+   879→                return
+   880→        end
+   881→        local ok, msg = Net.get("TanamAct"):InvokeServer("gabung", slotA, slotB)
+   882→        gabungFeedback.TextColor3 = warna(ok and UIStyle.Aksen or UIStyle.Merah)
+   883→        gabungFeedback.Text = msg
+   884→        if ok then
+   885→                refreshGabung()
+   886→        end
+   887→end)
+   888→
+   889→statusRefresh.Activated:Connect(function()
+   890→        muatStatus()
+   891→end)
+   892→
+   893→tabTanamBtn.Activated:Connect(function()
+   894→        setTab("tanam")
+   895→end)
+   896→tabGabungBtn.Activated:Connect(function()
+   897→        setTab("gabung")
+   898→end)
+   899→tabStatusBtn.Activated:Connect(function()
+   900→        setTab("status")
+   901→end)
+   902→
+   903→local gudangPanel = makePanel("gudang")
+   904→local gudangTampungan = mk("TextLabel", { Size = UDim2.new(1, -8, 0, 22), Position = UDim2.new(0, 4, 0, 0), BackgroundTransparency = 1, Text = "", TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, gudangPanel)
+   905→mk("TextLabel", { Size = UDim2.new(1, -8, 0, 16), Position = UDim2.new(0, 4, 0, 24), BackgroundTransparency = 1, Text = "Kiri: setor hasil panen. Kanan: ambil dari gudang.", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, gudangPanel)
+   906→local gudangLeft = mk("ScrollingFrame", { Size = UDim2.new(0.5, -10, 1, -52), Position = UDim2.new(0, 4, 0, 46), BackgroundColor3 = warna(UIStyle.Permukaan), ScrollBarThickness = 6, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(0, 0, 0, 0) }, gudangPanel)
+   907→local gudangRight = mk("ScrollingFrame", { Size = UDim2.new(0.5, -10, 1, -52), Position = UDim2.new(0.5, 6, 0, 46), BackgroundColor3 = warna(UIStyle.Permukaan), ScrollBarThickness = 6, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(0, 0, 0, 0) }, gudangPanel)
+   908→mk("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, gudangLeft)
+   909→mk("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, gudangRight)
+   910→
+   911→local function refreshGudang()
+   912→        local g = state.gudang
+   913→        if not g then
+   914→                return
+   915→        end
+   916→        gudangTampungan.Text = "Tampungan: " .. tostring(g.terpakai) .. "/" .. tostring(g.maks) .. " — 1-250 buah = 1 tampungan"
+   917→        for _, col in ipairs({ gudangLeft, gudangRight }) do
+   918→                bersihkan(col)
+   919→        end
+   920→        local order = 0
+   921→        for _, s in ipairs(state.tas) do
+   922→                if s.kind == "hasil" then
+   923→                        order += 1
+   924→                        local info = CropData.byId[s.id]
+   925→                        local holder = actionBtn(gudangLeft, (info and info.nama or s.id) .. " x" .. s.count, order)
+   926→                        subBtn(holder, "Setor 250", 0, 0.5, warna(UIStyle.Hijau), function()
+   927→                                local ok, msg = Net.get("GudangAct"):InvokeServer("simpan", s.id, 250)
+   928→                                toast(ok and "Gudang" or "Gagal", msg)
+   929→                        end)
+   930→                        subBtn(holder, "Setor Semua", 0.5, 0.5, warna(UIStyle.PermukaanAktif), function()
+   931→                                local ok, msg = Net.get("GudangAct"):InvokeServer("simpan", s.id)
+   932→                                toast(ok and "Gudang" or "Gagal", msg)
+   933→                        end)
+   934→                end
+   935→        end
+   936→        if order == 0 then
+   937→                mk("TextLabel", { Size = UDim2.new(1, -8, 0, 40), BackgroundTransparency = 1, Text = "Tidak ada hasil panen di tas untuk disimpan.", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), LayoutOrder = 1 }, gudangLeft)
+   938→        end
+   939→        local order2 = 0
+   940→        for _, slot in ipairs(g.slots or {}) do
+   941→                order2 += 1
+   942→                local info = CropData.byId[slot.id]
+   943→                local holder = actionBtn(gudangRight, "Slot " .. slot.i .. ": " .. (info and info.nama or slot.id) .. " x" .. slot.count, order2)
+   944→                subBtn(holder, "Ambil Semua", 0, 0.5, warna(UIStyle.Hijau), function()
+   945→                        local ok, msg = Net.get("GudangAct"):InvokeServer("ambil", slot.i)
+   946→                        toast(ok and "Gudang" or "Gagal", msg)
+   947→                end)
+   948→                subBtn(holder, "Ambil 100", 0.5, 0.5, warna(UIStyle.PermukaanAktif), function()
+   949→                        local ok, msg = Net.get("GudangAct"):InvokeServer("ambil", slot.i, 100)
+   950→                        toast(ok and "Gudang" or "Gagal", msg)
+   951→                end)
+   952→        end
+   953→        if order2 == 0 then
+   954→                mk("TextLabel", { Size = UDim2.new(1, -8, 0, 40), BackgroundTransparency = 1, Text = "Gudang masih kosong.", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), LayoutOrder = 1 }, gudangRight)
+   955→        end
+   956→end
+   957→
+   958→tasBtn.Activated:Connect(function()
+   959→        if currentPanel == "tas" then
+   960→                closePanel()
+   961→                return
+   962→        end
+   963→        openPanel("tas")
+   964→        refreshTas()
+   965→end)
+   966→
+   967→local punchTarget: number? = nil
+   968→local animT0: number? = nil
+   969→local motorSaat: Motor6D? = nil
+   970→local shakeT0: number? = nil
+   971→local punchN, punchT = 0, 0
+   972→local punchTier = 1
+   973→
+   974→local highlight = Instance.new("Highlight")
+   975→highlight.FillColor = warna(UIStyle.Aksen)
+   976→highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+   977→highlight.FillTransparency = 0.78
+   978→highlight.OutlineTransparency = 0.2
+   979→highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+   980→
+   981→local function folderTanaman(): Folder?
+   982→        local dunia = Workspace:FindFirstChild("Dunia")
+   983→        return dunia and dunia:FindFirstChild("PlotGrid_" .. tostring(state.lahan), true)
+   984→end
+   985→
+   986→local function cariModelTanaman(induk: Instance): Model?
+   987→        local m = induk
+   988→        while m and m.Parent do
+   989→                if m:IsA("Model") and string.sub(m.Name, 1, 8) == "Tanaman_" then
+   990→                        return m :: Model
+   991→                end
+   992→                m = m.Parent
+   993→        end
+   994→        return nil
+   995→end
+   996→
+   997→local function kandidat(folder: Folder): { any }
+   998→        local daftar = {}
+   999→        for _, m in ipairs(folder:GetChildren()) do
+  1000→                if m:IsA("Model") and string.sub(m.Name, 1, 8) == "Tanaman_" then
+  1001→                        local pos = m:GetPivot().Position
+  1002→                        table.insert(daftar, { idx = m:GetAttribute("PlotIdx"), pos = { x = pos.X, y = 0, z = pos.Z }, radius = ArahPukul.Radius })
+  1003→                end
+  1004→        end
+  1005→        return daftar
+  1006→end
+  1007→
+  1008→task.spawn(function()
+  1009→        while true do
+  1010→                task.wait(0.1)
+  1011→                local idxBaru: number? = nil
+  1012→                local modelBaru: Model? = nil
+  1013→                if state.zone == "dunia" and state.lahan then
+  1014→                        local char = player.Character
+  1015→                        local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+  1016→                        local folder = folderTanaman()
+  1017→                        if root and folder then
+  1018→                                local asal = (root.CFrame * CFrame.new(0, 0.8, 0)).Position
+  1019→                                local arah = root.CFrame.LookVector
+  1020→                                local params = RaycastParams.new()
+  1021→                                params.FilterType = Enum.RaycastFilterType.Include
+  1022→                                params.FilterDescendantsInstances = { folder }
+  1023→                                local ray = Workspace:Raycast(asal, arah * ArahPukul.Jangkauan, params)
+  1024→                                if ray then
+  1025→                                        modelBaru = cariModelTanaman(ray.Instance)
+  1026→                                        if modelBaru then
+  1027→                                                idxBaru = modelBaru:GetAttribute("PlotIdx") :: number?
+  1028→                                        end
+  1029→                                end
+  1030→                                if not modelBaru then
+  1031→                                        local arahXZ = { x = arah.X, y = 0, z = arah.Z }
+  1032→                                        local pilih = ArahPukul.pilih({ x = asal.X, y = 0, z = asal.Z }, arahXZ, kandidat(folder))
+  1033→                                        if pilih and type(pilih.idx) == "number" then
+  1034→                                                idxBaru = pilih.idx
+  1035→                                                modelBaru = folder:FindFirstChild("Tanaman_" .. tostring(pilih.idx))
+  1036→                                        end
+  1037→                                end
+  1038→                        end
+  1039→                end
+  1040→                punchTarget = idxBaru
+  1041→                highlight.Parent = modelBaru
+  1042→        end
+  1043→end)
+  1044→
+  1045→RunService.RenderStepped:Connect(function()
+  1046→        local t = os.clock()
+  1047→        if shakeT0 and t - shakeT0 < 0.09 then
+  1048→                local g = PukulAnim.getar(punchTier)
+  1049→                camera.CFrame = camera.CFrame * CFrame.Angles(0, 0, math.rad((math.random() - 0.5) * 2 * g))
+  1050→        end
+  1051→        if animT0 == nil then
+  1052→                return
+  1053→        end
+  1054→        local f = PukulAnim.fase(animT0, t)
+  1055→        if not f.memukul then
+  1056→                if motorSaat and motorSaat.Parent then
+  1057→                        motorSaat.Transform = CFrame.new()
+  1058→                end
+  1059→                motorSaat = nil
+  1060→                animT0 = nil
+  1061→                return
+  1062→        end
+  1063→        if not motorSaat or motorSaat.Parent == nil then
+  1064→                local char = player.Character
+  1065→                if char then
+  1066→                        motorSaat = (char:FindFirstChild("RightShoulder", true) or char:FindFirstChild("Right Shoulder", true)) :: Motor6D?
+  1067→                end
+  1068→        end
+  1069→        if motorSaat then
+  1070→                if motorSaat.Name == "Right Shoulder" then
+  1071→                        motorSaat.Transform = CFrame.Angles(0, 0, -f.sudut)
+  1072→                else
+  1073→                        motorSaat.Transform = CFrame.Angles(-f.sudut, 0, 0)
+  1074→                end
+  1075→        end
+  1076→end)
+  1077→
+  1078→punchBtn.Activated:Connect(function()
+  1079→        local t = os.clock()
+  1080→        animT0 = PukulAnim.mulaiUlang(animT0, t)
+  1081→        if t - punchT <= 4 then
+  1082→                punchN += 1
+  1083→        else
+  1084→                punchN = 1
+  1085→        end
+  1086→        punchT = t
+  1087→        punchTier = punchN >= 8 and 3 or (punchN >= 4 and 2 or 1)
+  1088→        shakeT0 = t
+  1089→        task.spawn(function()
+  1090→                local awal = camera.FieldOfView
+  1091→                camera.FieldOfView = awal + 3 + 2 * punchTier
+  1092→                task.wait(0.09)
+  1093→                camera.FieldOfView = awal
+  1094→        end)
+  1095→        local target = punchTarget
+  1096→        task.delay(PukulAnim.MomenKena, function()
+  1097→                pcall(function()
+  1098→                        Net.get("PlotAct"):InvokeServer(target, "punch")
+  1099→                end)
+  1100→        end)
+  1101→end)
+  1102→
+  1103→Net.get("Sync").OnClientEvent:Connect(function(payload)
+  1104→        state.micda = payload.micda
+  1105→        state.tas = payload.tas or {}
+  1106→        angkaLabel.Text = fmt(state.micda)
+  1107→        if payload.zone then
+  1108→                state.zone = payload.zone
+  1109→                state.dunia = payload.dunia
+  1110→                state.lahan = payload.lahan
+  1111→                if state.zone == "dunia" then
+  1112→                        zonaLabel.Text = "Dunia " .. tostring(state.dunia or "Petani")
+  1113→                        travelBtn.Text = "Pulang ke Kota"
+  1114→                else
+  1115→                        zonaLabel.Text = "Pusat Kota"
+  1116→                        travelBtn.Text = "Masuk Dunia-ku"
+  1117→                end
+  1118→        end
+  1119→        refreshTas()
+  1120→        if currentPanel == "semai" then
+  1121→                refreshSemai()
+  1122→        elseif currentPanel == "toko" then
+  1123→                refreshToko()
+  1124→        elseif currentPanel == "tanam" then
+  1125→                if tabAktif == "gabung" then
+  1126→                        refreshGabung()
+  1127→                elseif tabAktif ~= "status" then
+  1128→                        refreshTanam()
+  1129→                end
+  1130→        elseif currentPanel == "gudang" then
+  1131→                refreshGudang()
+  1132→        end
+  1133→end)
+  1134→
+  1135→Net.get("Notify").OnClientEvent:Connect(function(title, msg)
+  1136→        toast(tostring(title), tostring(msg))
+  1137→end)
+  1138→
+  1139→Net.get("SmashSync").OnClientEvent:Connect(function(p)
+  1140→        if p.lahan == state.lahan then
+  1141→                state.semai = p.slots or {}
+  1142→                if currentPanel == "semai" then
+  1143→                        refreshSemai()
+  1144→                end
+  1145→        end
+  1146→end)
+  1147→
+  1148→Net.get("TanamSync").OnClientEvent:Connect(function(p)
+  1149→        state.tanam = p
+  1150→        if currentPanel == "tanam" and tabAktif == "tanam" then
+  1151→                refreshTanam()
+  1152→        end
+  1153→end)
+  1154→
+  1155→Net.get("GudangSync").OnClientEvent:Connect(function(p)
+  1156→        state.gudang = p
+  1157→        if currentPanel == "gudang" then
+  1158→                refreshGudang()
+  1159→        end
+  1160→end)
+  1161→
+  1162→Net.get("OpenPanel").OnClientEvent:Connect(function(name, payload)
+  1163→        if name == "semai" then
+  1164→                openPanel("semai")
+  1165→                refreshSemai()
+  1166→        elseif name == "toko" then
+  1167→                openPanel("toko")
+  1168→                refreshToko()
+  1169→        elseif name == "gerbang" then
+  1170→                openPanel("gerbang")
+  1171→        elseif name == "tanam" then
+  1172→                tamuMode = payload ~= nil and payload.tamu == true
+  1173→                openPanel("tanam")
+  1174→                setTab("tanam")
+  1175→        elseif name == "gudang" then
+  1176→                openPanel("gudang")
+  1177→                refreshGudang()
+  1178→        end
+  1179→end)
+  1180→
+  1181→task.spawn(function()
+  1182→        local st = Net.get("GetState"):InvokeServer()
+  1183→        if st then
+  1184→                state.micda = st.micda or 0
+  1185→                state.tas = st.tas or {}
+  1186→                state.lahan = st.lahan
+  1187→                state.zone = st.zone or "kota"
+  1188→                state.dunia = st.dunia
+  1189→                state.role = st.role or "hub"
+  1190→                angkaLabel.Text = fmt(state.micda)
+  1191→                if state.zone == "dunia" then
+  1192→                        zonaLabel.Text = "Dunia " .. tostring(state.dunia or "Petani")
+  1193→                        travelBtn.Text = "Pulang ke Kota"
+  1194→                else
+  1195→                        zonaLabel.Text = "Pusat Kota"
+  1196→                        travelBtn.Text = "Masuk Dunia-ku"
+  1197→                end
+  1198→                refreshTas()
+  1199→        end
+  1200→end)
+  1201→
+  1202→print("[AKIOMIDA] UI siap.")
+  1203→
+  1204→return true
+  1205→

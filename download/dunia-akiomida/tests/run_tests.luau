@@ -943,6 +943,30 @@ do
         end)(), "-")
 end
 
+print("--- N: Atur jual (jumlah sendiri + konfirmasi) ---")
+do
+        local JualLogic = require("./../src/Shared/JualLogic")
+        check("Jumlah sah diterima", JualLogic.saring("7", 50) == 7, "-")
+        check("Nol / negatif / pecahan ditolak", JualLogic.saring("0", 50) == nil and JualLogic.saring("-3", 50) == nil and JualLogic.saring("2.5", 50) == nil, "-")
+        check("Teks bukan angka ditolak", JualLogic.saring("abc", 50) == nil and JualLogic.saring("", 50) == nil, "-")
+        check("Jumlah dipotong ke stok maksimum", JualLogic.saring("99", 40) == 40, "-")
+        check("Stok kosong selalu ditolak", JualLogic.saring("1", 0) == nil and JualLogic.saring("1", nil) ~= nil, "-")
+        check("Total harga = unit x jumlah", JualLogic.total(87, 3) == 261, "-")
+end
+
+print("--- O: Punch tahan tombol (auto ulang) ---")
+do
+        local PukulAnim = require("./../src/Shared/PukulAnim")
+        check("Interval auto punch ada dan masuk akal", PukulAnim.Ulang >= 0.36 and PukulAnim.Ulang <= 0.5, tostring(PukulAnim.Ulang))
+        check("Interval aman dari cooldown server 0.35 dtk", PukulAnim.Ulang > 0.35, tostring(PukulAnim.Ulang))
+        local fw = PukulAnim.fase(0, 0.04)
+        check("Ayunan tinju dimulai angkat tangan ke belakang", fw.sudut < 0, tostring(fw.sudut))
+        local ft = PukulAnim.fase(0, 0.16)
+        check("Tinju menghantam ke depan di tengah ayunan", ft.sudut > 1, tostring(ft.sudut))
+        local fe = PukulAnim.fase(0, PukulAnim.Durasi * 0.96)
+        check("Ayunan kembali nol di akhir", math.abs(fe.sudut) < 0.02, tostring(fe.sudut))
+end
+
 print(("="):rep(28))
 print(string.format("HASIL: %d PASS, %d FAIL", passed, failed))
 if failed > 0 then

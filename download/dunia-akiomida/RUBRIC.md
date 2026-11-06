@@ -19,6 +19,83 @@ Skor per kriteria 0-10, dikali bobot. Total dihitung dari (skor x bobot) / 10.
 | 8 | Polish & UX (UI, suara, animasi, efek) | 10 | animasi kombat, BGM, partikel | UI rapi & responsif |
 | 9 | Originalitas 100% & aman hak cipta | 5 | - | - |
 
+## Skor v42 (versi LIVE #42, 6 Nov 2026) - PUNCH TAHAN TOMBOL + TINJU BOKS, ATUR JUAL BERKONFIRMASI, JALAN & TOKO DIHIAS
+
+Permintaan pemilik (pesan langsung): (1) tombol punch ditekan-tahan harus
+tetap memukul terus (sekarang satu-satu kurang efisien); (2) setiap pukulan
+harus terlihat tangannya bergerak seperti meninju — efek visual pukulan yang
+lama tidak nampak; (3) jalan menuju Toko Benih dihias pernak-pernik, jangan
+polos, desain lebih aesthetic; (4) bangunan toko juga lebih indah; (5) ganti
+"Jual 1" menjadi "Atur Jual" — pemain sendiri yang menentukan jumlahnya —
+dan WAJIB konfirmasi yes/no dulu, tidak boleh klik langsung terjual.
+
+Diterapkan di #42:
+
+A. **Punch tahan tombol (auto ulang)**: tombol PUNCH kini memakai
+   InputBegan/InputEnded, bukan Activated. Ditekan = langsung memukul;
+   ditahan = memukul berulang tiap 0,38 detik (PukulAnim.Ulang, di atas
+   kooldown server 0,35 dtk sehingga tidak pernah "Terlalu cepat") sampai
+   jari dilepas. Tap singkat tetap = satu pukulan. Combo & tier efek tetap
+   naik selama menahan. Rate limit server 10/dtk aman untuk laju ini.
+
+B. **Animasi tinju boks yang NAMPAK**: profil ayunan diganti — tangan
+   diangkat ke belakang dulu (fase windup, sudut negatif), lalu
+   dihantamkan cepat ke depan penuh (puncak 1,85 rad ≈ 106°), lalu kembali
+   nol tepat di akhir 0,32 dtk. Eksekusi dipindah ke
+   RunService:BindToRenderStep pada prioritas Character+1 sehingga gerakan
+   MENANG dari animasi default Roblox setiap frame (penyebab lama "efek
+   visualnya gak nampak"). Tinju bergantian tangan kanan-kiri secara
+   otomatis (kanan-kiri-kanan...), mendukung R15 (RightShoulder/
+   LeftShoulder) dan R6 (Right/Left Shoulder). Efek baru client-side:
+   jejak sabetan neon dari tangan ke sasaran + kilau memuai di titik kena
+   (makin besar saat tier kombo naik), di atas getar kamera & kick FOV
+   yang sudah ada.
+
+C. **Atur Jual + konfirmasi wajib**: tombol "Jual 1" diganti "Atur Jual"
+   — membuka modal dengan kotak jumlah (default 1), pratinjau langsung
+   "Jual N — total X Micda", tombol "Ya, Jual" / "Batal". Angka divalidasi
+   modul baru Shared/JualLogic (bukan angka/pecahan/nol/negatif ditolak,
+   dipotong ke stok, stok 0 selalu ditolak). "Jual Semua" juga kini lewat
+   konfirmasi yang sama. Uang & pengurangan barang tetap dihitung server.
+
+D. **Jalan ke Toko Benih dihias**: kedua sisi jalan pusat kota kini
+   berisi 6 bed bunga berbingkai batu (bunga 5 warna), 16 lindung semak,
+   4 pohon hias tiga bulatan, 2 bangku taman, 2 tiang bendera biru/emas
+   di depan toko, 4 lampu taman bercahaya hangat, dan gerbang rambate
+   kayu dengan 3 pot bunga gantung di ambang toko. Semua non-blocking
+   (CanCollide false kecuali tiang/bangku) agar jalur jalan tetap lega.
+
+E. **Bangunan Toko Benih lebih indah**: kanopi bergaris merah-krem di
+   atas pintu, kotak bunga jendela 12 bunga, 2 lentera dinding menyala,
+   2 bendera pennant di bubungan atap, lambang bundar merah-krem di
+   fasad atas, tali lampu bohlam 7 titik di teras, dan 2 pot tanaman
+   mengapit pintu.
+
+F. **Pengujian**: tes offline kini 262 PASS / 0 FAIL (seksi baru N
+   "Atur jual" 6 cek + O "Punch tahan tombol" 5 cek: interval 0,38 >
+   kooldown 0,35, ayunan mulai negatif, menghantam > 1 rad, kembali nol);
+   playtest penuh 130 PASS / 0 FAIL (penekanan tombol kini disimulasikan
+   sebagai sentuhan asli InputBegan+InputEnded; stub diisi
+   Enum.UserInputState, Enum.RenderPriority, RunService:BindToRenderStep,
+   Vector3.__div/one/zero, CFrame.lookAt); ujian massa panen 93 PASS /
+   0 FAIL (50 tanaman, kombo tier, ukuran drop per tier, tas penuh
+   melayang lalu terserap). luau-lsp 0 TypeError; rojo build sukses;
+   publish #42 (Open Cloud, versionNumber 42).
+
+| Kriteria | Skor | Catatan |
+|----------|------|---------|
+| 1 Kombat | 0/10 | Belum ada (sesuai urutan rencana). |
+| 2 Crafting | 3/10 | Combine Seed menu minimalis di papan (2 slot, tanpa petunjuk). |
+| 3 Stat & Progresi | 1/10 | Tanpa level (sesuai arah pemilik); soal matematika tetap gerbang tanam. |
+| 4 Ekonomi | 6.5/10 | Atur Jual (jumlah bebas + pratinjau total + konfirmasi) melengkapi alur jual-beli profesional; kedalaman ekonomi (pasar dinamis, toko pemain) belum ada. |
+| 5 Dunia & Peta | 7/10 | Naik dari 6: jalan kota & fasad toko kini dihias penuh (bunga, lindung, pohon, bendera, lampu, kanopi, lambang). Belum: rumah, air, dungeon. |
+| 6 Multiplayer | 6/10 | Kunjung instan/salinan, tamu read-only, kunci sesi; belum: trade, party. |
+| 7 Bertani | 10/10 | Sesuai "Lahanan": pohon tidak pernah hilang, hasil aman selama online, kedaluwarsa 15 menit setelah keluar, klaim atomik; alur massa panen teruji end-to-end. |
+| 8 Polish & UX | 10/10 | Naik dari 9.5: punch tahan tombol + tinju boks dua tangan yang benar-benar terlihat (prioritas render di atas animasi default) + jejak sabet & kilau kena; Atur Jual berkonfirmasi; popup gerbang tertutup otomatis. Sisa: BGM/ambience, uji perangkat fisik. |
+| 9 Originalitas | 10/10 | 100% karya sendiri; animasi via motor6d asli (bukan aset), semua hiasan dari part; tanpa aset/require luar. |
+
+**TOTAL: 53.25/100** (bobot: 0+45+10+97.5+70+60+100+100+50 = 532.5/10 = 53.25)
+
 ## Skor v41 (versi LIVE #41, 6 Nov 2026) - KONFIRMASI BELI + STRUK HASIL + POPUP GERBANG TERTUTUP + BADAI SYNC DIPERBAIKI
 
 Permintaan pemilik (pesan langsung): (1) beli pack common/rare tidak boleh

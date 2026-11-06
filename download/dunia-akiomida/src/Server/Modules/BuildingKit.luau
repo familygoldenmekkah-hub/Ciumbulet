@@ -381,6 +381,57 @@ function BuildingKit.buildToko(parent: Instance): Model
 
         BuildingKit.part(model, Vector3.new(0.2, 2.4, 0.2), CFrame.new(-4, 18.6, -8), DARKWOOD, Enum.Material.Wood).CanCollide = false
         BuildingKit.part(model, Vector3.new(0.2, 2.4, 0.2), CFrame.new(4, 18.6, -8), DARKWOOD, Enum.Material.Wood).CanCollide = false
+
+        for i = 0, 4 do
+                local strip = BuildingKit.part(model, Vector3.new(2.2, 0.3, 2.8), CFrame.new(-4.4 + i * 2.2, 11.4, fz - 1.2) * CFrame.Angles(math.rad(-16), 0, 0), (i % 2 == 0) and BRICKRED or CREAM, Enum.Material.Fabric)
+                strip.CanCollide = false
+        end
+        for sx = -1, 1, 2 do
+                local rod = BuildingKit.part(model, Vector3.new(0.22, 0.22, 2.4), CFrame.new(sx * 4.9, 10.1, fz - 1.3) * CFrame.Angles(math.rad(-24), 0, 0), DARKWOOD, Enum.Material.Wood)
+                rod.CanCollide = false
+        end
+        for sx = -1, 1, 2 do
+                local box = BuildingKit.part(model, Vector3.new(9, 1, 1.2), CFrame.new(sx * 10, 4.3, fz - 0.9), DARKWOOD, Enum.Material.Wood)
+                box.CanCollide = false
+                for i = 0, 5 do
+                        local bunga = BuildingKit.part(model, Vector3.new(0.6, 0.6, 0.6), CFrame.new(sx * 10 - 3.75 + i * 1.5, 5.15, fz - 0.9), (i % 2 == 0) and Color3.fromRGB(214, 92, 76) or Color3.fromRGB(226, 176, 64), Enum.Material.SmoothPlastic)
+                        bunga.Shape = Enum.PartType.Ball
+                        bunga.CanCollide = false
+                end
+        end
+        for sx = -1, 1, 2 do
+                BuildingKit.part(model, Vector3.new(0.3, 0.3, 0.9), CFrame.new(sx * 3.6, 7.8, fz - 0.4), DARKWOOD, Enum.Material.Wood).CanCollide = false
+                local badan = BuildingKit.part(model, Vector3.new(0.7, 1.1, 0.7), CFrame.new(sx * 3.6, 7.1, fz - 0.8), GLASS, Enum.Material.Glass, 0.35)
+                badan.CanCollide = false
+                local api = BuildingKit.part(model, Vector3.new(0.32, 0.5, 0.32), CFrame.new(sx * 3.6, 7, fz - 0.8), Color3.fromRGB(255, 214, 110), Enum.Material.Neon)
+                api.CanCollide = false
+                local cahaya = Instance.new("PointLight")
+                cahaya.Range = 10
+                cahaya.Brightness = 0.5
+                cahaya.Color = Color3.fromRGB(255, 224, 178)
+                cahaya.Parent = api
+        end
+        for sx = -1, 1, 2 do
+                BuildingKit.part(model, Vector3.new(0.3, 5, 0.3), CFrame.new(sx * 14, 33.9, 0), DARKWOOD, Enum.Material.Wood)
+                BuildingKit.part(model, Vector3.new(2, 0.9, 0.12), CFrame.new(sx * 15.2, 35.9, 0), BRICKRED, Enum.Material.SmoothPlastic).CanCollide = false
+                BuildingKit.part(model, Vector3.new(1.1, 0.6, 0.12), CFrame.new(sx * 15.6, 34.9, 0), CREAM, Enum.Material.SmoothPlastic).CanCollide = false
+        end
+        local emblem = BuildingKit.part(model, Vector3.new(0.4, 3.6, 3.6), CFrame.new(0, 17.5, fz - 0.7) * CFrame.Angles(0, math.rad(90), 0), BRICKRED, Enum.Material.SmoothPlastic)
+        emblem.CanCollide = false
+        local emblemIn = BuildingKit.part(model, Vector3.new(0.45, 2.1, 2.1), CFrame.new(0, 17.5, fz - 0.72) * CFrame.Angles(0, math.rad(90), 0), CREAM, Enum.Material.SmoothPlastic)
+        emblemIn.CanCollide = false
+        for sx = -1, 1, 2 do
+                BuildingKit.part(model, Vector3.new(0.3, 6.5, 0.3), CFrame.new(sx * 13, 4.2, -17.3), DARKWOOD, Enum.Material.Wood)
+        end
+        BuildingKit.part(model, Vector3.new(26.4, 0.12, 0.12), CFrame.new(0, 7.2, -17.3), DARKWOOD, Enum.Material.Wood).CanCollide = false
+        for i = 0, 6 do
+                local bohlam = BuildingKit.part(model, Vector3.new(0.34, 0.34, 0.34), CFrame.new(-9 + i * 3, 6.9, -17.3), (i % 2 == 0) and Color3.fromRGB(255, 224, 178) or Color3.fromRGB(255, 196, 120), Enum.Material.Neon)
+                bohlam.Shape = Enum.PartType.Ball
+                bohlam.CanCollide = false
+        end
+        potPlant(model, CFrame.new(-6.8, 0.5, fz - 2.2))
+        potPlant(model, CFrame.new(6.8, 0.5, fz - 2.2))
+
         BuildingKit.lamp(model, -12, 21, 0)
         BuildingKit.lamp(model, 0, 21, 0)
         BuildingKit.lamp(model, 12, 21, 0)

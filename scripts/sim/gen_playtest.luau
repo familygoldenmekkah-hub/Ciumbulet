@@ -87,6 +87,15 @@ end
 Vector3.__unm = function(a)
         return setmetatable({ x = -a.x, y = -a.y, z = -a.z }, Vector3)
 end
+Vector3.__div = function(a, b)
+        if type(a) == "number" then
+                return setmetatable({ x = a / b.x, y = a / b.y, z = a / b.z }, Vector3)
+        end
+        if type(b) == "number" then
+                return setmetatable({ x = a.x / b, y = a.y / b, z = a.z / b }, Vector3)
+        end
+        return setmetatable({ x = a.x / b.x, y = a.y / b.y, z = a.z / b.z }, Vector3)
+end
 Vector3.__eq = function(a, b)
         return a.x == b.x and a.y == b.y and a.z == b.z
 end
@@ -98,6 +107,8 @@ local function vec3(x, y, z)
         return setmetatable({ x = x or 0, y = y or 0, z = z or 0 }, Vector3)
 end
 Vector3.new = vec3
+Vector3.one = vec3(1, 1, 1)
+Vector3.zero = vec3(0, 0, 0)
 
 Vector2 = {}
 Vector2.__index = Vector2
@@ -195,6 +206,30 @@ function CFrame.Angles(rx, ry, rz)
                 return m
         end
         return mkcf(0, 0, 0, mulm(Rx, mulm(Ry, Rz)))
+end
+
+function CFrame.lookAt(pos, target)
+        local dx, dy, dz = target.x - pos.x, target.y - pos.y, target.z - pos.z
+        local pan = math.sqrt(dx * dx + dy * dy + dz * dz)
+        if pan < 1e-8 then
+                return mkcf(pos.x, pos.y, pos.z, nil)
+        end
+        local bx, by, bz = -dx / pan, -dy / pan, -dz / pan
+        local rx, ry, rz = bz, 0, -bx
+        local rpan = math.sqrt(rx * rx + ry * ry + rz * rz)
+        if rpan < 1e-8 then
+                rx, ry, rz = 1, 0, 0
+                rpan = 1
+        end
+        rx, ry, rz = rx / rpan, ry / rpan, rz / rpan
+        local ux = by * rz - bz * ry
+        local uy = bz * rx - bx * rz
+        local uz = bx * ry - by * rx
+        return mkcf(pos.x, pos.y, pos.z, {
+                { rx, ux, bx },
+                { ry, uy, by },
+                { rz, uz, bz },
+        })
 end
 
 function CFrame:Inverse()
@@ -303,6 +338,7 @@ Enum = {
         Font = makeEnum("Font", { "Gotham", "GothamBold", "GothamBlack", "Legacy" }),
         ZIndexBehavior = makeEnum("ZIndexBehavior", { "Sibling", "Global" }),
         UserInputType = makeEnum("UserInputType", { "MouseButton1", "Touch", "Keyboard" }),
+        UserInputState = makeEnum("UserInputState", { "Begin", "Change", "End" }),
         RaycastFilterType = makeEnum("RaycastFilterType", { "Exclude", "Include" }),
         TextXAlignment = makeEnum("TextXAlignment", { "Left", "Center", "Right" }),
         TextYAlignment = makeEnum("TextYAlignment", { "Top", "Center", "Bottom" }),
@@ -316,7 +352,13 @@ Enum = {
         TextTruncate = makeEnum("TextTruncate", { "None", "AtEnd" }),
         FillDirection = makeEnum("FillDirection", { "Horizontal", "Vertical" }),
         HighlightDepthMode = makeEnum("HighlightDepthMode", { "AlwaysOnTop", "Occluded" }),
+        RenderPriority = makeEnum("RenderPriority", { "First", "Input", "Camera", "Character", "Last" }),
 }
+Enum.RenderPriority.First.Value = 0
+Enum.RenderPriority.Input.Value = 100
+Enum.RenderPriority.Camera.Value = 200
+Enum.RenderPriority.Character.Value = 300
+Enum.RenderPriority.Last.Value = 2000
 
 task = {}
 
@@ -809,6 +851,12 @@ function Stub.install()
         __SIM_IS_SERVER = true
         function RunService:IsServer()
                 return __SIM_IS_SERVER
+        end
+        function RunService:BindToRenderStep(name, priority, fn)
+                return nil
+        end
+        function RunService:UnbindFromRenderStep(name)
+                return nil
         end
 
         local UserInputService = Instance.new("UserInputService")
@@ -1728,37 +1776,43 @@ local PukulAnim = {}
 
 PukulAnim.Durasi = 0.32
 PukulAnim.MomenKena = 0.12
-PukulAnim.Ayunan = 1.55
+PukulAnim.Ayunan = 1.85
+PukulAnim.Ulang = 0.38
 
 export type Fase = { memukul: boolean, kena: boolean, p: number, sudut: number }
 
 function PukulAnim.fase(t0: number, t: number): Fase
-        local dt = t - t0
-        if dt < 0 or dt > PukulAnim.Durasi then
-                return { memukul = false, kena = false, p = 0, sudut = 0 }
-        end
-        local p = dt / PukulAnim.Durasi
-        local gel = math.sin(p * math.pi)
-        return {
-                memukul = true,
-                kena = dt >= PukulAnim.MomenKena,
-                p = p,
-                sudut = gel * PukulAnim.Ayunan,
-        }
+	local dt = t - t0
+	if dt < 0 or dt > PukulAnim.Durasi then
+		return { memukul = false, kena = false, p = 0, sudut = 0 }
+	end
+	local p = dt / PukulAnim.Durasi
+	local sudut
+	if p < 0.24 then
+		sudut = -0.45 * PukulAnim.Ayunan * math.sin(math.pi * p / 0.24)
+	else
+		sudut = PukulAnim.Ayunan * math.sin(math.pi * (p - 0.24) / 0.72)
+	end
+	return {
+		memukul = true,
+		kena = dt >= PukulAnim.MomenKena,
+		p = p,
+		sudut = sudut,
+	}
 end
 
 function PukulAnim.mulaiUlang(t0Lama: number?, t: number): number
-        return t
+	return t
 end
 
 function PukulAnim.getar(tier: number): number
-        local t = tier or 1
-        if t < 1 then
-                t = 1
-        elseif t > 3 then
-                t = 3
-        end
-        return 0.35 + 0.25 * (t - 1)
+	local t = tier or 1
+	if t < 1 then
+		t = 1
+	elseif t > 3 then
+		t = 3
+	end
+	return 0.35 + 0.25 * (t - 1)
 end
 
 return PukulAnim
@@ -3107,6 +3161,57 @@ function BuildingKit.buildToko(parent: Instance): Model
 
         BuildingKit.part(model, Vector3.new(0.2, 2.4, 0.2), CFrame.new(-4, 18.6, -8), DARKWOOD, Enum.Material.Wood).CanCollide = false
         BuildingKit.part(model, Vector3.new(0.2, 2.4, 0.2), CFrame.new(4, 18.6, -8), DARKWOOD, Enum.Material.Wood).CanCollide = false
+
+        for i = 0, 4 do
+                local strip = BuildingKit.part(model, Vector3.new(2.2, 0.3, 2.8), CFrame.new(-4.4 + i * 2.2, 11.4, fz - 1.2) * CFrame.Angles(math.rad(-16), 0, 0), (i % 2 == 0) and BRICKRED or CREAM, Enum.Material.Fabric)
+                strip.CanCollide = false
+        end
+        for sx = -1, 1, 2 do
+                local rod = BuildingKit.part(model, Vector3.new(0.22, 0.22, 2.4), CFrame.new(sx * 4.9, 10.1, fz - 1.3) * CFrame.Angles(math.rad(-24), 0, 0), DARKWOOD, Enum.Material.Wood)
+                rod.CanCollide = false
+        end
+        for sx = -1, 1, 2 do
+                local box = BuildingKit.part(model, Vector3.new(9, 1, 1.2), CFrame.new(sx * 10, 4.3, fz - 0.9), DARKWOOD, Enum.Material.Wood)
+                box.CanCollide = false
+                for i = 0, 5 do
+                        local bunga = BuildingKit.part(model, Vector3.new(0.6, 0.6, 0.6), CFrame.new(sx * 10 - 3.75 + i * 1.5, 5.15, fz - 0.9), (i % 2 == 0) and Color3.fromRGB(214, 92, 76) or Color3.fromRGB(226, 176, 64), Enum.Material.SmoothPlastic)
+                        bunga.Shape = Enum.PartType.Ball
+                        bunga.CanCollide = false
+                end
+        end
+        for sx = -1, 1, 2 do
+                BuildingKit.part(model, Vector3.new(0.3, 0.3, 0.9), CFrame.new(sx * 3.6, 7.8, fz - 0.4), DARKWOOD, Enum.Material.Wood).CanCollide = false
+                local badan = BuildingKit.part(model, Vector3.new(0.7, 1.1, 0.7), CFrame.new(sx * 3.6, 7.1, fz - 0.8), GLASS, Enum.Material.Glass, 0.35)
+                badan.CanCollide = false
+                local api = BuildingKit.part(model, Vector3.new(0.32, 0.5, 0.32), CFrame.new(sx * 3.6, 7, fz - 0.8), Color3.fromRGB(255, 214, 110), Enum.Material.Neon)
+                api.CanCollide = false
+                local cahaya = Instance.new("PointLight")
+                cahaya.Range = 10
+                cahaya.Brightness = 0.5
+                cahaya.Color = Color3.fromRGB(255, 224, 178)
+                cahaya.Parent = api
+        end
+        for sx = -1, 1, 2 do
+                BuildingKit.part(model, Vector3.new(0.3, 5, 0.3), CFrame.new(sx * 14, 33.9, 0), DARKWOOD, Enum.Material.Wood)
+                BuildingKit.part(model, Vector3.new(2, 0.9, 0.12), CFrame.new(sx * 15.2, 35.9, 0), BRICKRED, Enum.Material.SmoothPlastic).CanCollide = false
+                BuildingKit.part(model, Vector3.new(1.1, 0.6, 0.12), CFrame.new(sx * 15.6, 34.9, 0), CREAM, Enum.Material.SmoothPlastic).CanCollide = false
+        end
+        local emblem = BuildingKit.part(model, Vector3.new(0.4, 3.6, 3.6), CFrame.new(0, 17.5, fz - 0.7) * CFrame.Angles(0, math.rad(90), 0), BRICKRED, Enum.Material.SmoothPlastic)
+        emblem.CanCollide = false
+        local emblemIn = BuildingKit.part(model, Vector3.new(0.45, 2.1, 2.1), CFrame.new(0, 17.5, fz - 0.72) * CFrame.Angles(0, math.rad(90), 0), CREAM, Enum.Material.SmoothPlastic)
+        emblemIn.CanCollide = false
+        for sx = -1, 1, 2 do
+                BuildingKit.part(model, Vector3.new(0.3, 6.5, 0.3), CFrame.new(sx * 13, 4.2, -17.3), DARKWOOD, Enum.Material.Wood)
+        end
+        BuildingKit.part(model, Vector3.new(26.4, 0.12, 0.12), CFrame.new(0, 7.2, -17.3), DARKWOOD, Enum.Material.Wood).CanCollide = false
+        for i = 0, 6 do
+                local bohlam = BuildingKit.part(model, Vector3.new(0.34, 0.34, 0.34), CFrame.new(-9 + i * 3, 6.9, -17.3), (i % 2 == 0) and Color3.fromRGB(255, 224, 178) or Color3.fromRGB(255, 196, 120), Enum.Material.Neon)
+                bohlam.Shape = Enum.PartType.Ball
+                bohlam.CanCollide = false
+        end
+        potPlant(model, CFrame.new(-6.8, 0.5, fz - 2.2))
+        potPlant(model, CFrame.new(6.8, 0.5, fz - 2.2))
+
         BuildingKit.lamp(model, -12, 21, 0)
         BuildingKit.lamp(model, 0, 21, 0)
         BuildingKit.lamp(model, 12, 21, 0)
@@ -4694,6 +4799,13 @@ local GRASS = Color3.fromRGB(106, 148, 79)
 local PATH = Color3.fromRGB(168, 162, 150)
 local MARKER_A = Color3.fromRGB(120, 180, 220)
 local MARKER_B = Color3.fromRGB(220, 170, 90)
+local BUNGA = {
+        Color3.fromRGB(232, 96, 84),
+        Color3.fromRGB(240, 190, 70),
+        Color3.fromRGB(150, 190, 240),
+        Color3.fromRGB(226, 120, 200),
+        Color3.fromRGB(240, 240, 240),
+}
 
 local function groundTop(): number
         return 1
@@ -4756,6 +4868,84 @@ local function signBoard(parent: Instance, x: number, z: number, gt: number, tex
         label.Parent = gui
         gui.Parent = board
         return board
+end
+
+local function bedBunga(folder: Instance, x: number, z: number, gt: number, w: number, d: number, bibit: number)
+        for _, sx in ipairs({ -1, 1 }) do
+                local tepi1 = BuildingKit.part(folder, Vector3.new(w + 0.8, 0.9, 0.5), CFrame.new(x, gt + 0.45, z + sx * d / 2), Color3.fromRGB(168, 160, 148), Enum.Material.Concrete)
+                tepi1.CanCollide = false
+                local tepi2 = BuildingKit.part(folder, Vector3.new(0.5, 0.9, d + 0.8), CFrame.new(x + sx * w / 2, gt + 0.45, z), Color3.fromRGB(168, 160, 148), Enum.Material.Concrete)
+                tepi2.CanCollide = false
+        end
+        BuildingKit.part(folder, Vector3.new(w, 0.5, d), CFrame.new(x, gt + 0.55, z), Color3.fromRGB(84, 62, 44), Enum.Material.Ground).CanCollide = false
+        for i = 0, bibit - 1 do
+                local fx = x - w / 2 + (w / bibit) * (i + 0.5)
+                local fz = z + (((i % 2) == 0) and -d / 4 or d / 4)
+                BuildingKit.part(folder, Vector3.new(0.16, 0.6, 0.16), CFrame.new(fx, gt + 1.05, fz), Color3.fromRGB(74, 128, 60), Enum.Material.Grass).CanCollide = false
+                local b = BuildingKit.part(folder, Vector3.new(0.55, 0.55, 0.55), CFrame.new(fx, gt + 1.45, fz), BUNGA[(i + math.floor(x) + math.floor(z)) % #BUNGA + 1], Enum.Material.SmoothPlastic)
+                b.Shape = Enum.PartType.Ball
+                b.CanCollide = false
+        end
+end
+
+local function pohonHias(folder: Instance, x: number, z: number, gt: number)
+        BuildingKit.part(folder, Vector3.new(1.6, 7, 1.6), CFrame.new(x, gt + 3.5, z), Color3.fromRGB(112, 80, 52), Enum.Material.Wood)
+        local a = BuildingKit.part(folder, Vector3.new(6.4, 6.4, 6.4), CFrame.new(x, gt + 8.6, z), Color3.fromRGB(66, 118, 58), Enum.Material.Grass)
+        a.Shape = Enum.PartType.Ball
+        a.CanCollide = false
+        local b = BuildingKit.part(folder, Vector3.new(4.2, 4.2, 4.2), CFrame.new(x + 1.7, gt + 10.4, z + 1.1), Color3.fromRGB(84, 140, 70), Enum.Material.Grass)
+        b.Shape = Enum.PartType.Ball
+        b.CanCollide = false
+        local c = BuildingKit.part(folder, Vector3.new(3.4, 3.4, 3.4), CFrame.new(x - 1.8, gt + 9.9, z - 1.2), Color3.fromRGB(92, 150, 76), Enum.Material.Grass)
+        c.Shape = Enum.PartType.Ball
+        c.CanCollide = false
+end
+
+local function bangkuTaman(folder: Instance, x: number, z: number, gt: number, yaw: number)
+        local cf = CFrame.new(x, gt, z) * CFrame.Angles(0, yaw, 0)
+        BuildingKit.part(folder, Vector3.new(4.4, 0.4, 1.6), cf * CFrame.new(0, 1.5, 0), BuildingKit.FLOORWOOD, Enum.Material.WoodPlanks)
+        BuildingKit.part(folder, Vector3.new(4.4, 1.5, 0.3), cf * CFrame.new(0, 2.4, -0.65), BuildingKit.FLOORWOOD, Enum.Material.WoodPlanks)
+        BuildingKit.part(folder, Vector3.new(0.4, 1.5, 1.4), cf * CFrame.new(-1.8, 0.75, 0), BuildingKit.DARKWOOD, Enum.Material.Wood)
+        BuildingKit.part(folder, Vector3.new(0.4, 1.5, 1.4), cf * CFrame.new(1.8, 0.75, 0), BuildingKit.DARKWOOD, Enum.Material.Wood)
+end
+
+local function tiangBendera(folder: Instance, x: number, z: number, gt: number, arah: number, warnaBendera: Color3)
+        BuildingKit.part(folder, Vector3.new(0.4, 9, 0.4), CFrame.new(x, gt + 4.5, z), BuildingKit.DARKWOOD, Enum.Material.Wood)
+        BuildingKit.part(folder, Vector3.new(2.2, 1.1, 0.14), CFrame.new(x + arah * 1.3, gt + 8.2, z), warnaBendera, Enum.Material.SmoothPlastic).CanCollide = false
+        BuildingKit.part(folder, Vector3.new(1.2, 0.7, 0.14), CFrame.new(x + arah * 1.75, gt + 7.2, z), warnaBendera, Enum.Material.SmoothPlastic).CanCollide = false
+end
+
+local function lampuTaman(folder: Instance, x: number, z: number, gt: number)
+        BuildingKit.part(folder, Vector3.new(0.5, 3.2, 0.5), CFrame.new(x, gt + 1.6, z), BuildingKit.DARKWOOD, Enum.Material.Wood)
+        local kepala = BuildingKit.part(folder, Vector3.new(0.8, 0.8, 0.8), CFrame.new(x, gt + 3.6, z), Color3.fromRGB(255, 224, 178), Enum.Material.Neon)
+        kepala.Shape = Enum.PartType.Ball
+        kepala.CanCollide = false
+        local cahaya = Instance.new("PointLight")
+        cahaya.Range = 12
+        cahaya.Brightness = 0.45
+        cahaya.Color = Color3.fromRGB(255, 224, 178)
+        cahaya.Parent = kepala
+end
+
+local function lindung(folder: Instance, x: number, z: number, gt: number, panjang: number, yaw: number)
+        local cf = CFrame.new(x, gt, z) * CFrame.Angles(0, yaw, 0)
+        BuildingKit.part(folder, Vector3.new(panjang, 2.2, 1.6), cf * CFrame.new(0, 1.5, 0), Color3.fromRGB(74, 122, 62), Enum.Material.Grass).CanCollide = false
+        BuildingKit.part(folder, Vector3.new(panjang, 0.5, 1.7), cf * CFrame.new(0, 2.75, 0), Color3.fromRGB(88, 140, 72), Enum.Material.Grass).CanCollide = false
+end
+
+local function gerbangRambate(folder: Instance, x: number, z: number, gt: number)
+        BuildingKit.part(folder, Vector3.new(0.8, 8, 0.8), CFrame.new(x - 6.5, gt + 4, z), BuildingKit.DARKWOOD, Enum.Material.Wood)
+        BuildingKit.part(folder, Vector3.new(0.8, 8, 0.8), CFrame.new(x + 6.5, gt + 4, z), BuildingKit.DARKWOOD, Enum.Material.Wood)
+        BuildingKit.part(folder, Vector3.new(14.5, 0.8, 1.2), CFrame.new(x, gt + 8.2, z), BuildingKit.DARKWOOD, Enum.Material.Wood)
+        for i = -1, 1 do
+                local bx = x + i * 4.2
+                BuildingKit.part(folder, Vector3.new(0.12, 1.4, 0.12), CFrame.new(bx, gt + 7.1, z), BuildingKit.DARKWOOD, Enum.Material.Wood).CanCollide = false
+                local pot = BuildingKit.part(folder, Vector3.new(1.2, 1, 1.2), CFrame.new(bx, gt + 5.9, z), Color3.fromRGB(172, 96, 66), Enum.Material.SmoothPlastic)
+                pot.CanCollide = false
+                local bunga = BuildingKit.part(folder, Vector3.new(0.9, 0.9, 0.9), CFrame.new(bx, gt + 6.65, z), BUNGA[i + 2], Enum.Material.SmoothPlastic)
+                bunga.Shape = Enum.PartType.Ball
+                bunga.CanCollide = false
+        end
 end
 
 local function buildPapan(folder: Instance, x: number, z: number, gt: number, index: number, hooks)
@@ -4942,6 +5132,36 @@ function WorldBuilder.buildHub(hooks)
         BuildingKit.streetLamp(root, -8, gt, 32)
         BuildingKit.streetLamp(root, 8, gt, -30)
         BuildingKit.streetLamp(root, -8, gt, -30)
+
+        for _, sx in ipairs({ -1, 1 }) do
+                lindung(root, sx * 7.4, 48, gt, 5, math.pi / 2)
+                lindung(root, sx * 7.4, 44, gt, 5, math.pi / 2)
+                lindung(root, sx * 7.4, 20, gt, 5, math.pi / 2)
+                lindung(root, sx * 7.4, 16, gt, 5, math.pi / 2)
+                lindung(root, sx * 7.4, -6, gt, 5, math.pi / 2)
+                lindung(root, sx * 7.4, -10, gt, 5, math.pi / 2)
+                lindung(root, sx * 7.4, -26, gt, 5, math.pi / 2)
+                lindung(root, sx * 7.4, -35, gt, 5, math.pi / 2)
+        end
+        bedBunga(root, -8, 40, gt, 5, 2.4, 4)
+        bedBunga(root, 8, 24, gt, 5, 2.4, 4)
+        bedBunga(root, -8, 12, gt, 5, 2.4, 5)
+        bedBunga(root, 8, 0, gt, 5, 2.4, 4)
+        bedBunga(root, -8, -14, gt, 5, 2.4, 5)
+        bedBunga(root, 8, -24, gt, 5, 2.4, 4)
+        pohonHias(root, -13, 36, gt)
+        pohonHias(root, 13, 36, gt)
+        pohonHias(root, -13, -12, gt)
+        pohonHias(root, 13, -12, gt)
+        bangkuTaman(root, -7.5, -40, gt, math.pi / 2)
+        bangkuTaman(root, 7.5, -40, gt, -math.pi / 2)
+        tiangBendera(root, -5.5, -43, gt, -1, MARKER_A)
+        tiangBendera(root, 5.5, -43, gt, 1, MARKER_B)
+        lampuTaman(root, -9.5, 46, gt)
+        lampuTaman(root, 9.5, 46, gt)
+        lampuTaman(root, -9.5, -20, gt)
+        lampuTaman(root, 9.5, -20, gt)
+        gerbangRambate(root, 0, -38, gt)
 
         return root
 end
@@ -6107,6 +6327,7 @@ local KontrolHP = MOD_KontrolHP
 local HUDLayout = MOD_HUDLayout
 local DropBentuk = MOD_DropBentuk
 local IkonJempol = MOD_IkonJempol
+local JualLogic = MOD_JualLogic
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -6452,28 +6673,34 @@ local function syncState()
 end
 
 masukBtn.Activated:Connect(function()
-        local ok, msg = Net.get("DuniaAct"):InvokeServer("masuk")
-        if ok then
-                closePanel()
-                syncState()
-        end
-        toast(ok and "Gerbang Dunia" or "Gagal", msg)
+        closePanel()
+        task.spawn(function()
+                local ok, msg = Net.get("DuniaAct"):InvokeServer("masuk")
+                toast(ok and "Gerbang Dunia" or "Gagal", msg)
+                if ok then
+                        syncState()
+                end
+        end)
 end)
 pulangBtn.Activated:Connect(function()
-        local ok, msg = Net.get("DuniaAct"):InvokeServer("pulang")
-        if ok then
-                closePanel()
-                syncState()
-        end
-        toast(ok and "Pulang" or "Gagal", msg)
+        closePanel()
+        task.spawn(function()
+                local ok, msg = Net.get("DuniaAct"):InvokeServer("pulang")
+                toast(ok and "Pulang" or "Gagal", msg)
+                if ok then
+                        syncState()
+                end
+        end)
 end)
 kunjungiBtn.Activated:Connect(function()
-        local ok, msg = Net.get("DuniaAct"):InvokeServer("kunjungi", kunjungiNama.Text)
-        if ok then
-                closePanel()
-                syncState()
-        end
-        toast(ok and "Kunjungan" or "Gagal", msg)
+        closePanel()
+        task.spawn(function()
+                local ok, msg = Net.get("DuniaAct"):InvokeServer("kunjungi", kunjungiNama.Text)
+                toast(ok and "Kunjungan" or "Gagal", msg)
+                if ok then
+                        syncState()
+                end
+        end)
 end)
 
 travelBtn.Activated:Connect(function()
@@ -6559,6 +6786,78 @@ round(tokoBuy)
 local tokoSell = mk("ScrollingFrame", { Size = UDim2.new(1, -8, 1, -112), Position = UDim2.new(0, 4, 0, 106), BackgroundColor3 = warna(UIStyle.Permukaan), ScrollBarThickness = 6, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(0, 0, 0, 0) }, tokoPanel)
 mk("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, tokoSell)
 
+local jualDim = mk("Frame", { Name = "ModalJual", Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.5, Visible = false }, gui)
+local jualBox = mk("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.5, 0), Size = UDim2.new(0.88, 0, 0, 252), BackgroundColor3 = warna(UIStyle.Latar) }, jualDim)
+round(jualBox, 12)
+mk("UISizeConstraint", { MinSize = Vector2.new(280, 220), MaxSize = Vector2.new(420, 340) }, jualBox)
+local jualTitle = mk("TextLabel", { Size = UDim2.new(1, -24, 0, 30), Position = UDim2.new(0, 12, 0, 10), BackgroundTransparency = 1, Text = "Atur Jual", TextSize = UIStyle.UkuranJudul, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left }, jualBox)
+local jualInfo = mk("TextLabel", { Size = UDim2.new(1, -24, 0, 40), Position = UDim2.new(0, 12, 0, 44), BackgroundTransparency = 1, Text = "", TextSize = UIStyle.UkuranIsi, Font = FON, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true }, jualBox)
+local jualQty = mk("TextBox", { Size = UDim2.new(1, -24, 0, 40), Position = UDim2.new(0, 12, 0, 94), BackgroundColor3 = warna(UIStyle.Permukaan), Text = "1", PlaceholderText = "Tulis jumlah yang dijual", TextSize = UIStyle.UkuranIsi, Font = FON, TextColor3 = warna(UIStyle.Teks), ClearTextOnFocus = false }, jualBox)
+round(jualQty, UIStyle.SudutKecil)
+local jualPreview = mk("TextLabel", { Size = UDim2.new(1, -24, 0, 24), Position = UDim2.new(0, 12, 0, 140), BackgroundTransparency = 1, Text = "", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Aksen), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, jualBox)
+local jualYa = mk("TextButton", { Size = UDim2.new(0.5, -9, 0, 42), Position = UDim2.new(0, 12, 1, -54), BackgroundColor3 = warna(UIStyle.Hijau), Text = "Ya, Jual", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = Color3.new(1, 1, 1) }, jualBox)
+round(jualYa, UIStyle.SudutKecil)
+local jualBatal = mk("TextButton", { Size = UDim2.new(0.5, -9, 0, 42), Position = UDim2.new(0.5, 9, 1, -54), BackgroundColor3 = warna(UIStyle.PermukaanAktif), Text = "Batal", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks) }, jualBox)
+round(jualBatal, UIStyle.SudutKecil)
+
+local jualAktif: { id: string, mode: string, maks: number, unit: number }? = nil
+
+local function perbaruiJual()
+        local a = jualAktif
+        if not a then
+                return
+        end
+        local n = JualLogic.saring(jualQty.Text, a.maks)
+        if n then
+                jualPreview.Text = "Jual " .. tostring(n) .. " — total " .. fmt(JualLogic.total(a.unit, n)) .. " Micda"
+        else
+                jualPreview.Text = "Tulis jumlah 1 sampai " .. tostring(a.maks)
+        end
+end
+
+local function bukaJual(s: any, mode: string)
+        local info = CropData.byId[s.id]
+        if not info or s.kind ~= "hasil" or s.count < 1 then
+                return
+        end
+        jualAktif = { id = s.id, mode = mode, maks = s.count, unit = info.jual }
+        jualTitle.Text = mode == "atur" and "Atur Jual" or "Jual Semua"
+        jualInfo.Text = UIStyle.potong(info.nama, 24) .. " x" .. tostring(s.count) .. " — " .. tostring(info.jual) .. " Micda/unit"
+        jualQty.Visible = mode == "atur"
+        jualQty.Text = mode == "atur" and "1" or tostring(s.count)
+        perbaruiJual()
+        jualDim.Visible = true
+end
+
+jualQty:GetPropertyChangedSignal("Text"):Connect(perbaruiJual)
+jualBatal.Activated:Connect(function()
+        jualAktif = nil
+        jualDim.Visible = false
+end)
+jualYa.Activated:Connect(function()
+        local a = jualAktif
+        if not a then
+                return
+        end
+        local n = JualLogic.saring(jualQty.Text, a.maks)
+        if a.mode == "atur" then
+                if not n then
+                        return
+                end
+        else
+                n = a.maks
+        end
+        jualAktif = nil
+        jualDim.Visible = false
+        task.spawn(function()
+                local ok, msg = Net.get("ShopAct"):InvokeServer("sell", a.id, n)
+                toast(ok and "Terjual" or "Gagal", msg)
+                if ok then
+                        syncState()
+                end
+        end)
+end)
+
 local function refreshToko()
         bersihkan(tokoSell)
         local order = 0
@@ -6569,13 +6868,11 @@ local function refreshToko()
                         order += 1
                         local info = CropData.byId[s.id]
                         local holder = actionBtn(tokoSell, (info and info.nama or s.id) .. " x" .. s.count .. " — " .. (info and info.jual or 0) .. " Micda/unit", order)
-                        subBtn(holder, "Jual 1", 0, 0.34, warna(UIStyle.Hijau), function()
-                                local ok, msg = Net.get("ShopAct"):InvokeServer("sell", s.id, 1)
-                                toast(ok and "Terjual" or "Gagal", msg)
+                        subBtn(holder, "Atur Jual", 0, 0.34, warna(UIStyle.Hijau), function()
+                                bukaJual(s, "atur")
                         end)
                         subBtn(holder, "Jual Semua", 0.34, 0.33, warna(UIStyle.Hijau), function()
-                                local ok, msg = Net.get("ShopAct"):InvokeServer("sell", s.id)
-                                toast(ok and "Terjual" or "Gagal", msg)
+                                bukaJual(s, "semua")
                         end)
                 end
         end
@@ -7059,8 +7356,12 @@ end)
 
 local punchTarget: number? = nil
 local animT0: number? = nil
-local motorSaat: Motor6D? = nil
+local motorKanan: Motor6D? = nil
+local motorKiri: Motor6D? = nil
+local punchSisi = 1
+local punchSisiAktif = 1
 local shakeT0: number? = nil
+local pegangPunch = false
 local punchN, punchT = 0, 0
 local punchTier = 1
 
@@ -7096,6 +7397,88 @@ local function kandidat(folder: Folder): { any }
                 end
         end
         return daftar
+end
+
+local function cariMotor(kanan: boolean): Motor6D?
+        local char = player.Character
+        if not char then
+                return nil
+        end
+        local m = char:FindFirstChild(kanan and "RightShoulder" or "LeftShoulder", true)
+        if not m then
+                m = char:FindFirstChild(kanan and "Right Shoulder" or "Left Shoulder", true)
+        end
+        if m and m:IsA("Motor6D") then
+                return m :: Motor6D
+        end
+        return nil
+end
+
+local function resetMotor(m: Motor6D?)
+        if m and m.Parent then
+                m.Transform = CFrame.new()
+        end
+end
+
+local function posisiTangan(kanan: boolean): Vector3?
+        local char = player.Character
+        if not char then
+                return nil
+        end
+        for _, n in ipairs(kanan and { "RightHand", "Right Arm" } or { "LeftHand", "Left Arm" }) do
+                local p = char:FindFirstChild(n)
+                if p and p:IsA("BasePart") then
+                        return (p :: BasePart).Position
+                end
+        end
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if root and root:IsA("BasePart") then
+                return (root :: BasePart).Position
+        end
+        return nil
+end
+
+local function fxKilau(pos: Vector3, tier: number)
+        local bola = Instance.new("Part")
+        bola.Shape = Enum.PartType.Ball
+        bola.Material = Enum.Material.Neon
+        bola.Color = warna(UIStyle.Kuning)
+        bola.Size = Vector3.one * (0.9 + 0.4 * tier)
+        bola.CFrame = CFrame.new(pos)
+        bola.Anchored = true
+        bola.CanCollide = false
+        bola.CanQuery = false
+        bola.CanTouch = false
+        bola.Parent = Workspace
+        local tw = TweenService:Create(bola, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = Vector3.one * (2.6 + 1.4 * tier), Transparency = 1 })
+        tw.Completed:Connect(function()
+                bola:Destroy()
+        end)
+        tw:Play()
+end
+
+local function fxSabetan(dari: Vector3, ke: Vector3, tier: number)
+        local v = ke - dari
+        local pan = v.Magnitude
+        if pan < 0.5 then
+                return
+        end
+        local garis = Instance.new("Part")
+        garis.Material = Enum.Material.Neon
+        garis.Color = Color3.fromRGB(255, 244, 214)
+        garis.Size = Vector3.new(0.26 + 0.08 * tier, 0.26 + 0.08 * tier, pan)
+        garis.CFrame = CFrame.lookAt((dari + ke) / 2, ke)
+        garis.Anchored = true
+        garis.CanCollide = false
+        garis.CanQuery = false
+        garis.CanTouch = false
+        garis.Transparency = 0.35
+        garis.Parent = Workspace
+        local tw = TweenService:Create(garis, TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Transparency = 1 })
+        tw.Completed:Connect(function()
+                garis:Destroy()
+        end)
+        tw:Play()
 end
 
 task.spawn(function()
@@ -7135,7 +7518,7 @@ task.spawn(function()
         end
 end)
 
-RunService.RenderStepped:Connect(function()
+RunService:BindToRenderStep("DuniaPunchAnim", Enum.RenderPriority.Character.Value + 1, function()
         local t = os.clock()
         if shakeT0 and t - shakeT0 < 0.09 then
                 local g = PukulAnim.getar(punchTier)
@@ -7146,31 +7529,39 @@ RunService.RenderStepped:Connect(function()
         end
         local f = PukulAnim.fase(animT0, t)
         if not f.memukul then
-                if motorSaat and motorSaat.Parent then
-                        motorSaat.Transform = CFrame.new()
-                end
-                motorSaat = nil
+                resetMotor(motorKanan)
+                resetMotor(motorKiri)
+                motorKanan, motorKiri = nil, nil
                 animT0 = nil
                 return
         end
-        if not motorSaat or motorSaat.Parent == nil then
-                local char = player.Character
-                if char then
-                        motorSaat = (char:FindFirstChild("RightShoulder", true) or char:FindFirstChild("Right Shoulder", true)) :: Motor6D?
-                end
+        if motorKanan == nil or motorKanan.Parent == nil then
+                motorKanan = cariMotor(true)
         end
-        if motorSaat then
-                if motorSaat.Name == "Right Shoulder" then
-                        motorSaat.Transform = CFrame.Angles(0, 0, -f.sudut)
+        if motorKiri == nil or motorKiri.Parent == nil then
+                motorKiri = cariMotor(false)
+        end
+        local aktif = punchSisiAktif == 1 and motorKanan or motorKiri
+        local nonaktif = punchSisiAktif == 1 and motorKiri or motorKanan
+        resetMotor(nonaktif)
+        if aktif then
+                if aktif.Name == "Right Shoulder" then
+                        aktif.Transform = CFrame.Angles(0, 0, -f.sudut)
+                elseif aktif.Name == "Left Shoulder" then
+                        aktif.Transform = CFrame.Angles(0, 0, f.sudut)
+                elseif aktif.Name == "LeftShoulder" then
+                        aktif.Transform = CFrame.Angles(f.sudut, 0, 0)
                 else
-                        motorSaat.Transform = CFrame.Angles(-f.sudut, 0, 0)
+                        aktif.Transform = CFrame.Angles(-f.sudut, 0, 0)
                 end
         end
 end)
 
-punchBtn.Activated:Connect(function()
+local function eksekusiPunch()
         local t = os.clock()
-        animT0 = PukulAnim.mulaiUlang(animT0, t)
+        animT0 = t
+        punchSisiAktif = punchSisi
+        punchSisi = punchSisi == 1 and 2 or 1
         if t - punchT <= 4 then
                 punchN += 1
         else
@@ -7186,11 +7577,51 @@ punchBtn.Activated:Connect(function()
                 camera.FieldOfView = awal
         end)
         local target = punchTarget
+        local kanan = punchSisiAktif == 1
         task.delay(PukulAnim.MomenKena, function()
+                local folder = state.zone == "dunia" and state.lahan and folderTanaman() or nil
+                local titik: Vector3? = nil
+                if folder and type(target) == "number" then
+                        local m = folder:FindFirstChild("Tanaman_" .. tostring(target))
+                        if m and m:IsA("Model") then
+                                titik = m:GetPivot().Position + Vector3.new(0, 1.1, 0)
+                        end
+                end
+                local asal = posisiTangan(kanan)
+                if titik and asal then
+                        fxSabetan(asal, titik, punchTier)
+                        fxKilau(titik, punchTier)
+                end
                 pcall(function()
                         Net.get("PlotAct"):InvokeServer(target, "punch")
                 end)
         end)
+end
+
+punchBtn.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+                if input.UserInputState ~= Enum.UserInputState.Begin or pegangPunch then
+                        return
+                end
+                pegangPunch = true
+                efekTekan(true)
+                eksekusiPunch()
+                task.spawn(function()
+                        while pegangPunch and punchBtn.Parent do
+                                task.wait(PukulAnim.Ulang)
+                                if pegangPunch then
+                                        eksekusiPunch()
+                                end
+                        end
+                end)
+        end
+end)
+
+punchBtn.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+                pegangPunch = false
+                efekTekan(false)
+        end
 end)
 
 Net.get("Sync").OnClientEvent:Connect(function(payload)
@@ -8144,7 +8575,8 @@ Stub.Scheduler.advance(0.25)
 local tombolPunch = gui:FindFirstChild("TombolPunch")
 check("Tombol punch bisa memukul tanaman di depan", tombolPunch ~= nil)
 if tombolPunch then
-        tombolPunch.Activated:Fire()
+        tombolPunch.InputBegan:Fire({ UserInputType = Enum.UserInputType.MouseButton1, UserInputState = Enum.UserInputState.Begin })
+        tombolPunch.InputEnded:Fire({ UserInputType = Enum.UserInputType.MouseButton1, UserInputState = Enum.UserInputState.End })
         Stub.Scheduler.advance(0.5)
 end
 local drops = dunia and dunia:FindFirstChild("Drops_1", true)

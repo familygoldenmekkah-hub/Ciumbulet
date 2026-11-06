@@ -86,6 +86,15 @@ end
 Vector3.__unm = function(a)
         return setmetatable({ x = -a.x, y = -a.y, z = -a.z }, Vector3)
 end
+Vector3.__div = function(a, b)
+        if type(a) == "number" then
+                return setmetatable({ x = a / b.x, y = a / b.y, z = a / b.z }, Vector3)
+        end
+        if type(b) == "number" then
+                return setmetatable({ x = a.x / b, y = a.y / b, z = a.z / b }, Vector3)
+        end
+        return setmetatable({ x = a.x / b.x, y = a.y / b.y, z = a.z / b.z }, Vector3)
+end
 Vector3.__eq = function(a, b)
         return a.x == b.x and a.y == b.y and a.z == b.z
 end
@@ -97,6 +106,8 @@ local function vec3(x, y, z)
         return setmetatable({ x = x or 0, y = y or 0, z = z or 0 }, Vector3)
 end
 Vector3.new = vec3
+Vector3.one = vec3(1, 1, 1)
+Vector3.zero = vec3(0, 0, 0)
 
 Vector2 = {}
 Vector2.__index = Vector2
@@ -194,6 +205,30 @@ function CFrame.Angles(rx, ry, rz)
                 return m
         end
         return mkcf(0, 0, 0, mulm(Rx, mulm(Ry, Rz)))
+end
+
+function CFrame.lookAt(pos, target)
+        local dx, dy, dz = target.x - pos.x, target.y - pos.y, target.z - pos.z
+        local pan = math.sqrt(dx * dx + dy * dy + dz * dz)
+        if pan < 1e-8 then
+                return mkcf(pos.x, pos.y, pos.z, nil)
+        end
+        local bx, by, bz = -dx / pan, -dy / pan, -dz / pan
+        local rx, ry, rz = bz, 0, -bx
+        local rpan = math.sqrt(rx * rx + ry * ry + rz * rz)
+        if rpan < 1e-8 then
+                rx, ry, rz = 1, 0, 0
+                rpan = 1
+        end
+        rx, ry, rz = rx / rpan, ry / rpan, rz / rpan
+        local ux = by * rz - bz * ry
+        local uy = bz * rx - bx * rz
+        local uz = bx * ry - by * rx
+        return mkcf(pos.x, pos.y, pos.z, {
+                { rx, ux, bx },
+                { ry, uy, by },
+                { rz, uz, bz },
+        })
 end
 
 function CFrame:Inverse()
@@ -302,6 +337,7 @@ Enum = {
         Font = makeEnum("Font", { "Gotham", "GothamBold", "GothamBlack", "Legacy" }),
         ZIndexBehavior = makeEnum("ZIndexBehavior", { "Sibling", "Global" }),
         UserInputType = makeEnum("UserInputType", { "MouseButton1", "Touch", "Keyboard" }),
+        UserInputState = makeEnum("UserInputState", { "Begin", "Change", "End" }),
         RaycastFilterType = makeEnum("RaycastFilterType", { "Exclude", "Include" }),
         TextXAlignment = makeEnum("TextXAlignment", { "Left", "Center", "Right" }),
         TextYAlignment = makeEnum("TextYAlignment", { "Top", "Center", "Bottom" }),
@@ -315,7 +351,13 @@ Enum = {
         TextTruncate = makeEnum("TextTruncate", { "None", "AtEnd" }),
         FillDirection = makeEnum("FillDirection", { "Horizontal", "Vertical" }),
         HighlightDepthMode = makeEnum("HighlightDepthMode", { "AlwaysOnTop", "Occluded" }),
+        RenderPriority = makeEnum("RenderPriority", { "First", "Input", "Camera", "Character", "Last" }),
 }
+Enum.RenderPriority.First.Value = 0
+Enum.RenderPriority.Input.Value = 100
+Enum.RenderPriority.Camera.Value = 200
+Enum.RenderPriority.Character.Value = 300
+Enum.RenderPriority.Last.Value = 2000
 
 task = {}
 
@@ -808,6 +850,12 @@ function Stub.install()
         __SIM_IS_SERVER = true
         function RunService:IsServer()
                 return __SIM_IS_SERVER
+        end
+        function RunService:BindToRenderStep(name, priority, fn)
+                return nil
+        end
+        function RunService:UnbindFromRenderStep(name)
+                return nil
         end
 
         local UserInputService = Instance.new("UserInputService")

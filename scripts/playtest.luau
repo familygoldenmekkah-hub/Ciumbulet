@@ -519,7 +519,8 @@ Stub.Scheduler.advance(0.25)
 local tombolPunch = gui:FindFirstChild("TombolPunch")
 check("Tombol punch bisa memukul tanaman di depan", tombolPunch ~= nil)
 if tombolPunch then
-        tombolPunch.Activated:Fire()
+        tombolPunch.InputBegan:Fire({ UserInputType = Enum.UserInputType.MouseButton1, UserInputState = Enum.UserInputState.Begin })
+        tombolPunch.InputEnded:Fire({ UserInputType = Enum.UserInputType.MouseButton1, UserInputState = Enum.UserInputState.End })
         Stub.Scheduler.advance(0.5)
 end
 local drops = dunia and dunia:FindFirstChild("Drops_1", true)

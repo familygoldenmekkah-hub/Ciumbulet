@@ -448,7 +448,8 @@ plotRemote.OnServerInvoke = function(p, idx, act)
         return asliInvoke(p, idx, act)
 end
 local dropSebelum1 = dropsFolder(dunia) and #dropsFolder(dunia):GetChildren() or 0
-punchBtn.Activated:Fire()
+punchBtn.InputBegan:Fire({ UserInputType = Enum.UserInputType.MouseButton1, UserInputState = Enum.UserInputState.Begin })
+punchBtn.InputEnded:Fire({ UserInputType = Enum.UserInputType.MouseButton1, UserInputState = Enum.UserInputState.End })
 check("Efek kick kamera saat punch", Workspace.CurrentCamera.FieldOfView == 75, tostring(Workspace.CurrentCamera.FieldOfView))
 Stub.Scheduler.advance(0.15)
 check("Tombol punch memanggil server dengan plot 0", dipanggil == "0/punch", tostring(dipanggil))
