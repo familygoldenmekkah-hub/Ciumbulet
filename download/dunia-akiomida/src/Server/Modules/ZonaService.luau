@@ -8,7 +8,7 @@ local WorldBuilder = require(script.Parent.WorldBuilder)
 
 local ZonaService = {}
 
-local Land, Plot, Smash, Data, Notify, Hooks, Gudang, Drop
+local Land, Plot, Mesin, Data, Notify, Hooks, Gudang, Drop
 local store = DataStoreService:GetDataStore("AKM_Dunia")
 
 type Seksi = {
@@ -30,7 +30,7 @@ local zoneOf: { [number]: { zone: string, dunia: string? } } = {}
 function ZonaService.bind(deps)
         Land = deps.Land
         Plot = deps.Plot
-        Smash = deps.Smash
+        Mesin = deps.Mesin
         Data = deps.Data
         Notify = deps.Notify
         Gudang = deps.Gudang
@@ -139,7 +139,7 @@ local function payloadOf(s: Seksi, leaving: boolean?)
         local p = {
                 n = s.ownerName,
                 pl = DuniaLogic.serPlots(Plot.serialize(s.idx)),
-                mj = DuniaLogic.serMeja(Smash.serializeLahan(s.idx)),
+                mj = DuniaLogic.serMesin(Mesin.serializeLahan(s.idx)),
                 gd = Gudang and Gudang.serLahan(s.idx) or {},
                 dr = Drop and DuniaLogic.serDrops(Drop.serLahan(s.idx)) or {},
                 t = os.time(),
@@ -184,7 +184,7 @@ local function loadWorld(ownerId: number): (boolean, string?, any, any, any, any
         if type(data) ~= "table" then
                 return true, nil, {}, {}, nil, {}, nil
         end
-        return true, DuniaLogic.cleanName(data.n), DuniaLogic.desPlots(data.pl), DuniaLogic.desMeja(data.mj), data.gd, data.dr, data.lt
+        return true, DuniaLogic.cleanName(data.n), DuniaLogic.desPlots(data.pl), DuniaLogic.desMesin(data.mj), data.gd, data.dr, data.lt
 end
 
 local function buildSection(idx: number, ownerId: number, nama: string, ghost: boolean, savedOk: boolean, plots: any, meja: any, gd: any, dr: any, lt: any): Seksi
@@ -192,7 +192,7 @@ local function buildSection(idx: number, ownerId: number, nama: string, ghost: b
         Plot.buildGrid(idx, model)
         Plot.restore(idx, plots)
         Plot.startLoop(idx)
-        Smash.restoreLahan(idx, meja)
+        Mesin.restoreLahan(idx, meja, ownerId)
         if Gudang then
                 Gudang.restoreLahan(idx, gd)
         end
@@ -220,7 +220,7 @@ local function destroySection(idx: number)
                 return
         end
         Plot.clearGrid(idx)
-        Smash.clearLahan(idx)
+        Mesin.clearLahan(idx)
         if Drop then
                 Drop.clearLahan(idx)
         end

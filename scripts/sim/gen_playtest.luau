@@ -53,6 +53,7 @@ local SignalNames = {
         Touched = true,
         RenderStepped = true,
         Heartbeat = true,
+        InputChanged = true,
 }
 
 Vector3 = {}
@@ -951,7 +952,7 @@ function Stub.serverScript()
         local modules = Instance.new("Folder")
         modules.Name = "Modules"
         modules.Parent = script
-        for _, n in ipairs({ "LandService", "DataService", "SmashService", "PlotService", "ShopService", "WorldBuilder", "RateLimit", "DevCodeVault", "BuildingKit", "TasService", "ZonaService", "TanamService", "GudangService", "DropService", "PlantModels" }) do
+        for _, n in ipairs({ "LandService", "DataService", "MesinSemaiService", "PlotService", "ShopService", "WorldBuilder", "RateLimit", "DevCodeVault", "BuildingKit", "TasService", "ZonaService", "TanamService", "GudangService", "DropService", "PlantModels" }) do
                 local m = moduleScript(n, "./../download/dunia-akiomida/src/Server/Modules/" .. n)
                 m.Parent = modules
         end
@@ -975,7 +976,11 @@ CropData.GrowTime = 3
 CropData.StartMoney = 900000
 CropData.TasSlots = 50
 CropData.TasStack = 250
-CropData.BlokId = "blok_panen"
+CropData.MesinSemai = {
+        Kapasitas = 2000,
+        WaktuGiling = 3,
+        JarakMaks = 24,
+}
 
 CropData.Packs = {
         common = { price = 2400, count = 3 },
@@ -988,7 +993,7 @@ CropData.Yield = {
         epic = { min = 1, max = 4 },
 }
 
-CropData.Smash = {
+CropData.Giling = {
         common = { hits = 5, seed = 0.45, blok = 0.20, micdaMin = 1, micdaMax = 5 },
         rare = { hits = 10, seed = 0.30, blok = 0.15, micdaMin = 3, micdaMax = 9 },
         epic = { hits = 15, seed = 0.10, blok = 0.15, micdaMin = 9, micdaMax = 19 },
@@ -1074,6 +1079,25 @@ CropData.Bentuk = {
         kacang_tanah = { jenis = "kacang", t = 1.0, w = 2.8, b = 6, warna = { 150, 168, 104 }, siap = { 236, 196, 110 }, aksen = { 100, 146, 86 } },
         jamur = { jenis = "cendawan", t = 1.8, w = 1.6, b = 1, warna = { 196, 150, 120 }, siap = { 206, 64, 56 }, aksen = { 224, 214, 196 } },
 }
+
+function CropData.blokIdFor(cropId: string): string
+        return "blok_" .. tostring(cropId)
+end
+
+function CropData.blokNamaFor(cropId: string): string
+        local info = CropData.byId[cropId]
+        if not info then
+                return "Blok"
+        end
+        return "Blok " .. info.nama
+end
+
+function CropData.blokCrop(blokId: string): string?
+        if type(blokId) ~= "string" then
+                return nil
+        end
+        return string.match(blokId, "^blok_(.+)$")
+end
 
 function CropData.byRarity(rarity: string): { any }
         local out = {}
@@ -1454,33 +1478,41 @@ function DuniaLogic.desDrops(arr: any): { any }
         return out
 end
 
-function DuniaLogic.serMeja(slots: any): { { c: string, h: number } }
+function DuniaLogic.serMesin(batch: any): { { c: string, j: number, m: number, b: number, k: number } }
         local out = {}
-        if type(slots) ~= "table" then
+        if type(batch) ~= "table" then
                 return out
         end
-        for i, s in ipairs(slots) do
-                if #out >= DuniaLogic.MaxMeja then
-                        break
-                end
-                if type(s) == "table" and type(s.crop) == "string" and #s.crop <= 40 and type(s.hitsLeft) == "number" then
-                        table.insert(out, { c = s.crop, h = math.max(1, math.floor(s.hitsLeft)) })
-                end
+        if type(batch.c) == "string" and #batch.c <= 40 and type(batch.j) == "number" then
+                table.insert(out, {
+                        c = batch.c,
+                        j = math.max(1, math.floor(batch.j)),
+                        m = type(batch.m) == "number" and math.max(0, math.floor(batch.m)) or 0,
+                        b = type(batch.b) == "number" and math.max(0, math.floor(batch.b)) or 0,
+                        k = type(batch.k) == "number" and math.max(0, math.floor(batch.k)) or 0,
+                })
         end
         return out
 end
 
-function DuniaLogic.desMeja(arr: any): { { c: string, h: number } }
+function DuniaLogic.desMesin(arr: any): { { c: string, j: number?, m: number?, b: number?, k: number?, h: number? } }
         local out = {}
         if type(arr) ~= "table" then
                 return out
         end
         for _, s in ipairs(arr) do
-                if #out >= DuniaLogic.MaxMeja then
-                        break
-                end
-                if type(s) == "table" and type(s.c) == "string" and #s.c <= 40 and type(s.h) == "number" then
-                        table.insert(out, { c = s.c, h = math.max(1, math.floor(s.h)) })
+                if #out < 1 and type(s) == "table" then
+                        if type(s.c) == "string" and #s.c <= 40 and type(s.j) == "number" then
+                                table.insert(out, {
+                                        c = s.c,
+                                        j = math.max(1, math.floor(s.j)),
+                                        m = type(s.m) == "number" and math.max(0, math.floor(s.m)) or nil,
+                                        b = type(s.b) == "number" and math.max(0, math.floor(s.b)) or nil,
+                                        k = type(s.k) == "number" and math.max(0, math.floor(s.k)) or nil,
+                                })
+                        elseif type(s.c) == "string" and #s.c <= 40 and type(s.h) == "number" then
+                                table.insert(out, { c = s.c, j = 1, h = math.max(1, math.floor(s.h)) })
+                        end
                 end
         end
         return out
@@ -2287,7 +2319,7 @@ UangLogic.BatasLedger = 24
 UangLogic.Alasan = {
         jual_hasil = true,
         beli_benih = true,
-        smash_hasil = true,
+        semai_hasil = true,
         hadiah = true,
 }
 
@@ -2508,6 +2540,178 @@ return PanenWaktu
 
 end)()
 
+local MOD_SemaiLogic = (function()
+local SemaiLogic = {}
+
+SemaiLogic.KabelMin = 4
+SemaiLogic.KabelMaks = 6
+SemaiLogic.WarnaKabel = {
+	{ 214, 64, 56 },
+	{ 76, 168, 82 },
+	{ 58, 122, 214 },
+	{ 240, 196, 60 },
+	{ 168, 92, 224 },
+	{ 240, 138, 44 },
+	{ 60, 190, 190 },
+	{ 232, 92, 150 },
+}
+
+function SemaiLogic.saringJumlah(teks: any, dimiliki: any, kapasitas: number): number?
+	if type(teks) ~= "string" and type(teks) ~= "number" then
+		return nil
+	end
+	local n = tonumber(teks)
+	if not n or n ~= n or n % 1 ~= 0 or n < 1 then
+		return nil
+	end
+	n = math.floor(n)
+	if type(dimiliki) ~= "number" or dimiliki < 1 then
+		return nil
+	end
+	local maks = math.floor(dimiliki)
+	if type(kapasitas) == "number" and kapasitas >= 1 and maks > kapasitas then
+		maks = math.floor(kapasitas)
+	end
+	if n > maks then
+		n = maks
+	end
+	if n < 1 then
+		return nil
+	end
+	return n
+end
+
+function SemaiLogic.pukulanPerItem(cfg: any): number
+	if type(cfg) ~= "table" or type(cfg.hits) ~= "number" or cfg.hits < 1 then
+		return 1
+	end
+	return math.floor(cfg.hits)
+end
+
+function SemaiLogic.pukulanTotal(jumlah: number, perItem: number): number
+	return math.floor(jumlah) * math.floor(perItem)
+end
+
+function SemaiLogic.gulung(rng: any, cfg: any, jumlah: number): { micda: number, benih: number, blok: number }
+	local jml = math.max(1, math.floor(jumlah))
+	local mMin = 1
+	local mMax = 1
+	local pBenih = 0
+	local pBlok = 0
+	if type(cfg) == "table" then
+		mMin = type(cfg.micdaMin) == "number" and math.max(0, cfg.micdaMin) or 1
+		mMax = type(cfg.micdaMax) == "number" and math.max(mMin, cfg.micdaMax) or mMin
+		pBenih = type(cfg.seed) == "number" and cfg.seed or 0
+		pBlok = type(cfg.blok) == "number" and cfg.blok or 0
+	end
+	local micda = 0
+	local benih = 0
+	local blok = 0
+	for _ = 1, jml do
+		micda += rng:NextInteger(mMin, mMax)
+		if rng:NextNumber() < pBenih then
+			benih += 1
+		end
+		if rng:NextNumber() < pBlok then
+			blok += 1
+		end
+	end
+	return { micda = micda, benih = benih, blok = blok }
+end
+
+local function acakUrutan(rng: any, daftar: { number }): { number }
+	local out = {}
+	for i, v in ipairs(daftar) do
+		out[i] = v
+	end
+	for i = #out, 2, -1 do
+		local j = rng:NextInteger(1, i)
+		local tmp = out[i]
+		out[i] = out[j]
+		out[j] = tmp
+	end
+	return out
+end
+
+function SemaiLogic.buatKabel(rng: any): { n: number, kiri: { number }, kanan: { number } }
+	local palet = {}
+	for i = 1, #SemaiLogic.WarnaKabel do
+		table.insert(palet, i)
+	end
+	local pilihan = acakUrutan(rng, palet)
+	local n = rng:NextInteger(SemaiLogic.KabelMin, SemaiLogic.KabelMaks)
+	if n > #pilihan then
+		n = #pilihan
+	end
+	local kiri = {}
+	for i = 1, n do
+		kiri[i] = pilihan[i]
+	end
+	local kanan = acakUrutan(rng, kiri)
+	return { n = n, kiri = kiri, kanan = kanan }
+end
+
+function SemaiLogic.kabelSelesai(kabel: any, sambung: any): boolean
+	if type(kabel) ~= "table" or type(sambung) ~= "table" then
+		return false
+	end
+	local kiri = kabel.kiri
+	local kanan = kabel.kanan
+	if type(kiri) ~= "table" or type(kanan) ~= "table" or kabel.n ~= #kiri or kabel.n ~= #kanan or kabel.n < 1 then
+		return false
+	end
+	local dipakai = {}
+	for i = 1, kabel.n do
+		local t = sambung[i]
+		if type(t) ~= "number" or t ~= math.floor(t) or t < 1 or t > kabel.n or dipakai[t] then
+			return false
+		end
+		if kiri[i] ~= kanan[t] then
+			return false
+		end
+		dipakai[t] = true
+	end
+	return true
+end
+
+return SemaiLogic
+
+end)()
+
+local MOD_JualLogic = (function()
+local JualLogic = {}
+
+function JualLogic.saring(teks: any, maks: number): number?
+        if type(teks) ~= "string" and type(teks) ~= "number" then
+                return nil
+        end
+        local n = tonumber(teks)
+        if not n or n ~= n or n % 1 ~= 0 or n < 1 then
+                return nil
+        end
+        n = math.floor(n)
+        if type(maks) == "number" then
+                if maks < 1 then
+                        return nil
+                end
+                if n > maks then
+                        n = maks
+                end
+        end
+        if n < 1 then
+                return nil
+        end
+        return n
+end
+
+function JualLogic.total(unit: number, n: number): number
+        return math.floor(unit) * math.floor(n)
+end
+
+return JualLogic
+
+end)()
+
 local MOD_Remotes = (function()
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -2520,14 +2724,14 @@ local DEFINITIONS = {
         Notify = "RemoteEvent",
         Sync = "RemoteEvent",
         PlotSync = "RemoteEvent",
-        SmashSync = "RemoteEvent",
+        SemaiSync = "RemoteEvent",
         TanamSync = "RemoteEvent",
         GudangSync = "RemoteEvent",
         OpenPanel = "RemoteEvent",
         GetState = "RemoteFunction",
         DuniaAct = "RemoteFunction",
         PlotAct = "RemoteFunction",
-        SmashAct = "RemoteFunction",
+        SemaiAct = "RemoteFunction",
         ShopAct = "RemoteFunction",
         TanamAct = "RemoteFunction",
         GudangAct = "RemoteFunction",
@@ -3220,34 +3424,274 @@ function BuildingKit.buildToko(parent: Instance): Model
         return model
 end
 
-function BuildingKit.buildSemai(parent: Instance): Model
+local STEEL = Color3.fromRGB(150, 156, 164)
+local STEEL_DARK = Color3.fromRGB(86, 92, 102)
+local STEEL_BLUE = Color3.fromRGB(96, 118, 138)
+local ACCENT_ORANGE = Color3.fromRGB(214, 128, 58)
+local STRIPE_KUNING = Color3.fromRGB(232, 186, 60)
+local KABEL_MERAH = Color3.fromRGB(214, 64, 56)
+local KABEL_BIRU = Color3.fromRGB(58, 122, 214)
+local KABEL_KUNING = Color3.fromRGB(240, 196, 60)
+local HIJAU_BTN = Color3.fromRGB(108, 220, 116)
+local LAMPU_OFF = Color3.fromRGB(72, 76, 84)
+
+function BuildingKit.buildMesinSemai(parent: Instance, index: number, hooks): Model
         local model = Instance.new("Model")
-        model.Name = "SemaiPanen"
+        model.Name = "MesinSemaiPanen"
         local w, d = 30, 30
         BuildingKit.part(model, Vector3.new(w + 2, 1, d + 2), CFrame.new(0, 0.5, 0), STONE, Enum.Material.Slate)
-        BuildingKit.part(model, Vector3.new(w - 2, 1, d - 2), CFrame.new(0, 1.5, 0), FLOORWOOD, Enum.Material.WoodPlanks)
-        BuildingKit.part(model, Vector3.new(w, 20, 1), CFrame.new(0, 11, d / 2 - 0.5), CREAM)
-        BuildingKit.part(model, Vector3.new(1, 20, d - 2), CFrame.new(-(w / 2 - 0.5), 11, 0), CREAM)
-        BuildingKit.part(model, Vector3.new(1, 20, d - 2), CFrame.new(w / 2 - 0.5, 11, 0), CREAM)
-        local fz = -(d / 2 - 0.5)
-        BuildingKit.part(model, Vector3.new(5, 20, 1), CFrame.new(-12.5, 11, fz), CREAM)
-        BuildingKit.part(model, Vector3.new(5, 20, 1), CFrame.new(12.5, 11, fz), CREAM)
-        BuildingKit.part(model, Vector3.new(20, 9, 1), CFrame.new(0, 16.5, fz), CREAM)
-        for sx = -1, 1, 2 do
-                BuildingKit.part(model, Vector3.new(2, 20, 2), CFrame.new(sx * 11, 11, -13.5), DARKWOOD, Enum.Material.Wood)
-                BuildingKit.part(model, Vector3.new(2, 20, 2), CFrame.new(sx * 13, 11, 13), DARKWOOD, Enum.Material.Wood)
+        BuildingKit.part(model, Vector3.new(w - 3, 0.3, d - 3), CFrame.new(0, 1, 0), FLOORWOOD, Enum.Material.WoodPlanks)
+        for i = 0, 9 do
+                BuildingKit.part(model, Vector3.new(2.4, 0.14, 0.7), CFrame.new(-13.5 + i * 3, 1.22, -14.4), (i % 2 == 0) and STRIPE_KUNING or STEEL_DARK, Enum.Material.SmoothPlastic).CanCollide = false
         end
-        trim(model, w, d, 1.5)
-        trim(model, w, d, 20.5)
-        BuildingKit.gableRoof(model, w, d, 3, 21, BRICKRED)
-        BuildingKit.part(model, Vector3.new(12, 4, 4), CFrame.new(0, 4, 2), DARKWOOD, Enum.Material.Wood)
-        local pad = BuildingKit.part(model, Vector3.new(8, 0.4, 4), CFrame.new(0, 2.4, -6), BRICKRED, Enum.Material.SmoothPlastic, 0.3)
-        pad.CanCollide = false
-        BuildingKit.part(model, Vector3.new(20.4, 2, 1), CFrame.new(0, 11, fz), CREAM)
-        hingedDoor(model, Vector3.new(10, 10, 0.5), CFrame.new(-5, 5, fz), Vector3.new(-5.05, 0, 0), -math.rad(105))
-        hingedDoor(model, Vector3.new(10, 10, 0.5), CFrame.new(5, 5, fz), Vector3.new(5.05, 0, 0), math.rad(105))
-        BuildingKit.lamp(model, -6, 21, 0)
-        BuildingKit.lamp(model, 6, 21, 0)
+        for sx = -1, 1, 2 do
+                BuildingKit.part(model, Vector3.new(0.9, 8, 0.9), CFrame.new(sx * 11, 5, -9), STEEL_DARK, Enum.Material.Metal)
+                BuildingKit.part(model, Vector3.new(0.9, 8, 0.9), CFrame.new(sx * 11, 5, 9), STEEL_DARK, Enum.Material.Metal)
+        end
+        local atap = BuildingKit.part(model, Vector3.new(26, 0.6, 22), CFrame.new(0, 9.4, 0) * CFrame.Angles(0, 0, math.rad(3)), STEEL_DARK, Enum.Material.Metal)
+        atap.CanCollide = false
+        for i = 0, 3 do
+                BuildingKit.part(model, Vector3.new(25, 0.25, 1.6), CFrame.new(0, 9.95, -7 + i * 4.6) * CFrame.Angles(0, 0, math.rad(3)), (i % 2 == 0) and BRICKRED or CREAM, Enum.Material.SmoothPlastic).CanCollide = false
+        end
+        BuildingKit.lamp(model, -5, 9, 4)
+        BuildingKit.lamp(model, 6, 9, 4)
+        BuildingKit.fenceLine(model, -15, 15, 15, 15, 1)
+        BuildingKit.fenceLine(model, -15, -15, -15, 15, 1)
+        BuildingKit.fenceLine(model, 15, -15, 15, 15, 1)
+
+        local plat = BuildingKit.part(model, Vector3.new(12, 0.6, 7), CFrame.new(0, 1.45, 3), STEEL_DARK, Enum.Material.DiamondPlate)
+        plat:SetAttribute("MesinPlat", true)
+        BuildingKit.part(model, Vector3.new(10, 0.8, 6), CFrame.new(0, 2.1, 3), STEEL, Enum.Material.Concrete)
+        for sx = -1, 1, 2 do
+                for sz = -1, 1, 2 do
+                        BuildingKit.part(model, Vector3.new(0.8, 1.4, 0.8), CFrame.new(sx * 2.7, 2.9, 3 + sz * 1.7), STEEL_DARK, Enum.Material.Metal)
+                end
+        end
+        BuildingKit.part(model, Vector3.new(6.4, 2.6, 4.4), CFrame.new(0, 4.7, 3), STEEL, Enum.Material.Metal)
+        for i = 0, 2 do
+                BuildingKit.part(model, Vector3.new(6.5, 0.18, 0.3), CFrame.new(0, 3.9 + i * 0.8, 0.85), STEEL_DARK, Enum.Material.Metal).CanCollide = false
+        end
+        BuildingKit.part(model, Vector3.new(6.6, 0.5, 4.6), CFrame.new(0, 6.1, 3), STEEL_DARK, Enum.Material.Metal)
+        for sx = -1, 1, 2 do
+                BuildingKit.part(model, Vector3.new(0.7, 2.6, 5), CFrame.new(sx * 3.1, 7.6, 3), STEEL_DARK, Enum.Material.Metal)
+        end
+
+        local drum = BuildingKit.part(model, Vector3.new(7.2, 2.6, 2.6), CFrame.new(0, 7.9, 3), STEEL_BLUE, Enum.Material.Metal)
+        drum.Shape = Enum.PartType.Cylinder
+        drum.Name = "MesinDrum"
+        for i, rib in ipairs({ "MesinRib1", "MesinRib2", "MesinRib3" }) do
+                local r = BuildingKit.part(model, Vector3.new(0.35, 2.85, 2.85), CFrame.new(-1.8 + (i - 1) * 2.2, 7.9, 3), ACCENT_ORANGE, Enum.Material.Metal)
+                r.Shape = Enum.PartType.Cylinder
+                r.Name = rib
+                r.CanCollide = false
+        end
+        local roda = BuildingKit.part(model, Vector3.new(0.7, 3.1, 3.1), CFrame.new(4.4, 7.9, 3), STEEL_DARK, Enum.Material.Metal)
+        roda.Shape = Enum.PartType.Cylinder
+        roda.Name = "MesinRoda"
+        local hub = BuildingKit.part(model, Vector3.new(0.9, 1.2, 1.2), CFrame.new(4.75, 7.9, 3), ACCENT_ORANGE, Enum.Material.Metal)
+        hub.Shape = Enum.PartType.Cylinder
+        hub.CanCollide = false
+
+        local girA = BuildingKit.part(model, Vector3.new(0.4, 1.7, 1.7), CFrame.new(-1.9, 3.6, 0.7), STEEL_DARK, Enum.Material.Metal)
+        girA.Shape = Enum.PartType.Cylinder
+        girA.CFrame = CFrame.new(-1.9, 3.6, 0.7) * CFrame.Angles(0, math.rad(90), 0)
+        girA.Name = "MesinGirA"
+        local girB = BuildingKit.part(model, Vector3.new(0.4, 1.3, 1.3), CFrame.new(1.9, 3.9, 0.7), ACCENT_ORANGE, Enum.Material.Metal)
+        girB.Shape = Enum.PartType.Cylinder
+        girB.CFrame = CFrame.new(1.9, 3.9, 0.7) * CFrame.Angles(0, math.rad(90), 0)
+        girB.Name = "MesinGirB"
+        BuildingKit.part(model, Vector3.new(0.12, 0.12, 3.4), CFrame.new(0, 3.75, 0.55) * CFrame.Angles(0, 0, math.rad(4)), STEEL_DARK, Enum.Material.Metal).CanCollide = false
+
+        BuildingKit.part(model, Vector3.new(2.4, 2.2, 2.4), CFrame.new(6.2, 4.6, 3), STEEL_DARK, Enum.Material.Metal)
+        for i = 0, 3 do
+                BuildingKit.part(model, Vector3.new(0.16, 1.6, 2.5), CFrame.new(7.5, 4.3 + i * 0.45, 3), STEEL, Enum.Material.Metal).CanCollide = false
+        end
+        local cerobong = BuildingKit.part(model, Vector3.new(1.9, 1, 1), CFrame.new(6.2, 6.6, 3), STEEL, Enum.Material.Metal)
+        cerobong.Shape = Enum.PartType.Cylinder
+        cerobong.CFrame = CFrame.new(6.2, 6.6, 3) * CFrame.Angles(0, 0, math.rad(90))
+        local tutupCerobong = BuildingKit.part(model, Vector3.new(0.3, 1.2, 1.2), CFrame.new(6.2, 7.7, 3), ACCENT_ORANGE, Enum.Material.Metal)
+        tutupCerobong.Shape = Enum.PartType.Cylinder
+        tutupCerobong.CFrame = CFrame.new(6.2, 7.7, 3) * CFrame.Angles(0, 0, math.rad(90))
+        tutupCerobong.CanCollide = false
+        local attachment = Instance.new("Attachment")
+        attachment.Position = Vector3.new(0, 0.35, 0)
+        attachment.Parent = tutupCerobong
+        local asap = Instance.new("ParticleEmitter")
+        asap.Name = "AsapMesin"
+        asap.Color = ColorSequence.new(Color3.fromRGB(176, 178, 184))
+        asap.Lifetime = NumberRange.new(0.9, 1.6)
+        asap.Speed = NumberRange.new(2.5, 4.5)
+        asap.SpreadAngle = Vector2.new(14, 14)
+        asap.Size = NumberSequence.new(0.7, 2.2)
+        asap.Transparency = NumberSequence.new(0.45, 1)
+        asap.Rate = 26
+        asap.Enabled = false
+        asap.Parent = attachment
+
+        for i, tilt in ipairs({ -1, 1 }) do
+                local panel = BuildingKit.part(model, Vector3.new(5.8, 0.35, 3.4), CFrame.new(-2.2, 9.55, 3 + tilt * 1.25) * CFrame.Angles(math.rad(tilt * 42), 0, 0), STEEL_DARK, Enum.Material.Metal)
+                panel.CanCollide = false
+        end
+        for sx = -1, 1, 2 do
+                BuildingKit.part(model, Vector3.new(0.35, 2.6, 3.9), CFrame.new(-2.2 + sx * 2.85, 8.9, 3), STEEL_DARK, Enum.Material.Metal)
+        end
+        for i, sisi in ipairs({ -1, 1 }) do
+                local rel = BuildingKit.part(model, Vector3.new(5.9, 0.3, 0.35), CFrame.new(-2.2, 10.35, 3 + sisi * 2.2), ACCENT_ORANGE, Enum.Material.Metal)
+                rel.CanCollide = false
+        end
+        for sx = -1, 1, 2 do
+                BuildingKit.part(model, Vector3.new(0.35, 1.6, 0.35), CFrame.new(-2.2 + sx * 2.4, 6.9, 3), STEEL_DARK, Enum.Material.Metal).CanCollide = false
+        end
+        BuildingKit.part(model, Vector3.new(1.4, 0.25, 1.4), CFrame.new(-2.2, 10.55, 3), ACCENT_ORANGE, Enum.Material.Metal).CanCollide = false
+
+        local pedestal = BuildingKit.part(model, Vector3.new(1.8, 2.8, 1.8), CFrame.new(-8.6, 2.7, 6.6), STEEL_DARK, Enum.Material.Metal)
+        local panelTilt = BuildingKit.part(model, Vector3.new(2.2, 0.35, 1.9), CFrame.new(-8.6, 4.25, 6.35) * CFrame.Angles(math.rad(-28), 0, 0), STEEL, Enum.Material.Metal)
+        panelTilt.CanCollide = false
+        local posLampu = {
+                { -9.1, 4.45, 6.2, "MesinLampuMerah" },
+                { -8.6, 4.55, 6.2, "MesinLampuKuning" },
+                { -8.1, 4.65, 6.2, "MesinLampuHijau" },
+        }
+        for _, l in ipairs(posLampu) do
+                local lampu = BuildingKit.part(model, Vector3.new(0.34, 0.34, 0.34), CFrame.new(l[1], l[2], l[3]), LAMPU_OFF, Enum.Material.Neon)
+                lampu.Shape = Enum.PartType.Ball
+                lampu.Name = l[4]
+                lampu.CanCollide = false
+        end
+        BuildingKit.part(model, Vector3.new(0.5, 0.22, 0.5), CFrame.new(-8.6, 4.5, 6.75), HIJAU_BTN, Enum.Material.Neon).CanCollide = false
+        local layarKecil = BuildingKit.part(model, Vector3.new(1.3, 0.9, 0.2), CFrame.new(-8.6, 3.4, 5.75), Color3.fromRGB(24, 26, 32), Enum.Material.SmoothPlastic)
+        layarKecil.CanCollide = false
+        local guiKecil = Instance.new("SurfaceGui")
+        guiKecil.Face = Enum.NormalId.Front
+        guiKecil.CanvasSize = Vector2.new(200, 140)
+        local labelKecil = Instance.new("TextLabel")
+        labelKecil.Size = UDim2.fromScale(1, 1)
+        labelKecil.BackgroundTransparency = 1
+        labelKecil.Text = "MESIN SEMAI"
+        labelKecil.TextColor3 = Color3.fromRGB(122, 232, 130)
+        labelKecil.TextScaled = true
+        labelKecil.Font = Enum.Font.GothamBold
+        labelKecil.Parent = guiKecil
+        guiKecil.Parent = layarKecil
+
+        local kabelJalur = {
+                { KABEL_MERAH, 6.35, 3.6 },
+                { KABEL_BIRU, 6.65, 3.0 },
+                { KABEL_KUNING, 6.95, 2.4 },
+        }
+        for _, k in ipairs(kabelJalur) do
+                local naik = BuildingKit.part(model, Vector3.new(1.3, 0.22, 0.22), CFrame.new(-8.6, k[2], k[3]), k[1], Enum.Material.SmoothPlastic)
+                naik.Shape = Enum.PartType.Cylinder
+                naik.CFrame = CFrame.new(-8.6, k[2], k[3]) * CFrame.Angles(0, 0, math.rad(90))
+                naik.CanCollide = false
+                local datar = BuildingKit.part(model, Vector3.new(4.6, 0.22, 0.22), CFrame.new(-6.2, k[2] + 0.6, k[3]), k[1], Enum.Material.SmoothPlastic)
+                datar.CanCollide = false
+        end
+
+        local corong = BuildingKit.part(model, Vector3.new(2.8, 0.35, 2.2), CFrame.new(-4.6, 6.9, 3) * CFrame.Angles(0, 0, math.rad(32)), STEEL_DARK, Enum.Material.Metal)
+        corong.CanCollide = false
+        BuildingKit.part(model, Vector3.new(0.35, 2.4, 2), CFrame.new(-5.75, 5.7, 3), STEEL_DARK, Enum.Material.Metal).CanCollide = false
+        local _bak = BuildingKit.part(model, Vector3.new(2.8, 2.4, 2.8), CFrame.new(-7.4, 2.75, 3), Color3.fromRGB(150, 116, 74), Enum.Material.WoodPlanks)
+        BuildingKit.part(model, Vector3.new(2.9, 0.25, 2.9), CFrame.new(-7.4, 4.05, 3), FLOORWOOD, Enum.Material.WoodPlanks).CanCollide = false
+        for i = 0, 2 do
+                local buah = BuildingKit.part(model, Vector3.new(0.8, 0.8, 0.8), CFrame.new(-7.9 + i * 0.55, 4.5, 3.1 + (i % 2) * 0.3), (i == 1) and STEEL_BLUE or ACCENT_ORANGE, Enum.Material.SmoothPlastic)
+                buah.Shape = Enum.PartType.Ball
+                buah.CanCollide = false
+        end
+
+        for sx = -1, 1, 2 do
+                BuildingKit.part(model, Vector3.new(0.4, 6, 0.4), CFrame.new(sx * 3.4, 5, -4.6), STEEL_DARK, Enum.Material.Metal)
+        end
+        local papan = BuildingKit.part(model, Vector3.new(8.6, 3.4, 0.5), CFrame.new(0, 8.6, -4.6), DARKWOOD, Enum.Material.Wood)
+        local gui = Instance.new("SurfaceGui")
+        gui.Face = Enum.NormalId.Front
+        gui.CanvasSize = Vector2.new(520, 200)
+        local judul = Instance.new("TextLabel")
+        judul.Size = UDim2.new(1, -12, 0.42, 0)
+        judul.Position = UDim2.new(0, 6, 0.04, 0)
+        judul.BackgroundTransparency = 1
+        judul.Text = "MESIN SEMAI PANEN"
+        judul.TextColor3 = Color3.fromRGB(255, 232, 180)
+        judul.TextScaled = true
+        judul.Font = Enum.Font.GothamBlack
+        judul.Parent = gui
+        local statusLabel = Instance.new("TextLabel")
+        statusLabel.Name = "StatusMesin"
+        statusLabel.Size = UDim2.new(1, -12, 0.44, 0)
+        statusLabel.Position = UDim2.new(0, 6, 0.5, 0)
+        statusLabel.BackgroundTransparency = 1
+        statusLabel.Text = "NONAKTIF"
+        statusLabel.TextColor3 = Color3.fromRGB(208, 210, 216)
+        statusLabel.TextScaled = true
+        statusLabel.Font = Enum.Font.GothamBold
+        statusLabel.Parent = gui
+        local guiBack = gui:Clone()
+        guiBack.Face = Enum.NormalId.Back
+        gui.Parent = papan
+        guiBack.Parent = papan
+
+        local tong = BuildingKit.part(model, Vector3.new(2.4, 2, 2), CFrame.new(12.5, 2.2, -7), STEEL_BLUE, Enum.Material.Metal)
+        tong.Shape = Enum.PartType.Cylinder
+        tong.CFrame = CFrame.new(12.5, 2.2, -7) * CFrame.Angles(0, 0, math.rad(90))
+        local tongBand = BuildingKit.part(model, Vector3.new(0.3, 2.05, 2.05), CFrame.new(12.5, 2.2, -7), STEEL, Enum.Material.Metal)
+        tongBand.Shape = Enum.PartType.Cylinder
+        tongBand.CFrame = CFrame.new(12.5, 2.2, -7) * CFrame.Angles(0, 0, math.rad(90))
+        tongBand.CanCollide = false
+        local tong2 = BuildingKit.part(model, Vector3.new(2.4, 2, 2), CFrame.new(12.5, 2.2, -4), ACCENT_ORANGE, Enum.Material.Metal)
+        tong2.Shape = Enum.PartType.Cylinder
+        tong2.CFrame = CFrame.new(12.5, 2.2, -4) * CFrame.Angles(0, 0, math.rad(90))
+        for i = 0, 2 do
+                BuildingKit.part(model, Vector3.new(2.2, 2.2, 2.2), CFrame.new(9 + i * 2.4, 2.3, -8.6), Color3.fromRGB(150, 116, 74), Enum.Material.WoodPlanks)
+        end
+        local _kotakAlat = BuildingKit.part(model, Vector3.new(1.6, 0.9, 1), CFrame.new(-12, 1.65, 7.5), BRICKRED, Enum.Material.Metal)
+        BuildingKit.part(model, Vector3.new(0.9, 0.16, 0.3), CFrame.new(-12, 2.25, 7.5), STEEL, Enum.Material.Metal).CanCollide = false
+        for i = 0, 1 do
+                local karung = BuildingKit.part(model, Vector3.new(1.6, 1.9, 1), CFrame.new(-12.6 + i * 1.8, 2.15, -8.2), (i == 0) and Color3.fromRGB(150, 108, 62) or Color3.fromRGB(96, 128, 72), Enum.Material.Fabric)
+                karung.CanCollide = false
+        end
+        BuildingKit.part(model, Vector3.new(1.6, 1.9, 1), CFrame.new(-11.7, 3.9, -8.2), Color3.fromRGB(196, 168, 120), Enum.Material.Fabric).CanCollide = false
+        local pipa = BuildingKit.part(model, Vector3.new(22, 0.7, 0.7), CFrame.new(0, 2.6, 13.6), STEEL_DARK, Enum.Material.Metal)
+        pipa.CanCollide = false
+        for i = 0, 3 do
+                BuildingKit.part(model, Vector3.new(0.35, 1.6, 0.35), CFrame.new(-8 + i * 5.4, 1.9, 13.6), STEEL, Enum.Material.Metal).CanCollide = false
+        end
+
+        local suaraGiling = Instance.new("Sound")
+        suaraGiling.Name = "SuaraGiling"
+        suaraGiling.SoundId = "rbxasset://sounds/swoosh.wav"
+        suaraGiling.Looped = true
+        suaraGiling.Volume = 0.55
+        suaraGiling.PlaybackSpeed = 0.55
+        suaraGiling.RollOffMaxDistance = 90
+        suaraGiling.Parent = drum
+        local suaraDing = Instance.new("Sound")
+        suaraDing.Name = "SuaraDing"
+        suaraDing.SoundId = "rbxasset://sounds/electronicpingshort.wav"
+        suaraDing.Volume = 0.6
+        suaraDing.PlaybackSpeed = 0.72
+        suaraDing.RollOffMaxDistance = 90
+        suaraDing.Parent = pedestal
+        local suaraStart = Instance.new("Sound")
+        suaraStart.Name = "SuaraStart"
+        suaraStart.SoundId = "rbxasset://sounds/swoosh.wav"
+        suaraStart.Volume = 0.5
+        suaraStart.PlaybackSpeed = 1.25
+        suaraStart.RollOffMaxDistance = 90
+        suaraStart.Parent = pedestal
+
+        local prompt = Instance.new("ProximityPrompt")
+        prompt.ActionText = "Semai Panen"
+        prompt.ObjectText = "Mesin Semai"
+        prompt.HoldDuration = 0.3
+        prompt.MaxActivationDistance = 12
+        prompt.RequiresLineOfSight = false
+        prompt.Parent = pedestal
+        prompt.Triggered:Connect(function(player: Player)
+                if hooks and hooks.onSemaiPrompt then
+                        hooks.onSemaiPrompt(player, index)
+                end
+        end)
+
         model.Parent = parent
         model.WorldPivot = CFrame.new(0, 0, 0)
         return model
@@ -3623,247 +4067,446 @@ return TasService
 
 end)()
 
-local MOD_SmashService = (function()
+local MOD_MesinSemaiService = (function()
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local CropData = MOD_CropData
+local SemaiLogic = MOD_SemaiLogic
 
-local SmashService = {}
+local MesinSemaiService = {}
 
-local Land, Tas, Uang, Net, Notify, World
+local Land, Tas, Uang, Net, World
 local rng = Random.new()
 
-local MAX_SLOTS = 6
-local tables: { [number]: Vector3 } = {}
-local slots: { [number]: { any } } = {}
-local hasilFolders: { [number]: Folder } = {}
+local mesin: { [number]: any } = {}
+local batch: { [number]: any } = {}
 
-local RARITY_COLOR = {
-        common = Color3.fromRGB(96, 168, 74),
-        rare = Color3.fromRGB(70, 128, 214),
-        epic = Color3.fromRGB(168, 92, 224),
-}
-local RARITY_SIZE = {
-        common = Vector3.new(2, 2, 2),
-        rare = Vector3.new(2, 3, 2),
-        epic = Vector3.new(3, 3, 3),
+local TEKS_TAHAP = {
+	kosong = { teks = "NONAKTIF", warna = { 208, 210, 216 } },
+	kabel = { teks = "SAMBUNGKAN KABEL", warna = { 255, 214, 110 } },
+	giling = { teks = "MENGGILING...", warna = { 255, 158, 74 } },
+	tuntas = { teks = "SEMAI TUNTAS - KLAIM HASIL", warna = { 122, 232, 130 } },
 }
 
-function SmashService.bind(deps)
-        Land = deps.Land
-        Tas = deps.Tas
-        Uang = deps.Uang
-        Net = deps.Net
-        Notify = deps.Notify
-        World = deps.World
+local LAMPU_MATI = 0.55
+local LAMPU_NYALA = 0
+
+local function bagian(model: Instance, nama: string): any
+	local d = model:FindFirstChild(nama, true)
+	return d
 end
 
-function SmashService.registerTable(index: number, pos: Vector3)
-        tables[index] = pos
-        slots[index] = {}
-        if not hasilFolders[index] then
-                local root = workspace:FindFirstChild("Dunia")
-                if root then
-                        local f = Instance.new("Folder")
-                        f.Name = "Hasil_" .. index
-                        f.Parent = root
-                        hasilFolders[index] = f
-                end
-        end
+local function baseOf(p: BasePart?): CFrame?
+	if p and p.Parent then
+		return p.CFrame
+	end
+	return nil
 end
 
-function SmashService.tablePos(index: number): Vector3?
-        return tables[index]
+function MesinSemaiService.bind(deps)
+	Land = deps.Land
+	Tas = deps.Tas
+	Uang = deps.Uang
+	Net = deps.Net
+	World = deps.World
 end
+
+function MesinSemaiService.registerMesin(index: number, model: Model)
+	local drum = bagian(model, "MesinDrum")
+	local m = {
+		pos = model:GetPivot().Position,
+		status = bagian(model, "StatusMesin"),
+		drum = drum,
+		drumBase = baseOf(drum),
+		girA = bagian(model, "MesinGirA"),
+		girABase = baseOf(bagian(model, "MesinGirA")),
+		girB = bagian(model, "MesinGirB"),
+		girBBase = baseOf(bagian(model, "MesinGirB")),
+		roda = bagian(model, "MesinRoda"),
+		rodaBase = baseOf(bagian(model, "MesinRoda")),
+		rib1 = bagian(model, "MesinRib1"),
+		rib1Base = baseOf(bagian(model, "MesinRib1")),
+		rib2 = bagian(model, "MesinRib2"),
+		rib2Base = baseOf(bagian(model, "MesinRib2")),
+		rib3 = bagian(model, "MesinRib3"),
+		rib3Base = baseOf(bagian(model, "MesinRib3")),
+		lampuMerah = bagian(model, "MesinLampuMerah"),
+		lampuKuning = bagian(model, "MesinLampuKuning"),
+		lampuHijau = bagian(model, "MesinLampuHijau"),
+		asap = bagian(model, "AsapMesin"),
+		suaraGiling = bagian(model, "SuaraGiling"),
+		suaraDing = bagian(model, "SuaraDing"),
+		suaraStart = bagian(model, "SuaraStart"),
+		blink = false,
+		mode = "",
+	}
+	mesin[index] = m
+	if m.asap then
+		m.asap.Enabled = false
+	end
+	if m.suaraGiling then
+		m.suaraGiling.Playing = false
+	end
+	MesinSemaiService.terapkanTahap(index)
+end
+
+local function setStatus(index: number)
+	local m = mesin[index]
+	if not m or not m.status or not m.status.Parent then
+		return
+	end
+	local b = batch[index]
+	local cfg = TEKS_TAHAP[b and b.tahap or "kosong"]
+	m.status.Text = cfg.teks
+	m.status.TextColor3 = Color3.fromRGB(cfg.warna[1], cfg.warna[2], cfg.warna[3])
+end
+
+local function setLampu(part: any, warna: Color3, nyala: boolean)
+	if part and part.Parent then
+		part.Color = warna
+		part.Transparency = nyala and LAMPU_NYALA or LAMPU_MATI
+	end
+end
+
+local MERAH_ON = Color3.fromRGB(232, 76, 60)
+local KUNING_ON = Color3.fromRGB(255, 206, 84)
+local HIJAU_ON = Color3.fromRGB(108, 220, 116)
+local LAMPU_OFF = Color3.fromRGB(72, 76, 84)
+
+local function lampuUpdate(index: number)
+	local m = mesin[index]
+	if not m then
+		return
+	end
+	local b = batch[index]
+	local tahap = b and b.tahap or "kosong"
+	if tahap ~= m.mode then
+		m.mode = tahap
+		m.blink = false
+	end
+	local merahNyala = tahap == "kosong"
+	local kuningNyala = tahap == "giling" or (tahap == "kabel" and m.blink)
+	local hijauNyala = tahap == "tuntas"
+	setLampu(m.lampuMerah, merahNyala and MERAH_ON or LAMPU_OFF, merahNyala)
+	setLampu(m.lampuKuning, kuningNyala and KUNING_ON or LAMPU_OFF, kuningNyala)
+	setLampu(m.lampuHijau, hijauNyala and HIJAU_ON or LAMPU_OFF, hijauNyala)
+end
+
+function MesinSemaiService.terapkanTahap(index: number)
+	setStatus(index)
+	lampuUpdate(index)
+	local m = mesin[index]
+	if not m then
+		return
+	end
+	local b = batch[index]
+	local tahap = b and b.tahap or "kosong"
+	local aktif = tahap == "giling"
+	if m.asap then
+		m.asap.Enabled = aktif
+	end
+	if m.suaraGiling then
+		m.suaraGiling.Playing = aktif
+	end
+	if tahap == "tuntas" and m.suaraDing then
+		m.suaraDing:Play()
+	end
+	if tahap == "giling" and m.suaraStart then
+		m.suaraStart:Play()
+	end
+end
+
+RunService.Heartbeat:Connect(function(dt)
+	local now = os.clock()
+	for index, m in pairs(mesin) do
+		local b = batch[index]
+		if b and b.tahap == "giling" then
+			local sudut = now * 8
+			local putar = CFrame.Angles(sudut, 0, 0)
+			if m.drum and m.drumBase then
+				m.drum.CFrame = m.drumBase * putar
+			end
+			if m.rib1 and m.rib1Base then
+				m.rib1.CFrame = m.rib1Base * putar
+			end
+			if m.rib2 and m.rib2Base then
+				m.rib2.CFrame = m.rib2Base * putar
+			end
+			if m.rib3 and m.rib3Base then
+				m.rib3.CFrame = m.rib3Base * putar
+			end
+			if m.girA and m.girABase then
+				m.girA.CFrame = m.girABase * CFrame.Angles(now * 6, 0, 0)
+			end
+			if m.girB and m.girBBase then
+				m.girB.CFrame = m.girBBase * CFrame.Angles(-now * 6, 0, 0)
+			end
+			if m.roda and m.rodaBase then
+				m.roda.CFrame = m.rodaBase * CFrame.Angles(now * 10, 0, 0)
+			end
+		end
+	end
+end)
+
+task.spawn(function()
+	while true do
+		task.wait(0.4)
+		for index, m in pairs(mesin) do
+			local b = batch[index]
+			local tahap = b and b.tahap or "kosong"
+			if tahap == "kabel" then
+				m.blink = not m.blink
+			elseif m.blink then
+				m.blink = false
+			end
+			lampuUpdate(index)
+		end
+	end
+end)
 
 local function syncLahan(index: number, player: Player?)
-        local arr = {}
-        for i, s in ipairs(slots[index]) do
-                arr[i] = { crop = s.crop, hits = s.hitsLeft, max = CropData.Smash[CropData.byId[s.crop].rarity].hits }
-        end
-        local ev = Net.get("SmashSync")
-        if player then
-                ev:FireClient(player, { lahan = index, slots = arr })
-                return
-        end
-        for _, p in ipairs(game:GetService("Players"):GetPlayers()) do
-                if Land.landOf(p) == index then
-                        ev:FireClient(p, { lahan = index, slots = arr })
-                end
-        end
+	local b = batch[index]
+	local p: any = { lahan = index, tahap = b and b.tahap or "kosong" }
+	if b then
+		p.crop = b.crop
+		p.jumlah = b.jumlah
+		p.pukulan = b.pukulan
+		p.micda = b.hasil.micda
+		p.benih = b.hasil.benih
+		p.blok = b.hasil.blok
+	end
+	local ev = Net.get("SemaiSync")
+	if player then
+		ev:FireClient(player, p)
+		return
+	end
+	for _, pl in ipairs(game:GetService("Players"):GetPlayers()) do
+		if Land.landOf(pl) == index then
+			ev:FireClient(pl, p)
+		end
+	end
 end
 
-function SmashService.clearLahan(index: number)
-        slots[index] = {}
-        local f = hasilFolders[index]
-        if f then
-                f:Destroy()
-                hasilFolders[index] = nil
-        end
+function MesinSemaiService.syncTo(player, index: number)
+	syncLahan(index, player)
 end
 
-function SmashService.syncTo(player, index: number)
-        syncLahan(index, player)
+function MesinSemaiService.clearLahan(index: number)
+	batch[index] = nil
+	local m = mesin[index]
+	if m then
+		m.mode = ""
+		m.blink = false
+	end
 end
 
-function SmashService.refundLahan(index: number, player)
-        for _, s in ipairs(slots[index] or {}) do
-                Tas.add(player, "hasil", s.crop, 1)
-        end
-        slots[index] = {}
+local function dekatMesin(player: Player, index: number): boolean
+	local m = mesin[index]
+	if not m then
+		return false
+	end
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not root or (root.Position - m.pos).Magnitude > CropData.MesinSemai.JarakMaks then
+		return false
+	end
+	return true
 end
 
-local function makeHasilModel(index: number, slotCount: number, info: any): Model
-        local model = Instance.new("Model")
-        model.Name = "Hasil_" .. slotCount
-        local part = Instance.new("Part")
-        part.Anchored = true
-        part.CanQuery = false
-        part.Size = RARITY_SIZE[info.rarity]
-        part.Color = RARITY_COLOR[info.rarity]
-        part.Material = Enum.Material.SmoothPlastic
-        part.Position = tables[index] + Vector3.new(-10 + slotCount * 4, part.Size.Y / 2 + 0.1, 0)
-        part.Parent = model
-        local f = hasilFolders[index]
-        if f then
-                model.Parent = f
-        else
-                model.Parent = workspace:FindFirstChild("Dunia")
-        end
-        return model
+function MesinSemaiService.atur(player, cropId: any, jumlah: any): (boolean, string)
+	local index = Land.landOf(player)
+	if not index then
+		return false, "Kamu tidak punya lahan."
+	end
+	if batch[index] then
+		return false, "Mesin masih berisi semaian. Selesaikan dulu."
+	end
+	if type(cropId) ~= "string" or not CropData.byId[cropId] then
+		return false, "Hasil panen tidak dikenal."
+	end
+	if type(jumlah) ~= "number" or jumlah ~= jumlah or jumlah % 1 ~= 0 or jumlah < 1 then
+		return false, "Jumlah tidak sah."
+	end
+	if not mesin[index] or not dekatMesin(player, index) then
+		return false, "Terlalu jauh dari mesin."
+	end
+	local info = CropData.byId[cropId]
+	local cfg = CropData.Giling[info.rarity]
+	local kapasitas = CropData.MesinSemai.Kapasitas
+	if jumlah > kapasitas then
+		jumlah = kapasitas
+	end
+	local dimiliki = Tas.count(player, "hasil", cropId)
+	if dimiliki < 1 then
+		return false, "Tidak ada " .. info.nama .. " di tas."
+	end
+	if jumlah > dimiliki then
+		jumlah = dimiliki
+	end
+	local diambil = Tas.remove(player, "hasil", cropId, jumlah)
+	if diambil < 1 then
+		return false, "Hasil panen tidak bisa diambil dari tas."
+	end
+	local hasil = SemaiLogic.gulung(rng, cfg, diambil)
+	batch[index] = {
+		pemilik = player.UserId,
+		crop = cropId,
+		jumlah = diambil,
+		pukulan = SemaiLogic.pukulanTotal(diambil, SemaiLogic.pukulanPerItem(cfg)),
+		hasil = hasil,
+		tahap = "kabel",
+	}
+	if World then
+		World.touch(index)
+	end
+	MesinSemaiService.terapkanTahap(index)
+	syncLahan(index)
+	return true, info.nama .. " x" .. tostring(diambil) .. " masuk mesin. Sambungkan kabelnya!", {
+		crop = cropId,
+		jumlah = diambil,
+		pukulan = batch[index].pukulan,
+		kapasitas = kapasitas,
+	}
 end
 
-function SmashService.place(player, cropId: any): (boolean, string)
-        local index = Land.landOf(player)
-        if not index then
-                return false, "Kamu tidak punya lahan."
-        end
-        if type(cropId) ~= "string" or not CropData.byId[cropId] then
-                return false, "Hasil panen tidak dikenal."
-        end
-        if #slots[index] >= MAX_SLOTS then
-                return false, "Meja penuh. Pukul dulu yang ada."
-        end
-        if Tas.count(player, "hasil", cropId) < 1 then
-                return false, "Hasil panen tidak ada di tas."
-        end
-        local char = player.Character
-        local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
-        if not root or (root.Position - tables[index]).Magnitude > 24 then
-                return false, "Terlalu jauh dari meja."
-        end
-        Tas.remove(player, "hasil", cropId, 1)
-        local info = CropData.byId[cropId]
-        local model = makeHasilModel(index, #slots[index], info)
-        table.insert(slots[index], { crop = cropId, hitsLeft = CropData.Smash[info.rarity].hits, model = model })
-        if World then
-                World.touch(index)
-        end
-        syncLahan(index, player)
-        return true, info.nama .. " diletakkan di meja."
+function MesinSemaiService.kabelJadi(player): (boolean, string)
+	local index = Land.landOf(player)
+	if not index then
+		return false, "Kamu tidak punya lahan."
+	end
+	local b = batch[index]
+	if not b then
+		return false, "Mesin kosong. Isi dulu hasil panennya."
+	end
+	if b.pemilik ~= player.UserId then
+		return false, "Bukan semaianmu."
+	end
+	if b.tahap ~= "kabel" then
+		return false, "Kabel sudah tersambung."
+	end
+	if not dekatMesin(player, index) then
+		return false, "Terlalu jauh dari mesin."
+	end
+	b.tahap = "giling"
+	MesinSemaiService.terapkanTahap(index)
+	syncLahan(index)
+	local waktu = CropData.MesinSemai.WaktuGiling
+	task.delay(waktu, function()
+		local b2 = batch[index]
+		if b2 and b2.tahap == "giling" then
+			b2.tahap = "tuntas"
+			if World then
+				World.touch(index)
+			end
+			MesinSemaiService.terapkanTahap(index)
+			syncLahan(index)
+		end
+	end)
+	return true, "Mesin aktif! Menggiling selama " .. tostring(waktu) .. " detik."
 end
 
-function SmashService.hit(player, slotIdx: any): (boolean, string)
-        local index = Land.landOf(player)
-        if not index then
-                return false, "Kamu tidak punya lahan."
-        end
-        if type(slotIdx) ~= "number" or slotIdx < 1 or slotIdx > #slots[index] then
-                return false, "Tidak ada hasil di posisi itu."
-        end
-        local char = player.Character
-        local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
-        if not root or (root.Position - tables[index]).Magnitude > 24 then
-                return false, "Terlalu jauh dari meja."
-        end
-        local s = slots[index][slotIdx]
-        local info = CropData.byId[s.crop]
-        local cfg = CropData.Smash[info.rarity]
-        s.hitsLeft -= 1
-        if s.hitsLeft <= 0 then
-                s.model:Destroy()
-                table.remove(slots[index], slotIdx)
-                local micda = rng:NextInteger(cfg.micdaMin, cfg.micdaMax)
-                local okUang, msgUang = true, "ok"
-                if Uang then
-                        okUang, msgUang = Uang.AddMicda(player, micda, "smash_hasil")
-                end
-                if World then
-                        World.touch(index)
-                end
-                local pesan = okUang and ("+" .. micda .. " Micda") or ("Micda ditunda: " .. tostring(msgUang))
-                if rng:NextNumber() < cfg.seed then
-                        local put = Tas.add(player, "benih", s.crop, 1)
-                        if put > 0 then
-                                pesan ..= ", +1 Benih " .. info.nama
-                        else
-                                Notify(player, "Tas Penuh", "Benih gagal masuk, tas penuh.")
-                        end
-                end
-                if rng:NextNumber() < cfg.blok then
-                        local put = Tas.add(player, "blok", CropData.BlokId, 1)
-                        if put > 0 then
-                                pesan ..= ", +1 Blok Panen"
-                        else
-                                Notify(player, "Tas Penuh", "Blok panen gagal masuk, tas penuh.")
-                        end
-                end
-                syncLahan(index, player)
-                return true, pesan
-        end
-        local part = s.model:FindFirstChildWhichIsA("BasePart")
-        if part then
-                part.Size = part.Size * 0.92
-        end
-        syncLahan(index, player)
-        return true, "Pukulan " .. (cfg.hits - s.hitsLeft) .. "/" .. cfg.hits
+function MesinSemaiService.klaim(player): (boolean, string, any)
+	local index = Land.landOf(player)
+	if not index then
+		return false, "Kamu tidak punya lahan."
+	end
+	local b = batch[index]
+	if not b then
+		return false, "Mesin kosong. Belum ada hasil untuk diklaim."
+	end
+	if b.pemilik ~= player.UserId then
+		return false, "Bukan semaianmu."
+	end
+	if b.tahap == "kabel" then
+		return false, "Sambungkan kabel mesin dulu."
+	elseif b.tahap == "giling" then
+		return false, "Mesin masih menggiling. Tunggu sebentar."
+	end
+	if not dekatMesin(player, index) then
+		return false, "Terlalu jauh dari mesin."
+	end
+	local info = CropData.byId[b.crop]
+	local items = {}
+	if b.hasil.benih > 0 then
+		table.insert(items, { kind = "benih", id = b.crop, count = b.hasil.benih })
+	end
+	if b.hasil.blok > 0 then
+		table.insert(items, { kind = "blok", id = CropData.blokIdFor(b.crop), count = b.hasil.blok })
+	end
+	if #items > 0 and not Tas.canFitBatch(player, items) then
+		return false, "Tas penuh! Kosongkan slot dulu, lalu klaim lagi."
+	end
+	for _, it in ipairs(items) do
+		Tas.add(player, it.kind, it.id, it.count)
+	end
+	local okUang, msgUang = true, "ok"
+	if b.hasil.micda > 0 and Uang then
+		okUang, msgUang = Uang.AddMicda(player, b.hasil.micda, "semai_hasil")
+	end
+	local struk = {
+		crop = b.crop,
+		nama = info and info.nama or b.crop,
+		jumlah = b.jumlah,
+		pukulan = b.pukulan,
+		micda = b.hasil.micda,
+		benih = b.hasil.benih,
+		blok = b.hasil.blok,
+		uangOk = okUang,
+	}
+	batch[index] = nil
+	if World then
+		World.touch(index)
+	end
+	MesinSemaiService.terapkanTahap(index)
+	syncLahan(index)
+	if okUang then
+		return true, "Semai tuntas! Semua hasil masuk tas.", struk
+	end
+	return false, "Micda ditunda: " .. tostring(msgUang), struk
 end
 
-function SmashService.take(player, slotIdx: any): (boolean, string)
-        local index = Land.landOf(player)
-        if not index then
-                return false, "Kamu tidak punya lahan."
-        end
-        if type(slotIdx) ~= "number" or slotIdx < 1 or slotIdx > #slots[index] then
-                return false, "Tidak ada hasil di posisi itu."
-        end
-        local s = slots[index][slotIdx]
-        if Tas.roomFor(player, "hasil", s.crop, 1) < 1 then
-                return false, "Tas penuh!"
-        end
-        s.model:Destroy()
-        table.remove(slots[index], slotIdx)
-        Tas.add(player, "hasil", s.crop, 1)
-        if World then
-                World.touch(index)
-        end
-        syncLahan(index, player)
-        return true, "Diambil kembali."
+function MesinSemaiService.serializeLahan(index: number): { any }
+	local out = {}
+	local b = batch[index]
+	if b then
+		table.insert(out, { c = b.crop, j = b.jumlah, m = b.hasil.micda, b = b.hasil.benih, k = b.hasil.blok })
+	end
+	return out
 end
 
-function SmashService.serializeLahan(index: number): { { c: string, h: number } }
-        local out = {}
-        for _, s in ipairs(slots[index] or {}) do
-                table.insert(out, { c = s.crop, h = s.hitsLeft })
-        end
-        return out
+function MesinSemaiService.restoreLahan(index: number, arr: any, ownerId: number?)
+	if not mesin[index] then
+		return
+	end
+	for _, rec in ipairs(arr or {}) do
+		if type(rec) == "table" and type(rec.c) == "string" and CropData.byId[rec.c] then
+			local info = CropData.byId[rec.c]
+			local jumlah = 1
+			local micda = info.jual
+			local benih = 0
+			local blok = 0
+			if type(rec.j) == "number" and rec.j >= 1 then
+				jumlah = math.min(math.floor(rec.j), CropData.MesinSemai.Kapasitas)
+				micda = type(rec.m) == "number" and math.max(0, math.floor(rec.m)) or 0
+				benih = type(rec.b) == "number" and math.max(0, math.floor(rec.b)) or 0
+				blok = type(rec.k) == "number" and math.max(0, math.floor(rec.k)) or 0
+			end
+			batch[index] = {
+				pemilik = ownerId,
+				crop = rec.c,
+				jumlah = jumlah,
+				pukulan = jumlah,
+				hasil = { micda = micda, benih = benih, blok = blok },
+				tahap = "tuntas",
+			}
+			break
+		end
+	end
+	MesinSemaiService.terapkanTahap(index)
 end
 
-function SmashService.restoreLahan(index: number, arr: { any })
-        if not tables[index] then
-                return
-        end
-        slots[index] = slots[index] or {}
-        for _, rec in ipairs(arr or {}) do
-                local info = CropData.byId[rec.c]
-                if info and #slots[index] < MAX_SLOTS then
-                        local model = makeHasilModel(index, #slots[index], info)
-                        table.insert(slots[index], { crop = rec.c, hitsLeft = rec.h, model = model })
-                end
-        end
-end
-
-return SmashService
+return MesinSemaiService
 
 end)()
 
@@ -5202,27 +5845,10 @@ function WorldBuilder.buildLahan(hooks, index: number, namaPemilik: string): Mod
         BuildingKit.streetLamp(folder, dX + ox + 166, gt, oz + 156)
         BuildingKit.streetLamp(folder, dX + ox + 40, gt, oz + 210)
 
-        local semai = BuildingKit.buildSemai(folder)
-        semai:PivotTo(CFrame.new(dX + ox + 185, gt, oz + 50))
-        for _, p in ipairs(semai:GetDescendants()) do
-                if p:IsA("BasePart") and p.Size == Vector3.new(12, 4, 4) then
-                        if hooks and hooks.registerTable then
-                                hooks.registerTable(index, p.Position + Vector3.new(0, 2, 0))
-                        end
-                        if hooks and hooks.onSemaiPrompt then
-                                local prompt = Instance.new("ProximityPrompt")
-                                prompt.ActionText = "Semai Panen"
-                                prompt.ObjectText = "Meja Hasil"
-                                prompt.HoldDuration = 0.3
-                                prompt.MaxActivationDistance = 12
-                                prompt.RequiresLineOfSight = false
-                                prompt.Parent = p
-                                p:SetAttribute("LahanIdx", index)
-                                prompt.Triggered:Connect(function(player: Player)
-                                        hooks.onSemaiPrompt(player, index)
-                                end)
-                        end
-                end
+        local mesin = BuildingKit.buildMesinSemai(folder, index, hooks)
+        mesin:PivotTo(CFrame.new(dX + ox + 185, gt, oz + 50))
+        if hooks and hooks.registerMesin then
+                hooks.registerMesin(index, mesin)
         end
 
         BuildingKit.marker(folder, dX + ox + 185, oz + 85, gt, 30, 30, MARKER_A)
@@ -5258,7 +5884,7 @@ local WorldBuilder = MOD_WorldBuilder
 
 local ZonaService = {}
 
-local Land, Plot, Smash, Data, Notify, Hooks, Gudang, Drop
+local Land, Plot, Mesin, Data, Notify, Hooks, Gudang, Drop
 local store = DataStoreService:GetDataStore("AKM_Dunia")
 
 type Seksi = {
@@ -5280,7 +5906,7 @@ local zoneOf: { [number]: { zone: string, dunia: string? } } = {}
 function ZonaService.bind(deps)
         Land = deps.Land
         Plot = deps.Plot
-        Smash = deps.Smash
+        Mesin = deps.Mesin
         Data = deps.Data
         Notify = deps.Notify
         Gudang = deps.Gudang
@@ -5389,7 +6015,7 @@ local function payloadOf(s: Seksi, leaving: boolean?)
         local p = {
                 n = s.ownerName,
                 pl = DuniaLogic.serPlots(Plot.serialize(s.idx)),
-                mj = DuniaLogic.serMeja(Smash.serializeLahan(s.idx)),
+                mj = DuniaLogic.serMesin(Mesin.serializeLahan(s.idx)),
                 gd = Gudang and Gudang.serLahan(s.idx) or {},
                 dr = Drop and DuniaLogic.serDrops(Drop.serLahan(s.idx)) or {},
                 t = os.time(),
@@ -5434,7 +6060,7 @@ local function loadWorld(ownerId: number): (boolean, string?, any, any, any, any
         if type(data) ~= "table" then
                 return true, nil, {}, {}, nil, {}, nil
         end
-        return true, DuniaLogic.cleanName(data.n), DuniaLogic.desPlots(data.pl), DuniaLogic.desMeja(data.mj), data.gd, data.dr, data.lt
+        return true, DuniaLogic.cleanName(data.n), DuniaLogic.desPlots(data.pl), DuniaLogic.desMesin(data.mj), data.gd, data.dr, data.lt
 end
 
 local function buildSection(idx: number, ownerId: number, nama: string, ghost: boolean, savedOk: boolean, plots: any, meja: any, gd: any, dr: any, lt: any): Seksi
@@ -5442,7 +6068,7 @@ local function buildSection(idx: number, ownerId: number, nama: string, ghost: b
         Plot.buildGrid(idx, model)
         Plot.restore(idx, plots)
         Plot.startLoop(idx)
-        Smash.restoreLahan(idx, meja)
+        Mesin.restoreLahan(idx, meja, ownerId)
         if Gudang then
                 Gudang.restoreLahan(idx, gd)
         end
@@ -5470,7 +6096,7 @@ local function destroySection(idx: number)
                 return
         end
         Plot.clearGrid(idx)
-        Smash.clearLahan(idx)
+        Mesin.clearLahan(idx)
         if Drop then
                 Drop.clearLahan(idx)
         end
@@ -6328,6 +6954,8 @@ local HUDLayout = MOD_HUDLayout
 local DropBentuk = MOD_DropBentuk
 local IkonJempol = MOD_IkonJempol
 local JualLogic = MOD_JualLogic
+local SemaiLogic = MOD_SemaiLogic
+local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -6336,7 +6964,7 @@ local state = {
         micda = 0,
         tas = {},
         lahan = nil,
-        semai = {},
+        semai = {} :: any,
         zone = "kota",
         dunia = nil,
         role = "hub",
@@ -6368,7 +6996,7 @@ local FONTB = Enum.Font[UIStyle.FontTebal]
 
 local PANEL_TITLES = {
         tas = "Tas",
-        semai = "Semai Panen",
+        semai = "Mesin Semai Panen",
         toko = "Toko Benih",
         gerbang = "Gerbang Dunia",
         tanam = "Papan Tanam",
@@ -6601,7 +7229,13 @@ local function ikonSlot(cell: Frame, s: any?)
         end
         local wadah = mk("Frame", { Name = "Ikon", Size = UDim2.new(0, 28, 0, 28), Position = UDim2.new(0, 6, 0, 5), BackgroundTransparency = 1 }, cell)
         if s.kind == "blok" then
-                mk("Frame", { Size = UDim2.fromScale(0.62, 0.62), Position = UDim2.fromScale(0.19, 0.19), BackgroundColor3 = warna(UIStyle.AbuGelap), BorderSizePixel = 0 }, wadah)
+                local cropId = CropData.blokCrop(s.id)
+                local bInfo = nil
+                if cropId then
+                        bInfo = CropData.Bentuk[cropId]
+                end
+                local badan = mk("Frame", { Size = UDim2.fromScale(0.62, 0.62), Position = UDim2.fromScale(0.19, 0.19), BackgroundColor3 = bInfo and warna3b(bInfo.siap) or warna(UIStyle.AbuGelap), BorderSizePixel = 0 }, wadah)
+                mk("Frame", { Size = UDim2.fromScale(0.72, 0.22), Position = UDim2.fromScale(0.14, 0.12), BackgroundColor3 = bInfo and warna3b(bInfo.aksen) or warna(UIStyle.Abu), BorderSizePixel = 0, ZIndex = 2 }, badan)
                 return
         end
         local info = CropData.byId[s.id]
@@ -6629,7 +7263,7 @@ local function refreshTas()
                 if s then
                         local info = CropData.byId[s.id]
                         slot.frame.BackgroundColor3 = s.kind == "benih" and warna(UIStyle.Permukaan) or warna(UIStyle.PermukaanAktif)
-                        slot.nama.Text = UIStyle.potong(s.kind == "blok" and "Blok Panen" or (info and info.nama or s.id))
+                        slot.nama.Text = UIStyle.potong(s.kind == "blok" and CropData.blokNamaFor(CropData.blokCrop(s.id) or "") or (info and info.nama or s.id))
                         slot.count.Text = "x" .. s.count
                         ikonSlot(slot.frame, s)
                 else
@@ -6720,11 +7354,339 @@ travelBtn.Activated:Connect(function()
 end)
 
 local semaiPanel = makePanel("semai")
-mk("TextLabel", { Size = UDim2.new(1, -8, 0, 34), Position = UDim2.new(0, 4, 0, 2), BackgroundTransparency = 1, Text = "Letakkan hasil panen di meja, lalu pukul hingga hancur untuk Micda + peluang benih & blok panen.", TextWrapped = true, TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left }, semaiPanel)
-local semaiLeft = mk("ScrollingFrame", { Size = UDim2.new(0.5, -10, 1, -52), Position = UDim2.new(0, 4, 0, 42), BackgroundColor3 = warna(UIStyle.Permukaan), ScrollBarThickness = 6, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(0, 0, 0, 0) }, semaiPanel)
-local semaiRight = mk("ScrollingFrame", { Size = UDim2.new(0.5, -10, 1, -52), Position = UDim2.new(0.5, 6, 0, 42), BackgroundColor3 = warna(UIStyle.Permukaan), ScrollBarThickness = 6, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(0, 0, 0, 0) }, semaiPanel)
-mk("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, semaiLeft)
-mk("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, semaiRight)
+mk("TextLabel", { Size = UDim2.new(1, -8, 0, 30), Position = UDim2.new(0, 4, 0, 0), BackgroundTransparency = 1, Text = "Pilih hasil panen, atur jumlah, isi mesin, lalu jodohkan kabel warnanya. Setelah gilingan tuntas, klaim Micda, benih, dan blok hasil semai.", TextWrapped = true, TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left }, semaiPanel)
+local semaiScroll = mk("ScrollingFrame", { Size = UDim2.new(1, -8, 1, -206), Position = UDim2.new(0, 4, 0, 34), BackgroundTransparency = 1, ScrollBarThickness = 6, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(0, 0, 0, 0) }, semaiPanel)
+mk("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, semaiScroll)
+local semaiAtur = mk("Frame", { Size = UDim2.new(1, -8, 0, 164), Position = UDim2.new(0, 4, 1, -168), BackgroundColor3 = warna(UIStyle.Permukaan) }, semaiPanel)
+round(semaiAtur)
+mk("TextLabel", { Size = UDim2.new(0, 76, 0, 30), Position = UDim2.new(0, 10, 0, 8), BackgroundTransparency = 1, Text = "Jumlah:", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left }, semaiAtur)
+local semaiQty = mk("TextBox", { Size = UDim2.new(0, 86, 0, 30), Position = UDim2.new(0, 86, 0, 8), BackgroundColor3 = warna(UIStyle.PermukaanAktif), Text = "1", PlaceholderText = "1", TextSize = UIStyle.UkuranIsi, Font = FON, TextColor3 = warna(UIStyle.Teks), ClearTextOnFocus = false }, semaiAtur)
+round(semaiQty, UIStyle.SudutKecil)
+local semaiPresets = mk("Frame", { Size = UDim2.new(1, -196, 0, 30), Position = UDim2.new(0, 182, 0, 8), BackgroundTransparency = 1 }, semaiAtur)
+mk("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, semaiPresets)
+for pi, pn in ipairs({ 1, 10, 50, 100, 500 }) do
+        local pb = mk("TextButton", { Size = UDim2.new(0.2, -6, 1, 0), BackgroundColor3 = warna(UIStyle.Latar), Text = tostring(pn), TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Teks), LayoutOrder = pi }, semaiPresets)
+        round(pb, UIStyle.SudutKecil)
+        pb.Activated:Connect(function()
+                semaiQty.Text = tostring(pn)
+        end)
+end
+local semaiMaksBtn = mk("TextButton", { Size = UDim2.new(0, 86, 0, 24), Position = UDim2.new(0, 86, 0, 42), BackgroundColor3 = warna(UIStyle.Latar), Text = "Maks", TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Teks) }, semaiAtur)
+round(semaiMaksBtn, UIStyle.SudutKecil)
+local semaiPreview1 = mk("TextLabel", { Size = UDim2.new(1, -20, 0, 20), Position = UDim2.new(0, 10, 0, 72), BackgroundTransparency = 1, Text = "", TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, semaiAtur)
+local semaiPreview2 = mk("TextLabel", { Size = UDim2.new(1, -20, 0, 20), Position = UDim2.new(0, 10, 0, 94), BackgroundTransparency = 1, Text = "", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, semaiAtur)
+local semaiIsiBtn = mk("TextButton", { Size = UDim2.new(1, -20, 0, 38), Position = UDim2.new(0, 10, 1, -44), BackgroundColor3 = warna(UIStyle.Hijau), Text = "Isi Mesin Semai", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = Color3.new(1, 1, 1) }, semaiAtur)
+round(semaiIsiBtn, UIStyle.SudutKecil)
+
+local semaiPilih: string? = nil
+local bukaKabel: () -> ()
+local bukaStrukKlaim: (any) -> ()
+
+local function semaiDimiliki(): number
+        if not semaiPilih then
+                return 0
+        end
+        for _, s in ipairs(state.tas) do
+                if s.kind == "hasil" and s.id == semaiPilih then
+                        return s.count
+                end
+        end
+        return 0
+end
+
+local function perbaruiSemaiPreview()
+        local info = semaiPilih and CropData.byId[semaiPilih]
+        local per = 0
+        if info then
+                per = SemaiLogic.pukulanPerItem(CropData.Giling[info.rarity])
+        end
+        local dimiliki = semaiDimiliki()
+        local n = SemaiLogic.saringJumlah(semaiQty.Text, dimiliki, CropData.MesinSemai.Kapasitas)
+        if info and n then
+                semaiPreview1.Text = "Pukulan per item: " .. tostring(per) .. " — Total pukulan: " .. tostring(SemaiLogic.pukulanTotal(n, per))
+        else
+                semaiPreview1.Text = "Pukulan per item: " .. tostring(per)
+        end
+        semaiPreview2.Text = "Dimiliki: " .. tostring(dimiliki) .. " — Kapasitas mesin: " .. tostring(CropData.MesinSemai.Kapasitas)
+end
+
+semaiQty:GetPropertyChangedSignal("Text"):Connect(perbaruiSemaiPreview)
+semaiMaksBtn.Activated:Connect(function()
+        local dimiliki = semaiDimiliki()
+        if dimiliki > 0 then
+                semaiQty.Text = tostring(math.min(dimiliki, CropData.MesinSemai.Kapasitas))
+        end
+end)
+
+local kabelDim = mk("Frame", { Name = "ModalKabel", Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.55, Visible = false, ZIndex = 30 }, gui)
+local kabelBox = mk("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.new(0.92, 0, 0.82, 0), BackgroundColor3 = warna(UIStyle.Latar), ZIndex = 31 }, kabelDim)
+round(kabelBox, 12)
+mk("UISizeConstraint", { MinSize = Vector2.new(300, 300), MaxSize = Vector2.new(480, 580) }, kabelBox)
+mk("TextLabel", { Size = UDim2.new(1, -56, 0, 28), Position = UDim2.new(0, 12, 0, 8), BackgroundTransparency = 1, Text = "Sambungkan Kabel Mesin", TextSize = UIStyle.UkuranJudul, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 32 }, kabelBox)
+mk("TextLabel", { Size = UDim2.new(1, -24, 0, 32), Position = UDim2.new(0, 12, 0, 38), BackgroundTransparency = 1, Text = "Tarik kabel dari soket kiri ke soket warna yang sama di kanan (atau ketuk kiri lalu kanan). Susunan selalu acak.", TextWrapped = true, TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 32 }, kabelBox)
+local kabelArea = mk("Frame", { Size = UDim2.new(1, -24, 1, -144), Position = UDim2.new(0, 12, 0, 76), BackgroundColor3 = warna(UIStyle.Permukaan), ZIndex = 32 }, kabelBox)
+round(kabelArea, UIStyle.SudutKecil)
+local kabelGaris = mk("Frame", { Name = "GarisKabel", Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ZIndex = 40 }, kabelArea)
+local kabelStatus = mk("TextLabel", { Size = UDim2.new(1, -24, 0, 22), Position = UDim2.new(0, 12, 1, -30), BackgroundTransparency = 1, Text = "", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Aksen), TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 33 }, kabelBox)
+local kabelTutup = mk("TextButton", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -10, 0, 8), Size = UDim2.new(0, 40, 0, 30), BackgroundColor3 = warna(UIStyle.Permukaan), Text = "X", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks), ZIndex = 33 }, kabelBox)
+round(kabelTutup, UIStyle.SudutKecil)
+local kabelSfx = mk("Sound", { SoundId = "rbxasset://sounds/electronicpingshort.wav", Volume = 0.4, PlaybackSpeed = 1.15 }, gui)
+
+local kabelCfg: any = nil
+local kabelSambung: { [number]: number } = {}
+local kabelPilihKiri: number? = nil
+local kabelDrag: any = nil
+local soketKiri: { any } = {}
+local soketKanan: { any } = {}
+
+local function warnaKabel(i: number): Color3
+        local w = SemaiLogic.WarnaKabel[i] or { 200, 200, 200 }
+        return Color3.fromRGB(w[1], w[2], w[3])
+end
+
+local function pusatSoket(f: any): (number, number)
+        local ap = kabelArea.AbsolutePosition or { X = 0, Y = 0 }
+        local fp = f.AbsolutePosition or { X = 0, Y = 0 }
+        local fs = f.AbsoluteSize or { X = 48, Y = 48 }
+        return fp.X - ap.X + fs.X / 2, fp.Y - ap.Y + fs.Y / 2
+end
+
+local function gambarGaris(dariX: number, dariY: number, keX: number, keY: number, color: Color3, tebal: number, transparansi: number): Frame
+        local mx, my = (dariX + keX) / 2, (dariY + keY) / 2
+        local dx, dy = keX - dariX, keY - dariY
+        local panjang = math.sqrt(dx * dx + dy * dy)
+        local f = mk("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromOffset(mx, my), Size = UDim2.fromOffset(math.max(4, panjang), tebal), BackgroundColor3 = color, BackgroundTransparency = transparansi, BorderSizePixel = 0, ZIndex = 41 }, kabelGaris)
+        round(f, math.floor(tebal / 2))
+        f.Rotation = math.deg(math.atan2(dy, dx))
+        return f
+end
+
+local function tandaiPilih()
+        for i, s in ipairs(soketKiri) do
+                s.frame.BackgroundColor3 = (kabelPilihKiri == i) and warna(UIStyle.PermukaanAktif) or warna(UIStyle.AbuGelap)
+                s.inti.BackgroundTransparency = kabelSambung[i] and 0 or 0.35
+        end
+        for j, s in ipairs(soketKanan) do
+                s.inti.BackgroundTransparency = 0.35
+                for _, terhubung in pairs(kabelSambung) do
+                        if terhubung == j then
+                                s.inti.BackgroundTransparency = 0
+                        end
+                end
+        end
+end
+
+local function cobaSambung(i: number, j: number)
+        if not kabelCfg or kabelSambung[i] then
+                return
+        end
+        if kabelCfg.kiri[i] == kabelCfg.kanan[j] then
+                kabelSambung[i] = j
+                local sx, sy = pusatSoket(soketKiri[i].frame)
+                local tx, ty = pusatSoket(soketKanan[j].frame)
+                gambarGaris(sx, sy, tx, ty, warnaKabel(kabelCfg.kiri[i]), 10, 0)
+                soketKiri[i].inti.BackgroundTransparency = 0
+                soketKanan[j].inti.BackgroundTransparency = 0
+                kabelSfx:Play()
+                kabelPilihKiri = nil
+                tandaiPilih()
+                local terhubung = 0
+                for _ in pairs(kabelSambung) do
+                        terhubung += 1
+                end
+                kabelStatus.TextColor3 = warna(UIStyle.Aksen)
+                kabelStatus.Text = "Terhubung " .. tostring(terhubung) .. "/" .. tostring(kabelCfg.n)
+                if SemaiLogic.kabelSelesai(kabelCfg, kabelSambung) then
+                        kabelStatus.Text = "Semua kabel terjodohkan! Mesin aktif..."
+                        task.delay(0.4, function()
+                                kabelDim.Visible = false
+                                task.spawn(function()
+                                        local ok, msg = Net.get("SemaiAct"):InvokeServer("kabel")
+                                        toast(ok and "Mesin Semai" or "Gagal", msg)
+                                end)
+                        end)
+                end
+        else
+                kabelStatus.TextColor3 = warna(UIStyle.Merah)
+                kabelStatus.Text = "Warna tidak cocok! Jodohkan kabel dengan warna yang sama."
+        end
+end
+
+local function buatSoket(sisi: string, warnaIdx: number, yf: number, jitter: number): (Frame, Frame, UIStroke)
+        local warnaSoket = warnaKabel(warnaIdx)
+        local f = mk("Frame", {
+                AnchorPoint = Vector2.new(0.5, 0.5),
+                Position = (sisi == "kiri") and UDim2.new(0, 52, yf, jitter) or UDim2.new(1, -52, yf, jitter),
+                Size = UDim2.fromOffset(48, 48),
+                BackgroundColor3 = warna(UIStyle.AbuGelap),
+                ZIndex = 45,
+        }, kabelArea)
+        round(f, 24)
+        local stroke = mk("UIStroke", { Color = warnaSoket, Thickness = 3, Transparency = 0.1 }, f)
+        local inti = mk("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0.52, 0.52), BackgroundColor3 = warnaSoket, BackgroundTransparency = 0.35, ZIndex = 46 }, f)
+        round(inti, 12)
+        return f, inti, stroke
+end
+
+local function bangunKabel()
+        for _, c in ipairs(kabelGaris:GetChildren()) do
+                c:Destroy()
+        end
+        for _, c in ipairs(kabelArea:GetChildren()) do
+                if c ~= kabelGaris then
+                        c:Destroy()
+                end
+        end
+        soketKiri, soketKanan = {}, {}
+        kabelSambung = {}
+        kabelPilihKiri = nil
+        kabelDrag = nil
+        local jr = Random.new()
+        for i = 1, kabelCfg.n do
+                local yf = (i - 0.5) / kabelCfg.n
+                local jKiri = jr:NextNumber() * 16 - 8
+                local jKanan = jr:NextNumber() * 16 - 8
+                local fk, intiK, _s1 = buatSoket("kiri", kabelCfg.kiri[i], yf, jKiri)
+                local fn, intiN, _s2 = buatSoket("kanan", kabelCfg.kanan[i], yf, jKanan)
+                soketKiri[i] = { frame = fk, inti = intiK, warna = kabelCfg.kiri[i] }
+                soketKanan[i] = { frame = fn, inti = intiN, warna = kabelCfg.kanan[i] }
+                fk.InputBegan:Connect(function(input)
+                        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+                                if input.UserInputState ~= Enum.UserInputState.Begin or kabelSambung[i] then
+                                        return
+                                end
+                                kabelDrag = { dari = i }
+                                kabelPilihKiri = i
+                                tandaiPilih()
+                        end
+                end)
+                fk.Activated:Connect(function()
+                        if kabelSambung[i] then
+                                return
+                        end
+                        if kabelPilihKiri == i then
+                                kabelPilihKiri = nil
+                        else
+                                kabelPilihKiri = i
+                        end
+                        tandaiPilih()
+                end)
+                fn.Activated:Connect(function()
+                        if kabelPilihKiri then
+                                cobaSambung(kabelPilihKiri, i)
+                        end
+                end)
+        end
+        tandaiPilih()
+end
+
+bukaKabel = function()
+        if not (state.semai and state.semai.tahap == "kabel") then
+                return
+        end
+        kabelCfg = SemaiLogic.buatKabel(Random.new())
+        bangunKabel()
+        kabelStatus.TextColor3 = warna(UIStyle.Aksen)
+        kabelStatus.Text = "Terhubung 0/" .. tostring(kabelCfg.n)
+        kabelDim.Visible = true
+end
+
+kabelTutup.Activated:Connect(function()
+        kabelDim.Visible = false
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+        if not kabelDrag then
+                return
+        end
+        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+                local ap = kabelArea.AbsolutePosition or { X = 0, Y = 0 }
+                local x = input.Position.X - ap.X
+                local y = input.Position.Y - ap.Y
+                if kabelDrag.garis then
+                        kabelDrag.garis:Destroy()
+                end
+                local sx, sy = pusatSoket(soketKiri[kabelDrag.dari].frame)
+                kabelDrag.garis = gambarGaris(sx, sy, x, y, warnaKabel(kabelCfg.kiri[kabelDrag.dari]), 8, 0.25)
+        end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+        if not kabelDrag then
+                return
+        end
+        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+                local ap = kabelArea.AbsolutePosition or { X = 0, Y = 0 }
+                local x = input.Position.X - ap.X
+                local y = input.Position.Y - ap.Y
+                local target: number? = nil
+                for j, s in ipairs(soketKanan) do
+                        local cx, cy = pusatSoket(s.frame)
+                        if math.abs(x - cx) <= 36 and math.abs(y - cy) <= 36 then
+                                target = j
+                                break
+                        end
+                end
+                if kabelDrag.garis then
+                        kabelDrag.garis:Destroy()
+                end
+                local dari = kabelDrag.dari
+                kabelDrag = nil
+                if target then
+                        cobaSambung(dari, target :: number)
+                end
+        end
+end)
+
+local function klaimSemai()
+        task.spawn(function()
+                local ok, msg, struk = Net.get("SemaiAct"):InvokeServer("klaim")
+                if ok and type(struk) == "table" then
+                        syncState()
+                        bukaStrukKlaim(struk)
+                        toast("Semai Tuntas", msg)
+                else
+                        toast("Gagal", tostring(msg))
+                end
+        end)
+end
+
+semaiIsiBtn.Activated:Connect(function()
+        if not semaiPilih then
+                semaiPreview1.TextColor3 = warna(UIStyle.Merah)
+                semaiPreview1.Text = "Pilih salah satu hasil panen di daftar dulu."
+                task.delay(1.4, function()
+                        semaiPreview1.TextColor3 = warna(UIStyle.Teks)
+                        perbaruiSemaiPreview()
+                end)
+                return
+        end
+        local dimiliki = semaiDimiliki()
+        local n = SemaiLogic.saringJumlah(semaiQty.Text, dimiliki, CropData.MesinSemai.Kapasitas)
+        if not n then
+                semaiPreview1.TextColor3 = warna(UIStyle.Merah)
+                semaiPreview1.Text = "Jumlah harus angka 1 sampai " .. tostring(math.max(1, math.min(dimiliki, CropData.MesinSemai.Kapasitas))) .. "."
+                task.delay(1.4, function()
+                        semaiPreview1.TextColor3 = warna(UIStyle.Teks)
+                        perbaruiSemaiPreview()
+                end)
+                return
+        end
+        task.spawn(function()
+                local ok, msg = Net.get("SemaiAct"):InvokeServer("atur", semaiPilih, n)
+                toast(ok and "Mesin Semai" or "Gagal", msg)
+                if ok then
+                        syncState()
+                        for _ = 1, 12 do
+                                if state.semai and state.semai.tahap == "kabel" then
+                                        break
+                                end
+                                task.wait(0.1)
+                        end
+                        bukaKabel()
+                end
+        end)
+end)
 
 local function actionBtn(parent, text: string, order: number)
         local holder = mk("Frame", { Size = UDim2.new(1, -8, 0, 60), BackgroundColor3 = warna(UIStyle.Latar), LayoutOrder = order }, parent)
@@ -6741,41 +7703,84 @@ local function subBtn(parent: Frame, text: string, posX: number, width: number, 
 end
 
 local function refreshSemai()
-        for _, col in ipairs({ semaiLeft, semaiRight }) do
-                bersihkan(col)
-        end
-        local order = 0
-        local adaHasil = false
-        for _, s in ipairs(state.tas) do
-                if s.kind == "hasil" then
-                        adaHasil = true
-                        order += 1
-                        local info = CropData.byId[s.id]
-                        local holder = actionBtn(semaiLeft, (info and info.nama or s.id) .. " x" .. s.count, order)
-                        subBtn(holder, "Letakkan 1", 0.5, 0.5, warna(UIStyle.Hijau), function()
-                                local ok, msg = Net.get("SmashAct"):InvokeServer("place", s.id)
-                                toast(ok and "Meja" or "Gagal", msg)
-                        end)
+        local b = state.semai
+        local adaBatch = type(b) == "table" and b.tahap ~= nil and b.tahap ~= "kosong"
+        semaiAtur.Visible = not adaBatch
+        bersihkan(semaiScroll)
+        if not adaBatch then
+                local order = 0
+                for _, s in ipairs(state.tas) do
+                        if s.kind == "hasil" then
+                                order += 1
+                                local info = CropData.byId[s.id]
+                                local cfg = info and CropData.Giling[info.rarity]
+                                local per = cfg and SemaiLogic.pukulanPerItem(cfg) or 0
+                                local row = mk("TextButton", { Size = UDim2.new(1, -8, 0, 46), BackgroundColor3 = warna(s.id == semaiPilih and UIStyle.PermukaanAktif or UIStyle.Permukaan), Text = "", AutoButtonColor = true, LayoutOrder = order }, semaiScroll)
+                                round(row, UIStyle.SudutKecil)
+                                ikonSlot(row, s)
+                                if s.id == semaiPilih then
+                                        mk("Frame", { Size = UDim2.new(0, 3, 1, -8), Position = UDim2.new(0, 4, 0, 4), BackgroundColor3 = warna(UIStyle.Aksen), BorderSizePixel = 0, ZIndex = 3 }, row)
+                                end
+                                mk("TextLabel", { Size = UDim2.new(0.46, -46, 1, -8), Position = UDim2.new(0, 44, 0, 4), BackgroundTransparency = 1, Text = UIStyle.potong(info and info.nama or s.id), TextSize = UIStyle.UkuranIsi, Font = FON, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, row)
+                                mk("TextLabel", { Size = UDim2.new(0.2, -8, 1, -8), Position = UDim2.new(0.46, 44, 0, 4), BackgroundTransparency = 1, Text = "x" .. tostring(s.count), TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Aksen), TextXAlignment = Enum.TextXAlignment.Left }, row)
+                                mk("TextLabel", { Size = UDim2.new(0.3, -10, 1, -8), Position = UDim2.new(0.7, 6, 0, 4), BackgroundTransparency = 1, Text = tostring(per) .. " pukulan/item", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Right }, row)
+                                row.Activated:Connect(function()
+                                        semaiPilih = s.id
+                                        refreshSemai()
+                                end)
+                        end
                 end
+                if order == 0 then
+                        mk("TextLabel", { Size = UDim2.new(1, -8, 0, 40), BackgroundTransparency = 1, Text = "Tidak ada hasil panen di tas. Panen tanaman siap dengan tombol Punch dulu.", TextWrapped = true, TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), LayoutOrder = 1 }, semaiScroll)
+                end
+                if semaiPilih and semaiDimiliki() < 1 then
+                        semaiPilih = nil
+                end
+                perbaruiSemaiPreview()
+                return
         end
-        if not adaHasil then
-                mk("TextLabel", { Size = UDim2.new(1, -8, 0, 40), BackgroundTransparency = 1, Text = "Tidak ada hasil panen di tas.", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), LayoutOrder = 1 }, semaiLeft)
-        end
-        if #state.semai == 0 then
-                mk("TextLabel", { Size = UDim2.new(1, -8, 0, 40), BackgroundTransparency = 1, Text = "Meja kosong.", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), LayoutOrder = 1 }, semaiRight)
-        end
-        for i, slot in ipairs(state.semai) do
-                local info = CropData.byId[slot.crop]
-                local cfg = info and CropData.Smash[info.rarity]
-                local holder = actionBtn(semaiRight, (info and info.nama or slot.crop) .. " — pukul " .. tostring(slot.hits) .. "/" .. tostring(cfg and cfg.hits or "?"), i)
-                subBtn(holder, "Pukul", 0, 0.5, warna(UIStyle.Merah), function()
-                        local ok, msg = Net.get("SmashAct"):InvokeServer("hit", i)
-                        toast(ok and "Pukul" or "Gagal", msg)
+        local info = CropData.byId[b.crop]
+        local nama = info and info.nama or tostring(b.crop)
+        local kepala = mk("Frame", { Size = UDim2.new(1, -8, 0, 40), BackgroundColor3 = warna(UIStyle.PermukaanAktif), LayoutOrder = 1 }, semaiScroll)
+        round(kepala, UIStyle.SudutKecil)
+        mk("TextLabel", { Size = UDim2.new(0.62, -12, 1, -8), Position = UDim2.new(0, 8, 0, 4), BackgroundTransparency = 1, Text = "Isi mesin: " .. tostring(b.jumlah) .. " x " .. UIStyle.potong(nama, 14), TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, kepala)
+        mk("TextLabel", { Size = UDim2.new(0.38, -12, 1, -8), Position = UDim2.new(0.62, 8, 0, 4), BackgroundTransparency = 1, Text = "Total " .. tostring(b.pukulan) .. " pukulan", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Right }, kepala)
+        if b.tahap == "kabel" then
+                mk("TextLabel", { Size = UDim2.new(1, -8, 0, 34), BackgroundTransparency = 1, Text = "Mesin menunggu kabel. Jodohkan semua kabel warnanya untuk mengaktifkan mesin.", TextWrapped = true, TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Kuning), LayoutOrder = 2 }, semaiScroll)
+                local btnKabel = mk("TextButton", { Size = UDim2.new(1, -8, 0, 42), BackgroundColor3 = warna(UIStyle.Hijau), Text = "Sambungkan Kabel", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = Color3.new(1, 1, 1), LayoutOrder = 3 }, semaiScroll)
+                round(btnKabel)
+                btnKabel.Activated:Connect(function()
+                        bukaKabel()
                 end)
-                subBtn(holder, "Ambil", 0.5, 0.5, warna(UIStyle.PermukaanAktif), function()
-                        local ok, msg = Net.get("SmashAct"):InvokeServer("take", i)
-                        toast(ok and "Meja" or "Gagal", msg)
-                end)
+        elseif b.tahap == "giling" then
+                mk("TextLabel", { Size = UDim2.new(1, -8, 0, 34), BackgroundTransparency = 1, Text = "Mesin sedang menggiling " .. tostring(b.jumlah) .. " x " .. UIStyle.potong(nama, 12) .. ". Tunggu sebentar sampai label SEMAI TUNTAS menyala.", TextWrapped = true, TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), LayoutOrder = 2 }, semaiScroll)
+        elseif b.tahap == "tuntas" then
+                mk("TextLabel", { Size = UDim2.new(1, -8, 0, 26), BackgroundTransparency = 1, Text = "SEMAI TUNTAS! Hasil gilingan siap diambil:", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Kuning), LayoutOrder = 2 }, semaiScroll)
+                local urut = 3
+                local function barisHasil(ikonData: any?, teks: string, kanan: string)
+                        local row = mk("Frame", { Size = UDim2.new(1, -8, 0, 38), BackgroundColor3 = warna(UIStyle.Permukaan), LayoutOrder = urut }, semaiScroll)
+                        urut += 1
+                        round(row, UIStyle.SudutKecil)
+                        if ikonData then
+                                ikonSlot(row, ikonData)
+                        else
+                                local m = mk("Frame", { Size = UDim2.new(0, 28, 0, 28), Position = UDim2.new(0, 6, 0, 5), BackgroundColor3 = warna(UIStyle.Aksen) }, row)
+                                mk("UICorner", { CornerRadius = UDim.new(0.5, 0) }, m)
+                                mk("TextLabel", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Text = "M", Font = FONTB, TextSize = UIStyle.UkuranKecil, TextColor3 = warna(UIStyle.Latar), ZIndex = 2 }, m)
+                        end
+                        mk("TextLabel", { Size = UDim2.new(1, -100, 1, -8), Position = UDim2.new(0, 42, 0, 4), BackgroundTransparency = 1, Text = teks, TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, row)
+                        mk("TextLabel", { Size = UDim2.new(0, 52, 1, -8), Position = UDim2.new(1, -56, 0, 4), BackgroundTransparency = 1, Text = kanan, TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Aksen), TextXAlignment = Enum.TextXAlignment.Right }, row)
+                end
+                barisHasil(nil, "+" .. fmt(b.micda or 0) .. " Micda", "Micda")
+                if (b.benih or 0) > 0 then
+                        barisHasil({ kind = "benih", id = b.crop, count = b.benih }, "Benih " .. UIStyle.potong(nama, 18), "x" .. tostring(b.benih))
+                end
+                if (b.blok or 0) > 0 then
+                        barisHasil({ kind = "blok", id = CropData.blokIdFor(b.crop), count = b.blok }, CropData.blokNamaFor(b.crop), "x" .. tostring(b.blok))
+                end
+                local btnKlaim = mk("TextButton", { Size = UDim2.new(1, -8, 0, 46), BackgroundColor3 = warna(UIStyle.Hijau), Text = "Klaim Semua", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = Color3.new(1, 1, 1), LayoutOrder = 9 }, semaiScroll)
+                round(btnKlaim)
+                btnKlaim.Activated:Connect(klaimSemai)
         end
 end
 
@@ -6974,6 +7979,42 @@ modalYa.Activated:Connect(function()
                 end
         end)
 end)
+
+bukaStrukKlaim = function(s: any)
+        bersihkanModalIsi()
+        modalTitle.Text = "Semai Tuntas - Hasil Diklaim"
+        local urutan = 0
+        local function baris(ikonData: any?, teks: string, kanan: string)
+                urutan += 1
+                local row = mk("Frame", { Size = UDim2.new(1, 0, 0, 36), BackgroundColor3 = warna(UIStyle.Permukaan) }, modalIsi)
+                round(row, UIStyle.SudutKecil)
+                if ikonData then
+                        ikonSlot(row, ikonData)
+                else
+                        local m = mk("Frame", { Size = UDim2.new(0, 28, 0, 28), Position = UDim2.new(0, 6, 0, 4), BackgroundColor3 = warna(UIStyle.Aksen) }, row)
+                        mk("UICorner", { CornerRadius = UDim.new(0.5, 0) }, m)
+                        mk("TextLabel", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Text = "M", Font = FONTB, TextSize = UIStyle.UkuranKecil, TextColor3 = warna(UIStyle.Latar), ZIndex = 2 }, m)
+                end
+                mk("TextLabel", { Size = UDim2.new(1, -100, 0, 36), Position = UDim2.new(0, 42, 0, 0), BackgroundTransparency = 1, Text = teks, TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, row)
+                mk("TextLabel", { Size = UDim2.new(0, 52, 0, 36), Position = UDim2.new(1, -56, 0, 0), BackgroundTransparency = 1, Text = kanan, TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Aksen), TextXAlignment = Enum.TextXAlignment.Right }, row)
+                local skala = mk("UIScale", { Scale = 0.01 }, row)
+                task.delay(0.07 * urutan, function()
+                        if row.Parent then
+                                TweenService:Create(skala, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+                        end
+                end)
+        end
+        baris(nil, "+" .. fmt(s.micda or 0) .. " Micda", "Micda")
+        if (s.benih or 0) > 0 then
+                baris({ kind = "benih", id = s.crop, count = s.benih }, "Benih " .. UIStyle.potong(s.nama, 18), "x" .. tostring(s.benih))
+        end
+        if (s.blok or 0) > 0 then
+                baris({ kind = "blok", id = CropData.blokIdFor(s.crop), count = s.blok }, CropData.blokNamaFor(s.crop), "x" .. tostring(s.blok))
+        end
+        mk("TextLabel", { Size = UDim2.new(1, 0, 0, 24), BackgroundTransparency = 1, Text = "Hasil dari " .. tostring(s.jumlah) .. " x " .. UIStyle.potong(s.nama, 14) .. " (" .. tostring(s.pukulan) .. " pukulan) — semua masuk tas", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true }, modalIsi)
+        aturModalTombol("struk")
+        modalDim.Visible = true
+end
 
 local function buyBtn(parent: Frame, text: string, posX: number, packId: string)
         local btn = mk("TextButton", { Position = UDim2.new(posX, 6, 0, 8), Size = UDim2.new(0.5, -18, 1, -16), BackgroundColor3 = warna(UIStyle.Hijau), Text = text, TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = Color3.new(1, 1, 1), TextWrapped = true }, parent)
@@ -7660,11 +8701,14 @@ Net.get("Notify").OnClientEvent:Connect(function(title, msg)
         toast(tostring(title), tostring(msg))
 end)
 
-Net.get("SmashSync").OnClientEvent:Connect(function(p)
+Net.get("SemaiSync").OnClientEvent:Connect(function(p)
         if p.lahan == state.lahan then
-                state.semai = p.slots or {}
+                state.semai = p
                 if currentPanel == "semai" then
                         refreshSemai()
+                end
+                if p.tahap == "tuntas" then
+                        toast("Semai Tuntas", "Mesin selesai menggiling! Klaim hasilmu di mesin semai.")
                 end
         end
 end)
@@ -7751,7 +8795,7 @@ local CurrencyService = MOD_CurrencyService
 local TasService = MOD_TasService
 local LandService = MOD_LandService
 local PlotService = MOD_PlotService
-local SmashService = MOD_SmashService
+local MesinSemaiService = MOD_MesinSemaiService
 local ShopService = MOD_ShopService
 local ZonaService = MOD_ZonaService
 local TanamService = MOD_TanamService
@@ -7776,7 +8820,7 @@ local deps = {
         Net = Net,
         Notify = notify,
         Plot = PlotService,
-        Smash = SmashService,
+        Mesin = MesinSemaiService,
         World = ZonaService,
         Tanam = TanamService,
         Gudang = GudangService,
@@ -7784,7 +8828,7 @@ local deps = {
 }
 TasService.bind(DataService)
 PlotService.bind(deps)
-SmashService.bind(deps)
+MesinSemaiService.bind(deps)
 ShopService.bind(deps)
 ZonaService.bind(deps)
 TanamService.bind(deps)
@@ -7793,10 +8837,10 @@ DropService.bind(deps)
 
 local function openSemai(player: Player, lahanIdx: number)
         if LandService.ownerOf(lahanIdx) ~= player.UserId then
-                notify(player, "Semai Panen", "Hanya pemilik dunia yang bisa memakai meja ini.")
+                notify(player, "Semai Panen", "Hanya pemilik dunia yang bisa memakai mesin ini.")
                 return
         end
-        SmashService.syncTo(player, lahanIdx)
+        MesinSemaiService.syncTo(player, lahanIdx)
         Net.get("OpenPanel"):FireClient(player, "semai", { lahan = lahanIdx })
 end
 
@@ -7837,7 +8881,7 @@ local hooks = {
         end,
         onPapanPrompt = openTanam,
         onGudangPrompt = openGudang,
-        registerTable = SmashService.registerTable,
+        registerMesin = MesinSemaiService.registerMesin,
         setShopPoint = ShopService.setShopPoint,
         registerBoard = function(index: number, label: TextLabel, pos: Vector3)
                 PlotService.setBoard(index, label)
@@ -8001,22 +9045,22 @@ Net.get("GudangAct").OnServerInvoke = function(player, action, a, b)
         return false, "Aksi tidak dikenal."
 end
 
-Net.get("SmashAct").OnServerInvoke = function(player, action, arg)
-        if not RateLimit.allow(player.UserId, "smash", 5, 8) then
-                return lajuDitolak(player, "smash")
+Net.get("SemaiAct").OnServerInvoke = function(player, action, a, b)
+        if not RateLimit.allow(player.UserId, "semai", 6, 8) then
+                return lajuDitolak(player, "semai")
         end
         local deny = ZonaService.mutationDeny(player)
         if deny then
                 return false, deny
         end
-        if action == "place" then
-                return SmashService.place(player, arg)
-        elseif action == "hit" then
-                return SmashService.hit(player, arg)
-        elseif action == "take" then
-                return SmashService.take(player, arg)
+        if action == "atur" then
+                return MesinSemaiService.atur(player, a, b)
+        elseif action == "kabel" then
+                return MesinSemaiService.kabelJadi(player)
+        elseif action == "klaim" then
+                return MesinSemaiService.klaim(player)
         end
-        AuditService.catat(player, "argumen", "smash:" .. tostring(action))
+        AuditService.catat(player, "argumen", "semai:" .. tostring(action))
         return false, "Aksi tidak dikenal."
 end
 

@@ -413,27 +413,10 @@ function WorldBuilder.buildLahan(hooks, index: number, namaPemilik: string): Mod
         BuildingKit.streetLamp(folder, dX + ox + 166, gt, oz + 156)
         BuildingKit.streetLamp(folder, dX + ox + 40, gt, oz + 210)
 
-        local semai = BuildingKit.buildSemai(folder)
-        semai:PivotTo(CFrame.new(dX + ox + 185, gt, oz + 50))
-        for _, p in ipairs(semai:GetDescendants()) do
-                if p:IsA("BasePart") and p.Size == Vector3.new(12, 4, 4) then
-                        if hooks and hooks.registerTable then
-                                hooks.registerTable(index, p.Position + Vector3.new(0, 2, 0))
-                        end
-                        if hooks and hooks.onSemaiPrompt then
-                                local prompt = Instance.new("ProximityPrompt")
-                                prompt.ActionText = "Semai Panen"
-                                prompt.ObjectText = "Meja Hasil"
-                                prompt.HoldDuration = 0.3
-                                prompt.MaxActivationDistance = 12
-                                prompt.RequiresLineOfSight = false
-                                prompt.Parent = p
-                                p:SetAttribute("LahanIdx", index)
-                                prompt.Triggered:Connect(function(player: Player)
-                                        hooks.onSemaiPrompt(player, index)
-                                end)
-                        end
-                end
+        local mesin = BuildingKit.buildMesinSemai(folder, index, hooks)
+        mesin:PivotTo(CFrame.new(dX + ox + 185, gt, oz + 50))
+        if hooks and hooks.registerMesin then
+                hooks.registerMesin(index, mesin)
         end
 
         BuildingKit.marker(folder, dX + ox + 185, oz + 85, gt, 30, 30, MARKER_A)

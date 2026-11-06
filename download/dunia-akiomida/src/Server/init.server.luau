@@ -13,7 +13,7 @@ local CurrencyService = require(Modules.CurrencyService)
 local TasService = require(Modules.TasService)
 local LandService = require(Modules.LandService)
 local PlotService = require(Modules.PlotService)
-local SmashService = require(Modules.SmashService)
+local MesinSemaiService = require(Modules.MesinSemaiService)
 local ShopService = require(Modules.ShopService)
 local ZonaService = require(Modules.ZonaService)
 local TanamService = require(Modules.TanamService)
@@ -38,7 +38,7 @@ local deps = {
         Net = Net,
         Notify = notify,
         Plot = PlotService,
-        Smash = SmashService,
+        Mesin = MesinSemaiService,
         World = ZonaService,
         Tanam = TanamService,
         Gudang = GudangService,
@@ -46,7 +46,7 @@ local deps = {
 }
 TasService.bind(DataService)
 PlotService.bind(deps)
-SmashService.bind(deps)
+MesinSemaiService.bind(deps)
 ShopService.bind(deps)
 ZonaService.bind(deps)
 TanamService.bind(deps)
@@ -55,10 +55,10 @@ DropService.bind(deps)
 
 local function openSemai(player: Player, lahanIdx: number)
         if LandService.ownerOf(lahanIdx) ~= player.UserId then
-                notify(player, "Semai Panen", "Hanya pemilik dunia yang bisa memakai meja ini.")
+                notify(player, "Semai Panen", "Hanya pemilik dunia yang bisa memakai mesin ini.")
                 return
         end
-        SmashService.syncTo(player, lahanIdx)
+        MesinSemaiService.syncTo(player, lahanIdx)
         Net.get("OpenPanel"):FireClient(player, "semai", { lahan = lahanIdx })
 end
 
@@ -99,7 +99,7 @@ local hooks = {
         end,
         onPapanPrompt = openTanam,
         onGudangPrompt = openGudang,
-        registerTable = SmashService.registerTable,
+        registerMesin = MesinSemaiService.registerMesin,
         setShopPoint = ShopService.setShopPoint,
         registerBoard = function(index: number, label: TextLabel, pos: Vector3)
                 PlotService.setBoard(index, label)
@@ -263,22 +263,22 @@ Net.get("GudangAct").OnServerInvoke = function(player, action, a, b)
         return false, "Aksi tidak dikenal."
 end
 
-Net.get("SmashAct").OnServerInvoke = function(player, action, arg)
-        if not RateLimit.allow(player.UserId, "smash", 5, 8) then
-                return lajuDitolak(player, "smash")
+Net.get("SemaiAct").OnServerInvoke = function(player, action, a, b)
+        if not RateLimit.allow(player.UserId, "semai", 6, 8) then
+                return lajuDitolak(player, "semai")
         end
         local deny = ZonaService.mutationDeny(player)
         if deny then
                 return false, deny
         end
-        if action == "place" then
-                return SmashService.place(player, arg)
-        elseif action == "hit" then
-                return SmashService.hit(player, arg)
-        elseif action == "take" then
-                return SmashService.take(player, arg)
+        if action == "atur" then
+                return MesinSemaiService.atur(player, a, b)
+        elseif action == "kabel" then
+                return MesinSemaiService.kabelJadi(player)
+        elseif action == "klaim" then
+                return MesinSemaiService.klaim(player)
         end
-        AuditService.catat(player, "argumen", "smash:" .. tostring(action))
+        AuditService.catat(player, "argumen", "semai:" .. tostring(action))
         return false, "Aksi tidak dikenal."
 end
 

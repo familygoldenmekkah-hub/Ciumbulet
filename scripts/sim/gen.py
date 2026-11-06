@@ -30,7 +30,7 @@ def output_path() -> pathlib.Path:
 SCENARIO = scenario_text()
 OUTFILE = output_path()
 
-MODULES_SHARED = ["CropData", "Recipes", "StrukBeli", "TasLogic", "Layout", "DuniaLogic", "SoalLogic", "GudangLogic", "PukulLogic", "PanenStatus", "UIStyle", "PukulAnim", "ArahPukul", "KontrolHP", "HUDLayout", "DropBentuk", "IkonJempol", "UangLogic", "SesiLogic", "KlaimDrop", "PanenWaktu"]
+MODULES_SHARED = ["CropData", "Recipes", "StrukBeli", "TasLogic", "Layout", "DuniaLogic", "SoalLogic", "GudangLogic", "PukulLogic", "PanenStatus", "UIStyle", "PukulAnim", "ArahPukul", "KontrolHP", "HUDLayout", "DropBentuk", "IkonJempol", "UangLogic", "SesiLogic", "KlaimDrop", "PanenWaktu", "SemaiLogic", "JualLogic"]
 MODULES_SERVER = [
     "RateLimit",
     "DevCodeVault",
@@ -40,7 +40,7 @@ MODULES_SERVER = [
     "LandService",
     "DataService",
     "TasService",
-    "SmashService",
+    "MesinSemaiService",
     "PlantModels",
     "DropModels",
     "PlotService",

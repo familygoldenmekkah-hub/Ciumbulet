@@ -4,7 +4,11 @@ CropData.GrowTime = 3
 CropData.StartMoney = 900000
 CropData.TasSlots = 50
 CropData.TasStack = 250
-CropData.BlokId = "blok_panen"
+CropData.MesinSemai = {
+        Kapasitas = 2000,
+        WaktuGiling = 3,
+        JarakMaks = 24,
+}
 
 CropData.Packs = {
         common = { price = 2400, count = 3 },
@@ -17,7 +21,7 @@ CropData.Yield = {
         epic = { min = 1, max = 4 },
 }
 
-CropData.Smash = {
+CropData.Giling = {
         common = { hits = 5, seed = 0.45, blok = 0.20, micdaMin = 1, micdaMax = 5 },
         rare = { hits = 10, seed = 0.30, blok = 0.15, micdaMin = 3, micdaMax = 9 },
         epic = { hits = 15, seed = 0.10, blok = 0.15, micdaMin = 9, micdaMax = 19 },
@@ -103,6 +107,25 @@ CropData.Bentuk = {
         kacang_tanah = { jenis = "kacang", t = 1.0, w = 2.8, b = 6, warna = { 150, 168, 104 }, siap = { 236, 196, 110 }, aksen = { 100, 146, 86 } },
         jamur = { jenis = "cendawan", t = 1.8, w = 1.6, b = 1, warna = { 196, 150, 120 }, siap = { 206, 64, 56 }, aksen = { 224, 214, 196 } },
 }
+
+function CropData.blokIdFor(cropId: string): string
+        return "blok_" .. tostring(cropId)
+end
+
+function CropData.blokNamaFor(cropId: string): string
+        local info = CropData.byId[cropId]
+        if not info then
+                return "Blok"
+        end
+        return "Blok " .. info.nama
+end
+
+function CropData.blokCrop(blokId: string): string?
+        if type(blokId) ~= "string" then
+                return nil
+        end
+        return string.match(blokId, "^blok_(.+)$")
+end
 
 function CropData.byRarity(rarity: string): { any }
         local out = {}

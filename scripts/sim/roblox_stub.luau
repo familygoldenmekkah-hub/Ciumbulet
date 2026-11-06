@@ -52,6 +52,7 @@ local SignalNames = {
         Touched = true,
         RenderStepped = true,
         Heartbeat = true,
+        InputChanged = true,
 }
 
 Vector3 = {}
@@ -950,7 +951,7 @@ function Stub.serverScript()
         local modules = Instance.new("Folder")
         modules.Name = "Modules"
         modules.Parent = script
-        for _, n in ipairs({ "LandService", "DataService", "SmashService", "PlotService", "ShopService", "WorldBuilder", "RateLimit", "DevCodeVault", "BuildingKit", "TasService", "ZonaService", "TanamService", "GudangService", "DropService", "PlantModels" }) do
+        for _, n in ipairs({ "LandService", "DataService", "MesinSemaiService", "PlotService", "ShopService", "WorldBuilder", "RateLimit", "DevCodeVault", "BuildingKit", "TasService", "ZonaService", "TanamService", "GudangService", "DropService", "PlantModels" }) do
                 local m = moduleScript(n, "./../download/dunia-akiomida/src/Server/Modules/" .. n)
                 m.Parent = modules
         end

@@ -153,33 +153,41 @@ function DuniaLogic.desDrops(arr: any): { any }
         return out
 end
 
-function DuniaLogic.serMeja(slots: any): { { c: string, h: number } }
+function DuniaLogic.serMesin(batch: any): { { c: string, j: number, m: number, b: number, k: number } }
         local out = {}
-        if type(slots) ~= "table" then
+        if type(batch) ~= "table" then
                 return out
         end
-        for i, s in ipairs(slots) do
-                if #out >= DuniaLogic.MaxMeja then
-                        break
-                end
-                if type(s) == "table" and type(s.crop) == "string" and #s.crop <= 40 and type(s.hitsLeft) == "number" then
-                        table.insert(out, { c = s.crop, h = math.max(1, math.floor(s.hitsLeft)) })
-                end
+        if type(batch.c) == "string" and #batch.c <= 40 and type(batch.j) == "number" then
+                table.insert(out, {
+                        c = batch.c,
+                        j = math.max(1, math.floor(batch.j)),
+                        m = type(batch.m) == "number" and math.max(0, math.floor(batch.m)) or 0,
+                        b = type(batch.b) == "number" and math.max(0, math.floor(batch.b)) or 0,
+                        k = type(batch.k) == "number" and math.max(0, math.floor(batch.k)) or 0,
+                })
         end
         return out
 end
 
-function DuniaLogic.desMeja(arr: any): { { c: string, h: number } }
+function DuniaLogic.desMesin(arr: any): { { c: string, j: number?, m: number?, b: number?, k: number?, h: number? } }
         local out = {}
         if type(arr) ~= "table" then
                 return out
         end
         for _, s in ipairs(arr) do
-                if #out >= DuniaLogic.MaxMeja then
-                        break
-                end
-                if type(s) == "table" and type(s.c) == "string" and #s.c <= 40 and type(s.h) == "number" then
-                        table.insert(out, { c = s.c, h = math.max(1, math.floor(s.h)) })
+                if #out < 1 and type(s) == "table" then
+                        if type(s.c) == "string" and #s.c <= 40 and type(s.j) == "number" then
+                                table.insert(out, {
+                                        c = s.c,
+                                        j = math.max(1, math.floor(s.j)),
+                                        m = type(s.m) == "number" and math.max(0, math.floor(s.m)) or nil,
+                                        b = type(s.b) == "number" and math.max(0, math.floor(s.b)) or nil,
+                                        k = type(s.k) == "number" and math.max(0, math.floor(s.k)) or nil,
+                                })
+                        elseif type(s.c) == "string" and #s.c <= 40 and type(s.h) == "number" then
+                                table.insert(out, { c = s.c, j = 1, h = math.max(1, math.floor(s.h)) })
+                        end
                 end
         end
         return out

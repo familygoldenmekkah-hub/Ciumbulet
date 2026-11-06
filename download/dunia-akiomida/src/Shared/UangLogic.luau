@@ -8,7 +8,7 @@ UangLogic.BatasLedger = 24
 UangLogic.Alasan = {
         jual_hasil = true,
         beli_benih = true,
-        smash_hasil = true,
+        semai_hasil = true,
         hadiah = true,
 }
 

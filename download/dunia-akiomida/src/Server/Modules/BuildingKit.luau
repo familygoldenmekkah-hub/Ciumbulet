@@ -440,34 +440,274 @@ function BuildingKit.buildToko(parent: Instance): Model
         return model
 end
 
-function BuildingKit.buildSemai(parent: Instance): Model
+local STEEL = Color3.fromRGB(150, 156, 164)
+local STEEL_DARK = Color3.fromRGB(86, 92, 102)
+local STEEL_BLUE = Color3.fromRGB(96, 118, 138)
+local ACCENT_ORANGE = Color3.fromRGB(214, 128, 58)
+local STRIPE_KUNING = Color3.fromRGB(232, 186, 60)
+local KABEL_MERAH = Color3.fromRGB(214, 64, 56)
+local KABEL_BIRU = Color3.fromRGB(58, 122, 214)
+local KABEL_KUNING = Color3.fromRGB(240, 196, 60)
+local HIJAU_BTN = Color3.fromRGB(108, 220, 116)
+local LAMPU_OFF = Color3.fromRGB(72, 76, 84)
+
+function BuildingKit.buildMesinSemai(parent: Instance, index: number, hooks): Model
         local model = Instance.new("Model")
-        model.Name = "SemaiPanen"
+        model.Name = "MesinSemaiPanen"
         local w, d = 30, 30
         BuildingKit.part(model, Vector3.new(w + 2, 1, d + 2), CFrame.new(0, 0.5, 0), STONE, Enum.Material.Slate)
-        BuildingKit.part(model, Vector3.new(w - 2, 1, d - 2), CFrame.new(0, 1.5, 0), FLOORWOOD, Enum.Material.WoodPlanks)
-        BuildingKit.part(model, Vector3.new(w, 20, 1), CFrame.new(0, 11, d / 2 - 0.5), CREAM)
-        BuildingKit.part(model, Vector3.new(1, 20, d - 2), CFrame.new(-(w / 2 - 0.5), 11, 0), CREAM)
-        BuildingKit.part(model, Vector3.new(1, 20, d - 2), CFrame.new(w / 2 - 0.5, 11, 0), CREAM)
-        local fz = -(d / 2 - 0.5)
-        BuildingKit.part(model, Vector3.new(5, 20, 1), CFrame.new(-12.5, 11, fz), CREAM)
-        BuildingKit.part(model, Vector3.new(5, 20, 1), CFrame.new(12.5, 11, fz), CREAM)
-        BuildingKit.part(model, Vector3.new(20, 9, 1), CFrame.new(0, 16.5, fz), CREAM)
-        for sx = -1, 1, 2 do
-                BuildingKit.part(model, Vector3.new(2, 20, 2), CFrame.new(sx * 11, 11, -13.5), DARKWOOD, Enum.Material.Wood)
-                BuildingKit.part(model, Vector3.new(2, 20, 2), CFrame.new(sx * 13, 11, 13), DARKWOOD, Enum.Material.Wood)
+        BuildingKit.part(model, Vector3.new(w - 3, 0.3, d - 3), CFrame.new(0, 1, 0), FLOORWOOD, Enum.Material.WoodPlanks)
+        for i = 0, 9 do
+                BuildingKit.part(model, Vector3.new(2.4, 0.14, 0.7), CFrame.new(-13.5 + i * 3, 1.22, -14.4), (i % 2 == 0) and STRIPE_KUNING or STEEL_DARK, Enum.Material.SmoothPlastic).CanCollide = false
         end
-        trim(model, w, d, 1.5)
-        trim(model, w, d, 20.5)
-        BuildingKit.gableRoof(model, w, d, 3, 21, BRICKRED)
-        BuildingKit.part(model, Vector3.new(12, 4, 4), CFrame.new(0, 4, 2), DARKWOOD, Enum.Material.Wood)
-        local pad = BuildingKit.part(model, Vector3.new(8, 0.4, 4), CFrame.new(0, 2.4, -6), BRICKRED, Enum.Material.SmoothPlastic, 0.3)
-        pad.CanCollide = false
-        BuildingKit.part(model, Vector3.new(20.4, 2, 1), CFrame.new(0, 11, fz), CREAM)
-        hingedDoor(model, Vector3.new(10, 10, 0.5), CFrame.new(-5, 5, fz), Vector3.new(-5.05, 0, 0), -math.rad(105))
-        hingedDoor(model, Vector3.new(10, 10, 0.5), CFrame.new(5, 5, fz), Vector3.new(5.05, 0, 0), math.rad(105))
-        BuildingKit.lamp(model, -6, 21, 0)
-        BuildingKit.lamp(model, 6, 21, 0)
+        for sx = -1, 1, 2 do
+                BuildingKit.part(model, Vector3.new(0.9, 8, 0.9), CFrame.new(sx * 11, 5, -9), STEEL_DARK, Enum.Material.Metal)
+                BuildingKit.part(model, Vector3.new(0.9, 8, 0.9), CFrame.new(sx * 11, 5, 9), STEEL_DARK, Enum.Material.Metal)
+        end
+        local atap = BuildingKit.part(model, Vector3.new(26, 0.6, 22), CFrame.new(0, 9.4, 0) * CFrame.Angles(0, 0, math.rad(3)), STEEL_DARK, Enum.Material.Metal)
+        atap.CanCollide = false
+        for i = 0, 3 do
+                BuildingKit.part(model, Vector3.new(25, 0.25, 1.6), CFrame.new(0, 9.95, -7 + i * 4.6) * CFrame.Angles(0, 0, math.rad(3)), (i % 2 == 0) and BRICKRED or CREAM, Enum.Material.SmoothPlastic).CanCollide = false
+        end
+        BuildingKit.lamp(model, -5, 9, 4)
+        BuildingKit.lamp(model, 6, 9, 4)
+        BuildingKit.fenceLine(model, -15, 15, 15, 15, 1)
+        BuildingKit.fenceLine(model, -15, -15, -15, 15, 1)
+        BuildingKit.fenceLine(model, 15, -15, 15, 15, 1)
+
+        local plat = BuildingKit.part(model, Vector3.new(12, 0.6, 7), CFrame.new(0, 1.45, 3), STEEL_DARK, Enum.Material.DiamondPlate)
+        plat:SetAttribute("MesinPlat", true)
+        BuildingKit.part(model, Vector3.new(10, 0.8, 6), CFrame.new(0, 2.1, 3), STEEL, Enum.Material.Concrete)
+        for sx = -1, 1, 2 do
+                for sz = -1, 1, 2 do
+                        BuildingKit.part(model, Vector3.new(0.8, 1.4, 0.8), CFrame.new(sx * 2.7, 2.9, 3 + sz * 1.7), STEEL_DARK, Enum.Material.Metal)
+                end
+        end
+        BuildingKit.part(model, Vector3.new(6.4, 2.6, 4.4), CFrame.new(0, 4.7, 3), STEEL, Enum.Material.Metal)
+        for i = 0, 2 do
+                BuildingKit.part(model, Vector3.new(6.5, 0.18, 0.3), CFrame.new(0, 3.9 + i * 0.8, 0.85), STEEL_DARK, Enum.Material.Metal).CanCollide = false
+        end
+        BuildingKit.part(model, Vector3.new(6.6, 0.5, 4.6), CFrame.new(0, 6.1, 3), STEEL_DARK, Enum.Material.Metal)
+        for sx = -1, 1, 2 do
+                BuildingKit.part(model, Vector3.new(0.7, 2.6, 5), CFrame.new(sx * 3.1, 7.6, 3), STEEL_DARK, Enum.Material.Metal)
+        end
+
+        local drum = BuildingKit.part(model, Vector3.new(7.2, 2.6, 2.6), CFrame.new(0, 7.9, 3), STEEL_BLUE, Enum.Material.Metal)
+        drum.Shape = Enum.PartType.Cylinder
+        drum.Name = "MesinDrum"
+        for i, rib in ipairs({ "MesinRib1", "MesinRib2", "MesinRib3" }) do
+                local r = BuildingKit.part(model, Vector3.new(0.35, 2.85, 2.85), CFrame.new(-1.8 + (i - 1) * 2.2, 7.9, 3), ACCENT_ORANGE, Enum.Material.Metal)
+                r.Shape = Enum.PartType.Cylinder
+                r.Name = rib
+                r.CanCollide = false
+        end
+        local roda = BuildingKit.part(model, Vector3.new(0.7, 3.1, 3.1), CFrame.new(4.4, 7.9, 3), STEEL_DARK, Enum.Material.Metal)
+        roda.Shape = Enum.PartType.Cylinder
+        roda.Name = "MesinRoda"
+        local hub = BuildingKit.part(model, Vector3.new(0.9, 1.2, 1.2), CFrame.new(4.75, 7.9, 3), ACCENT_ORANGE, Enum.Material.Metal)
+        hub.Shape = Enum.PartType.Cylinder
+        hub.CanCollide = false
+
+        local girA = BuildingKit.part(model, Vector3.new(0.4, 1.7, 1.7), CFrame.new(-1.9, 3.6, 0.7), STEEL_DARK, Enum.Material.Metal)
+        girA.Shape = Enum.PartType.Cylinder
+        girA.CFrame = CFrame.new(-1.9, 3.6, 0.7) * CFrame.Angles(0, math.rad(90), 0)
+        girA.Name = "MesinGirA"
+        local girB = BuildingKit.part(model, Vector3.new(0.4, 1.3, 1.3), CFrame.new(1.9, 3.9, 0.7), ACCENT_ORANGE, Enum.Material.Metal)
+        girB.Shape = Enum.PartType.Cylinder
+        girB.CFrame = CFrame.new(1.9, 3.9, 0.7) * CFrame.Angles(0, math.rad(90), 0)
+        girB.Name = "MesinGirB"
+        BuildingKit.part(model, Vector3.new(0.12, 0.12, 3.4), CFrame.new(0, 3.75, 0.55) * CFrame.Angles(0, 0, math.rad(4)), STEEL_DARK, Enum.Material.Metal).CanCollide = false
+
+        BuildingKit.part(model, Vector3.new(2.4, 2.2, 2.4), CFrame.new(6.2, 4.6, 3), STEEL_DARK, Enum.Material.Metal)
+        for i = 0, 3 do
+                BuildingKit.part(model, Vector3.new(0.16, 1.6, 2.5), CFrame.new(7.5, 4.3 + i * 0.45, 3), STEEL, Enum.Material.Metal).CanCollide = false
+        end
+        local cerobong = BuildingKit.part(model, Vector3.new(1.9, 1, 1), CFrame.new(6.2, 6.6, 3), STEEL, Enum.Material.Metal)
+        cerobong.Shape = Enum.PartType.Cylinder
+        cerobong.CFrame = CFrame.new(6.2, 6.6, 3) * CFrame.Angles(0, 0, math.rad(90))
+        local tutupCerobong = BuildingKit.part(model, Vector3.new(0.3, 1.2, 1.2), CFrame.new(6.2, 7.7, 3), ACCENT_ORANGE, Enum.Material.Metal)
+        tutupCerobong.Shape = Enum.PartType.Cylinder
+        tutupCerobong.CFrame = CFrame.new(6.2, 7.7, 3) * CFrame.Angles(0, 0, math.rad(90))
+        tutupCerobong.CanCollide = false
+        local attachment = Instance.new("Attachment")
+        attachment.Position = Vector3.new(0, 0.35, 0)
+        attachment.Parent = tutupCerobong
+        local asap = Instance.new("ParticleEmitter")
+        asap.Name = "AsapMesin"
+        asap.Color = ColorSequence.new(Color3.fromRGB(176, 178, 184))
+        asap.Lifetime = NumberRange.new(0.9, 1.6)
+        asap.Speed = NumberRange.new(2.5, 4.5)
+        asap.SpreadAngle = Vector2.new(14, 14)
+        asap.Size = NumberSequence.new(0.7, 2.2)
+        asap.Transparency = NumberSequence.new(0.45, 1)
+        asap.Rate = 26
+        asap.Enabled = false
+        asap.Parent = attachment
+
+        for i, tilt in ipairs({ -1, 1 }) do
+                local panel = BuildingKit.part(model, Vector3.new(5.8, 0.35, 3.4), CFrame.new(-2.2, 9.55, 3 + tilt * 1.25) * CFrame.Angles(math.rad(tilt * 42), 0, 0), STEEL_DARK, Enum.Material.Metal)
+                panel.CanCollide = false
+        end
+        for sx = -1, 1, 2 do
+                BuildingKit.part(model, Vector3.new(0.35, 2.6, 3.9), CFrame.new(-2.2 + sx * 2.85, 8.9, 3), STEEL_DARK, Enum.Material.Metal)
+        end
+        for i, sisi in ipairs({ -1, 1 }) do
+                local rel = BuildingKit.part(model, Vector3.new(5.9, 0.3, 0.35), CFrame.new(-2.2, 10.35, 3 + sisi * 2.2), ACCENT_ORANGE, Enum.Material.Metal)
+                rel.CanCollide = false
+        end
+        for sx = -1, 1, 2 do
+                BuildingKit.part(model, Vector3.new(0.35, 1.6, 0.35), CFrame.new(-2.2 + sx * 2.4, 6.9, 3), STEEL_DARK, Enum.Material.Metal).CanCollide = false
+        end
+        BuildingKit.part(model, Vector3.new(1.4, 0.25, 1.4), CFrame.new(-2.2, 10.55, 3), ACCENT_ORANGE, Enum.Material.Metal).CanCollide = false
+
+        local pedestal = BuildingKit.part(model, Vector3.new(1.8, 2.8, 1.8), CFrame.new(-8.6, 2.7, 6.6), STEEL_DARK, Enum.Material.Metal)
+        local panelTilt = BuildingKit.part(model, Vector3.new(2.2, 0.35, 1.9), CFrame.new(-8.6, 4.25, 6.35) * CFrame.Angles(math.rad(-28), 0, 0), STEEL, Enum.Material.Metal)
+        panelTilt.CanCollide = false
+        local posLampu = {
+                { -9.1, 4.45, 6.2, "MesinLampuMerah" },
+                { -8.6, 4.55, 6.2, "MesinLampuKuning" },
+                { -8.1, 4.65, 6.2, "MesinLampuHijau" },
+        }
+        for _, l in ipairs(posLampu) do
+                local lampu = BuildingKit.part(model, Vector3.new(0.34, 0.34, 0.34), CFrame.new(l[1], l[2], l[3]), LAMPU_OFF, Enum.Material.Neon)
+                lampu.Shape = Enum.PartType.Ball
+                lampu.Name = l[4]
+                lampu.CanCollide = false
+        end
+        BuildingKit.part(model, Vector3.new(0.5, 0.22, 0.5), CFrame.new(-8.6, 4.5, 6.75), HIJAU_BTN, Enum.Material.Neon).CanCollide = false
+        local layarKecil = BuildingKit.part(model, Vector3.new(1.3, 0.9, 0.2), CFrame.new(-8.6, 3.4, 5.75), Color3.fromRGB(24, 26, 32), Enum.Material.SmoothPlastic)
+        layarKecil.CanCollide = false
+        local guiKecil = Instance.new("SurfaceGui")
+        guiKecil.Face = Enum.NormalId.Front
+        guiKecil.CanvasSize = Vector2.new(200, 140)
+        local labelKecil = Instance.new("TextLabel")
+        labelKecil.Size = UDim2.fromScale(1, 1)
+        labelKecil.BackgroundTransparency = 1
+        labelKecil.Text = "MESIN SEMAI"
+        labelKecil.TextColor3 = Color3.fromRGB(122, 232, 130)
+        labelKecil.TextScaled = true
+        labelKecil.Font = Enum.Font.GothamBold
+        labelKecil.Parent = guiKecil
+        guiKecil.Parent = layarKecil
+
+        local kabelJalur = {
+                { KABEL_MERAH, 6.35, 3.6 },
+                { KABEL_BIRU, 6.65, 3.0 },
+                { KABEL_KUNING, 6.95, 2.4 },
+        }
+        for _, k in ipairs(kabelJalur) do
+                local naik = BuildingKit.part(model, Vector3.new(1.3, 0.22, 0.22), CFrame.new(-8.6, k[2], k[3]), k[1], Enum.Material.SmoothPlastic)
+                naik.Shape = Enum.PartType.Cylinder
+                naik.CFrame = CFrame.new(-8.6, k[2], k[3]) * CFrame.Angles(0, 0, math.rad(90))
+                naik.CanCollide = false
+                local datar = BuildingKit.part(model, Vector3.new(4.6, 0.22, 0.22), CFrame.new(-6.2, k[2] + 0.6, k[3]), k[1], Enum.Material.SmoothPlastic)
+                datar.CanCollide = false
+        end
+
+        local corong = BuildingKit.part(model, Vector3.new(2.8, 0.35, 2.2), CFrame.new(-4.6, 6.9, 3) * CFrame.Angles(0, 0, math.rad(32)), STEEL_DARK, Enum.Material.Metal)
+        corong.CanCollide = false
+        BuildingKit.part(model, Vector3.new(0.35, 2.4, 2), CFrame.new(-5.75, 5.7, 3), STEEL_DARK, Enum.Material.Metal).CanCollide = false
+        local _bak = BuildingKit.part(model, Vector3.new(2.8, 2.4, 2.8), CFrame.new(-7.4, 2.75, 3), Color3.fromRGB(150, 116, 74), Enum.Material.WoodPlanks)
+        BuildingKit.part(model, Vector3.new(2.9, 0.25, 2.9), CFrame.new(-7.4, 4.05, 3), FLOORWOOD, Enum.Material.WoodPlanks).CanCollide = false
+        for i = 0, 2 do
+                local buah = BuildingKit.part(model, Vector3.new(0.8, 0.8, 0.8), CFrame.new(-7.9 + i * 0.55, 4.5, 3.1 + (i % 2) * 0.3), (i == 1) and STEEL_BLUE or ACCENT_ORANGE, Enum.Material.SmoothPlastic)
+                buah.Shape = Enum.PartType.Ball
+                buah.CanCollide = false
+        end
+
+        for sx = -1, 1, 2 do
+                BuildingKit.part(model, Vector3.new(0.4, 6, 0.4), CFrame.new(sx * 3.4, 5, -4.6), STEEL_DARK, Enum.Material.Metal)
+        end
+        local papan = BuildingKit.part(model, Vector3.new(8.6, 3.4, 0.5), CFrame.new(0, 8.6, -4.6), DARKWOOD, Enum.Material.Wood)
+        local gui = Instance.new("SurfaceGui")
+        gui.Face = Enum.NormalId.Front
+        gui.CanvasSize = Vector2.new(520, 200)
+        local judul = Instance.new("TextLabel")
+        judul.Size = UDim2.new(1, -12, 0.42, 0)
+        judul.Position = UDim2.new(0, 6, 0.04, 0)
+        judul.BackgroundTransparency = 1
+        judul.Text = "MESIN SEMAI PANEN"
+        judul.TextColor3 = Color3.fromRGB(255, 232, 180)
+        judul.TextScaled = true
+        judul.Font = Enum.Font.GothamBlack
+        judul.Parent = gui
+        local statusLabel = Instance.new("TextLabel")
+        statusLabel.Name = "StatusMesin"
+        statusLabel.Size = UDim2.new(1, -12, 0.44, 0)
+        statusLabel.Position = UDim2.new(0, 6, 0.5, 0)
+        statusLabel.BackgroundTransparency = 1
+        statusLabel.Text = "NONAKTIF"
+        statusLabel.TextColor3 = Color3.fromRGB(208, 210, 216)
+        statusLabel.TextScaled = true
+        statusLabel.Font = Enum.Font.GothamBold
+        statusLabel.Parent = gui
+        local guiBack = gui:Clone()
+        guiBack.Face = Enum.NormalId.Back
+        gui.Parent = papan
+        guiBack.Parent = papan
+
+        local tong = BuildingKit.part(model, Vector3.new(2.4, 2, 2), CFrame.new(12.5, 2.2, -7), STEEL_BLUE, Enum.Material.Metal)
+        tong.Shape = Enum.PartType.Cylinder
+        tong.CFrame = CFrame.new(12.5, 2.2, -7) * CFrame.Angles(0, 0, math.rad(90))
+        local tongBand = BuildingKit.part(model, Vector3.new(0.3, 2.05, 2.05), CFrame.new(12.5, 2.2, -7), STEEL, Enum.Material.Metal)
+        tongBand.Shape = Enum.PartType.Cylinder
+        tongBand.CFrame = CFrame.new(12.5, 2.2, -7) * CFrame.Angles(0, 0, math.rad(90))
+        tongBand.CanCollide = false
+        local tong2 = BuildingKit.part(model, Vector3.new(2.4, 2, 2), CFrame.new(12.5, 2.2, -4), ACCENT_ORANGE, Enum.Material.Metal)
+        tong2.Shape = Enum.PartType.Cylinder
+        tong2.CFrame = CFrame.new(12.5, 2.2, -4) * CFrame.Angles(0, 0, math.rad(90))
+        for i = 0, 2 do
+                BuildingKit.part(model, Vector3.new(2.2, 2.2, 2.2), CFrame.new(9 + i * 2.4, 2.3, -8.6), Color3.fromRGB(150, 116, 74), Enum.Material.WoodPlanks)
+        end
+        local _kotakAlat = BuildingKit.part(model, Vector3.new(1.6, 0.9, 1), CFrame.new(-12, 1.65, 7.5), BRICKRED, Enum.Material.Metal)
+        BuildingKit.part(model, Vector3.new(0.9, 0.16, 0.3), CFrame.new(-12, 2.25, 7.5), STEEL, Enum.Material.Metal).CanCollide = false
+        for i = 0, 1 do
+                local karung = BuildingKit.part(model, Vector3.new(1.6, 1.9, 1), CFrame.new(-12.6 + i * 1.8, 2.15, -8.2), (i == 0) and Color3.fromRGB(150, 108, 62) or Color3.fromRGB(96, 128, 72), Enum.Material.Fabric)
+                karung.CanCollide = false
+        end
+        BuildingKit.part(model, Vector3.new(1.6, 1.9, 1), CFrame.new(-11.7, 3.9, -8.2), Color3.fromRGB(196, 168, 120), Enum.Material.Fabric).CanCollide = false
+        local pipa = BuildingKit.part(model, Vector3.new(22, 0.7, 0.7), CFrame.new(0, 2.6, 13.6), STEEL_DARK, Enum.Material.Metal)
+        pipa.CanCollide = false
+        for i = 0, 3 do
+                BuildingKit.part(model, Vector3.new(0.35, 1.6, 0.35), CFrame.new(-8 + i * 5.4, 1.9, 13.6), STEEL, Enum.Material.Metal).CanCollide = false
+        end
+
+        local suaraGiling = Instance.new("Sound")
+        suaraGiling.Name = "SuaraGiling"
+        suaraGiling.SoundId = "rbxasset://sounds/swoosh.wav"
+        suaraGiling.Looped = true
+        suaraGiling.Volume = 0.55
+        suaraGiling.PlaybackSpeed = 0.55
+        suaraGiling.RollOffMaxDistance = 90
+        suaraGiling.Parent = drum
+        local suaraDing = Instance.new("Sound")
+        suaraDing.Name = "SuaraDing"
+        suaraDing.SoundId = "rbxasset://sounds/electronicpingshort.wav"
+        suaraDing.Volume = 0.6
+        suaraDing.PlaybackSpeed = 0.72
+        suaraDing.RollOffMaxDistance = 90
+        suaraDing.Parent = pedestal
+        local suaraStart = Instance.new("Sound")
+        suaraStart.Name = "SuaraStart"
+        suaraStart.SoundId = "rbxasset://sounds/swoosh.wav"
+        suaraStart.Volume = 0.5
+        suaraStart.PlaybackSpeed = 1.25
+        suaraStart.RollOffMaxDistance = 90
+        suaraStart.Parent = pedestal
+
+        local prompt = Instance.new("ProximityPrompt")
+        prompt.ActionText = "Semai Panen"
+        prompt.ObjectText = "Mesin Semai"
+        prompt.HoldDuration = 0.3
+        prompt.MaxActivationDistance = 12
+        prompt.RequiresLineOfSight = false
+        prompt.Parent = pedestal
+        prompt.Triggered:Connect(function(player: Player)
+                if hooks and hooks.onSemaiPrompt then
+                        hooks.onSemaiPrompt(player, index)
+                end
+        end)
+
         model.Parent = parent
         model.WorldPivot = CFrame.new(0, 0, 0)
         return model

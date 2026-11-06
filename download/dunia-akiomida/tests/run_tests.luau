@@ -70,7 +70,7 @@ do
         check("Dana awal 900.000", CropData.StartMoney == 900000, tostring(CropData.StartMoney))
         check("Tas 50 slot", CropData.TasSlots == 50 and TasLogic.MaxSlots == 50, "-")
         check("Stack 250", CropData.TasStack == 250 and TasLogic.MaxStack == 250, "-")
-        check("Blok panen item", CropData.BlokId == "blok_panen", tostring(CropData.BlokId))
+        check("Blok per tanaman (tanpa blok_panen)", CropData.BlokId == nil and CropData.blokIdFor("nektarin") == "blok_nektarin" and CropData.blokCrop("blok_nektarin") == "nektarin" and CropData.blokNamaFor("nektarin") == "Blok Nektarin", tostring(CropData.BlokId))
         check("Pack Common 2.400 isi 3", CropData.Packs.common.price == 2400 and CropData.Packs.common.count == 3, "-")
         check("Pack Rare 9.000 isi 3", CropData.Packs.rare.price == 9000 and CropData.Packs.rare.count == 3, "-")
         check("Tidak ada pack epic di toko", CropData.Packs.epic == nil, "-")
@@ -78,13 +78,14 @@ do
         check("Panen Common 1-10", y.common.min == 1 and y.common.max == 10, "-")
         check("Panen Rare 1-6", y.rare.min == 1 and y.rare.max == 6, "-")
         check("Panen Epic 1-4", y.epic.min == 1 and y.epic.max == 4, "-")
-        local s = CropData.Smash
-        check("Pukul Common 5x, benih 45%, blok 20%, Micda 1-5",
+        local s = CropData.Giling
+        check("Giling Common 5x, benih 45%, blok 20%, Micda 1-5",
                 s.common.hits == 5 and s.common.seed == 0.45 and s.common.blok == 0.20 and s.common.micdaMin == 1 and s.common.micdaMax == 5, "-")
-        check("Pukul Rare 10x, benih 30%, blok 15%, Micda 3-9",
+        check("Giling Rare 10x, benih 30%, blok 15%, Micda 3-9",
                 s.rare.hits == 10 and s.rare.seed == 0.30 and s.rare.blok == 0.15 and s.rare.micdaMin == 3 and s.rare.micdaMax == 9, "-")
-        check("Pukul Epic 15x, benih 10%, blok 15%, Micda 9-19",
+        check("Giling Epic 15x, benih 10%, blok 15%, Micda 9-19",
                 s.epic.hits == 15 and s.epic.seed == 0.10 and s.epic.blok == 0.15 and s.epic.micdaMin == 9 and s.epic.micdaMax == 19, "-")
+        check("Kapasitas mesin semai 2000 & giling 3 dtk", CropData.MesinSemai.Kapasitas == 2000 and CropData.MesinSemai.WaktuGiling == 3, "-")
 end
 
 print("--- Struk pembelian toko ---")
@@ -250,16 +251,13 @@ do
         check("Deserialize plot roundtrip", des[0] ~= nil and des[0].c == "wortel" and des[0].r == 123 and des[499] ~= nil and des[499].c == "ceri", "-")
         check("Deserialize plot tolak rusak", DuniaLogic.desPlots({ [5] = { c = 9, r = 1 } })[5] == nil and DuniaLogic.desPlots(nil)[5] == nil and DuniaLogic.desPlots({ [6] = { c = "wortel", r = "x" } })[6] == nil, "-")
         check("Batas plot 500 ditegakkan", DuniaLogic.serPlots({ [500] = { crop = "x", readyAt = 1 } })[500] == nil and DuniaLogic.desPlots({ [501] = { c = "x", r = 1 } })[501] == nil, "-")
-        local mj = { { crop = "plum", hitsLeft = 3, model = {} }, { crop = "aprikot", hitsLeft = -2 }, { crop = 5, hitsLeft = 1 } }
-        local ser2 = DuniaLogic.serMeja(mj)
-        check("Serialize meja menyaring data", #ser2 == 2 and ser2[1].c == "plum" and ser2[1].h == 3 and ser2[2].c == "aprikot" and ser2[2].h == 1, tostring(#ser2))
-        local des2 = DuniaLogic.desMeja(ser2)
-        check("Deserialize meja roundtrip", des2[1] ~= nil and des2[1].c == "plum" and des2[1].h == 3, "-")
-        local penuh = {}
-        for _ = 1, 9 do
-                table.insert(penuh, { crop = "plum", hitsLeft = 2 })
-        end
-        check("Meja maks 6 slot", #DuniaLogic.serMeja(penuh) == 6 and #DuniaLogic.desMeja(DuniaLogic.serMeja(penuh)) == 6, "-")
+        local ser2 = DuniaLogic.serMesin({ c = "plum", j = 20, m = 55, b = 3, k = 2 })
+        check("Serialize mesin satu batch", #ser2 == 1 and ser2[1].c == "plum" and ser2[1].j == 20 and ser2[1].m == 55 and ser2[1].b == 3 and ser2[1].k == 2, tostring(#ser2))
+        local des2 = DuniaLogic.desMesin(ser2)
+        check("Deserialize mesin roundtrip", des2[1] ~= nil and des2[1].c == "plum" and des2[1].j == 20, "-")
+        local legacy = DuniaLogic.desMesin({ { c = "aprikot", h = 2 } })
+        check("Data meja lama dimigrasi ke mesin", #legacy == 1 and legacy[1].c == "aprikot" and legacy[1].j == 1, tostring(#legacy))
+        check("Serialize mesin tolak rusak", #DuniaLogic.serMesin({ c = 9, j = 1 }) == 0 and #DuniaLogic.serMesin(nil) == 0, "-")
         check("Save tiap 60 dtk", DuniaLogic.SaveEvery == 60, tostring(DuniaLogic.SaveEvery))
 end
 
@@ -817,7 +815,7 @@ do
         local st2 = UangLogic.baru(0)
         local lajuOk, lajuTolak = 0, 0
         for i = 1, UangLogic.BatasPerMenit + 3 do
-                local okL = UangLogic.tambah(st2, 1, "smash_hasil", i)
+                local okL = UangLogic.tambah(st2, 1, "semai_hasil", i)
                 if okL then
                         lajuOk += 1
                 else
@@ -825,14 +823,14 @@ do
                 end
         end
         check("Batas transaksi per menit ditegakkan", lajuOk == UangLogic.BatasPerMenit and lajuTolak == 3, tostring(lajuOk) .. "/" .. tostring(lajuTolak))
-        local okLagi = UangLogic.tambah(st2, 1, "smash_hasil", UangLogic.JendelaDetik + 2)
+        local okLagi = UangLogic.tambah(st2, 1, "semai_hasil", UangLogic.JendelaDetik + 2)
         check("Jendela laju terbuka lagi setelah 60 detik", okLagi, "-")
         local st3 = UangLogic.baru(0)
         for i = 1, UangLogic.BatasLedger + 10 do
-                UangLogic.tambah(st3, 1, "smash_hasil", i)
+                UangLogic.tambah(st3, 1, "semai_hasil", i)
         end
         check("Ledger terpotong ke batas penyimpanan", #UangLogic.ledgerOf(st3) == UangLogic.BatasLedger, tostring(#UangLogic.ledgerOf(st3)))
-        check("Whitelist alasan transaksi", UangLogic.alasanOk("jual_hasil") and UangLogic.alasanOk("beli_benih") and UangLogic.alasanOk("smash_hasil") and UangLogic.alasanOk("hadiah") and not UangLogic.alasanOk(" cheat "), "-")
+        check("Whitelist alasan transaksi", UangLogic.alasanOk("jual_hasil") and UangLogic.alasanOk("beli_benih") and UangLogic.alasanOk("semai_hasil") and UangLogic.alasanOk("hadiah") and not UangLogic.alasanOk(" cheat "), "-")
 end
 
 print("--- I: Kunci sesi (anti-dua-server) ---")
@@ -965,6 +963,88 @@ do
         check("Tinju menghantam ke depan di tengah ayunan", ft.sudut > 1, tostring(ft.sudut))
         local fe = PukulAnim.fase(0, PukulAnim.Durasi * 0.96)
         check("Ayunan kembali nol di akhir", math.abs(fe.sudut) < 0.02, tostring(fe.sudut))
+end
+
+print("--- P: Mesin semai (atur jumlah, kabel, hasil) ---")
+do
+        local SemaiLogic = require("./../src/Shared/SemaiLogic")
+        check("Jumlah sah diterima", SemaiLogic.saringJumlah("20", 100, 2000) == 20, "-")
+        check("Nol / negatif / pecahan / teks ditolak", SemaiLogic.saringJumlah("0", 100, 2000) == nil and SemaiLogic.saringJumlah("-3", 100, 2000) == nil and SemaiLogic.saringJumlah("2.5", 100, 2000) == nil and SemaiLogic.saringJumlah("abc", 100, 2000) == nil, "-")
+        check("Jumlah dipotong ke stok", SemaiLogic.saringJumlah("99999", 40, 2000) == 40, "-")
+        check("Jumlah dipotong ke kapasitas mesin", SemaiLogic.saringJumlah("3000", 3000, 2000) == 2000, "-")
+        check("Stok kosong ditolak", SemaiLogic.saringJumlah("1", 0, 2000) == nil and SemaiLogic.saringJumlah("1", nil, 2000) == nil, "-")
+        check("Total pukulan = jumlah x per item", SemaiLogic.pukulanTotal(20, 10) == 200 and SemaiLogic.pukulanTotal(2000, 15) == 30000, "-")
+        local function shimSemai(seed: number)
+                local s0 = seed % 2147483647
+                if s0 == 0 then
+                        s0 = 12345
+                end
+                return {
+                        NextInteger = function(_, a: number, b: number)
+                                s0 = (s0 * 48271) % 2147483647
+                                return a + (s0 % (b - a + 1))
+                        end,
+                        NextNumber = function(_)
+                                s0 = (s0 * 48271) % 2147483647
+                                return s0 / 2147483647
+                        end,
+                }
+        end
+        local a = SemaiLogic.gulung(shimSemai(7), CropData.Giling.common, 500)
+        local b = SemaiLogic.gulung(shimSemai(7), CropData.Giling.common, 500)
+        check("Gulung hasil deterministik per benih acak", a.micda == b.micda and a.benih == b.benih and a.blok == b.blok, tostring(a.micda))
+        check("Gulung micda dalam rentang rarity", a.micda >= 500 and a.micda <= 2500, tostring(a.micda))
+        check("Gulung benih & blok tak melebihi jumlah", a.benih <= 500 and a.blok <= 500, "-")
+        local k = SemaiLogic.buatKabel(shimSemai(3))
+        check("Jumlah pasangan kabel 4-6", k.n >= 4 and k.n <= 6 and #k.kiri == k.n and #k.kanan == k.n, tostring(k.n))
+        local unik = true
+        for i = 1, k.n do
+                for jx = i + 1, k.n do
+                        if k.kiri[i] == k.kiri[jx] then
+                                unik = false
+                        end
+                end
+        end
+        check("Warna kaki kiri semuanya beda", unik, "-")
+        local sama = true
+        local hitung = {}
+        for _, w in ipairs(k.kiri) do
+                hitung[w] = (hitung[w] or 0) + 1
+        end
+        for _, w in ipairs(k.kanan) do
+                hitung[w] = (hitung[w] or 0) - 1
+        end
+        for _, v in pairs(hitung) do
+                if v ~= 0 then
+                        sama = false
+                end
+        end
+        check("Kanan pasangan sama dengan kiri (urutan acak)", sama, "-")
+        local sambungBenar = {}
+        for i = 1, k.n do
+                for jx = 1, k.n do
+                        if k.kanan[jx] == k.kiri[i] then
+                                sambungBenar[i] = jx
+                        end
+                end
+        end
+        check("Kabel selesai diterima saat semua jodoh", SemaiLogic.kabelSelesai(k, sambungBenar), "-")
+        check("Kabel belum lengkap ditolak", not SemaiLogic.kabelSelesai(k, {}), "-")
+        local salah = {}
+        for i = 1, k.n do
+                salah[i] = (i % k.n) + 1
+        end
+        local adaSalah = false
+        for i = 1, k.n do
+                if k.kiri[i] ~= k.kanan[salah[i]] then
+                        adaSalah = true
+                end
+        end
+        if adaSalah then
+                check("Sambungan warna salah ditolak", not SemaiLogic.kabelSelesai(k, salah), "-")
+        else
+                check("Sambungan warna salah ditolak", true, "-")
+        end
 end
 
 print(("="):rep(28))

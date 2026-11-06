@@ -1,7 +1,38 @@
 # DUNIA AKIOMIDA (Roblox)
 
-Status: LIVE di Roblox (**versionNumber 42**, 6 Nov 2026) — **PUNCH TAHAN
-TOMBOL + TINJU BOKS, ATUR JUAL BERKONFIRMASI, JALAN & TOKO DIHIAS**:
+Status: LIVE di Roblox (**versionNumber 43**, 6 Nov 2026) — **MESIN SEMAI
+PANEN: ISI JUMLAH + PENJODOHAN KABEL + GILING 3 DETIK + KLAIM, BLOK PER
+TANAMAN, BUG BLOK_PANEN DIHAPUS, TEMPAT MESIN TERHIAS**:
+
+1. **MESIN SEMAI MENGGANTIKAN MEJA PUKUL** — dekati mesin di lahan, pilih
+   hasil panen (mis. Nektarin), atur jumlah (preset 1/10/50/100/500/Maks,
+   kapasitas mesin 2000), lihat hitungan "Pukulan per item — Total
+   pukulan", lalu "Isi Mesin Semai". Item dipotong server saat diatur.
+2. **PENJODOHAN KABEL ACAK** — mesin baru aktif setelah modal "Sambungkan
+   Kabel Mesin" selesai: 4-6 pasang soket warna (8 warna) dengan susunan
+   dan posisi acak tiap kali; seret kabel ke soket warna yang sama (atau
+   ketuk kiri lalu kanan); garis kabel tergambar, warna salah ditolak,
+   semua jodoh = mesin menyala.
+3. **GILING 3 DETIK + SEMAI TUNTAS** — drum, cincin, gir, dan roda gila
+   berputar, cerobong berasap, lampu status kuning menyala, suara giling;
+   3 detik kemudian papan status mesin menyala hijau "SEMAI TUNTAS - KLAIM
+   HASIL" dan notifikasi muncul.
+4. **HASIL & KLAIM** — buka mesin lagi: daftar "+X Micda", "+N Benih",
+   "+M Blok" lalu "Klaim Semua" -> struk beranimasi, semua masuk tas
+   (tas penuh ditolak dengan pesan jelas).
+5. **BLOK SESUAI TANAMAN + BUG DIHAPUS** — item generik "Blok Panen"
+   (blok_panen) dihapus total; hasil blok kini selalu "Blok <Tanaman>"
+   (Blok Nektarin, Blok Wortel, ...) dengan ikon berwarna tanaman — diuji
+   khusus tidak pernah muncul lagi.
+6. **MESIN REALISTIS & TERHIAS** — mesin giling industri berkanopi: pondasi
+   diamond-plate, bodi baja, drum silinder berputar + 3 cincin oranye, roda
+   gila, gir, motor+cerobong asap, corong hopper V, kontrol berlampi 3
+   status, kabel warna, corong keluaran + peti hasil; area berpagar, tong,
+   peti, karung, kotak alat, pipa, dan garis peringatan kuning-hitam.
+
+Isi v42 tetap: punch tahan tombol + tinju boks terlihat, Atur Jual
+berkonfirmasi, jalan & toko dihias, beli pack berkonfirmasi + struk, popup
+Gerbang Dunia tertutup otomatis.
 
 1. **PUNCH TAHAN TOMBOL** — tombol PUNCH kini berbasis InputBegan/
    InputEnded: ditekan langsung memukul, DITAHA = memukul terus tiap 0,38
@@ -29,12 +60,12 @@ Isi v41 tetap: beli pack berkonfirmasi (Ya/Batal) + struk daftar benih yang
 didapat; popup Gerbang Dunia langsung tertutup saat pemain memilih tujuan;
 bug badai sync (kick pemain sah) diperbaiki; alat uji playtest/massa hidup.
 
-Universe: 10774464946 · Place: 77626159664192 · Label era: 9.9.0 "Toko Rasa Produk"
+Universe: 10774464946 · Place: 77626159664192 · Label era: 10.0.0 "Mesin Semai Panen"
 Build: `tools/rojo build default.project.json -o build/DuniaAkiomida.rbxlx`
-(luau-lsp 0 temuan, tes offline 262 PASS / 0 FAIL, playtest 130 PASS / 0 FAIL,
-ujian massa 93 PASS / 0 FAIL)
+(luau-lsp 0 temuan, tes offline 279 PASS / 0 FAIL, playtest 130 PASS / 0 FAIL,
+ujian massa 108 PASS / 0 FAIL — termasuk 15 cek end-to-end mesin semai)
 
-Skor banding Toram/Growtopia: **53.25/100** — lihat `RUBRIC.md`.
+Skor banding Toram/Growtopia: **54.75/100** — lihat `RUBRIC.md`.
 
 Isi era 9.8 (tetap berlaku):
 

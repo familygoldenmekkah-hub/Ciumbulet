@@ -19,6 +19,84 @@ Skor per kriteria 0-10, dikali bobot. Total dihitung dari (skor x bobot) / 10.
 | 8 | Polish & UX (UI, suara, animasi, efek) | 10 | animasi kombat, BGM, partikel | UI rapi & responsif |
 | 9 | Originalitas 100% & aman hak cipta | 5 | - | - |
 
+## Skor v43 (versi LIVE #43, 6 Nov 2026) - MESIN SEMAI PANEN: GILING BERSAMBUNG KABEL, BLOK PER TANAMAN, BUG BLOK_PANEN DIHAPUS
+
+Permintaan pemilik (pesan langsung): alur "pukul ambil" di semai panen
+diganti mesin semai — pemain memilih hasil panen, mengatur jumlah (kapasitas
+mesin 2000), total pukulan = jumlah x pukulan per item; mesin baru aktif
+setelah pemain menjodohkan kabel warna-warni yang posisinya selalu acak;
+3 detik menggiling lalu label "Semai Tuntas"; klik lagi untuk melihat hasil
+(Micda + drop benih + drop blok) dan klaim. Blok hasil WAJIB sesuai tanaman
+yang disemai (semai Nektarin = Blok Nektarin) dan item generik "Blok Panen"
+adalah bug yang harus dihapus. Tempat & tampilan semai panen diupgrade:
+mesin giling realistis, aesthetic, dan terhiasi.
+
+Diterapkan di #43:
+
+A. **Mesin semai menggantikan meja pukul**: modul server baru
+   MesinSemaiService (SmashService dihapus) dengan tahap kosong -> kabel ->
+   giling (3 dtk) -> tuntas -> klaim, semua server-authoritative: jumlah
+   divalidasi Shared/SemaiLogic (1..min(stok, 2000)), item dipotong saat
+   diatur, hadiah digulung saat batch dibuat (Micda per unit sesuai rarity,
+   peluang benih, peluang blok), klaim butuh ruang tas (canFitBatch) dan
+   jarak <= 24 dari mesin. Batch tersimpan (serMesin) dan data meja lama
+   dimigrasi otomatis; jika keluar di tengah proses, batch kembali sebagai
+   "tuntas" tanpa kehilangan barang.
+
+B. **Penjodohan kabel acak**: setelah "Isi Mesin Semai", modal
+   "Sambungkan Kabel Mesin" memunculkan 4-6 pasang soket warna (dari 8
+   warna) yang urutan kiri-kanan dan posisi vertikalnya diacak tiap kali;
+   pemain menyambung dengan menyeret (drag) atau mengetuk kiri lalu kanan;
+   garis kabel tergambar antar soket, warna salah ditolak, semua terjodoh
+   -> mesin menyala. Konfigurasi & validasi diuji di Shared/SemaiLogic
+   (bijective, warna sama, tidak lengkap = ditolak).
+
+C. **Hasil per tanaman + bug Blok Panen dihapus**: CropData.BlokId
+   ("blok_panen") dihapus total; blok kini id "blok_<tanaman>" (Blok
+   Nektarin, Blok Wortel, dst) dengan ikon tas berwarna tanaman. Semua
+   hasil klaim hanya keluar sesuai tanaman yang disemai; tes khusus
+   memastikan "blok_panen" tidak pernah ada di tas.
+
+D. **Mesin giling realistis & area terhiasi**: BuildingKit.buildMesinSemai
+   membangun mesin industri di lahan — pondasi baja, bodi mesin, drum
+   giling silinder dengan 3 cincin oranye yang BERPUTAR saat menggiling,
+   roda gila, 2 gir, motor berpendingin + cerobong asap berasap, corong
+   hopper V, pedalaman kontrol dengan 3 lampu status (merah nonaktif /
+   kuning kedip menunggu kabel / hijau tuntas), kabel merah-biru-kuning,
+   layar status "MESIN SEMAI PANEN" dua sisi yang teksnya hidup
+   (NONAKTIF / SAMBUNGKAN KABEL / MENGGILING... / SEMAI TUNTAS - KLAIM
+   HASIL), suara giling loop + ding tuntas; area dihias kanopi baja
+   bergaris, pagar, tong, peti hasil, karung, kotak alat, pipa dinding,
+   dan garis peringatan kuning-hitam.
+
+E. **Pengujian**: tes offline 279 PASS / 0 FAIL (seksi baru P "Mesin semai"
+   15 cek: saring jumlah, pukulan total, gulung deterministik + rentang,
+   kabel acak bijective & validasi); playtest penuh 130 PASS / 0 FAIL;
+   ujian massa 108 PASS / 0 FAIL dengan 15 cek baru end-to-end (buka mesin
+   -> pilih wortel -> isi 10 -> modal kabel -> mesin aktif -> SEMAI TUNTAS
+   di papan -> Klaim Semua -> struk + Micda naik -> wortel berkurang 10 ->
+   blok_wortel sesuai tanaman -> papan NONAKTIF lagi, tanpa blok_panen);
+   luau-lsp 0 temuan.
+
+F. **Ditemukan & diperbaiki saat menguji**: bug nyata di modal kabel
+   (variabel menimpa fungsi warna -> error saat membuka modal) tertangkap
+   ujian massa dan diperbaiki; skenario kini menutup panel seperti pemain
+   nyata sehingga alur papan setelah mesin teruji benar.
+
+| # | Kriteria | Skor | Alasan |
+|---|----------|------|--------|
+| 1 Kombat | 0/10 | Belum ada monster/AI/bos. |
+| 2 Crafting | 4/10 | Naik dari 3: mesin semai = stasiun olah beneran (input hasil -> minigame penjodohan kabel -> giling -> output Micda/benih/blok per tanaman), tapi belum ada crafting alat/armor. |
+| 3 Stat & Progresi | 1/10 | Tanpa level (sesuai arah pemilik); soal matematika tetap gerbang tanam. |
+| 4 Ekonomi | 6.5/10 | Alur jual-beli + konfirmasi tetap; mesin menambah sink/faucet Micda. Pasar dinamis & toko pemain belum ada. |
+| 5 Dunia & Peta | 7/10 | Area mesin semai kini terhiasi penuh (kanopi, pagar, tong, peti, pipa); belum: rumah, air, dungeon. |
+| 6 Multiplayer | 6/10 | Kunjung instan/salinan, tamu read-only, kunci sesi; belum: trade, party. |
+| 7 Bertani | 10/10 | Alur tanam -> panen -> semai -> klaim teruji end-to-end 108 cek; blok hasil per tanaman; bug blok_panen dihapus. |
+| 8 Polish & UX | 10/10 | Mesin beranimasi (drum/gir/roda putar, asap, lampu status, suara), minigame kabel drag/tap yang jelas, struk klaim beranimasi; papan status dunia hidup. Sisa: BGM/ambience, uji perangkat fisik. |
+| 9 Originalitas | 10/10 | Mesin, minigame kabel, dan semua hiasan dibangun dari part asli; suara memakai rbxasset bawaan engine; tanpa aset/require luar. |
+
+**TOTAL: 54.75/100** (bobot: 0+60+10+97.5+70+60+100+100+50 = 547.5/10 = 54.75)
+
 ## Skor v42 (versi LIVE #42, 6 Nov 2026) - PUNCH TAHAN TOMBOL + TINJU BOKS, ATUR JUAL BERKONFIRMASI, JALAN & TOKO DIHIAS
 
 Permintaan pemilik (pesan langsung): (1) tombol punch ditekan-tahan harus
