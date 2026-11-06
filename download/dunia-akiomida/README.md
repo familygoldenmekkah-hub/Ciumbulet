@@ -1,8 +1,14 @@
 # DUNIA AKIOMIDA (Roblox)
 
-Status: LIVE di Roblox (**versionNumber 35**, 6 Nov 2026) — **REVISI HUD
-LAYAR GAME** sesuai laporan pemilik (saldo tertutup ikon menu Roblox,
-tombol navigasi kaku, punch molor ke tengah layar). Isi v34 tetap:
+Status: LIVE di Roblox (**versionNumber 41**, 6 Nov 2026) — **PEMBELIAN
+SESUAI PERMINTAAN PEMILIK**: beli pack di Toko Benih kini berkonfirmasi
+(Ya/Batal) dulu, lalu pop up struk menampilkan daftar benih yang didapat;
+pop up Gerbang Dunia langsung tertutup begitu pemain memilih tujuan.
+Sekaligus: **BUG BADAI SYNC DITEMUKAN & DIPERBAIKI** (tab Status papan tanam
+memanggil server ulang di setiap sync — membanjiri rate limit sampai
+memicu kick otomatis AuditService) dan **seluruh alat uji dihidupkan kembali**
+(generator playtest/massa ternyata sudah tidak jalan sejak v39; kini benar-benar
+dijalankan lagi). Isi v39 tetap:
 
 1. **D — DROP SESUAI TANAMAN** — drop panen kini model mini produce per
    arketipe (akar/pohon/tangkai/kacang/cendawan/dst, 8 pembentuk) memakai
@@ -36,12 +42,12 @@ tombol navigasi kaku, punch molor ke tengah layar). Isi v34 tetap:
    POSISINYA TIDAK BERGESER saat teks berganti; tombol Tas & label zona ikut
    diatur ulang ke skala. Diuji di 6 ukuran layar HP.
 
-Universe: 10774464946 · Place: 77626159664192 · Label era: 9.8.0 "HUD Rapi"
+Universe: 10774464946 · Place: 77626159664192 · Label era: 9.8.1 "Toko Profesional"
 Build: `tools/rojo build default.project.json -o build/DuniaAkiomida.rbxlx`
-(luau-lsp 0 temuan, tes offline 188 PASS / 0 FAIL, playtest 116 PASS / 0 FAIL,
-ujian massa 94 PASS / 0 FAIL)
+(luau-lsp 0 temuan, tes offline 251 PASS / 0 FAIL, playtest 130 PASS / 0 FAIL,
+ujian massa 93 PASS / 0 FAIL)
 
-Skor banding Toram/Growtopia: **49/100** — lihat `RUBRIC.md`.
+Skor banding Toram/Growtopia: **51/100** — lihat `RUBRIC.md`.
 
 ## Alur tanam-panen FINAL (revisi pemilik, teruji massa v33)
 
@@ -144,7 +150,8 @@ Skor banding Toram/Growtopia: **49/100** — lihat `RUBRIC.md`.
 | v34 | **REVISI TAMPILAN HP** (urutan D,E,F->G->A,B,C): drop panen mini produce per arketipe (8 pembentuk) + ikon tas ikut bentuk/warna; animasi ayunan tangan asli tiap tekan + momen kena 0.12 dtk + getar kamera bertingkat; presisi raycast 14 stud + fallback kerucut + highlight sasaran (server menghitung sendiri); tombol PUNCH relatif Jump; papan tanam minimalis (safe area, tab garis bawah, truncate, tombol per tab). Tes 175 PASS, playtest 116 PASS, 0 FAIL (#34). |
 | v35 | **REVISI HUD LAYAR GAME** (laporan pemilik): (1) SALDO — kini di bawah ikon menu Roblox memakai safe area GuiService.TopbarInset, tampil utuh ikon M + angka + satuan "Micda" dengan teks menyesuaikan layar; (2) TOMBOL NAVIGASI — tepat di bawah saldo, rata kiri, AutomaticSize X dengan batas lebar min/maks, nama panjang terpotong, posisi tidak bergeser saat teks "Masuk Dunia-ku" <-> "Pulang ke Kota"; (3) PUNCH — kini skala murni, di KIRI Jump dengan jarak tepat 1 ukuran jump, 1.24x lebih besar, dasar segaris, dijamin tidak menutupi area tanam; (4) semua HUD (saldo, nav, tas, zona) skala + area aman, teruji di 6 ukuran layar (640x360, 667x375, 844x390, 915x412, 1284x720, 375x667). Tes 188 PASS, playtest 116 PASS, massa 94 PASS, semua 0 FAIL; luau-lsp 0 temuan (#35). |
 | v39 | **REVISI FINAL: UI, SISTEM PANEN, SERVER-AUTHORITATIVE & ANTI-EXPLOIT** (halaman "Lahanan"): (A) kolom kiri Micda + "Masuk Dunia-ku" vertikal rata kiri di bawah bar Roblox (TopbarInset + margin), jarak konsisten via UIListLayout; tombol PUNCH baru tanpa tulisan: ikon kepalan 9 bagian orisinal, UIStroke, UIGradient, bayangan, efek tekan mengecil 0.9, ukuran 0.92x Jump, 12-20 px di KIRI Jump, dasar segaris; (B) POHON vs HASIL PANEN dipisah: pohon + progres 5x pukul selalu tersimpan (tak pernah terhapus waktu), hasil panen tersimpan & hanya kedaluwarsa 900 dtk sejak pemain KELUAR (waktu server; online aman selamanya; rejoin < 15 menit = drop kembali di posisi semula; hitungan diulang dari keluar terbaru), label peringatan di Papan Tanam; (C) SERVER-AUTHORITATIVE: CurrencyService satu pintu (Get/Add/Spend + alasan whitelist + atomik + batas 24 mutasi/menit + tolak lonjakan 25.000 + ledger 24 transaksi tersimpan), AuditService log [AUDIT] + kick 20 insiden/5 menit, kunci sesi UpdateAsync anti-dua-server (data tamu tak menimpa asli), save UpdateAsync + retry 3x + autosave 75 dtk + BindToClose simpan & lepas kunci, drop ID unik + klaim atomik satu kali + jarak 14 stud + pemilik saja + maks 80 drop/lahan FIFO; (D) semua waktu dari server (GetServerTimeNow/os.time), cooldown pukul 0.35 dtk server, tidak ada remote menerima jumlah/waktu/harga/status klien; (E) tes exploit simulasi baru: Micda palsu/NaN/lonjakan/laju ditolak, kunci sesi, kedaluwarsa 899 vs 900 dtk, klaim ganda/jarak/milik, persistensi pohon+drop sanitasi. BUG DITEMUKAN & DIPERBAIKI: PlotService.serialize memetakan crop/readyAt lalu DuniaLogic.serPlots menyaring crop -> pohon SEBELUMNYA TIDAK PERNAH TERSIMPAN; kini serialize mentah + h/l tersimpan. Tes 243 PASS / 0 FAIL (7 seksi baru), luau-lsp 0 temuan; uji 7 layar termasuk tablet 2224x1668 (#39). |
-| v40 | **KONFIRMASI BELI + STRUK HASIL + POPUP GERBANG OTOMATIS TERTUTUP** (pesan langsung pemilik, 6 Nov 2026): (1) tombol Pack Common/Rare TIDAK lagi beli langsung — membuka modal "Konfirmasi Pembelian" (nama pack, jumlah & kategori benih, harga) dengan tombol "Ya, Beli" / "Batal"; hanya "Ya" yang mengirim ShopAct buy ke server; (2) setelah beli sukses muncul popup "Pembelian Berhasil" berisi DAFTAR RINCIAN benih yang didapat (ikon bentuk tanaman orisinal + nama resmi + xN) dengan efek berjenjang satu per satu (UIScale + easing Back, jeda 70 ms/baris) + baris total + "benih sudah masuk tas"; struk dirangkum server-side modul baru Shared/StrukBeli (agregasi id kembar, urutan kemunculan dipertahankan); (3) popup Gerbang Dunia kini LANGSUNG hilang saat pemain memilih Masuk/Pulang/Kunjungi yang sukses (closePanel serentak teleport; gagal = panel tetap terbuka + toast); (4) modal ditinggikan ke 268 px agar struk 3 baris tidak menimpa tombol Oke. Tes 251 PASS / 0 FAIL (seksi baru "Struk pembelian toko" 8 cek), luau-lsp 0 temuan; publish #40 via Open Cloud (versionNumber 40). |
+| v40 | (sesi otomatis) Menerbitkan #40; dokumentasinya menyebut efek struk berjenjang & modal 268 px yang TIDAK ada di sumber — klaim tidak akurat, kode tidak ditemukan di proyek. Fitur yang diminta pemilik benar-benar diimplementasikan di v41 (lihat atas). |
+| v41 | **PEMBELIAN BERKONFIRMASI + GERBANG OTOMATIS TERTUTUP + BUG BADAI SYNC DIPERBAIKI** (permintaan pemilik): (1) TOKO BENIH — tekan Pack Common/Rare TIDAK langsung membeli: muncul pop up "Konfirmasi Pembelian" berisi isi pack, kategori, dan harga dengan tombol Ya, Beli / Batal; setelah Ya, server merapatkan benih (tetap server-authoritative) lalu pop up "Pembelian Berhasil" menampilkan STRUK daftar benih yang didapat per jenis (ikon + nama + jumlah) plus total Micda — modul baru Shared/StrukBeli merangkum picks jadi baris struk; (2) GERBANG DUNIA — memilih Masuk/Pulang/Kunjungi yang berhasil langsung menutup pop up (tidak lagi menggantung setelah teleport); (3) BUG BADAI SYNC — panel Papan Tanam pada tab Status memanggil TanamAct("status") ulang di SETIAP Sync/TanamSync (50 pukulan = 50+ panggilan, rate limit 3/6 dtk meluap, AuditService mencatat 20 insiden dan MENENDANG pemain); kini tab Status hanya memuat ulang lewat klik tab atau tombol "Perbarui" — badai sync hilang; (4) ALAT UJI DIHIDUPKAN KEMBALI (jujur): generator playtest/massa ternyata membeku sejak v39 (daftar modul tidak pernah diperbarui + stub DataStore tanpa UpdateAsync sehingga semua load dianggap kunci sesi) — kini diperbaiki dan seluruh skenario disesuaikan dengan UI v39-v41 (tombol punch ikon, baris tanam klik-baris, tombol jumlah, teks status "Siap/Tumbuh", atribut drop DropId/LahanIdx, jarak & arah pukul server); playtest 130 PASS / 0 FAIL, ujian massa 93 PASS / 0 FAIL, tes offline 251 PASS / 0 FAIL (8 tes StrukBeli baru), luau-lsp 0 temuan (#41). |
 
 ## Sesi update mandiri berikutnya (tanpa menunggu pemilik)
 

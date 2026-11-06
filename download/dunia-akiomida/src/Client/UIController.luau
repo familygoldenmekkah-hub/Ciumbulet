@@ -1124,9 +1124,7 @@ Net.get("Sync").OnClientEvent:Connect(function(payload)
         elseif currentPanel == "tanam" then
                 if tabAktif == "gabung" then
                         refreshGabung()
-                elseif tabAktif == "status" then
-                        muatStatus()
-                else
+                elseif tabAktif ~= "status" then
                         refreshTanam()
                 end
         elseif currentPanel == "gudang" then
@@ -1149,12 +1147,8 @@ end)
 
 Net.get("TanamSync").OnClientEvent:Connect(function(p)
         state.tanam = p
-        if currentPanel == "tanam" then
-                if tabAktif == "tanam" then
-                        refreshTanam()
-                elseif tabAktif == "status" then
-                        muatStatus()
-                end
+        if currentPanel == "tanam" and tabAktif == "tanam" then
+                refreshTanam()
         end
 end)
 

@@ -790,6 +790,14 @@ function Stub.install()
                                 self.__data[key] = value
                                 return true
                         end
+                        function ds:UpdateAsync(key, transform)
+                                local old = self.__data[key]
+                                local baru = transform(old)
+                                if baru ~= nil then
+                                        self.__data[key] = baru
+                                end
+                                return baru
+                        end
                         stores[name] = ds
                 end
                 return stores[name]

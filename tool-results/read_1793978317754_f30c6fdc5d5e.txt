@@ -1,0 +1,761 @@
+     1→local rawreq = require
+     2→local Stub = rawreq("./sim/roblox_stub")
+     3→Stub.install()
+     4→
+     5→require = function(arg)
+     6→        if type(arg) == "table" and arg.__requirePath then
+     7→                return rawreq(arg.__requirePath)
+     8→        end
+     9→        return rawreq(arg)
+    10→end
+    11→
+    12→local Services = Stub.Services
+    13→local Players = Services.Players
+    14→local Workspace = Services.Workspace
+    15→local ReplicatedStorage = Services.ReplicatedStorage
+    16→
+    17→local passed, failed = 0, 0
+    18→local function check(name, ok, detail)
+    19→        if ok then
+    20→                passed += 1
+    21→                print("  PASS  " .. name)
+    22→        else
+    23→                failed += 1
+    24→                print("  FAIL  " .. name .. (detail and ("  -> " .. detail) or ""))
+    25→        end
+    26→end
+    27→
+    28→local function section(t)
+    29→        print("-- " .. t)
+    30→end
+    31→
+    32→local function getRemote(name)
+    33→        local f = ReplicatedStorage:FindFirstChild("Remotes")
+    34→        return f and f:FindFirstChild(name)
+    35→end
+    36→
+    37→local function serverCall(name, player, ...)
+    38→        local r = getRemote(name)
+    39→        if not r or not r.OnServerInvoke then
+    40→                return nil, "remote tidak siap"
+    41→        end
+    42→        return r.OnServerInvoke(player, ...)
+    43→end
+    44→
+    45→local function findPrompts(root)
+    46→        local out = {}
+    47→        for _, d in ipairs(root:GetDescendants()) do
+    48→                if d:IsA("ProximityPrompt") then
+    49→                        table.insert(out, d)
+    50→                end
+    51→        end
+    52→        return out
+    53→end
+    54→
+    55→local function firePrompt(root, match, player)
+    56→        for _, p in ipairs(findPrompts(root)) do
+    57→                local okA = not match.action or p.ActionText == match.action
+    58→                local okO = not match.object or p.ObjectText == match.object
+    59→                if okA and okO then
+    60→                        p.Triggered:Fire(player)
+    61→                        return true
+    62→                end
+    63→        end
+    64→        return false
+    65→end
+    66→
+    67→local function findGui(root, class, textMatch)
+    68→        if not root then
+    69→                return nil
+    70→        end
+    71→        for _, d in ipairs(root:GetDescendants()) do
+    72→                if d:IsA(class) and d.Text and (not textMatch or string.find(d.Text, textMatch, 1, true)) then
+    73→                        return d
+    74→                end
+    75→        end
+    76→        return nil
+    77→end
+    78→
+    79→local function countClass(root, class)
+    80→        local n = 0
+    81→        if not root then
+    82→                return 0
+    83→        end
+    84→        for _, d in ipairs(root:GetDescendants()) do
+    85→                if d:IsA(class) then
+    86→                        n += 1
+    87→                end
+    88→        end
+    89→        return n
+    90→end
+    91→
+    92→local function findTextBoxByPlaceholder(root, placeholder)
+    93→        if not root then
+    94→                return nil
+    95→        end
+    96→        for _, d in ipairs(root:GetDescendants()) do
+    97→                if d:IsA("TextBox") and d.PlaceholderText == placeholder then
+    98→                        return d
+    99→                end
+   100→        end
+   101→        return nil
+   102→end
+   103→
+   104→local function findSoalTeks(root)
+   105→        if not root then
+   106→                return nil
+   107→        end
+   108→        for _, d in ipairs(root:GetDescendants()) do
+   109→                if d:IsA("TextLabel") and d.Text and string.match(d.Text, "^%d+ .+ %d+ = %?$") then
+   110→                        return d
+   111→                end
+   112→        end
+   113→        return nil
+   114→end
+   115→
+   116→local function pilihBenih(root, nama)
+   117→        for _, d in ipairs(root:GetDescendants()) do
+   118→                if d:IsA("TextButton") and d.Text == "Pilih" and d.Parent then
+   119→                        for _, c in ipairs(d.Parent:GetChildren()) do
+   120→                                if c:IsA("TextLabel") and c.Text and string.find(c.Text, nama, 1, true) then
+   121→                                        d.Activated:Fire()
+   122→                                        return true
+   123→                                end
+   124→                        end
+   125→                end
+   126→        end
+   127→        return false
+   128→end
+   129→
+   130→local function pilihSlotList(root, nama, offsetX)
+   131→        for _, d in ipairs(root:GetDescendants()) do
+   132→                if d:IsA("TextButton") and d.Text == "Pilih" and d.Parent and d.Parent.Parent and d.Parent.Parent:IsA("ScrollingFrame") then
+   133→                        if d.Parent.Parent.Position.xo == offsetX then
+   134→                                for _, c in ipairs(d.Parent:GetChildren()) do
+   135→                                        if c:IsA("TextLabel") and c.Text and string.find(c.Text, nama, 1, true) then
+   136→                                                d.Activated:Fire()
+   137→                                                return true
+   138→                                        end
+   139→                                end
+   140→                        end
+   141→                end
+   142→        end
+   143→        return false
+   144→end
+   145→
+   146→local function jawabSoal(gui)
+   147→        local soalTeks = findSoalTeks(gui)
+   148→        if not soalTeks then
+   149→                return false, "soal hilang"
+   150→        end
+   151→        local teks = soalTeks.Text
+   152→        local a, op, b = string.match(teks, "^(%d+) (.+) (%d+) = %?$")
+   153→        if not a then
+   154→                return false, "soal tak terbaca: " .. teks
+   155→        end
+   156→        local x, y = tonumber(a), tonumber(b)
+   157→        local hasil
+   158→        if op == "+" then
+   159→                hasil = x + y
+   160→        elseif op == "-" then
+   161→                hasil = x - y
+   162→        elseif op == "*" or op == "x" or op == "×" then
+   163→                hasil = x * y
+   164→        elseif op == "/" or op == "÷" then
+   165→                hasil = x / y
+   166→        else
+   167→                return false, "operator tak dikenal: " .. tostring(op)
+   168→        end
+   169→        local box = findTextBoxByPlaceholder(gui, "Tulis jawaban angka")
+   170→        if not box then
+   171→                return false, "kotak jawaban hilang"
+   172→        end
+   173→        box.Text = tostring(hasil)
+   174→        local btn = findGui(gui, "TextButton", "Jawab")
+   175→        if not btn then
+   176→                return false, "tombol jawab hilang"
+   177→        end
+   178→        btn.Activated:Fire()
+   179→        return true, tostring(hasil)
+   180→end
+   181→
+   182→local function rootOf(p)
+   183→        local c = p.Character
+   184→        return c and c:FindFirstChild("HumanoidRootPart")
+   185→end
+   186→
+   187→local function moveTo(p, x, y, z)
+   188→        local r = rootOf(p)
+   189→        if r then
+   190→                r.CFrame = CFrame.new(x, y, z)
+   191→        end
+   192→end
+   193→
+   194→local function burn(t)
+   195→        local tgt = os.clock() + t
+   196→        while os.clock() < tgt do
+   197→        end
+   198→end
+   199→
+   200→local function tasCount(player, kind, id)
+   201→        local st = serverCall("GetState", player)
+   202→        if not st then
+   203→                return -1
+   204→        end
+   205→        local n = 0
+   206→        for _, s in ipairs(st.tas) do
+   207→                if s.kind == kind and s.id == id then
+   208→                        n += s.count
+   209→                end
+   210→        end
+   211→        return n
+   212→end
+   213→
+   214→local function dropsFolder(dunia)
+   215→        return dunia and dunia:FindFirstChild("Drops_1", true)
+   216→end
+   217→
+   218→local function gridOf(dunia)
+   219→        return dunia and dunia:FindFirstChild("PlotGrid_1", true)
+   220→end
+   221→
+   222→local function tanaman(grid, idx)
+   223→        return grid and grid:FindFirstChild("Tanaman_" .. idx, true)
+   224→end
+   225→
+   226→local function buahWarna(model)
+   227→        for _, d in ipairs(model:GetDescendants()) do
+   228→                if d:IsA("BasePart") and d:GetAttribute("Buah") then
+   229→                        return d.Color
+   230→                end
+   231→        end
+   232→        return nil
+   233→end
+   234→
+   235→local function warnaSama(c, r, g, b)
+   236→        if not c then
+   237→                return false
+   238→        end
+   239→        return math.abs(c.r - r / 255) < 0.03 and math.abs(c.g - g / 255) < 0.03 and math.abs(c.b - b / 255) < 0.03
+   240→end
+   241→
+   242→print("=== UJIAN MASSA PANEN: tanam -> tunggu matang -> panen punch -> combine ===")
+   243→Stub.Scheduler.advance(0.05)
+   244→
+   245→section("Booting server")
+   246→script = Stub.serverScript()
+   247→RUN_init_server()
+   248→Stub.Scheduler.advance(0.2)
+   249→
+   250→local dunia = Workspace:FindFirstChild("Dunia")
+   251→check("Workspace.Dunia dibuat", dunia ~= nil)
+   252→
+   253→section("Pemain masuk dengan perbekalan benih lengkap")
+   254→local profStore = Stub.Services.DataStoreService:GetDataStore("AKM_T1")
+   255→profStore.__data["u_1001"] = {
+   256→        m = 900000,
+   257→        t = {
+   258→                { kind = "benih", id = "wortel", count = 55 },
+   259→                { kind = "benih", id = "bayam", count = 10 },
+   260→                { kind = "benih", id = "pisang", count = 5 },
+   261→                { kind = "benih", id = "gandum", count = 3 },
+   262→                { kind = "benih", id = "rye", count = 3 },
+   263→                { kind = "benih", id = "brassica_rapa", count = 2 },
+   264→                { kind = "benih", id = "brassica_oleracea", count = 2 },
+   265→                { kind = "benih", id = "jeruk_mandarin", count = 2 },
+   266→                { kind = "benih", id = "grapefruit", count = 2 },
+   267→                { kind = "benih", id = "plum", count = 3 },
+   268→                { kind = "benih", id = "aprikot", count = 2 },
+   269→                { kind = "benih", id = "nektarin", count = 2 },
+   270→                { kind = "benih", id = "ceri", count = 2 },
+   271→                { kind = "benih", id = "labu_maxima", count = 2 },
+   272→                { kind = "benih", id = "labu_moschata", count = 2 },
+   273→                { kind = "benih", id = "arachis_duranensis", count = 2 },
+   274→                { kind = "benih", id = "arachis_ipaensis", count = 2 },
+   275→                { kind = "hasil", id = "wortel", count = 10 },
+   276→                { kind = "hasil", id = "pisang", count = 250 },
+   277→        },
+   278→        dev = false,
+   279→}
+   280→local P1 = Stub.addPlayer(1001, "akiomida")
+   281→Stub.giveCharacter(P1, 0, 6, 44)
+   282→Players.PlayerAdded:Fire(P1)
+   283→Stub.Scheduler.advance(0.5)
+   284→
+   285→local ls = P1:FindFirstChild("leaderstats")
+   286→check("Micda 900.000 siap", ls and ls:FindFirstChild("Micda") and ls:FindFirstChild("Micda").Value == 900000, "-")
+   287→
+   288→section("UI klien hidup + tombol PUNCH permanen")
+   289→local pg = Instance.new("Folder")
+   290→pg.Name = "PlayerGui"
+   291→pg.Parent = P1
+   292→__SIM_IS_SERVER = false
+   293→script = Stub.clientScript()
+   294→Stub.setLocalPlayer(P1)
+   295→RUN_init_client()
+   296→Stub.Scheduler.advance(0.2)
+   297→
+   298→local gui = pg:FindFirstChild("DuniaAkiomida")
+   299→check("GUI utama dibuat", gui ~= nil)
+   300→local punchBtn = findGui(gui, "TextButton", "PUNCH")
+   301→check("Tombol PUNCH permanen terlihat", punchBtn ~= nil and punchBtn.Visible == true, "-")
+   302→
+   303→section("Masuk dunia lahan")
+   304→__SIM_IS_SERVER = true
+   305→Stub.setLocalPlayer(P1)
+   306→local gsRemote = getRemote("GetState")
+   307→local asliGs = gsRemote.OnServerInvoke
+   308→local gsCount = 0
+   309→gsRemote.OnServerInvoke = function(p)
+   310→        gsCount += 1
+   311→        return asliGs(p)
+   312→end
+   313→moveTo(P1, 0, 5, 20)
+   314→firePrompt(dunia, { action = "Dunia-ku" }, P1)
+   315→Stub.Scheduler.advance(0.1)
+   316→local masukBtn = findGui(gui, "TextButton", "Masuk Dunia")
+   317→if masukBtn then
+   318→        masukBtn.Activated:Fire()
+   319→        Stub.Scheduler.advance(0.5)
+   320→end
+   321→local r1 = rootOf(P1)
+   322→check("Pemain di dunia lahan (X > 5000)", r1 and r1.Position.X > 5000, "-")
+   323→local st0 = serverCall("GetState", P1)
+   324→check("Zona dunia milik sendiri", st0 and st0.zone == "dunia" and st0.role == "pemilik", "-")
+   325→
+   326→section("TANAM MASSA: 50 wortel lewat Papan Tanam (5 soal)")
+   327→moveTo(P1, 5085, 5, 18)
+   328→firePrompt(dunia, { object = "Papan Tanam" }, P1)
+   329→Stub.Scheduler.advance(0.1)
+   330→check("Panel Papan Tanam terbuka", findGui(gui, "TextLabel", "Papan Tanam") ~= nil, "-")
+   331→check("Pilih benih Wortel", pilihBenih(gui, "Wortel"), "-")
+   332→local jumlahBox = findTextBoxByPlaceholder(gui, "Jumlah")
+   333→check("Kotak jumlah ada", jumlahBox ~= nil, "-")
+   334→if jumlahBox then
+   335→        jumlahBox.Text = "50"
+   336→end
+   337→local mulaiBtn = findGui(gui, "TextButton", "Mulai Tanam")
+   338→burn(1.2)
+   339→if mulaiBtn then
+   340→        mulaiBtn.Activated:Fire()
+   341→        Stub.Scheduler.advance(0.1)
+   342→end
+   343→check("Soal 1 dari 5 tampil", findGui(gui, "TextLabel", "Soal 1 dari 5") ~= nil, "-")
+   344→check("Papan fisik TERTANAM 0/500", findGui(dunia, "TextLabel", "TERTANAM 0/500") ~= nil, "-")
+   345→
+   346→for i = 1, 5 do
+   347→        burn(1.2)
+   348→        local okJ, detJ = jawabSoal(gui)
+   349→        Stub.Scheduler.advance(0.1)
+   350→        if i < 5 then
+   351→                check("Soal " .. i .. " benar -> 10 plot terisi", okJ and findGui(dunia, "TextLabel", "TERTANAM " .. (i * 10) .. "/500") ~= nil, tostring(detJ))
+   352→        else
+   353→                check("Soal 5 benar -> 50 plot terisi penuh", okJ and findGui(dunia, "TextLabel", "TERTANAM 50/500") ~= nil, tostring(detJ))
+   354→        end
+   355→end
+   356→check("Benih wortel sisa 5", tasCount(P1, "benih", "wortel") == 5, tostring(tasCount(P1, "benih", "wortel")))
+   357→local grid = gridOf(dunia)
+   358→local hitungTanaman = 0
+   359→if grid then
+   360→        for _, m in ipairs(grid:GetChildren()) do
+   361→                if m:IsA("Model") then
+   362→                        hitungTanaman += 1
+   363→                end
+   364→        end
+   365→end
+   366→check("50 model tanaman berdiri di plot", hitungTanaman == 50, tostring(hitungTanaman))
+   367→
+   368→section("Sebelum matang: status Masih Tumbuh + warna tumbuh")
+   369→burn(1.2)
+   370→local tabStatusBtn = nil
+   371→for _, d in ipairs(gui:GetDescendants()) do
+   372→        if d:IsA("TextButton") and d.Text == "Status" then
+   373→                tabStatusBtn = d
+   374→        end
+   375→end
+   376→if tabStatusBtn then
+   377→        tabStatusBtn.Activated:Fire()
+   378→        Stub.Scheduler.advance(0.1)
+   379→end
+   380→check("Status tab: ringkasan Tertanam 50/500", findGui(gui, "TextLabel", "Tertanam 50/500") ~= nil, "-")
+   381→check("Status: Wortel Masih Tumbuh 50", findGui(gui, "TextLabel", "Masih Tumbuh: 50") ~= nil, "-")
+   382→check("Status: tidak ada yang Siap Panen", findGui(gui, "TextLabel", "Siap Panen: 0") ~= nil, "-")
+   383→local t0 = tanaman(grid, 0)
+   384→check("Tanaman_0 ada", t0 ~= nil, "-")
+   385→check("Model belum bertanda Siap", t0 and t0:GetAttribute("Siap") == nil, "-")
+   386→check("Warna buah = warna tumbuh (224,178,120)", warnaSama(buahWarna(t0), 224, 178, 120), buahWarna(t0) and tostring(buahWarna(t0)) or "-")
+   387→
+   388→section("TUNGGU MASSA PANEN: waktu jalan sampai semua matang")
+   389→Stub.Scheduler.advance(4.5)
+   390→check("Model bertanda Siap setelah 3+ detik", t0 and t0:GetAttribute("Siap") == true, "-")
+   391→check("Warna buah berubah ke warna siap (232,112,44)", warnaSama(buahWarna(t0), 232, 112, 44), buahWarna(t0) and tostring(buahWarna(t0)) or "-")
+   392→burn(1.2)
+   393→if tabStatusBtn then
+   394→        tabStatusBtn.Activated:Fire()
+   395→        Stub.Scheduler.advance(0.1)
+   396→end
+   397→check("Status: Wortel Siap Panen 50", findGui(gui, "TextLabel", "Siap Panen: 50") ~= nil, "-")
+   398→check("Status: Masih Tumbuh 0", findGui(gui, "TextLabel", "Masih Tumbuh: 0") ~= nil, "-")
+   399→
+   400→section("PANEN MASSA dengan PUNCH: tombol layar asli untuk pukulan pertama")
+   401→moveTo(P1, 5013, 5, 30)
+   402→Stub.Scheduler.advance(0.25)
+   403→local probeFolder = Workspace:FindFirstChild("Dunia"):FindFirstChild("PlotGrid_1", true)
+   404→local probeHit = nil
+   405→for _, m in ipairs(probeFolder:GetChildren()) do
+   406→        if m:IsA("Model") and string.sub(m.Name, 1, 8) == "Tanaman_" then
+   407→                probeHit = m.Name .. " jarak " .. string.format("%.1f", (m:GetPivot().Position - rootOf(P1).Position).Magnitude)
+   408→                break
+   409→        end
+   410→end
+   411→check("Penarget PUNCH menemukan tanaman terdekat", probeHit ~= nil and string.find(probeHit, "Tanaman_0", 1, true) ~= nil, tostring(probeHit))
+   412→local plotRemote = getRemote("PlotAct")
+   413→local asliInvoke = plotRemote.OnServerInvoke
+   414→local dipanggil = nil
+   415→plotRemote.OnServerInvoke = function(p, idx, act)
+   416→        dipanggil = tostring(idx) .. "/" .. tostring(act)
+   417→        return asliInvoke(p, idx, act)
+   418→end
+   419→local dropSebelum1 = dropsFolder(dunia) and #dropsFolder(dunia):GetChildren() or 0
+   420→punchBtn.Activated:Fire()
+   421→check("Efek kick kamera saat PUNCH", Workspace.CurrentCamera.FieldOfView == 76, tostring(Workspace.CurrentCamera.FieldOfView))
+   422→check("Tombol PUNCH memanggil server dengan plot 0", dipanggil == "0/punch", tostring(dipanggil))
+   423→Stub.Scheduler.advance(0.1)
+   424→plotRemote.OnServerInvoke = asliInvoke
+   425→local drops = dropsFolder(dunia)
+   426→check("Tombol PUNCH menghasilkan drop", drops ~= nil and #drops:GetChildren() == dropSebelum1 + 1, tostring(drops and #drops:GetChildren()))
+   427→local d1 = drops and drops:GetChildren()[1]
+   428→check("Pukulan pertama: tanaman_0 lenyap", tanaman(grid, 0) == nil, "-")
+   429→check("Drop beratribut CropId wortel", d1 and d1:GetAttribute("CropId") == "wortel", "-")
+   430→check("Drop tanpa teks melayang", d1 and countClass(d1, "BillboardGui") == 0, "-")
+   431→check("Drop punya efek partikel & suara", d1 and d1:FindFirstChildWhichIsA("ParticleEmitter") ~= nil and d1:FindFirstChildWhichIsA("Sound") ~= nil, "-")
+   432→check("Ukuran drop tier 1 (1.8)", d1 and math.abs(d1.Size.X - 1.8) < 0.01, d1 and tostring(d1.Size.X) or "-")
+   433→
+   434→section("Panen 49 plot sisanya: kombo menaikkan tier efek")
+   435→local okN = 0
+   436→local msgPertama = nil
+   437→for i = 2, 50 do
+   438→        local row = math.floor((i - 1) / 25)
+   439→        local col = (i - 1) % 25
+   440→        burn(0.17)
+   441→        moveTo(P1, 5013 + 6 * col, 5, 33 + 6 * row)
+   442→        local okP, msgP = serverCall("PlotAct", P1, i - 1, "punch")
+   443→        if okP then
+   444→                okN += 1
+   445→        elseif not msgPertama then
+   446→                msgPertama = "plot " .. tostring(i - 1) .. ": " .. tostring(msgP)
+   447→        end
+   448→        Stub.Scheduler.advance(0.05)
+   449→end
+   450→check("49 pukulan lanjutan sukses semua", okN == 49, tostring(msgPertama) .. " | ERR: " .. table.concat(__SIM_ERRORS, " || "))
+   451→check("Semua tanaman wortel habis (grid tinggal 0 model)", grid and (function()
+   452→        local n = 0
+   453→        for _, m in ipairs(grid:GetChildren()) do
+   454→                if m:IsA("Model") then
+   455→                        n += 1
+   456→                end
+   457→        end
+   458→        return n
+   459→end)() == 0, tostring(grid and (function()
+   460→        local n = 0
+   461→        for _, m in ipairs(grid:GetChildren()) do
+   462→                if m:IsA("Model") then
+   463→                        n += 1
+   464→                end
+   465→        end
+   466→        return n
+   467→end)() or -1))
+   468→check("Papan kembali ke TERTANAM 0/500 setelah panen raya", findGui(dunia, "TextLabel", "TERTANAM 0/500") ~= nil, "-")
+   469→local totalDrop = drops and #drops:GetChildren() or 0
+   470→check("50 drop melayang menunggu disentuh", totalDrop == 50, tostring(totalDrop))
+   471→local totalBuah = 0
+   472→local d2, d5, d9
+   473→for k, dp in ipairs(drops and drops:GetChildren() or {}) do
+   474→        totalBuah += dp:GetAttribute("Count") or 0
+   475→        if k == 2 then
+   476→                d2 = dp
+   477→        end
+   478→        if k == 5 then
+   479→                d5 = dp
+   480→        end
+   481→        if k == 9 then
+   482→                d9 = dp
+   483→        end
+   484→end
+   485→check("Ukuran drop tier 1 di pukulan ke-2 (1.8)", d2 and math.abs(d2.Size.X - 1.8) < 0.01, d2 and tostring(d2.Size.X) or "-")
+   486→check("Ukuran drop naik tier 2 di pukulan ke-5 (2.1)", d5 and math.abs(d5.Size.X - 2.1) < 0.01, d5 and tostring(d5.Size.X) or "-")
+   487→check("Ukuran drop naik tier 3 di pukulan ke-9 (2.4)", d9 and math.abs(d9.Size.X - 2.4) < 0.01, d9 and tostring(d9.Size.X) or "-")
+   488→check("Isi drop dalam rentang hasil 1-10 per tanaman", (function()
+   489→        for _, dp in ipairs(drops and drops:GetChildren() or {}) do
+   490→                local n = dp:GetAttribute("Count") or 0
+   491→                if n < 1 or n > 10 then
+   492→                        return false
+   493→                end
+   494→        end
+   495→        return true
+   496→end)(), "-")
+   497→local wortelSebelumSentuh = tasCount(P1, "hasil", "wortel")
+   498→for _, dp in ipairs(drops and drops:GetChildren() or {}) do
+   499→        dp.Touched:Fire(rootOf(P1))
+   500→        Stub.Scheduler.advance(0.05)
+   501→end
+   502→Stub.Scheduler.advance(1)
+   503→check("Semua drop habis setelah disentuh", drops and #drops:GetChildren() == 0, tostring(drops and #drops:GetChildren()))
+   504→local wortelSesudahSentuh = tasCount(P1, "hasil", "wortel")
+   505→check("Total buah masuk tas = isi semua drop (" .. wortelSesudahSentuh - wortelSebelumSentuh .. " buah)", wortelSesudahSentuh - wortelSebelumSentuh == totalBuah, tostring(wortelSesudahSentuh - wortelSebelumSentuh) .. " vs " .. tostring(totalBuah))
+   506→
+   507→section("Efektivitas punch: jarak & plot kosong ditolak")
+   508→moveTo(P1, 0, 5, 44)
+   509→burn(0.2)
+   510→local okJauh, msgJauh = serverCall("PlotAct", P1, 1, "punch")
+   511→check("Punch dari kota ditolak (terlalu jauh)", okJauh == false, tostring(msgJauh))
+   512→moveTo(P1, 5013, 5, 38)
+   513→burn(0.2)
+   514→local okKosong, msgKosong = serverCall("PlotAct", P1, 300, "punch")
+   515→check("Punch plot kosong ditolak", okKosong == false and tostring(msgKosong) == "Plot kosong.", tostring(msgKosong))
+   516→
+   517→section("Punch tanaman masih tumbuh: beruntun dalam jendela, 5x hancur, tanpa drop")
+   518→moveTo(P1, 5085, 5, 18)
+   519→check("Pilih benih Bayam", pilihBenih(gui, "Bayam"), "-")
+   520→jumlahBox = findTextBoxByPlaceholder(gui, "Jumlah")
+   521→if jumlahBox then
+   522→        jumlahBox.Text = "10"
+   523→end
+   524→mulaiBtn = findGui(gui, "TextButton", "Mulai Tanam")
+   525→burn(1.2)
+   526→if mulaiBtn then
+   527→        mulaiBtn.Activated:Fire()
+   528→        Stub.Scheduler.advance(0.1)
+   529→end
+   530→burn(1.2)
+   531→local okB, detB = jawabSoal(gui)
+   532→Stub.Scheduler.advance(0.1)
+   533→check("Bayam tertanam -> TERTANAM 10/500", okB and findGui(dunia, "TextLabel", "TERTANAM 10/500") ~= nil, tostring(detB))
+   534→local bayam = tanaman(grid, 0)
+   535→check("Tanaman_0 bayam berdiri (plot pertama kosong)", bayam ~= nil, "-")
+   536→moveTo(P1, 5013, 5, 30)
+   537→local pesanPukul
+   538→for _ = 1, 3 do
+   539→        burn(0.17)
+   540→        _, pesanPukul = serverCall("PlotAct", P1, 0, "punch")
+   541→        Stub.Scheduler.advance(0.05)
+   542→end
+   543→check("3x pukul: tanaman masih hidup (3/5)", tanaman(grid, 0) ~= nil and pesanPukul == "Pukulan 3/5", tostring(pesanPukul))
+   544→Stub.Scheduler.advance(2.5)
+   545→burn(0.17)
+   546→_, pesanPukul = serverCall("PlotAct", P1, 0, "punch")
+   547→Stub.Scheduler.advance(0.05)
+   548→check("Beruntun bertahan dalam jendela (4/5), masih tumbuh", pesanPukul == "Pukulan 4/5" and tanaman(grid, 0) ~= nil, tostring(pesanPukul))
+   549→burn(0.17)
+   550→_, pesanPukul = serverCall("PlotAct", P1, 0, "punch")
+   551→Stub.Scheduler.advance(0.05)
+   552→check("5x beruntun -> tanaman hancur", tanaman(grid, 0) == nil, tostring(pesanPukul))
+   553→check("Tanpa drop dari tanaman tumbuh", drops and #drops:GetChildren() == 0, tostring(drops and #drops:GetChildren()))
+   554→burn(1.2)
+   555→if tabStatusBtn then
+   556→        tabStatusBtn.Activated:Fire()
+   557→        Stub.Scheduler.advance(0.1)
+   558→end
+   559→check("Status: Bayam Masih Tumbuh 9", findGui(gui, "TextLabel", "Masih Tumbuh: 9") ~= nil, "-")
+   560→check("Status: Siap Panen 0", findGui(gui, "TextLabel", "Siap Panen: 0") ~= nil, "-")
+   561→
+   562→section("COMBINE SEED lewat papan GUI: cocok jadi Triticale")
+   563→moveTo(P1, 5085, 5, 18)
+   564→burn(1.2)
+   565→local tabGabungBtn = nil
+   566→for _, d in ipairs(gui:GetDescendants()) do
+   567→        if d:IsA("TextButton") and d.Text == "Combine Seed" then
+   568→                tabGabungBtn = d
+   569→        end
+   570→end
+   571→check("Tab Combine Seed ada", tabGabungBtn ~= nil, "-")
+   572→if tabGabungBtn then
+   573→        tabGabungBtn.Activated:Fire()
+   574→        Stub.Scheduler.advance(0.1)
+   575→end
+   576→local gabungTab = nil
+   577→if tabGabungBtn then
+   578→        for _, d in ipairs(gui:GetDescendants()) do
+   579→                if d:IsA("TextButton") and d.Text == "Gabung" then
+   580→                        gabungTab = d.Parent
+   581→                end
+   582→        end
+   583→end
+   584→check("Tab isi combine terbuka", gabungTab ~= nil, "-")
+   585→check("Slot A bisa pilih Gandum", gabungTab and pilihSlotList(gabungTab, "Gandum", 8), "-")
+   586→check("Slot B bisa pilih Rye", gabungTab and pilihSlotList(gabungTab, "Rye", 6), "-")
+   587→local gabungBtn = findGui(gui, "TextButton", "Gabung")
+   588→check("Tombol Gabung ada", gabungBtn ~= nil, "-")
+   589→local gandumAwal = tasCount(P1, "benih", "gandum")
+   590→local ryeAwal = tasCount(P1, "benih", "rye")
+   591→if gabungBtn then
+   592→        gabungBtn.Activated:Fire()
+   593→        Stub.Scheduler.advance(0.1)
+   594→end
+   595→local feedback = findGui(gui, "TextLabel", "Combine berhasil")
+   596→check("Papan menampilkan keberhasilan combine", feedback ~= nil, "-")
+   597→check("Benih Triticale masuk tas", tasCount(P1, "benih", "triticale") == 1, tostring(tasCount(P1, "benih", "triticale")))
+   598→check("Bahan terpakai 1+1", tasCount(P1, "benih", "gandum") == gandumAwal - 1 and tasCount(P1, "benih", "rye") == ryeAwal - 1, "-")
+   599→
+   600→section("COMBINE ditolak: tanpa resep & benih utuh")
+   601→if gabungBtn then
+   602→        pilihSlotList(gabungTab, "Pisang", 8)
+   603→        pilihSlotList(gabungTab, "Wortel", 6)
+   604→        gabungBtn.Activated:Fire()
+   605→        Stub.Scheduler.advance(0.1)
+   606→end
+   607→local tolakLabel = findGui(gui, "TextLabel", "Tidak bisa di-combine")
+   608→check("Papan menolak dengan TIDAK BISA DI-COMBINE", tolakLabel ~= nil, "-")
+   609→check("Benih pisang utuh", tasCount(P1, "benih", "pisang") == 5, tostring(tasCount(P1, "benih", "pisang")))
+   610→check("Benih wortel utuh", tasCount(P1, "benih", "wortel") == 5, tostring(tasCount(P1, "benih", "wortel")))
+   611→if gabungBtn then
+   612→        pilihSlotList(gabungTab, "Pisang", 8)
+   613→        pilihSlotList(gabungTab, "Pisang", 6)
+   614→        gabungBtn.Activated:Fire()
+   615→        Stub.Scheduler.advance(0.1)
+   616→end
+   617→check("Benih sama pun ditolak", findGui(gui, "TextLabel", "Tidak bisa di-combine") ~= nil, "-")
+   618→check("Pisang tetap utuh setelah ditolak dua kali", tasCount(P1, "benih", "pisang") == 5, tostring(tasCount(P1, "benih", "pisang")))
+   619→
+   620→section("8 resep rahasia server: semua jadi, urutan bebas")
+   621→local resep = {
+   622→        { "gandum", "rye", "triticale", "Triticale" },
+   623→        { "brassica_rapa", "brassica_oleracea", "canola", "Canola" },
+   624→        { "jeruk_mandarin", "grapefruit", "tangelo", "Tangelo" },
+   625→        { "plum", "aprikot", "plumcot", "Plumcot" },
+   626→        { "nektarin", "plum", "nectaplum", "Nectaplum" },
+   627→        { "ceri", "plum", "pluerry", "Pluerry" },
+   628→        { "labu_maxima", "labu_moschata", "tetsukabuto", "Tetsukabuto" },
+   629→        { "arachis_duranensis", "arachis_ipaensis", "kacang_tanah", "Kacang Tanah" },
+   630→}
+   631→local gagalResep = 0
+   632→for _, r in ipairs(resep) do
+   633→        burn(1.2)
+   634→        local okR, msgR = serverCall("TanamAct", P1, "gabung", r[1], r[2])
+   635→        if not (okR and string.find(tostring(msgR), r[4], 1, true) ~= nil) then
+   636→                gagalResep += 1
+   637→                print("    resep gagal: " .. r[1] .. " x " .. r[2] .. " -> " .. tostring(msgR))
+   638→        end
+   639→end
+   640→check("8 resep cocok semuanya", gagalResep == 0, tostring(gagalResep))
+   641→check("8 benih hibrida masuk tas", tasCount(P1, "benih", "triticale") == 2 and tasCount(P1, "benih", "canola") == 1 and tasCount(P1, "benih", "tangelo") == 1 and tasCount(P1, "benih", "plumcot") == 1 and tasCount(P1, "benih", "nectaplum") == 1 and tasCount(P1, "benih", "pluerry") == 1 and tasCount(P1, "benih", "tetsukabuto") == 1 and tasCount(P1, "benih", "kacang_tanah") == 1, "-")
+   642→burn(1.2)
+   643→local okSwap1, msgSwap1 = serverCall("TanamAct", P1, "gabung", "rye", "gandum")
+   644→check("Urutan dibalik (Rye x Gandum) tetap jadi", okSwap1 and string.find(tostring(msgSwap1), "Triticale", 1, true) ~= nil, tostring(msgSwap1))
+   645→burn(1.2)
+   646→local okSwap2, msgSwap2 = serverCall("TanamAct", P1, "gabung", "arachis_ipaensis", "arachis_duranensis")
+   647→check("Urutan dibalik (Ipaensis x Duranensis) tetap jadi", okSwap2 and string.find(tostring(msgSwap2), "Kacang Tanah", 1, true) ~= nil, tostring(msgSwap2))
+   648→
+   649→section("Benih hibrida bisa ditanam: Tangelo bentuk pohon sendiri")
+   650→moveTo(P1, 5085, 5, 18)
+   651→burn(1.2)
+   652→check("Pilih benih Tangelo", pilihBenih(gui, "Tangelo"), "-")
+   653→jumlahBox = findTextBoxByPlaceholder(gui, "Jumlah")
+   654→if jumlahBox then
+   655→        jumlahBox.Text = "1"
+   656→end
+   657→mulaiBtn = findGui(gui, "TextButton", "Mulai Tanam")
+   658→burn(1.2)
+   659→if mulaiBtn then
+   660→        mulaiBtn.Activated:Fire()
+   661→        Stub.Scheduler.advance(0.1)
+   662→end
+   663→burn(1.2)
+   664→local okT, detT = jawabSoal(gui)
+   665→Stub.Scheduler.advance(0.1)
+   666→local tangelo = tanaman(grid, 0)
+   667→check("Tangelo tertanam di plot 0 (1 plot + 1 soal)", okT and tangelo ~= nil, tostring(detT))
+   668→check("Bentuk Tangelo beda dari Wortel (pohon vs akar)", tangelo and (function()
+   669→        local n = 0
+   670→        for _, p2 in ipairs(tangelo:GetDescendants()) do
+   671→                if p2:IsA("BasePart") then
+   672→                        n += 1
+   673→                end
+   674→        end
+   675→        return n
+   676→end)() >= 6, "-")
+   677→Stub.Scheduler.advance(4.5)
+   678→check("Tangelo matang: warna siap (244,120,52)", warnaSama(buahWarna(tangelo), 244, 120, 52), buahWarna(tangelo) and tostring(buahWarna(tangelo)) or "-")
+   679→burn(0.3)
+   680→moveTo(P1, 5013, 5, 30)
+   681→local okPT, msgPT = serverCall("PlotAct", P1, 0, "punch")
+   682→Stub.Scheduler.advance(0.05)
+   683→check("Punch Tangelo siap memberi drop", okPT and drops and #drops:GetChildren() == 1, tostring(msgPT))
+   684→local dt = drops and drops:GetChildren()[1]
+   685→check("Drop Tangelo beratribut benar", dt and dt:GetAttribute("CropId") == "tangelo", "-")
+   686→if dt then
+   687→        dt.Touched:Fire(rootOf(P1))
+   688→        Stub.Scheduler.advance(1)
+   689→end
+   690→check("Hasil Tangelo masuk tas lewat sentuhan", tasCount(P1, "hasil", "tangelo") >= 1, tostring(tasCount(P1, "hasil", "tangelo")))
+   691→
+   692→section("Gudang: 250 -> 999 -> 998 tetap presisi")
+   693→burn(1.2)
+   694→moveTo(P1, 5205, 5, 181)
+   695→local okD1, msgD1 = serverCall("GudangAct", P1, "simpan", "pisang", 250)
+   696→check("Setor 250 pisang -> sisa 999", okD1 and string.find(tostring(msgD1), "999", 1, true) ~= nil, tostring(msgD1))
+   697→burn(1.2)
+   698→local okD2, msgD2 = serverCall("GudangAct", P1, "simpan", "wortel", 250)
+   699→check("Setor 250 wortel -> sisa 998", okD2 and string.find(tostring(msgD2), "998", 1, true) ~= nil, tostring(msgD2))
+   700→
+   701→section("Tas penuh: drop melayang tidak bisa diambil sampai ada ruang")
+   702→local dta = MOD_DataService.get(P1)
+   703→local penuh = { { kind = "hasil", id = "wortel", count = 250 } }
+   704→for i = 1, 48 do
+   705→        table.insert(penuh, { kind = "benih", id = "rongsok" .. i, count = 1 })
+   706→end
+   707→table.insert(penuh, { kind = "benih", id = "wortel", count = 4 })
+   708→dta.t = penuh
+   709→MOD_DataService.push(P1)
+   710→check("Tas diset penuh 50 slot", #dta.t == 50, tostring(#dta.t))
+   711→moveTo(P1, 5085, 5, 18)
+   712→burn(1.2)
+   713→check("Pilih benih Wortel lagi", pilihBenih(gui, "Wortel"), "-")
+   714→jumlahBox = findTextBoxByPlaceholder(gui, "Jumlah")
+   715→if jumlahBox then
+   716→        jumlahBox.Text = "1"
+   717→end
+   718→mulaiBtn = findGui(gui, "TextButton", "Mulai Tanam")
+   719→burn(1.2)
+   720→if mulaiBtn then
+   721→        mulaiBtn.Activated:Fire()
+   722→        Stub.Scheduler.advance(0.1)
+   723→end
+   724→burn(1.2)
+   725→local okW, detW = jawabSoal(gui)
+   726→Stub.Scheduler.advance(0.1)
+   727→check("Wortel terakhir tertanam", okW and tanaman(grid, 0) ~= nil, tostring(detW))
+   728→Stub.Scheduler.advance(4.5)
+   729→burn(0.3)
+   730→moveTo(P1, 5013, 5, 30)
+   731→local okPW, msgPW = serverCall("PlotAct", P1, 0, "punch")
+   732→Stub.Scheduler.advance(0.1)
+   733→local dropPenuh = drops and drops:GetChildren()[1]
+   734→check("Punch tetap menjatuhkan drop saat tas penuh", okPW and dropPenuh ~= nil, tostring(msgPW))
+   735→local wortelTasKunci = tasCount(P1, "hasil", "wortel")
+   736→if dropPenuh then
+   737→        dropPenuh.Touched:Fire(rootOf(P1))
+   738→        Stub.Scheduler.advance(0.3)
+   739→end
+   740→check("Drop tidak masuk tas saat penuh", tasCount(P1, "hasil", "wortel") == wortelTasKunci, tostring(tasCount(P1, "hasil", "wortel")))
+   741→check("Drop melayang (terkunci di udara)", dropPenuh ~= nil and dropPenuh.Anchored == true, "-")
+   742→MOD_TasService.remove(P1, "benih", "rongsok1", 1)
+   743→burn(1.2)
+   744→if dropPenuh then
+   745→        dropPenuh.Touched:Fire(rootOf(P1))
+   746→        Stub.Scheduler.advance(1)
+   747→end
+   748→check("Setelah ada ruang, sentuhan memasukkan drop", tasCount(P1, "hasil", "wortel") > wortelTasKunci, tostring(tasCount(P1, "hasil", "wortel")))
+   749→check("Drop lenyap setelah diambil", dropPenuh == nil or dropPenuh.Parent == nil, "-")
+   750→
+   751→section("Dunia tetap bersih dari teks melayang")
+   752→check("Nol BillboardGui di seluruh dunia", countClass(dunia, "BillboardGui") == 0, tostring(countClass(dunia, "BillboardGui")))
+   753→
+   754→section("Bersih dari error runtime")
+   755→check("Tidak ada error runtime tersembunyi", #__SIM_ERRORS == 0, table.concat(__SIM_ERRORS, " | "))
+   756→
+   757→print(string.format("HASIL UJIAN MASSA PANEN: %d PASS, %d FAIL", passed, failed))
+   758→if failed > 0 then
+   759→        error(string.format("%d tahap ujian massa panen gagal", failed))
+   760→end
+   761→

@@ -259,8 +259,8 @@ Stub.Scheduler.advance(0.2)
 local gui = pg:FindFirstChild("DuniaAkiomida")
 check("GUI utama dibuat (UI benar-benar dimuat)", gui ~= nil)
 
-local punchUI = findGui(gui, "TextButton", "PUNCH")
-check("Tombol PUNCH permanen ada di layar", punchUI ~= nil and punchUI.Visible == true, punchUI and tostring(punchUI.Visible) or "hilang")
+local punchUI = gui:FindFirstChild("TombolPunch")
+check("Tombol punch permanen ada di layar (ikon, tanpa tulisan)", punchUI ~= nil and punchUI:IsA("TextButton") and punchUI.Text == "" and punchUI.Visible == true, punchUI and tostring(punchUI.Text) or "hilang")
 
 local popupPlot = findGui(gui, "TextLabel", "Plot Tanam")
 check("Tidak ada popup Plot Tanam", popupPlot == nil, popupPlot and popupPlot.Text or "-")
@@ -278,21 +278,33 @@ if buyCommon then
         buyCommon.Activated:Fire()
         Stub.Scheduler.advance(0.1)
 end
-check("Popup konfirmasi muncul (tidak langsung beli)", findGui(gui, "TextLabel", "Konfirmasi Pembelian") ~= nil, "-")
+check("Popup konfirmasi muncul (tidak langsung beli)", (function()
+        local m = gui:FindFirstChild("ModalBeli")
+        return m ~= nil and m.Visible == true and findGui(gui, "TextLabel", "Konfirmasi Pembelian") ~= nil
+end)(), "-")
 check("Isi pack & harga tampil di konfirmasi", findGui(gui, "TextLabel", "3 benih acak") ~= nil and findGui(gui, "TextLabel", "Harga: 2.400 Micda") ~= nil, "-")
 check("Micda belum terpotong sebelum Ya", ls and ls:FindFirstChild("Micda").Value == 900000, tostring(ls and ls:FindFirstChild("Micda").Value))
-local batalBtn = findGui(gui, "TextButton", "Batal")
+local batalBtn = (function()
+        local m = gui:FindFirstChild("ModalBeli")
+        return m and findGui(m, "TextButton", "Batal") or nil
+end)()
 check("Tombol Batal tersedia", batalBtn ~= nil)
 if batalBtn then
         batalBtn.Activated:Fire()
         Stub.Scheduler.advance(0.1)
 end
-check("Batal = konfirmasi hilang & saldo utuh", findGui(gui, "TextLabel", "Konfirmasi Pembelian") == nil and ls and ls:FindFirstChild("Micda").Value == 900000, "-")
+check("Batal = konfirmasi hilang & saldo utuh", (function()
+        local m = gui:FindFirstChild("ModalBeli")
+        return m ~= nil and m.Visible == false and ls and ls:FindFirstChild("Micda").Value == 900000
+end)(), "-")
 if buyCommon then
         buyCommon.Activated:Fire()
         Stub.Scheduler.advance(0.1)
 end
-local yaBtn = findGui(gui, "TextButton", "Ya, Beli")
+local yaBtn = (function()
+        local m = gui:FindFirstChild("ModalBeli")
+        return m and findGui(m, "TextButton", "Ya, Beli") or nil
+end)()
 check("Tombol Ya, Beli tersedia", yaBtn ~= nil)
 if yaBtn then
         yaBtn.Activated:Fire()
@@ -313,13 +325,19 @@ check("Struk memuat daftar benih & total", findGui(gui, "TextLabel", "Total 2.40
         end
         return false
 end)(), "-")
-local okeBtn = findGui(gui, "TextButton", "Oke")
+local okeBtn = (function()
+        local m = gui:FindFirstChild("ModalBeli")
+        return m and findGui(m, "TextButton", "Oke") or nil
+end)()
 check("Tombol Oke struk tersedia", okeBtn ~= nil)
 if okeBtn then
         okeBtn.Activated:Fire()
         Stub.Scheduler.advance(0.1)
 end
-check("Struk tertutup setelah Oke", findGui(gui, "TextLabel", "Pembelian Berhasil") == nil, "-")
+check("Struk tertutup setelah Oke", (function()
+        local m = gui:FindFirstChild("ModalBeli")
+        return m ~= nil and m.Visible == false
+end)(), "-")
 check("3 benih acak masuk tas", tasCount(P1, "benih", "wortel") >= 25 and (function()
         local st = serverCall("GetState", P1)
         local n = 0
@@ -498,8 +516,8 @@ section("Punch presisi: tombol PUNCH asli + drop bentuk tanaman")
 burn(1.2)
 moveTo(P1, 5013, 5, 38)
 Stub.Scheduler.advance(0.25)
-local tombolPunch = findGui(gui, "TextButton", "PUNCH")
-check("Tombol PUNCH bisa memukul tanaman di depan", tombolPunch ~= nil)
+local tombolPunch = gui:FindFirstChild("TombolPunch")
+check("Tombol punch bisa memukul tanaman di depan", tombolPunch ~= nil)
 if tombolPunch then
         tombolPunch.Activated:Fire()
         Stub.Scheduler.advance(0.5)
@@ -510,7 +528,7 @@ local dropModel = drops and drops:GetChildren()[1]
 local dropRoot = dropModel and dropModel:FindFirstChild("Hasil")
 check("Drop berupa model tanaman Hasil_wortel (bukan kotak)", dropModel ~= nil and dropModel:IsA("Model") and dropModel.Name == "Hasil_wortel" and dropRoot ~= nil, dropModel and dropModel.Name or "-")
 check("Drop wortel multi bagian sesuai bentuk", dropModel ~= nil and #dropModel:GetChildren() >= 3, dropModel and tostring(#dropModel:GetChildren()) or "-")
-check("Drop berisi atribut CropId", dropRoot ~= nil and dropRoot:GetAttribute("CropId") == "wortel", dropRoot and tostring(dropRoot:GetAttribute("CropId")) or "-")
+check("Drop berisi atribut server (DropId + LahanIdx)", dropRoot ~= nil and type(dropRoot:GetAttribute("DropId")) == "string" and dropRoot:GetAttribute("LahanIdx") == 1, dropRoot and tostring(dropRoot:GetAttribute("DropId")) or "-")
 check("Warna drop = warna siap wortel", (function()
         if not dropRoot then
                 return false
@@ -559,7 +577,7 @@ local okPg, msgPg
 for _ = 1, 5 do
         burn(1.2)
         okPg, msgPg = serverCall("PlotAct", P1, 10, "punch")
-        Stub.Scheduler.advance(0.05)
+        Stub.Scheduler.advance(0.4)
 end
 local bayamHilang = grid and grid:FindFirstChild("Tanaman_10", true) == nil
 check("5x pukul menghancurkan tanaman tumbuh", bayamHilang, tostring(msgPg))
@@ -586,7 +604,7 @@ for _, a in ipairs(arketipe) do
         local id, idx = a[1], a[2]
         local lx, lz = MOD_Layout.plotLocal(idx)
         moveTo(P1, 5000 + lx, 5, lz + 5)
-        Stub.Scheduler.advance(0.15)
+        Stub.Scheduler.advance(0.4)
         local okP2, msgP2 = serverCall("PlotAct", P1, idx, "punch")
         local model = dunia and dunia:FindFirstChild("Hasil_" .. id, true)
         local rootP = model and model:FindFirstChild("Hasil")
@@ -599,7 +617,7 @@ for _, a in ipairs(arketipe) do
                 end
                 return math.abs(rootP.Color.r - b.siap[1] / 255) < 0.02 and math.abs(rootP.Color.g - b.siap[2] / 255) < 0.02 and math.abs(rootP.Color.b - b.siap[3] / 255) < 0.02
         end)(), "-")
-        burn(1.0)
+        Stub.Scheduler.advance(0.4)
 end
 
 section("Combine Seed di papan: resep cocok, salah ditolak")
