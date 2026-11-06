@@ -19,6 +19,62 @@ Skor per kriteria 0-10, dikali bobot. Total dihitung dari (skor x bobot) / 10.
 | 8 | Polish & UX (UI, suara, animasi, efek) | 10 | animasi kombat, BGM, partikel | UI rapi & responsif |
 | 9 | Originalitas 100% & aman hak cipta | 5 | - | - |
 
+## Skor v40 (versi LIVE #40, 6 Nov 2026) - KONFIRMASI BELI + STRUK HASIL + POPUP GERBANG TERTUTUP OTOMATIS
+
+Permintaan pemilik (pesan langsung): (1) beli pack common/rare tidak boleh
+langsung potong — harus muncul label konfirmasi yes/no dulu, lalu setelah
+"Ya" muncul pop up berisi benih apa yang didapat dengan daftar rincian yang
+jelas, supaya kesan profesional; (2) pop up Gerbang Dunia harus hilang
+sendiri saat pemilih memilih tujuan, bukan tetap terbuka setelah teleport.
+
+Diterapkan:
+
+A. **Konfirmasi pembelian**: tombol Pack Common / Pack Rare TIDAK lagi
+   membeli langsung — kini membuka modal "Konfirmasi Pembelian" berisi nama
+   pack, jumlah benih acak, kategori, harga (fmt 2.400 / 9.000 Micda), dan
+   dua tombol "Ya, Beli" / "Batal". Batal menutup tanpa efek; hanya "Ya"
+   yang mengirim ShopAct("buy") ke server. Server tetap satu-satunya
+   pihak yang memotong uang & meracak benih.
+
+B. **Struk pembelian (popup rincian)**: setelah pembelian sukses muncul
+   modal "Pembelian Berhasil" — daftar baris rincian benih (ikon bentuk
+   tanaman orisinal + nama resmi + jumlah xN) dengan EFEK BERJENJANG:
+   baris muncul satu per satu (UIScale 0.01 -> 1, easing Back, jeda 70
+   ms/baris) persis "struk dicetak", ditutup baris "Total harga Micda ·
+   benih sudah masuk tas" + tombol Oke. Struk dirangkum server-side lewat
+   modul baru Shared/StrukBeli (agregasi id kembar menjaga urutan
+   kemunculan pertama), klien hanya menggambar.
+
+C. **Popup Gerbang Dunia tertutup otomatis**: Masuk Dunia-ku / Pulang ke
+   Pusat Kota / Kunjungi — begitu server menjawab sukses, panel langsung
+   closePanel() (popup hilang serentak dengan teleport); bila gagal,
+   panel tetap terbuka agar pemain bisa mencoba lagi, pesan galat lewat
+   toast.
+
+D. **Modal tahan 3 baris**: tinggi modal dinaikkan (268 px, batas
+   240-360) sehingga struk 3 jenis benih + baris total tidak pernah
+   menimpa tombol Oke.
+
+E. **Tes**: seksi baru "Struk pembelian toko" (8 cek): struk kosong, 3
+   pick jadi 2 baris teragregasi, urutan kemunculan pertama, nama resmi
+   tanaman, total isi struk = isi pack, baris dikenal & positif, struk
+   pack rare konsisten. Total 251 PASS / 0 FAIL; luau-lsp 0 temuan;
+   build & publish #40 sukses (Open Cloud, versionNumber 40).
+
+| Kriteria | Skor | Catatan |
+|----------|------|---------|
+| 1 Kombat | 0/10 | Belum ada (sesuai urutan rencana). |
+| 2 Crafting | 3/10 | Combine Seed menu minimalis di papan (2 slot, tanpa petunjuk). |
+| 3 Stat & Progresi | 1/10 | Tanpa level (sesuai arah pemilik); soal matematika tetap gerbang tanam. |
+| 4 Ekonomi | 6/10 | Alur beli kini profesional (konfirmasi + struk server-side) tapi kedalaman ekonomi belum berubah: belum pasar dinamis, toko pemain. |
+| 5 Dunia & Peta | 6/10 | Kota hanya Toko Benih; tiap lahan: Papan Tanam + Gudang. Belum: rumah, air, dungeon. |
+| 6 Multiplayer | 6/10 | Kunjung instan/salinan, tamu read-only, kunci sesi mencegah dupe lintas server. Belum: trade, party. |
+| 7 Bertani | 10/10 | Sesuai "Lahanan": pohon tidak pernah hilang, hasil panen aman selama online, kedaluwarsa 15 menit setelah keluar, klaim drop atomik. |
+| 8 Polish & UX | 9.5/10 | Naik dari 9: konfirmasi beli yes/no + struk rincian ber-efek menjawab keluhan "kurang profesional"; popup gerbang tak lagi menggantung; modal aman di 3 baris. Sisa: BGM/ambience, uji perangkat fisik. |
+| 9 Originalitas | 10/10 | 100% karya sendiri; ikon struk memakai bentuk tanaman orisinal; tanpa aset/require luar. |
+
+**TOTAL: 51/100** (bobot: 0+45+10+90+60+60+100+95+50 = 510/10 = 51)
+
 ## Skor v39 (versi LIVE #39, 6 Nov 2026) - REVISI FINAL: UI, SISTEM PANEN, SERVER-AUTHORITATIVE & ANTI-EXPLOIT
 
 Permintaan pemilik (halaman "Lahanan") diterapkan menyeluruh:

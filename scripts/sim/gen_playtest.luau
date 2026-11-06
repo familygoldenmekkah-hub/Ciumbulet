@@ -1060,6 +1060,44 @@ return Recipes
 
 end)()
 
+local MOD_StrukBeli = (function()
+local StrukBeli = {}
+
+function StrukBeli.rangkum(picks: { any }, byId: { [string]: any }): { any }
+	local urut = {}
+	local hitung: { [string]: number } = {}
+	for _, id in ipairs(picks) do
+		local kunci = tostring(id)
+		if not hitung[kunci] then
+			hitung[kunci] = 0
+			table.insert(urut, id)
+		end
+		hitung[kunci] += 1
+	end
+	local rows = {}
+	for _, id in ipairs(urut) do
+		local info = byId and byId[id]
+		table.insert(rows, {
+			id = id,
+			nama = (info and info.nama) or tostring(id),
+			count = hitung[tostring(id)],
+		})
+	end
+	return rows
+end
+
+function StrukBeli.totalBaris(rows: { any }): number
+	local n = 0
+	for _, r in ipairs(rows) do
+		n += r.count
+	end
+	return n
+end
+
+return StrukBeli
+
+end)()
+
 local MOD_TasLogic = (function()
 export type Slot = { kind: string, id: string, count: number }
 
@@ -1210,98 +1248,186 @@ local DuniaLogic = {}
 DuniaLogic.SaveEvery = 60
 DuniaLogic.MaxPlots = 500
 DuniaLogic.MaxMeja = 6
+DuniaLogic.MaxDrops = 80
+DuniaLogic.MaksPukulSimpan = 5
 
 function DuniaLogic.keyFor(userId: number): string
-	return "d_" .. tostring(userId)
+        return "d_" .. tostring(userId)
 end
 
 function DuniaLogic.cleanName(nama: any): string?
-	if type(nama) ~= "string" then
-		return nil
-	end
-	local n = nama:gsub("^%s+", ""):gsub("%s+$", "")
-	if #n < 1 or #n > 30 then
-		return nil
-	end
-	return n
+        if type(nama) ~= "string" then
+                return nil
+        end
+        local n = nama:gsub("^%s+", ""):gsub("%s+$", "")
+        if #n < 1 or #n > 30 then
+                return nil
+        end
+        return n
 end
 
-function DuniaLogic.serPlots(planted: any): { [number]: { c: string, r: number } }
-	local out = {}
-	if type(planted) ~= "table" then
-		return out
-	end
-	for idx, rec in pairs(planted) do
-		if
-			type(idx) == "number"
-			and idx >= 0
-			and idx < DuniaLogic.MaxPlots
-			and idx == math.floor(idx)
-			and type(rec) == "table"
-			and type(rec.crop) == "string"
-			and #rec.crop <= 40
-			and type(rec.readyAt) == "number"
-			and rec.readyAt == rec.readyAt
-		then
-			out[idx] = { c = rec.crop, r = math.floor(rec.readyAt) }
-		end
-	end
-	return out
+function DuniaLogic.serPlots(planted: any): { [number]: { c: string, r: number, h: number, l: number } }
+        local out = {}
+        if type(planted) ~= "table" then
+                return out
+        end
+        for idx, rec in pairs(planted) do
+                if
+                        type(idx) == "number"
+                        and idx >= 0
+                        and idx < DuniaLogic.MaxPlots
+                        and idx == math.floor(idx)
+                        and type(rec) == "table"
+                        and type(rec.crop) == "string"
+                        and #rec.crop <= 40
+                        and type(rec.readyAt) == "number"
+                        and rec.readyAt == rec.readyAt
+                then
+                        local h = type(rec.hits) == "number" and rec.hits or 0
+                        local l = type(rec.lastHit) == "number" and rec.lastHit or 0
+                        h = math.clamp(math.floor(h), 0, DuniaLogic.MaksPukulSimpan)
+                        l = (l == l and l >= 0 and l ~= math.huge) and math.floor(l) or 0
+                        out[idx] = { c = rec.crop, r = math.floor(rec.readyAt), h = h, l = l }
+                end
+        end
+        return out
 end
 
-function DuniaLogic.desPlots(arr: any): { [number]: { c: string, r: number } }
-	local out = {}
-	if type(arr) ~= "table" then
-		return out
-	end
-	for idx, rec in pairs(arr) do
-		if
-			type(idx) == "number"
-			and idx >= 0
-			and idx < DuniaLogic.MaxPlots
-			and idx == math.floor(idx)
-			and type(rec) == "table"
-			and type(rec.c) == "string"
-			and #rec.c <= 40
-			and type(rec.r) == "number"
-			and rec.r == rec.r
-		then
-			out[idx] = { c = rec.c, r = math.floor(rec.r) }
-		end
-	end
-	return out
+function DuniaLogic.desPlots(arr: any): { [number]: { c: string, r: number, h: number, l: number } }
+        local out = {}
+        if type(arr) ~= "table" then
+                return out
+        end
+        for idx, rec in pairs(arr) do
+                if
+                        type(idx) == "number"
+                        and idx >= 0
+                        and idx < DuniaLogic.MaxPlots
+                        and idx == math.floor(idx)
+                        and type(rec) == "table"
+                        and type(rec.c) == "string"
+                        and #rec.c <= 40
+                        and type(rec.r) == "number"
+                        and rec.r == rec.r
+                then
+                        local h = type(rec.h) == "number" and rec.h or 0
+                        local l = type(rec.l) == "number" and rec.l or 0
+                        h = math.clamp(math.floor(h), 0, DuniaLogic.MaksPukulSimpan)
+                        l = (l == l and l >= 0 and l ~= math.huge) and math.floor(l) or 0
+                        out[idx] = { c = rec.c, r = math.floor(rec.r), h = h, l = l }
+                end
+        end
+        return out
+end
+
+function DuniaLogic.serDrops(items: any): { any }
+        local out = {}
+        if type(items) ~= "table" then
+                return out
+        end
+        for _, d in ipairs(items) do
+                if #out >= DuniaLogic.MaxDrops then
+                        break
+                end
+                if
+                        type(d) == "table"
+                        and type(d.id) == "string"
+                        and #d.id <= 24
+                        and type(d.crop) == "string"
+                        and #d.crop <= 40
+                        and type(d.count) == "number"
+                        and d.count == d.count
+                        and d.count >= 1
+                        and d.count <= 250
+                        and d.count == math.floor(d.count)
+                        and type(d.pos) == "table"
+                        and type(d.pos.x) == "number"
+                        and type(d.pos.y) == "number"
+                        and type(d.pos.z) == "number"
+                        and d.pos.x == d.pos.x
+                        and d.pos.y == d.pos.y
+                        and d.pos.z == d.pos.z
+                then
+                        table.insert(out, {
+                                i = d.id,
+                                c = d.crop,
+                                n = math.floor(d.count),
+                                p = { x = d.pos.x, y = d.pos.y, z = d.pos.z },
+                        })
+                end
+        end
+        return out
+end
+
+function DuniaLogic.desDrops(arr: any): { any }
+        local out = {}
+        if type(arr) ~= "table" then
+                return out
+        end
+        for _, d in ipairs(arr) do
+                if #out >= DuniaLogic.MaxDrops then
+                        break
+                end
+                if
+                        type(d) == "table"
+                        and type(d.i) == "string"
+                        and #d.i <= 24
+                        and type(d.c) == "string"
+                        and #d.c <= 40
+                        and type(d.n) == "number"
+                        and d.n == d.n
+                        and d.n >= 1
+                        and d.n <= 250
+                        and d.n == math.floor(d.n)
+                        and type(d.p) == "table"
+                        and type(d.p.x) == "number"
+                        and type(d.p.y) == "number"
+                        and type(d.p.z) == "number"
+                        and d.p.x == d.p.x
+                        and d.p.y == d.p.y
+                        and d.p.z == d.p.z
+                then
+                        table.insert(out, {
+                                id = d.i,
+                                crop = d.c,
+                                count = math.floor(d.n),
+                                pos = { x = d.p.x, y = d.p.y, z = d.p.z },
+                        })
+                end
+        end
+        return out
 end
 
 function DuniaLogic.serMeja(slots: any): { { c: string, h: number } }
-	local out = {}
-	if type(slots) ~= "table" then
-		return out
-	end
-	for i, s in ipairs(slots) do
-		if #out >= DuniaLogic.MaxMeja then
-			break
-		end
-		if type(s) == "table" and type(s.crop) == "string" and #s.crop <= 40 and type(s.hitsLeft) == "number" then
-			table.insert(out, { c = s.crop, h = math.max(1, math.floor(s.hitsLeft)) })
-		end
-	end
-	return out
+        local out = {}
+        if type(slots) ~= "table" then
+                return out
+        end
+        for i, s in ipairs(slots) do
+                if #out >= DuniaLogic.MaxMeja then
+                        break
+                end
+                if type(s) == "table" and type(s.crop) == "string" and #s.crop <= 40 and type(s.hitsLeft) == "number" then
+                        table.insert(out, { c = s.crop, h = math.max(1, math.floor(s.hitsLeft)) })
+                end
+        end
+        return out
 end
 
 function DuniaLogic.desMeja(arr: any): { { c: string, h: number } }
-	local out = {}
-	if type(arr) ~= "table" then
-		return out
-	end
-	for _, s in ipairs(arr) do
-		if #out >= DuniaLogic.MaxMeja then
-			break
-		end
-		if type(s) == "table" and type(s.c) == "string" and #s.c <= 40 and type(s.h) == "number" then
-			table.insert(out, { c = s.c, h = math.max(1, math.floor(s.h)) })
-		end
-	end
-	return out
+        local out = {}
+        if type(arr) ~= "table" then
+                return out
+        end
+        for _, s in ipairs(arr) do
+                if #out >= DuniaLogic.MaxMeja then
+                        break
+                end
+                if type(s) == "table" and type(s.c) == "string" and #s.c <= 40 and type(s.h) == "number" then
+                        table.insert(out, { c = s.c, h = math.max(1, math.floor(s.h)) })
+                end
+        end
+        return out
 end
 
 return DuniaLogic
@@ -1719,15 +1845,16 @@ local MOD_KontrolHP = (function()
 local KontrolHP = {}
 
 KontrolHP.JumpSkala = 0.19
-KontrolHP.PunchSkala = 0.235
-KontrolHP.InsetSkala = 0.032
-KontrolHP.JarakKelipatan = 1
-KontrolHP.JarakMinKelipatan = 0.4
-KontrolHP.Anggaran = 0.4
-KontrolHP.AnggaranKeras = 0.62
-KontrolHP.BesarMin = 1.08
-KontrolHP.BesarMaks = 1.5
+KontrolHP.PunchSkala = 0.175
 KontrolHP.RasioPunch = KontrolHP.PunchSkala / KontrolHP.JumpSkala
+KontrolHP.InsetSkala = 0.032
+KontrolHP.GapSkala = 0.02
+KontrolHP.GapMinPx = 12
+KontrolHP.GapMaksPx = 20
+KontrolHP.Anggaran = 0.45
+KontrolHP.AnggaranKeras = 0.62
+KontrolHP.BesarMin = 0.8
+KontrolHP.BesarMaks = 1.0
 KontrolHP.ZonaTanamX = 0.25
 KontrolHP.ZonaTanamLebar = 0.35
 KontrolHP.ZonaTanamY = 0.2
@@ -1736,99 +1863,104 @@ KontrolHP.ZonaJempolX = 0.45
 KontrolHP.ZonaJempolY = 0.55
 
 function KontrolHP.ukuranJump(vpX: number, vpY: number, jumpPx: number?): number
-	if type(jumpPx) == "number" and jumpPx > 0 then
-		return jumpPx
-	end
-	return KontrolHP.JumpSkala * math.min(vpX, vpY)
+        if type(jumpPx) == "number" and jumpPx > 0 then
+                return jumpPx
+        end
+        return KontrolHP.JumpSkala * math.min(vpX, vpY)
+end
+
+function KontrolHP.ukuranGap(vpX: number, vpY: number): number
+        local g = KontrolHP.GapSkala * math.min(vpX, vpY)
+        return math.clamp(g, KontrolHP.GapMinPx, KontrolHP.GapMaksPx)
 end
 
 function KontrolHP.posisiPunch(vpX: number, vpY: number, jumpPx: number?): { [string]: number }
-	local j = KontrolHP.ukuranJump(vpX, vpY, jumpPx)
-	local p = j * KontrolHP.RasioPunch
-	local dasar = math.min(vpX, vpY)
-	local inset = KontrolHP.InsetSkala * dasar
-	local anggaran = KontrolHP.Anggaran * vpX
-	local gap = KontrolHP.JarakKelipatan * j
-	local dariKanan = inset + j + gap + p
-	if dariKanan > anggaran then
-		gap = math.max(KontrolHP.JarakMinKelipatan * j, anggaran - inset - j - p)
-		dariKanan = inset + j + gap + p
-		if dariKanan > anggaran then
-			local pBaru = math.max(KontrolHP.BesarMin * j, anggaran - inset - j - gap)
-			dariKanan -= p - pBaru
-			p = pBaru
-		end
-	end
-	dariKanan = math.min(dariKanan, KontrolHP.AnggaranKeras * vpX)
-	return {
-		skalaX = 1 - dariKanan / vpX,
-		skalaY = 1 - inset / vpY,
-		skalaLebar = p / vpX,
-		skalaTinggi = p / vpY,
-		gapPx = gap,
-		jumpPx = j,
-		punchPx = p,
-		dariKananPx = dariKanan,
-		dariBawahPx = inset,
-	}
+        local j = KontrolHP.ukuranJump(vpX, vpY, jumpPx)
+        local p = j * KontrolHP.RasioPunch
+        local dasar = math.min(vpX, vpY)
+        local inset = KontrolHP.InsetSkala * dasar
+        local gap = KontrolHP.ukuranGap(vpX, vpY)
+        local anggaran = KontrolHP.Anggaran * vpX
+        local dariKanan = inset + j + gap + p
+        if dariKanan > anggaran then
+                gap = KontrolHP.GapMinPx
+                dariKanan = inset + j + gap + p
+                if dariKanan > anggaran then
+                        local pBaru = math.max(KontrolHP.BesarMin * j, anggaran - inset - j - gap)
+                        dariKanan -= p - pBaru
+                        p = pBaru
+                end
+        end
+        dariKanan = math.min(dariKanan, KontrolHP.AnggaranKeras * vpX)
+        return {
+                skalaX = 1 - dariKanan / vpX,
+                skalaY = 1 - inset / vpY,
+                skalaLebar = p / vpX,
+                skalaTinggi = p / vpY,
+                gapPx = gap,
+                jumpPx = j,
+                punchPx = p,
+                dariKananPx = dariKanan,
+                dariBawahPx = inset,
+        }
 end
 
 function KontrolHP.rectJump(vpX: number, vpY: number, jumpPx: number?): { [string]: number }
-	local j = KontrolHP.ukuranJump(vpX, vpY, jumpPx)
-	local inset = KontrolHP.InsetSkala * math.min(vpX, vpY)
-	return { x = vpX - inset - j, y = vpY - inset - j, w = j, h = j }
+        local j = KontrolHP.ukuranJump(vpX, vpY, jumpPx)
+        local inset = KontrolHP.InsetSkala * math.min(vpX, vpY)
+        return { x = vpX - inset - j, y = vpY - inset - j, w = j, h = j }
 end
 
 function KontrolHP.rectPunch(vpX: number, vpY: number, jumpPx: number?): { [string]: number }
-	local pos = KontrolHP.posisiPunch(vpX, vpY, jumpPx)
-	return { x = vpX - pos.dariKananPx, y = vpY - pos.dariBawahPx - pos.punchPx, w = pos.punchPx, h = pos.punchPx }
+        local pos = KontrolHP.posisiPunch(vpX, vpY, jumpPx)
+        return { x = vpX - pos.dariKananPx, y = vpY - pos.dariBawahPx - pos.punchPx, w = pos.punchPx, h = pos.punchPx }
 end
 
 function KontrolHP.zonaTanam(vpX: number, vpY: number): { [string]: number }
-	return {
-		x = KontrolHP.ZonaTanamX * vpX,
-		y = KontrolHP.ZonaTanamY * vpY,
-		w = KontrolHP.ZonaTanamLebar * vpX,
-		h = KontrolHP.ZonaTanamTinggi * vpY,
-	}
+        return {
+                x = KontrolHP.ZonaTanamX * vpX,
+                y = KontrolHP.ZonaTanamY * vpY,
+                w = KontrolHP.ZonaTanamLebar * vpX,
+                h = KontrolHP.ZonaTanamTinggi * vpY,
+        }
 end
 
 function KontrolHP.tumpangTindih(a: { [string]: number }, b: { [string]: number }): boolean
-	return a.x < b.x + b.w and b.x < a.x + a.w and a.y < b.y + b.h and b.y < a.y + a.h
+        return a.x < b.x + b.w and b.x < a.x + a.w and a.y < b.y + b.h and b.y < a.y + a.h
 end
 
 function KontrolHP.valid(vpX: number, vpY: number, jumpPx: number?): (boolean, string)
-	local pos = KontrolHP.posisiPunch(vpX, vpY, jumpPx)
-	local pp = KontrolHP.rectPunch(vpX, vpY, jumpPx)
-	local pj = KontrolHP.rectJump(vpX, vpY, jumpPx)
-	if pp.x < 0 or pp.y < 0 or pp.x + pp.w > vpX + 0.5 or pp.y + pp.h > vpY + 0.5 then
-		return false, "keluar layar"
-	end
-	local rasio = pos.punchPx / pos.jumpPx
-	if rasio < KontrolHP.BesarMin or rasio > KontrolHP.BesarMaks then
-		return false, "rasio besar punch"
-	end
-	if pos.gapPx < KontrolHP.JarakMinKelipatan * pos.jumpPx - 0.01 then
-		return false, "terlalu dempet jump"
-	end
-	if pos.dariKananPx > KontrolHP.AnggaranKeras * vpX + 0.5 then
-		return false, "molor dari jempol"
-	end
-	if KontrolHP.tumpangTindih(pp, pj) then
-		return false, "menimpa jump"
-	end
-	if math.abs((pp.y + pp.h) - (pj.y + pj.h)) > 0.5 then
-		return false, "dasar tidak segaris"
-	end
-	local cx = pp.x + pp.w / 2
-	local cy = pp.y + pp.h / 2
-	if cx < KontrolHP.ZonaJempolX * vpX or cy < KontrolHP.ZonaJempolY * vpY then
-		return false, "di luar area jempol"
-	end
-	if KontrolHP.tumpangTindih(pp, KontrolHP.zonaTanam(vpX, vpY)) then
-		return false, "menutupi area tanam"
-	end
-	return true, "ok"
+        local pos = KontrolHP.posisiPunch(vpX, vpY, jumpPx)
+        local pp = KontrolHP.rectPunch(vpX, vpY, jumpPx)
+        local pj = KontrolHP.rectJump(vpX, vpY, jumpPx)
+        if pp.x < 0 or pp.y < 0 or pp.x + pp.w > vpX + 0.5 or pp.y + pp.h > vpY + 0.5 then
+                return false, "keluar layar"
+        end
+        local rasio = pos.punchPx / pos.jumpPx
+        if rasio < KontrolHP.BesarMin - 0.001 or rasio > KontrolHP.BesarMaks + 0.001 then
+                return false, "ukuran punch vs jump"
+        end
+        if pos.gapPx < KontrolHP.GapMinPx - 0.01 or pos.gapPx > KontrolHP.GapMaksPx + 0.5 then
+                return false, "jarak punch-jump"
+        end
+        if pos.dariKananPx > KontrolHP.AnggaranKeras * vpX + 0.5 then
+                return false, "molor dari jempol"
+        end
+        if KontrolHP.tumpangTindih(pp, pj) then
+                return false, "menimpa jump"
+        end
+        if math.abs((pp.y + pp.h) - (pj.y + pj.h)) > 0.5 then
+                return false, "dasar tidak segaris"
+        end
+        local cx = pp.x + pp.w / 2
+        local cy = pp.y + pp.h / 2
+        if cx < KontrolHP.ZonaJempolX * vpX or cy < KontrolHP.ZonaJempolY * vpY then
+                return false, "di luar area jempol"
+        end
+        if KontrolHP.tumpangTindih(pp, KontrolHP.zonaTanam(vpX, vpY)) then
+                return false, "menutupi area tanam"
+        end
+        return true, "ok"
 end
 
 return KontrolHP
@@ -2043,6 +2175,277 @@ return DropBentuk
 
 end)()
 
+local MOD_IkonJempol = (function()
+local IkonJempol = {}
+
+IkonJempol.Bagian = {
+        { dx = 0.14, dy = 0.34, dw = 0.52, dh = 0.48, bentuk = "kotak" },
+        { dx = 0.14, dy = 0.22, dw = 0.13, dh = 0.20, bentuk = "lingkaran" },
+        { dx = 0.30, dy = 0.16, dw = 0.13, dh = 0.20, bentuk = "lingkaran" },
+        { dx = 0.46, dy = 0.18, dw = 0.13, dh = 0.20, bentuk = "lingkaran" },
+        { dx = 0.60, dy = 0.26, dw = 0.12, dh = 0.18, bentuk = "lingkaran" },
+        { dx = 0.02, dy = 0.44, dw = 0.16, dh = 0.34, bentuk = "kotak" },
+        { dx = 0.20, dy = 0.40, dw = 0.40, dh = 0.05, bentuk = "garis" },
+        { dx = 0.20, dy = 0.52, dw = 0.40, dh = 0.05, bentuk = "garis" },
+        { dx = 0.20, dy = 0.64, dw = 0.40, dh = 0.05, bentuk = "garis" },
+}
+
+function IkonJempol.bagian(): { any }
+        local out = {}
+        for _, g in ipairs(IkonJempol.Bagian) do
+                table.insert(out, { dx = g.dx, dy = g.dy, dw = g.dw, dh = g.dh, bentuk = g.bentuk })
+        end
+        return out
+end
+
+function IkonJempol.valid(): boolean
+        for _, g in ipairs(IkonJempol.Bagian) do
+                if g.dx < 0 or g.dy < 0 or g.dx + g.dw > 1 or g.dy + g.dh > 1 then
+                        return false
+                end
+                if g.dw <= 0 or g.dh <= 0 then
+                        return false
+                end
+        end
+        return #IkonJempol.Bagian >= 4
+end
+
+return IkonJempol
+
+end)()
+
+local MOD_UangLogic = (function()
+local UangLogic = {}
+
+UangLogic.MaksAksi = 25000
+UangLogic.BatasPerMenit = 24
+UangLogic.JendelaDetik = 60
+UangLogic.BatasLedger = 24
+
+UangLogic.Alasan = {
+        jual_hasil = true,
+        beli_benih = true,
+        smash_hasil = true,
+        hadiah = true,
+}
+
+function UangLogic.baru(saldoAwal: number): any
+        return {
+                m = math.max(0, math.floor(tonumber(saldoAwal) or 0)),
+                ledger = {},
+                tick = {},
+        }
+end
+
+function UangLogic.sah(nilai: any): boolean
+        if type(nilai) ~= "number" or nilai ~= nilai or nilai == math.huge or nilai == -math.huge then
+                return false
+        end
+        if nilai <= 0 or nilai ~= math.floor(nilai) then
+                return false
+        end
+        return true
+end
+
+function UangLogic.alasanOk(reason: any): boolean
+        if type(reason) ~= "string" then
+                return false
+        end
+        return UangLogic.Alasan[reason] == true
+end
+
+function UangLogic.bersihTick(st: any, now: number)
+        local i = 1
+        while i <= #st.tick do
+                if now - st.tick[i] > UangLogic.JendelaDetik then
+                        table.remove(st.tick, i)
+                else
+                        i += 1
+                end
+        end
+end
+
+local function catat(st: any, now: number, delta: number, reason: string, status: string)
+        table.insert(st.ledger, { t = math.floor(now), d = delta, r = reason, s = status })
+        while #st.ledger > UangLogic.BatasLedger do
+                table.remove(st.ledger, 1)
+        end
+end
+
+local function gerbang(st: any, amount: any, reason: any, now: number, arah: string): (boolean, string, any)
+        if not UangLogic.sah(amount) then
+                return false, "Jumlah Micda tidak sah.", nil
+        end
+        if not UangLogic.alasanOk(reason) then
+                return false, "Alasan transaksi tidak sah.", nil
+        end
+        if amount > UangLogic.MaksAksi then
+                return false, "Transaksi melebihi batas atas.", "lonjakan"
+        end
+        UangLogic.bersihTick(st, now)
+        if #st.tick >= UangLogic.BatasPerMenit then
+                return false, "Terlalu banyak transaksi. Tunggu sebentar.", "laju"
+        end
+        if arah == "keluar" and st.m < amount then
+                return false, "Micda tidak cukup.", nil
+        end
+        return true, "ok", nil
+end
+
+function UangLogic.tambah(st: any, amount: any, reason: any, now: number): (boolean, string)
+        local ok, msg, flag = gerbang(st, amount, reason, now, "masuk")
+        if not ok then
+                if flag then
+                        catat(st, now, 0, tostring(reason), "tolak_" .. flag)
+                end
+                return false, msg
+        end
+        st.m += amount
+        table.insert(st.tick, now)
+        catat(st, now, amount, reason, "ok")
+        return true, "ok"
+end
+
+function UangLogic.bayar(st: any, amount: any, reason: any, now: number): (boolean, string)
+        local ok, msg, flag = gerbang(st, amount, reason, now, "keluar")
+        if not ok then
+                if flag then
+                        catat(st, now, 0, tostring(reason), "tolak_" .. flag)
+                end
+                return false, msg
+        end
+        st.m -= amount
+        table.insert(st.tick, now)
+        catat(st, now, -amount, reason, "ok")
+        return true, "ok"
+end
+
+function UangLogic.ledgerOf(st: any): { any }
+        local out = {}
+        for _, l in ipairs(st.ledger) do
+                table.insert(out, { t = l.t, d = l.d, r = l.r, s = l.s })
+        end
+        return out
+end
+
+function UangLogic.saldo(st: any): number
+        return st.m
+end
+
+return UangLogic
+
+end)()
+
+local MOD_SesiLogic = (function()
+local SesiLogic = {}
+
+SesiLogic.StaleDetik = 90
+
+function SesiLogic.bisaAmbil(old: any, jobId: any, now: number): boolean
+        if type(old) ~= "table" then
+                return true
+        end
+        if old.j == nil or old.j == "" then
+                return true
+        end
+        if old.j == jobId then
+                return true
+        end
+        if type(old.t) ~= "number" then
+                return true
+        end
+        return now - old.t >= SesiLogic.StaleDetik
+end
+
+function SesiLogic.kunciBaru(jobId: any, now: number): any
+        return { j = tostring(jobId), t = math.floor(now) }
+end
+
+function SesiLogic.lepas(jobId: any): any
+        return { j = "", t = 0 }
+end
+
+return SesiLogic
+
+end)()
+
+local MOD_KlaimDrop = (function()
+local KlaimDrop = {}
+
+KlaimDrop.JarakAmbil = 14
+
+function KlaimDrop.baru(owner: number): any
+        return { owner = owner, status = "ada", id = nil }
+end
+
+function KlaimDrop.valid(rec: any): boolean
+        return type(rec) == "table" and rec.status == "ada"
+end
+
+function KlaimDrop.coba(rec: any, userId: number, dist: number): (boolean, string)
+        if type(rec) ~= "table" then
+                return false, "rusak"
+        end
+        if rec.owner ~= userId then
+                return false, "bukan_milik"
+        end
+        if rec.status ~= "ada" then
+                return false, "sudah_diambil"
+        end
+        if type(dist) ~= "number" or dist ~= dist or dist > KlaimDrop.JarakAmbil then
+                return false, "jarak"
+        end
+        rec.status = "proses"
+        return true, "ok"
+end
+
+function KlaimDrop.selesai(rec: any, userId: number): boolean
+        if type(rec) ~= "table" or rec.status ~= "proses" or rec.owner ~= userId then
+                return false
+        end
+        rec.status = "ambil"
+        return true
+end
+
+function KlaimDrop.batalkan(rec: any, userId: number): boolean
+        if type(rec) ~= "table" or rec.status ~= "proses" or rec.owner ~= userId then
+                return false
+        end
+        rec.status = "ada"
+        return true
+end
+
+return KlaimDrop
+
+end)()
+
+local MOD_PanenWaktu = (function()
+local PanenWaktu = {}
+
+PanenWaktu.HARVEST_EXPIRE_SECONDS = 900
+
+function PanenWaktu.masihAman(leaveTime: any, now: number): boolean
+        if type(leaveTime) ~= "number" or leaveTime ~= leaveTime or leaveTime <= 0 then
+                return true
+        end
+        return now - leaveTime < PanenWaktu.HARVEST_EXPIRE_SECONDS
+end
+
+function PanenWaktu.sisaDetik(leaveTime: any, now: number): number
+        if type(leaveTime) ~= "number" or leaveTime ~= leaveTime then
+                return -1
+        end
+        local sisa = PanenWaktu.HARVEST_EXPIRE_SECONDS - (now - leaveTime)
+        if sisa < 0 then
+                return 0
+        end
+        return math.floor(sisa)
+end
+
+return PanenWaktu
+
+end)()
+
 local MOD_Remotes = (function()
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -2146,6 +2549,169 @@ local DevCodeVault = {}
 DevCodeVault.CODE = "CKZhwbrsRLjms6Da5h"
 
 return DevCodeVault
+
+end)()
+
+local MOD_AuditService = (function()
+local AuditService = {}
+
+local clock = os.time
+
+local JENDELA = 300
+local BATAS_KICK = 20
+local insiden: { [number]: any } = {}
+
+local JENIS = {
+        micda_tolak = true,
+        laju = true,
+        argumen = true,
+        jarak = true,
+        milik = true,
+        klaim_ganda = true,
+        drop_tidak_sah = true,
+        sesi_ganda = true,
+}
+
+function AuditService.setClock(fn)
+        clock = fn
+end
+
+local function bersih(userId: number, now: number)
+        local arr = insiden[userId]
+        if not arr then
+                return
+        end
+        local i = 1
+        while i <= #arr do
+                if now - arr[i].t > JENDELA then
+                        table.remove(arr, i)
+                else
+                        i += 1
+                end
+        end
+end
+
+function AuditService.catat(player: Player, jenis: string, detail: string)
+        if type(jenis) ~= "string" or not JENIS[jenis] then
+                return
+        end
+        if not player or not player.UserId then
+                return
+        end
+        local now = clock()
+        local userId = player.UserId
+        local arr = insiden[userId]
+        if not arr then
+                arr = {}
+                insiden[userId] = arr
+        end
+        table.insert(arr, { t = now, k = jenis })
+        bersih(userId, now)
+        print(string.format("[AUDIT] user=%d jenis=%s detail=%s jumlah5m=%d", userId, jenis, tostring(detail):sub(1, 120), #arr))
+        if #arr >= BATAS_KICK then
+                local nama = player.Name
+                insiden[userId] = {}
+                print(string.format("[AUDIT] kick user=%d nama=%s pelanggaran berulang", userId, nama))
+                task.spawn(function()
+                        pcall(function()
+                                player:Kick("Aktivitas tidak sah terdeteksi berulang.")
+                        end)
+                end)
+        end
+end
+
+function AuditService.jumlah(userId: number): number
+        local arr = insiden[userId]
+        if not arr then
+                return 0
+        end
+        bersih(userId, clock())
+        arr = insiden[userId]
+        return arr and #arr or 0
+end
+
+function AuditService.bersih(userId: number)
+        insiden[userId] = nil
+end
+
+return AuditService
+
+end)()
+
+local MOD_CurrencyService = (function()
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local UangLogic = MOD_UangLogic
+
+local CurrencyService = {}
+
+local Data, Audit
+local clock = os.time
+
+function CurrencyService.bind(deps)
+        Data = deps.Data
+        Audit = deps.Audit
+end
+
+function CurrencyService.setClock(fn)
+        clock = fn
+end
+
+local function st(player)
+        return Data.uangState(player)
+end
+
+function CurrencyService.GetMicda(player: Player): number
+        local s = st(player)
+        if not s then
+                return 0
+        end
+        return UangLogic.saldo(s)
+end
+
+function CurrencyService.AddMicda(player: Player, amountRaw: any, reason: any): (boolean, string)
+        local s = st(player)
+        if not s then
+                return false, "Data belum siap."
+        end
+        local ok, msg = UangLogic.tambah(s, amountRaw, reason, clock())
+        if not ok then
+                if Audit then
+                        Audit.catat(player, "micda_tolak", tostring(reason) .. "|" .. tostring(amountRaw))
+                end
+                return false, msg
+        end
+        Data.markDirty(player)
+        Data.push(player)
+        return true, "ok"
+end
+
+function CurrencyService.SpendMicda(player: Player, amountRaw: any, reason: any): (boolean, string)
+        local s = st(player)
+        if not s then
+                return false, "Data belum siap."
+        end
+        local ok, msg = UangLogic.bayar(s, amountRaw, reason, clock())
+        if not ok then
+                if Audit then
+                        Audit.catat(player, "micda_tolak", tostring(reason) .. "|" .. tostring(amountRaw))
+                end
+                return false, msg
+        end
+        Data.markDirty(player)
+        Data.push(player)
+        return true, "ok"
+end
+
+function CurrencyService.ledgerOf(player: Player): { any }
+        local s = st(player)
+        if not s then
+                return {}
+        end
+        return UangLogic.ledgerOf(s)
+end
+
+return CurrencyService
 
 end)()
 
@@ -2682,17 +3248,25 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local CropData = MOD_CropData
 local Net = MOD_Remotes
+local UangLogic = MOD_UangLogic
+local SesiLogic = MOD_SesiLogic
 
 local DataService = {}
 
 local store = DataStoreService:GetDataStore("AKM_T1")
+local jobId = game.JobId ~= "" and game.JobId or "studio"
 local cache: { [number]: any } = {}
 local dirty: { [number]: boolean } = {}
+local loadedOk: { [number]: boolean } = {}
 local zoneProvider: ((Player) -> (string, string?))? = nil
 local lahanProvider: ((Player) -> number?)? = nil
 
-local function defaultData()
-        return { m = CropData.StartMoney, t = {}, dev = false }
+local function now(): number
+        return os.time()
+end
+
+local function defaultData(): any
+        return { u = UangLogic.baru(CropData.StartMoney), t = {}, dev = false }
 end
 
 function DataService.setZoneProvider(fn)
@@ -2708,7 +3282,7 @@ local function push(player: Player)
         if not d then
                 return
         end
-        local payload: any = { micda = math.floor(d.m), tas = d.t }
+        local payload: any = { micda = UangLogic.saldo(d.u), tas = d.t }
         if zoneProvider then
                 local z, dn = zoneProvider(player)
                 payload.zone = z
@@ -2722,13 +3296,18 @@ local function push(player: Player)
         if ls then
                 local v = ls:FindFirstChild("Micda")
                 if v then
-                        v.Value = math.floor(d.m)
+                        v.Value = UangLogic.saldo(d.u)
                 end
         end
 end
 
 function DataService.get(player: Player)
         return cache[player.UserId]
+end
+
+function DataService.uangState(player: Player)
+        local d = cache[player.UserId]
+        return d and d.u or nil
 end
 
 function DataService.markDirty(player: Player)
@@ -2739,68 +3318,106 @@ function DataService.push(player: Player)
         push(player)
 end
 
-function DataService.addMicda(player: Player, amount: number)
-        local d = cache[player.UserId]
-        if not d then
-                return
-        end
-        d.m = math.max(0, d.m + amount)
-        dirty[player.UserId] = true
-        push(player)
+function DataService.bolehSimpan(player: Player): boolean
+        return loadedOk[player.UserId] == true
 end
 
-function DataService.trySpend(player: Player, amount: number): boolean
-        local d = cache[player.UserId]
-        if not d then
-                return false
-        end
-        if d.m < amount then
-                return false
-        end
-        d.m -= amount
-        dirty[player.UserId] = true
-        push(player)
-        return true
-end
-
-function DataService.load(player: Player): boolean
-        local ok, data = pcall(function()
-                return store:GetAsync("u_" .. player.UserId)
+local function ambilKunci(userId: number): boolean
+        local ambil = false
+        local ok = pcall(function()
+                store:UpdateAsync("l_" .. tostring(userId), function(old)
+                        if SesiLogic.bisaAmbil(old, jobId, now()) then
+                                ambil = true
+                                return SesiLogic.kunciBaru(jobId, now())
+                        end
+                        ambil = false
+                        return old
+                end)
         end)
-        if ok and type(data) == "table" and type(data.m) == "number" then
-                cache[player.UserId] = {
-                        m = data.m,
-                        t = type(data.t) == "table" and data.t or {},
-                        dev = data.dev == true,
-                }
-        elseif ok then
-                cache[player.UserId] = defaultData()
-        else
-                cache[player.UserId] = defaultData()
-                return false
+        return ok and ambil
+end
+
+local function lepasKunci(userId: number)
+        pcall(function()
+                store:UpdateAsync("l_" .. tostring(userId), function(old)
+                        if type(old) == "table" and old.j == jobId then
+                                return SesiLogic.lepas(jobId)
+                        end
+                        return old
+                end)
+        end)
+end
+
+function DataService.load(player: Player): (boolean, string?)
+        local userId = player.UserId
+        local ok, data = pcall(function()
+                return store:GetAsync("u_" .. tostring(userId))
+        end)
+        if not ok then
+                cache[userId] = defaultData()
+                loadedOk[userId] = false
+                dirty[userId] = false
+                push(player)
+                return false, "galat"
         end
-        dirty[player.UserId] = false
+        if type(data) == "table" and type(data.m) == "number" and not data.u then
+                data.u = UangLogic.baru(data.m)
+        end
+        if type(data) ~= "table" or type(data.u) ~= "table" or type(data.u.m) ~= "number" then
+                data = { u = UangLogic.baru(CropData.StartMoney), t = {}, dev = false }
+        end
+        if not ambilKunci(userId) then
+                cache[userId] = defaultData()
+                loadedOk[userId] = false
+                dirty[userId] = false
+                push(player)
+                return false, "kunci"
+        end
+        cache[userId] = {
+                u = { m = data.u.m, ledger = type(data.u.ledger) == "table" and data.u.ledger or {}, tick = {} },
+                t = type(data.t) == "table" and data.t or {},
+                dev = data.dev == true,
+        }
+        loadedOk[userId] = true
+        dirty[userId] = false
         push(player)
-        return true
+        return true, nil
+end
+
+local function simpanSekali(userId: number, d: any): boolean
+        local hasil = false
+        local ok = pcall(function()
+                store:UpdateAsync("u_" .. tostring(userId), function()
+                        hasil = true
+                        return {
+                                u = { m = UangLogic.saldo(d.u), ledger = d.u.ledger },
+                                t = d.t,
+                                dev = d.dev,
+                        }
+                end)
+        end)
+        return ok and hasil
 end
 
 function DataService.save(player: Player)
-        local d = cache[player.UserId]
-        if not d or not dirty[player.UserId] then
+        local userId = player.UserId
+        local d = cache[userId]
+        if not d or not loadedOk[userId] or not dirty[userId] then
                 return
         end
-        local ok = pcall(function()
-                store:SetAsync("u_" .. player.UserId, { m = math.floor(d.m), t = d.t, dev = d.dev })
-        end)
-        if ok then
-                dirty[player.UserId] = false
+        for i = 1, 3 do
+                if simpanSekali(userId, d) then
+                        dirty[userId] = false
+                        return
+                end
+                task.wait(0.4 * i)
         end
 end
 
 function DataService.startLoops()
         task.spawn(function()
                 while true do
-                        task.wait(60)
+                        task.wait(75)
                         for _, p in ipairs(Players:GetPlayers()) do
                                 DataService.save(p)
                         end
@@ -2809,8 +3426,13 @@ function DataService.startLoops()
 end
 
 function DataService.drop(player: Player)
-        cache[player.UserId] = nil
-        dirty[player.UserId] = nil
+        local userId = player.UserId
+        if loadedOk[userId] then
+                lepasKunci(userId)
+        end
+        cache[userId] = nil
+        dirty[userId] = nil
+        loadedOk[userId] = nil
 end
 
 return DataService
@@ -2895,7 +3517,7 @@ local CropData = MOD_CropData
 
 local SmashService = {}
 
-local Land, Tas, Data, Net, Notify, World
+local Land, Tas, Uang, Net, Notify, World
 local rng = Random.new()
 
 local MAX_SLOTS = 6
@@ -2917,7 +3539,7 @@ local RARITY_SIZE = {
 function SmashService.bind(deps)
         Land = deps.Land
         Tas = deps.Tas
-        Data = deps.Data
+        Uang = deps.Uang
         Net = deps.Net
         Notify = deps.Notify
         World = deps.World
@@ -3049,11 +3671,14 @@ function SmashService.hit(player, slotIdx: any): (boolean, string)
                 s.model:Destroy()
                 table.remove(slots[index], slotIdx)
                 local micda = rng:NextInteger(cfg.micdaMin, cfg.micdaMax)
-                Data.addMicda(player, micda)
+                local okUang, msgUang = true, "ok"
+                if Uang then
+                        okUang, msgUang = Uang.AddMicda(player, micda, "smash_hasil")
+                end
                 if World then
                         World.touch(index)
                 end
-                local pesan = "+" .. micda .. " Micda"
+                local pesan = okUang and ("+" .. micda .. " Micda") or ("Micda ditunda: " .. tostring(msgUang))
                 if rng:NextNumber() < cfg.seed then
                         local put = Tas.add(player, "benih", s.crop, 1)
                         if put > 0 then
@@ -3528,6 +4153,7 @@ local planted: { [number]: { [number]: any } } = {}
 local running: { [number]: boolean } = {}
 local boards: { [number]: { TextLabel } } = {}
 local combo: { [number]: { t: number, n: number } } = {}
+local cooldown: { [number]: number } = {}
 
 function PlotService.bind(deps)
         Land = deps.Land
@@ -3822,6 +4448,12 @@ function PlotService.punch(player: Player, idx: any): (boolean, string)
         if not index then
                 return false, "Kamu tidak punya lahan."
         end
+        local t0 = now()
+        local cd = cooldown[player.UserId]
+        if cd and t0 - cd < 0.35 then
+                return false, "Terlalu cepat."
+        end
+        cooldown[player.UserId] = t0
         local sasaran, titik = sasaranRaycast(player, index)
         if sasaran == nil then
                 sasaran, titik = sasaranKerucut(player, index)
@@ -3893,19 +4525,19 @@ function PlotService.punch(player: Player, idx: any): (boolean, string)
         return true, "Panen " .. jumlah .. " " .. info.nama
 end
 
-function PlotService.serialize(index: number): { [number]: { c: string, r: number } }
+function PlotService.serialize(index: number): { [number]: any }
         local out = {}
         local pl = planted[index]
         if not pl then
                 return out
         end
         for idx, rec in pairs(pl) do
-                out[idx] = { c = rec.crop, r = rec.readyAt }
+                out[idx] = { crop = rec.crop, readyAt = rec.readyAt, hits = rec.hits, lastHit = rec.lastHit }
         end
         return out
 end
 
-function PlotService.restore(index: number, arr: { [number]: { c: string, r: number } })
+function PlotService.restore(index: number, arr: { [number]: any })
         local pl = planted[index]
         if not pl then
                 return
@@ -3914,7 +4546,14 @@ function PlotService.restore(index: number, arr: { [number]: { c: string, r: num
                 if not pl[idx] and CropData.byId[rec.c] then
                         local model = pasangModel(index, idx, rec.c)
                         local ready = now() >= rec.r
-                        pl[idx] = { crop = rec.c, readyAt = rec.r, model = model, ready = ready, hits = 0, lastHit = 0 }
+                        pl[idx] = {
+                                crop = rec.c,
+                                readyAt = rec.r,
+                                model = model,
+                                ready = ready,
+                                hits = rec.h or 0,
+                                lastHit = rec.l or 0,
+                        }
                         if ready then
                                 PlantModels.setSiap(model, CropData.byId[rec.c])
                         end
@@ -3930,15 +4569,16 @@ local MOD_ShopService = (function()
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local CropData = MOD_CropData
+local StrukBeli = MOD_StrukBeli
 
 local ShopService = {}
 
-local Data, Tas
+local Uang, Tas
 local rng = Random.new()
 local shopPoint: Vector3? = nil
 
 function ShopService.bind(deps)
-        Data = deps.Data
+        Uang = deps.Uang
         Tas = deps.Tas
 end
 
@@ -3959,7 +4599,7 @@ function ShopService.near(player, maxDist: number): boolean
         return (root.Position - shopPoint).Magnitude <= maxDist
 end
 
-function ShopService.buy(player, packId: any): (boolean, string)
+function ShopService.buy(player, packId: any): (boolean, string, { any }?)
         if type(packId) ~= "string" then
                 return false, "Permintaan tidak sah."
         end
@@ -3970,20 +4610,22 @@ function ShopService.buy(player, packId: any): (boolean, string)
         if not ShopService.near(player, 45) then
                 return false, "Dekati kasir Toko Benih dulu."
         end
-        local d = Data.get(player)
-        if not d or d.m < pack.price then
+        if not Uang or Uang.GetMicda(player) < pack.price then
                 return false, "Micda tidak cukup."
         end
         local pool = CropData.byRarity(packId)
         local items = {}
+        local picks = {}
         for _ = 1, pack.count do
                 local pick = pool[rng:NextInteger(1, #pool)]
                 table.insert(items, { kind = "benih", id = pick.id, count = 1 })
+                table.insert(picks, pick.id)
         end
         if not Tas.canFitBatch(player, items) then
                 return false, "Tas penuh! Kosongkan slot dulu."
         end
-        if not Data.trySpend(player, pack.price) then
+        local okBayar = Uang.SpendMicda(player, pack.price, "beli_benih")
+        if not okBayar then
                 return false, "Micda tidak cukup."
         end
         local nama = {}
@@ -3991,7 +4633,7 @@ function ShopService.buy(player, packId: any): (boolean, string)
                 Tas.add(player, it.kind, it.id, it.count)
                 table.insert(nama, CropData.byId[it.id].nama)
         end
-        return true, "Pack " .. packId .. ": " .. table.concat(nama, ", ")
+        return true, "Pack " .. packId .. ": " .. table.concat(nama, ", "), StrukBeli.rangkum(picks, CropData.byId)
 end
 
 function ShopService.sell(player, cropId: any, count: any): (boolean, string)
@@ -4023,7 +4665,7 @@ function ShopService.sell(player, cropId: any, count: any): (boolean, string)
         local info = CropData.byId[cropId]
         local total = info.jual * n
         Tas.remove(player, "hasil", cropId, n)
-        Data.addMicda(player, total)
+        Uang.AddMicda(player, total, "jual_hasil")
         return true, "Terjual " .. n .. " " .. info.nama .. " (+" .. total .. " Micda)."
 end
 
@@ -4515,42 +5157,59 @@ function ZonaService.touch(index: number)
         end
 end
 
-local function payloadOf(s: Seksi)
-        return {
+local function payloadOf(s: Seksi, leaving: boolean?)
+        local p = {
                 n = s.ownerName,
                 pl = DuniaLogic.serPlots(Plot.serialize(s.idx)),
                 mj = DuniaLogic.serMeja(Smash.serializeLahan(s.idx)),
                 gd = Gudang and Gudang.serLahan(s.idx) or {},
+                dr = Drop and DuniaLogic.serDrops(Drop.serLahan(s.idx)) or {},
                 t = os.time(),
         }
+        if leaving then
+                p.lt = os.time()
+        end
+        return p
 end
 
-local function saveSeksi(s: Seksi, force: boolean)
+local function simpanSekali(s: Seksi, leaving: boolean?): boolean
+        local hasil = false
+        local ok = pcall(function()
+                store:UpdateAsync(DuniaLogic.keyFor(s.ownerId), function()
+                        hasil = true
+                        return payloadOf(s, leaving)
+                end)
+        end)
+        return ok and hasil
+end
+
+local function saveSeksi(s: Seksi, force: boolean, leaving: boolean?)
         if s.ghost or not s.canSave or (not s.dirty and not force) then
                 return
         end
-        local ok = pcall(function()
-                store:SetAsync(DuniaLogic.keyFor(s.ownerId), payloadOf(s))
-        end)
-        if ok then
-                s.dirty = false
+        for i = 1, 3 do
+                if simpanSekali(s, leaving) then
+                        s.dirty = false
+                        return
+                end
+                task.wait(0.4 * i)
         end
 end
 
-local function loadWorld(ownerId: number): (boolean, string?, any, any, any)
+local function loadWorld(ownerId: number): (boolean, string?, any, any, any, any, any)
         local ok, data = pcall(function()
                 return store:GetAsync(DuniaLogic.keyFor(ownerId))
         end)
         if not ok then
-                return false, nil, {}, {}, nil
+                return false, nil, {}, {}, nil, {}, nil
         end
         if type(data) ~= "table" then
-                return true, nil, {}, {}, nil
+                return true, nil, {}, {}, nil, {}, nil
         end
-        return true, DuniaLogic.cleanName(data.n), DuniaLogic.desPlots(data.pl), DuniaLogic.desMeja(data.mj), data.gd
+        return true, DuniaLogic.cleanName(data.n), DuniaLogic.desPlots(data.pl), DuniaLogic.desMeja(data.mj), data.gd, data.dr, data.lt
 end
 
-local function buildSection(idx: number, ownerId: number, nama: string, ghost: boolean, savedOk: boolean, plots: any, meja: any, gd: any): Seksi
+local function buildSection(idx: number, ownerId: number, nama: string, ghost: boolean, savedOk: boolean, plots: any, meja: any, gd: any, dr: any, lt: any): Seksi
         local model = WorldBuilder.buildLahan(Hooks, idx, nama)
         Plot.buildGrid(idx, model)
         Plot.restore(idx, plots)
@@ -4558,6 +5217,9 @@ local function buildSection(idx: number, ownerId: number, nama: string, ghost: b
         Smash.restoreLahan(idx, meja)
         if Gudang then
                 Gudang.restoreLahan(idx, gd)
+        end
+        if Drop then
+                Drop.restoreLahan(idx, dr, lt)
         end
         local s: Seksi = {
                 idx = idx,
@@ -4614,13 +5276,13 @@ function ZonaService.masuk(player: Player): (boolean, string)
                 end
                 return false, "Karakter belum siap. Coba lagi sebentar."
         end
-        local loadOk, namaTersimpan, plots, meja, gd = loadWorld(player.UserId)
+        local loadOk, namaTersimpan, plots, meja, gd, dr, lt = loadWorld(player.UserId)
         local nama = namaTersimpan or player.Name
         local idx = Land.claimFree(player.UserId, taken)
         if idx <= 0 then
                 return false, "Semua petak dunia di server ini sedang terpakai. Coba lagi sebentar."
         end
-        buildSection(idx, player.UserId, nama, false, loadOk, plots, meja, gd)
+        buildSection(idx, player.UserId, nama, false, loadOk, plots, meja, gd, dr, lt)
         byOwner[player.UserId] = idx
         if placeWait(player, arrivalPos(idx), "dunia", nama) then
                 return true, "Duniamu siap. Masuk dan pulang kini tanpa loading."
@@ -4662,7 +5324,7 @@ function ZonaService.visit(player: Player, namaRaw: any): (boolean, string)
                 end
                 return false, "Karakter belum siap. Coba lagi sebentar."
         end
-        local loadOk, namaTersimpan, plots, meja, gd = loadWorld(targetId)
+        local loadOk, namaTersimpan, plots, meja, gd, dr, lt = loadWorld(targetId)
         if not loadOk then
                 return false, "Dunia " .. nama .. " tidak bisa dikunjungi sekarang."
         end
@@ -4677,7 +5339,7 @@ function ZonaService.visit(player: Player, namaRaw: any): (boolean, string)
                 return false, "Petak dunia habis. Coba lagi sebentar."
         end
         local namaDunia = namaTersimpan or nama
-        buildSection(idx, targetId, namaDunia, true, loadOk, plots, meja, gd)
+        buildSection(idx, targetId, namaDunia, true, loadOk, plots, meja, gd, dr, lt)
         if placeWait(player, arrivalPos(idx), "dunia", namaDunia) then
                 return true, "Kamu berkunjung ke dunia " .. namaDunia .. " (salinan tersimpan)."
         end
@@ -4727,7 +5389,7 @@ function ZonaService.leaveGame(player: Player)
         end
         local s = seksi[idx]
         if s then
-                saveSeksi(s, true)
+                saveSeksi(s, true, true)
         end
         destroySection(idx)
 end
@@ -5141,16 +5803,22 @@ local Players = game:GetService("Players")
 
 local CropData = MOD_CropData
 local DropModels = MOD_DropModels
+local KlaimDrop = MOD_KlaimDrop
+local PanenWaktu = MOD_PanenWaktu
+local DuniaLogic = MOD_DuniaLogic
 
 local DropService = {}
 
-local Land, Tas
+local Land, Tas, Audit
 
 local folders: { [number]: Folder } = {}
+local rekaman: { [number]: { [string]: any } } = {}
+local counters: { [number]: number } = {}
 
 function DropService.bind(deps)
         Land = deps.Land
         Tas = deps.Tas
+        Audit = deps.Audit
 end
 
 local function folderFor(index: number): Folder?
@@ -5168,7 +5836,25 @@ local function folderFor(index: number): Folder?
         return f :: Folder
 end
 
+local function hitungHidup(index: number): number
+        local n = 0
+        for _, rec in pairs(rekaman[index] or {}) do
+                if rec.status == "ada" or rec.status == "proses" then
+                        n += 1
+                end
+        end
+        return n
+end
+
+local function hapusModel(model: Model?)
+        if model and model.Parent then
+                model:Destroy()
+        end
+end
+
 function DropService.clearLahan(index: number)
+        rekaman[index] = nil
+        counters[index] = nil
         local f = folders[index]
         if f then
                 f:Destroy()
@@ -5183,24 +5869,91 @@ local function floatify(root: BasePart, basePos: Vector3)
         TweenService:Create(root, TweenInfo.new(1.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Position = basePos + Vector3.new(0, 2.8, 0) }):Play()
 end
 
-function DropService.spawn(index: number, pos: Vector3, cropId: string, count: number, comboN: number, tier: number)
-        local info = CropData.byId[cropId]
-        if not info then
-                return
-        end
+local function idBaru(index: number): string
+        counters[index] = (counters[index] or 0) + 1
+        local unik = tostring(os.time()):sub(-8)
+        return "d" .. tostring(index) .. "x" .. tostring(counters[index]) .. "y" .. unik .. tostring(math.random(100, 999))
+end
+
+local function pasangClaim(index: number, rec: any, part: BasePart, basePos: Vector3)
+        part.Touched:Connect(function(hit)
+                if rec.status ~= "ada" then
+                        return
+                end
+                local karakter = hit and hit.Parent
+                local p = karakter and Players:GetPlayerFromCharacter(karakter)
+                if not p then
+                        return
+                end
+                local root = karakter:FindFirstChild("HumanoidRootPart") :: BasePart?
+                local dist = root and (root.Position - part.Position).Magnitude or math.huge
+                local ok, alasan = KlaimDrop.coba(rec, p.UserId, dist)
+                if not ok then
+                        if Audit then
+                                if alasan == "bukan_milik" then
+                                        Audit.catat(p, "milik", "drop " .. tostring(rec.id))
+                                elseif alasan == "jarak" then
+                                        Audit.catat(p, "jarak", "drop " .. tostring(rec.id))
+                                elseif alasan == "sudah_diambil" then
+                                        Audit.catat(p, "klaim_ganda", "drop " .. tostring(rec.id))
+                                end
+                        end
+                        return
+                end
+                local cid = rec.crop
+                local n = rec.count
+                if Tas.roomFor(p, "hasil", cid, n) < n then
+                        KlaimDrop.batalkan(rec, p.UserId)
+                        floatify(part, basePos)
+                        return
+                end
+                if not KlaimDrop.selesai(rec, p.UserId) then
+                        return
+                end
+                Tas.add(p, "hasil", cid, n)
+                local pem = part:FindFirstChildWhichIsA("ParticleEmitter")
+                if pem then
+                        pem:Emit(8)
+                end
+                local ding = Instance.new("Sound")
+                ding.SoundId = "rbxasset://sounds/electronicpingshort.wav"
+                ding.Volume = 0.45
+                ding.PlaybackSpeed = 1.5
+                ding.Parent = part
+                ding:Play()
+                part.Anchored = true
+                part.CanCollide = false
+                for _, d in ipairs(rec.model:GetDescendants()) do
+                        if d:IsA("BasePart") then
+                                d.Anchored = true
+                                d.CanCollide = false
+                        end
+                end
+                task.delay(0.9, function()
+                        hapusModel(rec.model)
+                end)
+        end)
+end
+
+local function bangunModel(index: number, rec: any): boolean
         local f = folderFor(index)
         if not f then
-                return
+                return false
         end
-        local model = DropModels.buat(pos, cropId, tier)
+        local info = CropData.byId[rec.crop]
+        if not info then
+                return false
+        end
+        local model = DropModels.buat(rec.pos, rec.crop, rec.tier or 1)
         if not model then
-                return
+                return false
         end
         local part = model.PrimaryPart :: BasePart
+        part:SetAttribute("DropId", rec.id)
         part:SetAttribute("LahanIdx", index)
-        part:SetAttribute("CropId", cropId)
-        part:SetAttribute("Count", count)
         model.Parent = f
+        rec.model = model
+        rec.part = part
         local warna = part.Color
         local pem = Instance.new("ParticleEmitter")
         pem.Color = ColorSequence.new(warna)
@@ -5211,73 +5964,115 @@ function DropService.spawn(index: number, pos: Vector3, cropId: string, count: n
         pem.Transparency = NumberSequence.new(0.1, 1)
         pem.Enabled = false
         pem.Parent = part
-        pem:Emit(10 + 9 * tier)
-        local snd = Instance.new("Sound")
-        snd.SoundId = "rbxasset://sounds/electronicpingshort.wav"
-        snd.Volume = 0.3 + 0.12 * tier
-        snd.PlaybackSpeed = 1.25 - 0.14 * tier
-        snd.Parent = part
-        snd:Play()
-        if comboN >= 4 then
-                local whoosh = Instance.new("Sound")
-                whoosh.SoundId = "rbxasset://sounds/swoosh.wav"
-                whoosh.Volume = 0.35 + 0.1 * tier
-                whoosh.PlaybackSpeed = 1.1 - 0.1 * tier
-                whoosh.Parent = part
-                whoosh:Play()
+        if not rec.pulih then
+                pem:Emit(10 + 9 * (rec.tier or 1))
+                local snd = Instance.new("Sound")
+                snd.SoundId = "rbxasset://sounds/electronicpingshort.wav"
+                snd.Volume = 0.3 + 0.12 * (rec.tier or 1)
+                snd.PlaybackSpeed = 1.25 - 0.14 * (rec.tier or 1)
+                snd.Parent = part
+                snd:Play()
+                if (rec.comboN or 0) >= 4 then
+                        local whoosh = Instance.new("Sound")
+                        whoosh.SoundId = "rbxasset://sounds/swoosh.wav"
+                        whoosh.Volume = 0.35
+                        whoosh.Parent = part
+                        whoosh:Play()
+                end
+                part.AssemblyLinearVelocity = Vector3.new(math.random(-7, 7), 18 + 5 * (rec.tier or 1), math.random(-7, 7))
+                part.AssemblyAngularVelocity = Vector3.new(math.random(-5, 5), math.random(-5, 5), math.random(-5, 5))
         end
-        part.AssemblyLinearVelocity = Vector3.new(math.random(-7, 7), 18 + 5 * tier, math.random(-7, 7))
-        part.AssemblyAngularVelocity = Vector3.new(math.random(-5, 5), math.random(-5, 5), math.random(-5, 5))
         local basePos = part.Position
-        local kunci = 0
-        local selesai = false
-        part.Touched:Connect(function(hit)
-                if selesai or os.clock() - kunci < 0.4 then
-                        return
-                end
-                local karakter = hit and hit.Parent
-                local p = karakter and Players:GetPlayerFromCharacter(karakter)
-                if not p then
-                        return
-                end
-                if Land.ownerOf(index) ~= p.UserId then
-                        return
-                end
-                kunci = os.clock()
-                local cid = part:GetAttribute("CropId") :: string
-                local n = part:GetAttribute("Count") :: number
-                if Tas.roomFor(p, "hasil", cid, n) < n then
-                        floatify(part, basePos)
-                        return
-                end
-                selesai = true
-                Tas.add(p, "hasil", cid, n)
-                pem:Emit(8)
-                local ding = Instance.new("Sound")
-                ding.SoundId = "rbxasset://sounds/electronicpingshort.wav"
-                ding.Volume = 0.45
-                ding.PlaybackSpeed = 1.5
-                ding.Parent = part
-                ding:Play()
-                part.Anchored = true
-                part.CanCollide = false
-                for _, d in ipairs(model:GetDescendants()) do
-                        if d:IsA("BasePart") then
-                                d.Anchored = true
-                                d.CanCollide = false
+        pasangClaim(index, rec, part, basePos)
+        return true
+end
+
+function DropService.spawn(index: number, pos: Vector3, cropId: string, count: number, comboN: number, tier: number)
+        local info = CropData.byId[cropId]
+        if not info then
+                return
+        end
+        local owner = Land and Land.ownerOf(index)
+        if not owner then
+                return
+        end
+        rekaman[index] = rekaman[index] or {}
+        if hitungHidup(index) >= DuniaLogic.MaxDrops then
+                local tertua, waktuTua = nil, math.huge
+                for id, rec in pairs(rekaman[index]) do
+                        if rec.status == "ada" and rec.bornAt < waktuTua then
+                                tertua, waktuTua = id, rec.bornAt
                         end
                 end
-                task.delay(0.9, function()
-                        if model.Parent then
-                                model:Destroy()
-                        end
-                end)
-        end)
-        task.delay(900, function()
-                if model.Parent and not part.Anchored then
-                        model:Destroy()
+                if tertua then
+                        local lama = rekaman[index][tertua]
+                        hapusModel(lama.model)
+                        rekaman[index][tertua] = nil
                 end
-        end)
+        end
+        local rec: any = {
+                id = idBaru(index),
+                crop = cropId,
+                count = count,
+                pos = pos,
+                bornAt = os.time(),
+                status = "ada",
+                owner = owner,
+                comboN = comboN,
+                tier = tier,
+                pulih = false,
+        }
+        if not bangunModel(index, rec) then
+                return
+        end
+        rekaman[index][rec.id] = rec
+end
+
+function DropService.serLahan(index: number): { any }
+        local out = {}
+        for _, rec in pairs(rekaman[index] or {}) do
+                if rec.status == "ada" then
+                        table.insert(out, {
+                                id = rec.id,
+                                crop = rec.crop,
+                                count = rec.count,
+                                pos = { x = rec.pos.X, y = rec.pos.Y, z = rec.pos.Z },
+                        })
+                end
+        end
+        return out
+end
+
+function DropService.restoreLahan(index: number, arr: any, leaveTime: any): number
+        rekaman[index] = rekaman[index] or {}
+        if leaveTime ~= nil and not PanenWaktu.masihAman(leaveTime, os.time()) then
+                return 0
+        end
+        local n = 0
+        for _, d in ipairs(DuniaLogic.desDrops(arr or {})) do
+                local rec: any = {
+                        id = d.id,
+                        crop = d.crop,
+                        count = d.count,
+                        pos = Vector3.new(d.pos.x, d.pos.y, d.pos.z),
+                        bornAt = os.time(),
+                        status = "ada",
+                        owner = Land and Land.ownerOf(index),
+                        pulih = true,
+                }
+                if not rekaman[index][rec.id] and CropData.byId[rec.crop] and bangunModel(index, rec) then
+                        rekaman[index][rec.id] = rec
+                        n += 1
+                end
+                if n >= DuniaLogic.MaxDrops then
+                        break
+                end
+        end
+        return n
+end
+
+function DropService.hidup(index: number): number
+        return hitungHidup(index)
 end
 
 return DropService
@@ -5293,6 +6088,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local GuiService = game:GetService("GuiService")
+local TweenService = game:GetService("TweenService")
 
 local CropData = MOD_CropData
 local Net = MOD_Remotes
@@ -5302,6 +6098,7 @@ local ArahPukul = MOD_ArahPukul
 local KontrolHP = MOD_KontrolHP
 local HUDLayout = MOD_HUDLayout
 local DropBentuk = MOD_DropBentuk
+local IkonJempol = MOD_IkonJempol
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -5381,7 +6178,10 @@ local function teksSkala(props: { [string]: any }, parent: Instance): TextLabel
         return l :: TextLabel
 end
 
-local saldo = mk("Frame", { Position = UDim2.fromScale(HUDLayout.SaldoSkalaX, HUDLayout.SaldoSkalaY), Size = UDim2.fromScale(HUDLayout.SaldoSkalaLebar, HUDLayout.SaldoSkalaTinggi), BackgroundColor3 = warna(UIStyle.Latar), BackgroundTransparency = 0.12 }, aman)
+local kolomKiri = mk("Frame", { Name = "KolomKiri", Position = UDim2.fromScale(HUDLayout.SaldoSkalaX, 0), Size = UDim2.fromScale(HUDLayout.SaldoSkalaLebar, 1), BackgroundTransparency = 1 }, aman)
+mk("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder, HorizontalAlignment = Enum.HorizontalAlignment.Left, VerticalAlignment = Enum.VerticalAlignment.Top }, kolomKiri)
+
+local saldo = mk("Frame", { LayoutOrder = 1, Size = UDim2.fromScale(1, HUDLayout.SaldoSkalaTinggi), BackgroundColor3 = warna(UIStyle.Latar), BackgroundTransparency = 0.12 }, kolomKiri)
 round(saldo)
 local saldoUkuran = mk("UISizeConstraint", { MinSize = Vector2.new(150, 30), MaxSize = Vector2.new(320, 64) }, saldo)
 
@@ -5391,7 +6191,7 @@ teksSkala({ Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Text = "M"
 local angkaLabel = teksSkala({ Position = UDim2.fromScale(HUDLayout.AngkaSkalaX, 0), Size = UDim2.fromScale(HUDLayout.AngkaSkalaLebar, 1), BackgroundTransparency = 1, Text = "0", Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left }, saldo)
 teksSkala({ Position = UDim2.fromScale(HUDLayout.SatuanSkalaX, 0), Size = UDim2.fromScale(HUDLayout.SatuanSkalaLebar, 1), BackgroundTransparency = 1, Text = "Micda", Font = FONTB, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left }, saldo)
 
-local travelBtn = mk("TextButton", { Position = UDim2.fromScale(HUDLayout.SaldoSkalaX, HUDLayout.NavSkalaY), Size = UDim2.fromScale(HUDLayout.NavSkalaLebarMin, HUDLayout.NavSkalaTinggi), AutomaticSize = Enum.AutomaticSize.X, BackgroundColor3 = warna(UIStyle.Permukaan), Text = "Masuk Dunia-ku", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextTruncate = Enum.TextTruncate.AtEnd, TextXAlignment = Enum.TextXAlignment.Center }, aman)
+local travelBtn = mk("TextButton", { LayoutOrder = 2, Size = UDim2.fromScale(1, HUDLayout.NavSkalaTinggi), AutomaticSize = Enum.AutomaticSize.X, BackgroundColor3 = warna(UIStyle.Permukaan), Text = "Masuk Dunia-ku", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextTruncate = Enum.TextTruncate.AtEnd, TextXAlignment = Enum.TextXAlignment.Center }, kolomKiri)
 round(travelBtn)
 mk("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12) }, travelBtn)
 local navUkuran = mk("UISizeConstraint", { MinSize = Vector2.new(120, 26), MaxSize = Vector2.new(220, 26) }, travelBtn)
@@ -5400,19 +6200,41 @@ local tasBtn = mk("TextButton", { AnchorPoint = Vector2.new(1, 0), Position = UD
 round(tasBtn)
 local tasUkuran = mk("UISizeConstraint", { MinSize = Vector2.new(90, 30), MaxSize = Vector2.new(200, 64) }, tasBtn)
 
+local punchShadow = mk("Frame", { Name = "BayanganPunch", AnchorPoint = Vector2.new(1, 1), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.62, BorderSizePixel = 0, ZIndex = 0 }, gui)
+round(punchShadow, 46)
 local punchBtn = mk("TextButton", {
+        Name = "TombolPunch",
         AnchorPoint = Vector2.new(1, 1),
-        Position = UDim2.fromScale(0.62, 0.968),
-        Size = UDim2.fromScale(0.132, 0.235),
         BackgroundColor3 = warna(UIStyle.Hijau),
-        Text = "PUNCH",
-        TextScaled = true,
-        Font = FONTB,
-        TextColor3 = Color3.new(1, 1, 1),
-        Visible = true,
+        Text = "",
+        AutoButtonColor = false,
+        ZIndex = 2,
 }, gui)
 round(punchBtn, 46)
-mk("UITextSizeConstraint", { MaxTextSize = 26, MinTextSize = 13 }, punchBtn)
+mk("UIGradient", { Color = ColorSequence.new(Color3.fromRGB(88, 178, 114), Color3.fromRGB(46, 108, 72)), Rotation = 90 }, punchBtn)
+mk("UIStroke", { Color = Color3.fromRGB(214, 226, 218), Thickness = 1.5, Transparency = 0.55 }, punchBtn)
+local punchSkalaUI = mk("UIScale", { Scale = 1 }, punchBtn)
+local ikonPunch = mk("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0.62, 0.62), BackgroundTransparency = 1 }, punchBtn)
+for _, g in ipairs(IkonJempol.bagian()) do
+        local f = mk("Frame", { Position = UDim2.fromScale(g.dx, g.dy), Size = UDim2.fromScale(g.dw, g.dh), BackgroundColor3 = warna(UIStyle.Teks), BorderSizePixel = 0, ZIndex = 3 }, ikonPunch)
+        if g.bentuk == "lingkaran" then
+                mk("UICorner", { CornerRadius = UDim.new(1, 0) }, f)
+        end
+end
+
+local function efekTekan(turun: boolean)
+        TweenService:Create(punchSkalaUI, TweenInfo.new(0.07, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Scale = turun and 0.9 or 1 }):Play()
+end
+punchBtn.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+                efekTekan(true)
+        end
+end)
+punchBtn.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+                efekTekan(false)
+        end
+end)
 
 local jumpPxNyata: number? = nil
 local function aturPunch()
@@ -5420,11 +6242,13 @@ local function aturPunch()
         local pos = KontrolHP.posisiPunch(vp.X, vp.Y, jumpPxNyata)
         punchBtn.Position = UDim2.fromScale(pos.skalaX, pos.skalaY)
         punchBtn.Size = UDim2.fromScale(pos.skalaLebar, pos.skalaTinggi)
+        punchShadow.Position = UDim2.new(pos.skalaX, 0, pos.skalaY, 3)
+        punchShadow.Size = UDim2.fromScale(pos.skalaLebar, pos.skalaTinggi)
 end
 
 local function aturUkuranAman()
         local inset = GuiService.TopbarInset
-        amanPad.PaddingTop = UDim.new(0, inset.Min.Y)
+        amanPad.PaddingTop = UDim.new(0, inset.Min.Y + 10)
         amanPad.PaddingLeft = UDim.new(0, inset.Min.X)
         local vp = camera.ViewportSize
         local a = HUDLayout.areaAman(vp.X, vp.Y, inset.Min.X, inset.Min.Y)
@@ -5477,7 +6301,7 @@ local function toast(title: string, msg: string)
         end)
 end
 
-local dim = mk("Frame", { Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, Visible = false }, gui)
+local dim = mk("Frame", { Name = "DimLayar", Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, Visible = false }, gui)
 local panelHolder = mk("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.5, 0), Size = UDim2.fromScale(0.94, 0.88), BackgroundColor3 = warna(UIStyle.Latar) }, dim)
 round(panelHolder, 12)
 mk("UISizeConstraint", { MinSize = Vector2.new(300, 240), MaxSize = Vector2.new(UIStyle.LebarPanelMaks, UIStyle.TinggiPanelMaks) }, panelHolder)
@@ -5621,24 +6445,27 @@ end
 
 masukBtn.Activated:Connect(function()
         local ok, msg = Net.get("DuniaAct"):InvokeServer("masuk")
-        toast(ok and "Gerbang Dunia" or "Gagal", msg)
         if ok then
+                closePanel()
                 syncState()
         end
+        toast(ok and "Gerbang Dunia" or "Gagal", msg)
 end)
 pulangBtn.Activated:Connect(function()
         local ok, msg = Net.get("DuniaAct"):InvokeServer("pulang")
-        toast(ok and "Pulang" or "Gagal", msg)
         if ok then
+                closePanel()
                 syncState()
         end
+        toast(ok and "Pulang" or "Gagal", msg)
 end)
 kunjungiBtn.Activated:Connect(function()
         local ok, msg = Net.get("DuniaAct"):InvokeServer("kunjungi", kunjungiNama.Text)
-        toast(ok and "Kunjungan" or "Gagal", msg)
         if ok then
+                closePanel()
                 syncState()
         end
+        toast(ok and "Kunjungan" or "Gagal", msg)
 end)
 
 travelBtn.Activated:Connect(function()
@@ -5749,12 +6576,97 @@ local function refreshToko()
         end
 end
 
+local modalDim = mk("Frame", { Name = "ModalBeli", Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.5, Visible = false }, gui)
+local modalBox = mk("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.5, 0), Size = UDim2.new(0.88, 0, 0, 248), BackgroundColor3 = warna(UIStyle.Latar) }, modalDim)
+round(modalBox, 12)
+mk("UISizeConstraint", { MinSize = Vector2.new(280, 220), MaxSize = Vector2.new(420, 320) }, modalBox)
+local modalTitle = mk("TextLabel", { Size = UDim2.new(1, -24, 0, 30), Position = UDim2.new(0, 12, 0, 10), BackgroundTransparency = 1, Text = "Konfirmasi Pembelian", TextSize = UIStyle.UkuranJudul, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left }, modalBox)
+local modalIsi = mk("Frame", { Size = UDim2.new(1, -24, 1, -110), Position = UDim2.new(0, 12, 0, 46), BackgroundTransparency = 1 }, modalBox)
+mk("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, modalIsi)
+local modalYa = mk("TextButton", { Size = UDim2.new(0.5, -9, 0, 42), Position = UDim2.new(0, 12, 1, -54), BackgroundColor3 = warna(UIStyle.Hijau), Text = "Ya, Beli", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = Color3.new(1, 1, 1) }, modalBox)
+round(modalYa, UIStyle.SudutKecil)
+local modalBatal = mk("TextButton", { Size = UDim2.new(0.5, -9, 0, 42), Position = UDim2.new(0.5, 9, 1, -54), BackgroundColor3 = warna(UIStyle.PermukaanAktif), Text = "Batal", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks) }, modalBox)
+round(modalBatal, UIStyle.SudutKecil)
+local modalOke = mk("TextButton", { Size = UDim2.new(1, -24, 0, 42), Position = UDim2.new(0, 12, 1, -54), BackgroundColor3 = warna(UIStyle.Hijau), Text = "Oke", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = Color3.new(1, 1, 1), Visible = false }, modalBox)
+round(modalOke, UIStyle.SudutKecil)
+
+local konfirmPackId: string? = nil
+
+local function bersihkanModalIsi()
+        for _, c in ipairs(modalIsi:GetChildren()) do
+                if c:IsA("Frame") or c:IsA("TextLabel") or c:IsA("TextButton") then
+                        c:Destroy()
+                end
+        end
+end
+
+local function tutupModal()
+        konfirmPackId = nil
+        modalDim.Visible = false
+end
+
+local function aturModalTombol(mode: string)
+        modalYa.Visible = mode == "konfirmasi"
+        modalBatal.Visible = mode == "konfirmasi"
+        modalOke.Visible = mode == "struk"
+end
+
+local function bukaStrukBeli(rows: { any }, total: number)
+        bersihkanModalIsi()
+        modalTitle.Text = "Pembelian Berhasil"
+        for _, r in ipairs(rows) do
+                local baris = mk("Frame", { Size = UDim2.new(1, 0, 0, 36), BackgroundColor3 = warna(UIStyle.Permukaan) }, modalIsi)
+                round(baris, UIStyle.SudutKecil)
+                ikonSlot(baris, { kind = "benih", id = r.id, count = r.count })
+                mk("TextLabel", { Size = UDim2.new(1, -100, 0, 36), Position = UDim2.new(0, 42, 0, 0), BackgroundTransparency = 1, Text = UIStyle.potong(r.nama), TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, baris)
+                mk("TextLabel", { Size = UDim2.new(0, 52, 0, 36), Position = UDim2.new(1, -56, 0, 0), BackgroundTransparency = 1, Text = "x" .. tostring(r.count), TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Aksen), TextXAlignment = Enum.TextXAlignment.Right }, baris)
+        end
+        mk("TextLabel", { Size = UDim2.new(1, 0, 0, 24), BackgroundTransparency = 1, Text = "Total " .. fmt(total) .. " Micda · benih sudah masuk tas", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left }, modalIsi)
+        aturModalTombol("struk")
+        modalDim.Visible = true
+end
+
+local function bukaKonfirmasiBeli(packId: string)
+        local pack = CropData.Packs[packId]
+        if not pack then
+                return
+        end
+        bersihkanModalIsi()
+        konfirmPackId = packId
+        modalTitle.Text = "Konfirmasi Pembelian"
+        mk("TextLabel", { Size = UDim2.new(1, 0, 0, 24), BackgroundTransparency = 1, Text = "Pack " .. (packId == "rare" and "Rare" or "Common"), TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 1 }, modalIsi)
+        mk("TextLabel", { Size = UDim2.new(1, 0, 0, 20), BackgroundTransparency = 1, Text = tostring(pack.count) .. " benih acak kategori " .. packId, TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 2 }, modalIsi)
+        mk("TextLabel", { Size = UDim2.new(1, 0, 0, 24), BackgroundTransparency = 1, Text = "Harga: " .. fmt(pack.price) .. " Micda", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Aksen), TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 3 }, modalIsi)
+        mk("TextLabel", { Size = UDim2.new(1, 0, 0, 36), BackgroundTransparency = 1, Text = "Ya = benih langsung dirapatkan server dan masuk tas.", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true, LayoutOrder = 4 }, modalIsi)
+        aturModalTombol("konfirmasi")
+        modalDim.Visible = true
+end
+
+modalBatal.Activated:Connect(tutupModal)
+modalOke.Activated:Connect(tutupModal)
+modalYa.Activated:Connect(function()
+        local packId = konfirmPackId
+        if not packId then
+                return
+        end
+        tutupModal()
+        task.spawn(function()
+                local ok, msg, struk = Net.get("ShopAct"):InvokeServer("buy", packId)
+                local pack = CropData.Packs[packId]
+                if ok and type(struk) == "table" and pack then
+                        syncState()
+                        bukaStrukBeli(struk, pack.price)
+                else
+                        toast(ok and "Pembelian" or "Gagal", tostring(msg))
+                end
+        end)
+end)
+
 local function buyBtn(parent: Frame, text: string, posX: number, packId: string)
         local btn = mk("TextButton", { Position = UDim2.new(posX, 6, 0, 8), Size = UDim2.new(0.5, -18, 1, -16), BackgroundColor3 = warna(UIStyle.Hijau), Text = text, TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = Color3.new(1, 1, 1), TextWrapped = true }, parent)
         round(btn, UIStyle.SudutKecil)
         btn.Activated:Connect(function()
-                local ok, msg = Net.get("ShopAct"):InvokeServer("buy", packId)
-                toast(ok and "Pembelian" or "Gagal", msg)
+                bukaKonfirmasiBeli(packId)
         end)
 end
 
@@ -5841,7 +6753,8 @@ local statusTab = mk("Frame", { Size = UDim2.new(1, 0, 1, 0), BackgroundTranspar
 local statusSummary = mk("TextLabel", { Size = UDim2.new(1, -100, 0, 26), Position = UDim2.new(0, 2, 0, 0), BackgroundTransparency = 1, Text = "", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, statusTab)
 local statusRefresh = mk("TextButton", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, 0), Size = UDim2.new(0, 92, 0, 26), BackgroundColor3 = warna(UIStyle.PermukaanAktif), Text = "Perbarui", TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Teks) }, statusTab)
 round(statusRefresh, UIStyle.SudutKecil)
-local statusList = mk("ScrollingFrame", { Size = UDim2.new(1, 0, 1, -34), Position = UDim2.new(0, 0, 0, 32), BackgroundTransparency = 1, ScrollBarThickness = 6, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(0, 0, 0, 0) }, statusTab)
+mk("TextLabel", { Size = UDim2.new(1, -8, 0, 30), Position = UDim2.new(0, 2, 0, 27), BackgroundTransparency = 1, Text = "Ambil hasil panen segera dan jangan biarkan tergeletak terlalu lama karena bisa hilang!", TextWrapped = true, TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Kuning), TextXAlignment = Enum.TextXAlignment.Left }, statusTab)
+local statusList = mk("ScrollingFrame", { Size = UDim2.new(1, 0, 1, -94), Position = UDim2.new(0, 0, 0, 60), BackgroundTransparency = 1, ScrollBarThickness = 6, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(0, 0, 0, 0) }, statusTab)
 mk("UIListLayout", { Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder }, statusList)
 
 local tabAktif = "tanam"
@@ -6385,12 +7298,15 @@ local function RUN_init_server()
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local UangLogic = MOD_UangLogic
 local Net = MOD_Remotes
 
 local Modules = script.Modules
 local DevCodeVault = MOD_DevCodeVault
 local RateLimit = MOD_RateLimit
+local AuditService = MOD_AuditService
 local DataService = MOD_DataService
+local CurrencyService = MOD_CurrencyService
 local TasService = MOD_TasService
 local LandService = MOD_LandService
 local PlotService = MOD_PlotService
@@ -6408,10 +7324,14 @@ local function notify(player: Player, title: string, msg: string)
         Net.get("Notify"):FireClient(player, title, msg)
 end
 
+CurrencyService.bind({ Data = DataService, Audit = AuditService })
+
 local deps = {
         Land = LandService,
         Tas = TasService,
         Data = DataService,
+        Uang = CurrencyService,
+        Audit = AuditService,
         Net = Net,
         Notify = notify,
         Plot = PlotService,
@@ -6500,13 +7420,13 @@ local function applySpawn(player: Player)
 end
 
 local function enterServer(player: Player)
-        local ok = DataService.load(player)
+        local ok, alasan = DataService.load(player)
+        local d = DataService.get(player)
         local leaderstats = Instance.new("Folder")
         leaderstats.Name = "leaderstats"
         local micda = Instance.new("IntValue")
         micda.Name = "Micda"
-        local d = DataService.get(player)
-        micda.Value = d and math.floor(d.m) or 0
+        micda.Value = d and UangLogic.saldo(d.u) or 0
         micda.Parent = leaderstats
         leaderstats.Parent = player
         applySpawn(player)
@@ -6515,6 +7435,9 @@ local function enterServer(player: Player)
                 if player.Parent then
                         if ok then
                                 notify(player, "Pusat Kota", "Selamat datang! Lewati Gerbang Dunia atau tombol Masuk untuk ke duniamu.")
+                        elseif alasan == "kunci" then
+                                AuditService.catat(player, "sesi_ganda", "load")
+                                notify(player, "Mode Sesi", "Akunmu sedang aktif di server lain. Progres di sini tidak tersimpan.")
                         else
                                 notify(player, "Mode Sesi", "Progres sementara hanya tersimpan di sesi ini.")
                         end
@@ -6531,20 +7454,28 @@ for _, p in ipairs(Players:GetPlayers()) do
         task.spawn(onPlayerAdded, p)
 end
 
-Players.PlayerRemoving:Connect(function(player)
+local function tutupSesi(player: Player)
         TanamService.leave(player)
         ZonaService.leaveGame(player)
         DataService.save(player)
         RateLimit.clear(player.UserId)
+        AuditService.bersih(player.UserId)
         DataService.drop(player)
-end)
+end
+
+Players.PlayerRemoving:Connect(tutupSesi)
 
 game:BindToClose(function()
         ZonaService.shutdown()
         for _, p in ipairs(Players:GetPlayers()) do
-                DataService.save(p)
+                tutupSesi(p)
         end
 end)
+
+local function lajuDitolak(player: Player, kunci: string)
+        AuditService.catat(player, "laju", kunci)
+        return false, "Terlalu cepat."
+end
 
 Net.get("GetState").OnServerInvoke = function(player)
         local d = DataService.get(player)
@@ -6558,7 +7489,7 @@ Net.get("GetState").OnServerInvoke = function(player)
                 role = lahan and "pemilik" or "tamu"
         end
         return {
-                micda = math.floor(d.m),
+                micda = UangLogic.saldo(d.u),
                 tas = d.t,
                 lahan = lahan,
                 zone = zone,
@@ -6569,31 +7500,37 @@ end
 
 Net.get("DuniaAct").OnServerInvoke = function(player, action, arg)
         if not RateLimit.allow(player.UserId, "dunia", 2, 3) then
-                return false, "Terlalu cepat."
+                return lajuDitolak(player, "dunia")
         end
         if action == "masuk" then
                 return ZonaService.masuk(player)
         elseif action == "kunjungi" then
+                if type(arg) ~= "string" then
+                        AuditService.catat(player, "argumen", "kunjungi")
+                        return false, "Nama tidak sah."
+                end
                 return ZonaService.visit(player, arg)
         elseif action == "pulang" then
                 return ZonaService.pulang(player)
         end
+        AuditService.catat(player, "argumen", "dunia:" .. tostring(action))
         return false, "Aksi tidak dikenal."
 end
 
 Net.get("PlotAct").OnServerInvoke = function(player, idx, action)
         if not RateLimit.allow(player.UserId, "punch", 10, 14) then
-                return false, "Terlalu cepat."
+                return lajuDitolak(player, "punch")
         end
         if action == "punch" then
                 return PlotService.punch(player, idx)
         end
+        AuditService.catat(player, "argumen", "plot:" .. tostring(action))
         return false, "Aksi tidak dikenal."
 end
 
 Net.get("TanamAct").OnServerInvoke = function(player, action, a, b)
         if not RateLimit.allow(player.UserId, "tanam", 3, 6) then
-                return false, "Terlalu cepat."
+                return lajuDitolak(player, "tanam")
         end
         if action == "start" then
                 return TanamService.start(player, a, b)
@@ -6606,24 +7543,26 @@ Net.get("TanamAct").OnServerInvoke = function(player, action, a, b)
         elseif action == "batal" then
                 return TanamService.batal(player)
         end
+        AuditService.catat(player, "argumen", "tanam:" .. tostring(action))
         return false, "Aksi tidak dikenal."
 end
 
 Net.get("GudangAct").OnServerInvoke = function(player, action, a, b)
         if not RateLimit.allow(player.UserId, "gudang", 3, 6) then
-                return false, "Terlalu cepat."
+                return lajuDitolak(player, "gudang")
         end
         if action == "simpan" then
                 return GudangService.simpan(player, a, b)
         elseif action == "ambil" then
                 return GudangService.ambil(player, a, b)
         end
+        AuditService.catat(player, "argumen", "gudang:" .. tostring(action))
         return false, "Aksi tidak dikenal."
 end
 
 Net.get("SmashAct").OnServerInvoke = function(player, action, arg)
         if not RateLimit.allow(player.UserId, "smash", 5, 8) then
-                return false, "Terlalu cepat."
+                return lajuDitolak(player, "smash")
         end
         local deny = ZonaService.mutationDeny(player)
         if deny then
@@ -6636,18 +7575,20 @@ Net.get("SmashAct").OnServerInvoke = function(player, action, arg)
         elseif action == "take" then
                 return SmashService.take(player, arg)
         end
+        AuditService.catat(player, "argumen", "smash:" .. tostring(action))
         return false, "Aksi tidak dikenal."
 end
 
 Net.get("ShopAct").OnServerInvoke = function(player, action, a, b)
         if not RateLimit.allow(player.UserId, "shop", 5, 10) then
-                return false, "Terlalu cepat."
+                return lajuDitolak(player, "shop")
         end
         if action == "buy" then
                 return ShopService.buy(player, a)
         elseif action == "sell" then
                 return ShopService.sell(player, a, b)
         end
+        AuditService.catat(player, "argumen", "shop:" .. tostring(action))
         return false, "Aksi tidak dikenal."
 end
 
@@ -6657,6 +7598,7 @@ Net.get("RedeemDevCode").OnServerInvoke = function(player, code)
                 return false, "Data belum siap."
         end
         if type(code) ~= "string" or code ~= DevCodeVault.CODE then
+                AuditService.catat(player, "argumen", "kode_salah")
                 return false, "Kode salah."
         end
         if d.dev then
@@ -6671,7 +7613,7 @@ end
 DataService.startLoops()
 ZonaService.startLoops()
 
-print("[AKIOMIDA] Papan Tanam, Combine Seed, panen Punch, dan Gudang siap dalam satu server.")
+print("[AKIOMIDA] Server-authoritative: CurrencyService, klaim atomik, kunci sesi, ledger siap.")
 
 end
 
@@ -6940,7 +7882,7 @@ check("Tidak ada popup Plot Tanam", popupPlot == nil, popupPlot and popupPlot.Te
 local instruksiGabung = findGui(gui, "TextLabel", "gabung benih terjadi")
 check("Tidak ada teks instruksi gabung di panel tas", instruksiGabung == nil, instruksiGabung and instruksiGabung.Text or "-")
 
-section("Toko Benih: beli benih tetap jalan")
+section("Toko Benih: konfirmasi dulu, struk kemudian")
 moveTo(P1, 8, 4, -46)
 local kasirFired = firePrompt(dunia, { object = "Kasir" }, P1)
 check("Prompt kasir toko bisa dipicu", kasirFired)
@@ -6951,8 +7893,48 @@ if buyCommon then
         buyCommon.Activated:Fire()
         Stub.Scheduler.advance(0.1)
 end
+check("Popup konfirmasi muncul (tidak langsung beli)", findGui(gui, "TextLabel", "Konfirmasi Pembelian") ~= nil, "-")
+check("Isi pack & harga tampil di konfirmasi", findGui(gui, "TextLabel", "3 benih acak") ~= nil and findGui(gui, "TextLabel", "Harga: 2.400 Micda") ~= nil, "-")
+check("Micda belum terpotong sebelum Ya", ls and ls:FindFirstChild("Micda").Value == 900000, tostring(ls and ls:FindFirstChild("Micda").Value))
+local batalBtn = findGui(gui, "TextButton", "Batal")
+check("Tombol Batal tersedia", batalBtn ~= nil)
+if batalBtn then
+        batalBtn.Activated:Fire()
+        Stub.Scheduler.advance(0.1)
+end
+check("Batal = konfirmasi hilang & saldo utuh", findGui(gui, "TextLabel", "Konfirmasi Pembelian") == nil and ls and ls:FindFirstChild("Micda").Value == 900000, "-")
+if buyCommon then
+        buyCommon.Activated:Fire()
+        Stub.Scheduler.advance(0.1)
+end
+local yaBtn = findGui(gui, "TextButton", "Ya, Beli")
+check("Tombol Ya, Beli tersedia", yaBtn ~= nil)
+if yaBtn then
+        yaBtn.Activated:Fire()
+        Stub.Scheduler.advance(0.2)
+end
 local micdaAfterBuy = ls and ls:FindFirstChild("Micda") and ls:FindFirstChild("Micda").Value
-check("Beli Pack Common berhasil (900.000 - 2.400 = 897.600)", micdaAfterBuy == 897600, tostring(micdaAfterBuy))
+check("Beli setelah Ya (900.000 - 2.400 = 897.600)", micdaAfterBuy == 897600, tostring(micdaAfterBuy))
+check("Popup struk isi benih muncul", findGui(gui, "TextLabel", "Pembelian Berhasil") ~= nil, "-")
+check("Struk memuat daftar benih & total", findGui(gui, "TextLabel", "Total 2.400 Micda") ~= nil and (function()
+        local m = gui:FindFirstChild("ModalBeli")
+        if not m then
+                return false
+        end
+        for _, d in ipairs(m:GetDescendants()) do
+                if d:IsA("TextLabel") and string.match(d.Text, "^x%d+$") then
+                        return true
+                end
+        end
+        return false
+end)(), "-")
+local okeBtn = findGui(gui, "TextButton", "Oke")
+check("Tombol Oke struk tersedia", okeBtn ~= nil)
+if okeBtn then
+        okeBtn.Activated:Fire()
+        Stub.Scheduler.advance(0.1)
+end
+check("Struk tertutup setelah Oke", findGui(gui, "TextLabel", "Pembelian Berhasil") == nil, "-")
 check("3 benih acak masuk tas", tasCount(P1, "benih", "wortel") >= 25 and (function()
         local st = serverCall("GetState", P1)
         local n = 0
@@ -6968,12 +7950,15 @@ section("Gerbang Dunia: masuk ke lahan lewat UI")
 moveTo(P1, 0, 5, 20)
 firePrompt(dunia, { action = "Dunia-ku" }, P1)
 Stub.Scheduler.advance(0.1)
-local masukBtn = findGui(gui, "TextButton", "Masuk Dunia")
+local dimKota = gui:FindFirstChild("DimLayar")
+check("Pop up Gerbang Dunia terbuka", dimKota ~= nil and dimKota.Visible == true, dimKota and tostring(dimKota.Visible) or "DimLayar hilang")
+local masukBtn = dimKota and findGui(dimKota, "TextButton", "Masuk Dunia-ku")
 check("Tombol Masuk Dunia-ku tampil di panel", masukBtn ~= nil)
 if masukBtn then
         masukBtn.Activated:Fire()
         Stub.Scheduler.advance(0.5)
 end
+check("Pop up gerbang langsung hilang setelah pilih", dimKota ~= nil and dimKota.Visible == false, dimKota and tostring(dimKota.Visible) or "-")
 local r1 = rootOf(P1)
 check("Pemain terbangun instan di dunia lahan (X > 5000)", r1 and r1.Position.X > 5000, r1 and tostring(r1.Position) or "tanpa karakter")
 local st = serverCall("GetState", P1)
@@ -7317,12 +8302,15 @@ check("Sampai pusat kota lagi", r2 and math.abs(r2.Position.X) < 3 and math.abs(
 burn(1.2)
 firePrompt(dunia, { action = "Dunia-ku" }, P1)
 Stub.Scheduler.advance(0.1)
-masukBtn = findGui(gui, "TextButton", "Masuk Dunia")
+local dimBalik = gui:FindFirstChild("DimLayar")
+check("Panel gerbang terbuka lagi", dimBalik ~= nil and dimBalik.Visible == true, dimBalik and tostring(dimBalik.Visible) or "DimLayar hilang")
+masukBtn = dimBalik and findGui(dimBalik, "TextButton", "Masuk Dunia-ku")
 check("Panel gerbang terbuka lagi dengan tombol masuk", masukBtn ~= nil)
 if masukBtn then
         masukBtn.Activated:Fire()
         Stub.Scheduler.advance(0.6)
 end
+check("Pop up gerbang tertutup lagi setelah balik dunia", dimBalik ~= nil and dimBalik.Visible == false, dimBalik and tostring(dimBalik.Visible) or "-")
 local r3 = rootOf(P1)
 check("BALIK ke dunia lahan sukses", r3 and r3.Position.X > 5000, r3 and tostring(r3.Position) or "-")
 local labelBalik = findGui(dunia, "TextLabel", "TERTANAM 17/500")

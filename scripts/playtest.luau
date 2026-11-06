@@ -267,7 +267,7 @@ check("Tidak ada popup Plot Tanam", popupPlot == nil, popupPlot and popupPlot.Te
 local instruksiGabung = findGui(gui, "TextLabel", "gabung benih terjadi")
 check("Tidak ada teks instruksi gabung di panel tas", instruksiGabung == nil, instruksiGabung and instruksiGabung.Text or "-")
 
-section("Toko Benih: beli benih tetap jalan")
+section("Toko Benih: konfirmasi dulu, struk kemudian")
 moveTo(P1, 8, 4, -46)
 local kasirFired = firePrompt(dunia, { object = "Kasir" }, P1)
 check("Prompt kasir toko bisa dipicu", kasirFired)
@@ -278,8 +278,48 @@ if buyCommon then
         buyCommon.Activated:Fire()
         Stub.Scheduler.advance(0.1)
 end
+check("Popup konfirmasi muncul (tidak langsung beli)", findGui(gui, "TextLabel", "Konfirmasi Pembelian") ~= nil, "-")
+check("Isi pack & harga tampil di konfirmasi", findGui(gui, "TextLabel", "3 benih acak") ~= nil and findGui(gui, "TextLabel", "Harga: 2.400 Micda") ~= nil, "-")
+check("Micda belum terpotong sebelum Ya", ls and ls:FindFirstChild("Micda").Value == 900000, tostring(ls and ls:FindFirstChild("Micda").Value))
+local batalBtn = findGui(gui, "TextButton", "Batal")
+check("Tombol Batal tersedia", batalBtn ~= nil)
+if batalBtn then
+        batalBtn.Activated:Fire()
+        Stub.Scheduler.advance(0.1)
+end
+check("Batal = konfirmasi hilang & saldo utuh", findGui(gui, "TextLabel", "Konfirmasi Pembelian") == nil and ls and ls:FindFirstChild("Micda").Value == 900000, "-")
+if buyCommon then
+        buyCommon.Activated:Fire()
+        Stub.Scheduler.advance(0.1)
+end
+local yaBtn = findGui(gui, "TextButton", "Ya, Beli")
+check("Tombol Ya, Beli tersedia", yaBtn ~= nil)
+if yaBtn then
+        yaBtn.Activated:Fire()
+        Stub.Scheduler.advance(0.2)
+end
 local micdaAfterBuy = ls and ls:FindFirstChild("Micda") and ls:FindFirstChild("Micda").Value
-check("Beli Pack Common berhasil (900.000 - 2.400 = 897.600)", micdaAfterBuy == 897600, tostring(micdaAfterBuy))
+check("Beli setelah Ya (900.000 - 2.400 = 897.600)", micdaAfterBuy == 897600, tostring(micdaAfterBuy))
+check("Popup struk isi benih muncul", findGui(gui, "TextLabel", "Pembelian Berhasil") ~= nil, "-")
+check("Struk memuat daftar benih & total", findGui(gui, "TextLabel", "Total 2.400 Micda") ~= nil and (function()
+        local m = gui:FindFirstChild("ModalBeli")
+        if not m then
+                return false
+        end
+        for _, d in ipairs(m:GetDescendants()) do
+                if d:IsA("TextLabel") and string.match(d.Text, "^x%d+$") then
+                        return true
+                end
+        end
+        return false
+end)(), "-")
+local okeBtn = findGui(gui, "TextButton", "Oke")
+check("Tombol Oke struk tersedia", okeBtn ~= nil)
+if okeBtn then
+        okeBtn.Activated:Fire()
+        Stub.Scheduler.advance(0.1)
+end
+check("Struk tertutup setelah Oke", findGui(gui, "TextLabel", "Pembelian Berhasil") == nil, "-")
 check("3 benih acak masuk tas", tasCount(P1, "benih", "wortel") >= 25 and (function()
         local st = serverCall("GetState", P1)
         local n = 0
@@ -295,12 +335,15 @@ section("Gerbang Dunia: masuk ke lahan lewat UI")
 moveTo(P1, 0, 5, 20)
 firePrompt(dunia, { action = "Dunia-ku" }, P1)
 Stub.Scheduler.advance(0.1)
-local masukBtn = findGui(gui, "TextButton", "Masuk Dunia")
+local dimKota = gui:FindFirstChild("DimLayar")
+check("Pop up Gerbang Dunia terbuka", dimKota ~= nil and dimKota.Visible == true, dimKota and tostring(dimKota.Visible) or "DimLayar hilang")
+local masukBtn = dimKota and findGui(dimKota, "TextButton", "Masuk Dunia-ku")
 check("Tombol Masuk Dunia-ku tampil di panel", masukBtn ~= nil)
 if masukBtn then
         masukBtn.Activated:Fire()
         Stub.Scheduler.advance(0.5)
 end
+check("Pop up gerbang langsung hilang setelah pilih", dimKota ~= nil and dimKota.Visible == false, dimKota and tostring(dimKota.Visible) or "-")
 local r1 = rootOf(P1)
 check("Pemain terbangun instan di dunia lahan (X > 5000)", r1 and r1.Position.X > 5000, r1 and tostring(r1.Position) or "tanpa karakter")
 local st = serverCall("GetState", P1)
@@ -644,12 +687,15 @@ check("Sampai pusat kota lagi", r2 and math.abs(r2.Position.X) < 3 and math.abs(
 burn(1.2)
 firePrompt(dunia, { action = "Dunia-ku" }, P1)
 Stub.Scheduler.advance(0.1)
-masukBtn = findGui(gui, "TextButton", "Masuk Dunia")
+local dimBalik = gui:FindFirstChild("DimLayar")
+check("Panel gerbang terbuka lagi", dimBalik ~= nil and dimBalik.Visible == true, dimBalik and tostring(dimBalik.Visible) or "DimLayar hilang")
+masukBtn = dimBalik and findGui(dimBalik, "TextButton", "Masuk Dunia-ku")
 check("Panel gerbang terbuka lagi dengan tombol masuk", masukBtn ~= nil)
 if masukBtn then
         masukBtn.Activated:Fire()
         Stub.Scheduler.advance(0.6)
 end
+check("Pop up gerbang tertutup lagi setelah balik dunia", dimBalik ~= nil and dimBalik.Visible == false, dimBalik and tostring(dimBalik.Visible) or "-")
 local r3 = rootOf(P1)
 check("BALIK ke dunia lahan sukses", r3 and r3.Position.X > 5000, r3 and tostring(r3.Position) or "-")
 local labelBalik = findGui(dunia, "TextLabel", "TERTANAM 17/500")

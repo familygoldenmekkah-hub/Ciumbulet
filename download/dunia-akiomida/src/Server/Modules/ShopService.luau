@@ -1,6 +1,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local CropData = require(ReplicatedStorage.Shared.CropData)
+local StrukBeli = require(ReplicatedStorage.Shared.StrukBeli)
 
 local ShopService = {}
 
@@ -30,7 +31,7 @@ function ShopService.near(player, maxDist: number): boolean
         return (root.Position - shopPoint).Magnitude <= maxDist
 end
 
-function ShopService.buy(player, packId: any): (boolean, string)
+function ShopService.buy(player, packId: any): (boolean, string, { any }?)
         if type(packId) ~= "string" then
                 return false, "Permintaan tidak sah."
         end
@@ -46,9 +47,11 @@ function ShopService.buy(player, packId: any): (boolean, string)
         end
         local pool = CropData.byRarity(packId)
         local items = {}
+        local picks = {}
         for _ = 1, pack.count do
                 local pick = pool[rng:NextInteger(1, #pool)]
                 table.insert(items, { kind = "benih", id = pick.id, count = 1 })
+                table.insert(picks, pick.id)
         end
         if not Tas.canFitBatch(player, items) then
                 return false, "Tas penuh! Kosongkan slot dulu."
@@ -62,7 +65,7 @@ function ShopService.buy(player, packId: any): (boolean, string)
                 Tas.add(player, it.kind, it.id, it.count)
                 table.insert(nama, CropData.byId[it.id].nama)
         end
-        return true, "Pack " .. packId .. ": " .. table.concat(nama, ", ")
+        return true, "Pack " .. packId .. ": " .. table.concat(nama, ", "), StrukBeli.rangkum(picks, CropData.byId)
 end
 
 function ShopService.sell(player, cropId: any, count: any): (boolean, string)

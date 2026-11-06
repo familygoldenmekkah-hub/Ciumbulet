@@ -1,5 +1,6 @@
 local CropData = require("./../src/Shared/CropData")
 local Recipes = require("./../src/Shared/Recipes")
+local StrukBeli = require("./../src/Shared/StrukBeli")
 local TasLogic = require("./../src/Shared/TasLogic")
 local Layout = require("./../src/Shared/Layout")
 
@@ -84,6 +85,32 @@ do
                 s.rare.hits == 10 and s.rare.seed == 0.30 and s.rare.blok == 0.15 and s.rare.micdaMin == 3 and s.rare.micdaMax == 9, "-")
         check("Pukul Epic 15x, benih 10%, blok 15%, Micda 9-19",
                 s.epic.hits == 15 and s.epic.seed == 0.10 and s.epic.blok == 0.15 and s.epic.micdaMin == 9 and s.epic.micdaMax == 19, "-")
+end
+
+print("--- Struk pembelian toko ---")
+do
+        check("Struk kosong bila tidak ada pick", #StrukBeli.rangkum({}, CropData.byId) == 0, "-")
+        local rows = StrukBeli.rangkum({ "gandum", "rye", "gandum" }, CropData.byId)
+        check("3 pick jadi 2 baris struk", #rows == 2, tostring(#rows))
+        check("Urutan baris sesuai kemunculan pertama", rows[1].id == "gandum" and rows[2].id == "rye", "-")
+        check("Jumlah baris teragregasi benar", rows[1].count == 2 and rows[2].count == 1, tostring(rows[1].count) .. "/" .. tostring(rows[2].count))
+        check("Nama baris memakai nama resmi tanaman", rows[1].nama == "Gandum" and rows[2].nama == "Rye", rows[1].nama .. "/" .. rows[2].nama)
+        local pool = CropData.byRarity("common")
+        local picks = {}
+        for _ = 1, CropData.Packs.common.count do
+                table.insert(picks, pool[math.random(1, #pool)].id)
+        end
+        local struk = StrukBeli.rangkum(picks, CropData.byId)
+        check("Total isi struk pack selalu = isi pack", StrukBeli.totalBaris(struk) == CropData.Packs.common.count, tostring(StrukBeli.totalBaris(struk)))
+        local kenal = true
+        for _, r in ipairs(struk) do
+                if not CropData.byId[r.id] or r.count < 1 then
+                        kenal = false
+                end
+        end
+        check("Semua baris struk benih dikenal & berjumlah positif", kenal, "-")
+        local rareStruk = StrukBeli.rangkum({ "plum", "plum", "plum" }, CropData.byId)
+        check("Struk pack rare konsisten", #rareStruk == 1 and rareStruk[1].id == "plum" and rareStruk[1].count == 3 and rareStruk[1].nama == "Plum", "-")
 end
 
 print("--- Resep gabung (8) ---")

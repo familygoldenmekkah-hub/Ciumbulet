@@ -216,7 +216,7 @@ local function toast(title: string, msg: string)
         end)
 end
 
-local dim = mk("Frame", { Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, Visible = false }, gui)
+local dim = mk("Frame", { Name = "DimLayar", Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, Visible = false }, gui)
 local panelHolder = mk("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.5, 0), Size = UDim2.fromScale(0.94, 0.88), BackgroundColor3 = warna(UIStyle.Latar) }, dim)
 round(panelHolder, 12)
 mk("UISizeConstraint", { MinSize = Vector2.new(300, 240), MaxSize = Vector2.new(UIStyle.LebarPanelMaks, UIStyle.TinggiPanelMaks) }, panelHolder)
@@ -360,24 +360,27 @@ end
 
 masukBtn.Activated:Connect(function()
         local ok, msg = Net.get("DuniaAct"):InvokeServer("masuk")
-        toast(ok and "Gerbang Dunia" or "Gagal", msg)
         if ok then
+                closePanel()
                 syncState()
         end
+        toast(ok and "Gerbang Dunia" or "Gagal", msg)
 end)
 pulangBtn.Activated:Connect(function()
         local ok, msg = Net.get("DuniaAct"):InvokeServer("pulang")
-        toast(ok and "Pulang" or "Gagal", msg)
         if ok then
+                closePanel()
                 syncState()
         end
+        toast(ok and "Pulang" or "Gagal", msg)
 end)
 kunjungiBtn.Activated:Connect(function()
         local ok, msg = Net.get("DuniaAct"):InvokeServer("kunjungi", kunjungiNama.Text)
-        toast(ok and "Kunjungan" or "Gagal", msg)
         if ok then
+                closePanel()
                 syncState()
         end
+        toast(ok and "Kunjungan" or "Gagal", msg)
 end)
 
 travelBtn.Activated:Connect(function()
@@ -488,12 +491,105 @@ local function refreshToko()
         end
 end
 
+local modalDim = mk("Frame", { Name = "ModalBeli", Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.5, Visible = false }, gui)
+local modalBox = mk("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.5, 0), Size = UDim2.new(0.88, 0, 0, 268), BackgroundColor3 = warna(UIStyle.Latar) }, modalDim)
+round(modalBox, 12)
+mk("UISizeConstraint", { MinSize = Vector2.new(280, 240), MaxSize = Vector2.new(420, 360) }, modalBox)
+local modalTitle = mk("TextLabel", { Size = UDim2.new(1, -24, 0, 30), Position = UDim2.new(0, 12, 0, 10), BackgroundTransparency = 1, Text = "Konfirmasi Pembelian", TextSize = UIStyle.UkuranJudul, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left }, modalBox)
+local modalIsi = mk("Frame", { Size = UDim2.new(1, -24, 1, -110), Position = UDim2.new(0, 12, 0, 46), BackgroundTransparency = 1 }, modalBox)
+mk("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, modalIsi)
+local modalYa = mk("TextButton", { Size = UDim2.new(0.5, -9, 0, 42), Position = UDim2.new(0, 12, 1, -54), BackgroundColor3 = warna(UIStyle.Hijau), Text = "Ya, Beli", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = Color3.new(1, 1, 1) }, modalBox)
+round(modalYa, UIStyle.SudutKecil)
+local modalBatal = mk("TextButton", { Size = UDim2.new(0.5, -9, 0, 42), Position = UDim2.new(0.5, 9, 1, -54), BackgroundColor3 = warna(UIStyle.PermukaanAktif), Text = "Batal", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks) }, modalBox)
+round(modalBatal, UIStyle.SudutKecil)
+local modalOke = mk("TextButton", { Size = UDim2.new(1, -24, 0, 42), Position = UDim2.new(0, 12, 1, -54), BackgroundColor3 = warna(UIStyle.Hijau), Text = "Oke", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = Color3.new(1, 1, 1), Visible = false }, modalBox)
+round(modalOke, UIStyle.SudutKecil)
+
+local konfirmPackId: string? = nil
+
+local function bersihkanModalIsi()
+        for _, c in ipairs(modalIsi:GetChildren()) do
+                if c:IsA("Frame") or c:IsA("TextLabel") or c:IsA("TextButton") then
+                        c:Destroy()
+                end
+        end
+end
+
+local function tutupModal()
+        konfirmPackId = nil
+        modalDim.Visible = false
+end
+
+local function aturModalTombol(mode: string)
+        modalYa.Visible = mode == "konfirmasi"
+        modalBatal.Visible = mode == "konfirmasi"
+        modalOke.Visible = mode == "struk"
+end
+
+local function bukaStrukBeli(rows: { any }, total: number)
+        bersihkanModalIsi()
+        modalTitle.Text = "Pembelian Berhasil"
+        local urutan = 0
+        for _, r in ipairs(rows) do
+                urutan += 1
+                local baris = mk("Frame", { Size = UDim2.new(1, 0, 0, 36), BackgroundColor3 = warna(UIStyle.Permukaan) }, modalIsi)
+                round(baris, UIStyle.SudutKecil)
+                ikonSlot(baris, { kind = "benih", id = r.id, count = r.count })
+                mk("TextLabel", { Size = UDim2.new(1, -100, 0, 36), Position = UDim2.new(0, 42, 0, 0), BackgroundTransparency = 1, Text = UIStyle.potong(r.nama), TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, baris)
+                mk("TextLabel", { Size = UDim2.new(0, 52, 0, 36), Position = UDim2.new(1, -56, 0, 0), BackgroundTransparency = 1, Text = "x" .. tostring(r.count), TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Aksen), TextXAlignment = Enum.TextXAlignment.Right }, baris)
+                local skala = mk("UIScale", { Scale = 0.01 }, baris)
+                task.delay(0.07 * urutan, function()
+                        if baris.Parent then
+                                TweenService:Create(skala, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+                        end
+                end)
+        end
+        mk("TextLabel", { Size = UDim2.new(1, 0, 0, 24), BackgroundTransparency = 1, Text = "Total " .. fmt(total) .. " Micda · benih sudah masuk tas", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left }, modalIsi)
+        aturModalTombol("struk")
+        modalDim.Visible = true
+end
+
+local function bukaKonfirmasiBeli(packId: string)
+        local pack = CropData.Packs[packId]
+        if not pack then
+                return
+        end
+        bersihkanModalIsi()
+        konfirmPackId = packId
+        modalTitle.Text = "Konfirmasi Pembelian"
+        mk("TextLabel", { Size = UDim2.new(1, 0, 0, 24), BackgroundTransparency = 1, Text = "Pack " .. (packId == "rare" and "Rare" or "Common"), TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 1 }, modalIsi)
+        mk("TextLabel", { Size = UDim2.new(1, 0, 0, 20), BackgroundTransparency = 1, Text = tostring(pack.count) .. " benih acak kategori " .. packId, TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 2 }, modalIsi)
+        mk("TextLabel", { Size = UDim2.new(1, 0, 0, 24), BackgroundTransparency = 1, Text = "Harga: " .. fmt(pack.price) .. " Micda", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Aksen), TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 3 }, modalIsi)
+        mk("TextLabel", { Size = UDim2.new(1, 0, 0, 36), BackgroundTransparency = 1, Text = "Ya = benih langsung dirapatkan server dan masuk tas.", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true, LayoutOrder = 4 }, modalIsi)
+        aturModalTombol("konfirmasi")
+        modalDim.Visible = true
+end
+
+modalBatal.Activated:Connect(tutupModal)
+modalOke.Activated:Connect(tutupModal)
+modalYa.Activated:Connect(function()
+        local packId = konfirmPackId
+        if not packId then
+                return
+        end
+        tutupModal()
+        task.spawn(function()
+                local ok, msg, struk = Net.get("ShopAct"):InvokeServer("buy", packId)
+                local pack = CropData.Packs[packId]
+                if ok and type(struk) == "table" and pack then
+                        syncState()
+                        bukaStrukBeli(struk, pack.price)
+                else
+                        toast(ok and "Pembelian" or "Gagal", tostring(msg))
+                end
+        end)
+end)
+
 local function buyBtn(parent: Frame, text: string, posX: number, packId: string)
         local btn = mk("TextButton", { Position = UDim2.new(posX, 6, 0, 8), Size = UDim2.new(0.5, -18, 1, -16), BackgroundColor3 = warna(UIStyle.Hijau), Text = text, TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = Color3.new(1, 1, 1), TextWrapped = true }, parent)
         round(btn, UIStyle.SudutKecil)
         btn.Activated:Connect(function()
-                local ok, msg = Net.get("ShopAct"):InvokeServer("buy", packId)
-                toast(ok and "Pembelian" or "Gagal", msg)
+                bukaKonfirmasiBeli(packId)
         end)
 end
 
