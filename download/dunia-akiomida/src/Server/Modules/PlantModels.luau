@@ -18,7 +18,8 @@ end
 local function part(model: Model, size: Vector3, cf: CFrame, color: Color3, shape: Enum.PartType?): Part
         local p = Instance.new("Part")
         p.Anchored = true
-        p.CanQuery = false
+        p.CanQuery = true
+        p.CanTouch = false
         p.CanCollide = false
         p.Size = size
         p.CFrame = cf
@@ -170,12 +171,26 @@ function PlantModels.setSiap(model: Model, info: any)
         model:SetAttribute("Siap", true)
 end
 
-function PlantModels.efekPukul(model: Model, tier: number)
+function PlantModels.efekKena(model: Model, titik: Vector3?, tier: number)
         local target: BasePart? = nil
-        for _, d in ipairs(model:GetDescendants()) do
-                if d:IsA("BasePart") and d:GetAttribute("Buah") then
-                        target = d
-                        break
+        if titik then
+                local terdekat = math.huge
+                for _, d in ipairs(model:GetDescendants()) do
+                        if d:IsA("BasePart") then
+                                local jarak = (d.Position - titik).Magnitude
+                                if jarak < terdekat then
+                                        terdekat = jarak
+                                        target = d
+                                end
+                        end
+                end
+        end
+        if not target then
+                for _, d in ipairs(model:GetDescendants()) do
+                        if d:IsA("BasePart") and d:GetAttribute("Buah") then
+                                target = d
+                                break
+                        end
                 end
         end
         if not target then
@@ -192,13 +207,10 @@ function PlantModels.efekPukul(model: Model, tier: number)
                         TweenService:Create(target, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = awal }):Play()
                 end
         end)
-        local snd = Instance.new("Sound")
-        snd.SoundId = "rbxasset://sounds/electronicpingshort.wav"
-        snd.Volume = 0.3 + 0.08 * tier
-        snd.PlaybackSpeed = 0.85
-        snd.Parent = target
-        snd:Play()
-        Debris:AddItem(snd, 1.2)
+        local titikLokal = target.CFrame:PointToObjectSpace(titik or target.Position)
+        local lampir = Instance.new("Attachment")
+        lampir.Position = titikLokal
+        lampir.Parent = target
         local pem = Instance.new("ParticleEmitter")
         pem.Color = ColorSequence.new(target.Color)
         pem.Lifetime = NumberRange.new(0.3, 0.6)
@@ -207,9 +219,16 @@ function PlantModels.efekPukul(model: Model, tier: number)
         pem.Size = NumberSequence.new(0.4, 0)
         pem.Transparency = NumberSequence.new(0.15, 1)
         pem.Enabled = false
-        pem.Parent = target
+        pem.Parent = lampir
         pem:Emit(6 + 4 * tier)
-        Debris:AddItem(pem, 1.2)
+        Debris:AddItem(lampir, 1.2)
+        local snd = Instance.new("Sound")
+        snd.SoundId = "rbxasset://sounds/electronicpingshort.wav"
+        snd.Volume = 0.3 + 0.08 * tier
+        snd.PlaybackSpeed = 0.85
+        snd.Parent = target
+        snd:Play()
+        Debris:AddItem(snd, 1.2)
 end
 
 return PlantModels

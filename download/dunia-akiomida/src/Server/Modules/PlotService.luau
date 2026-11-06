@@ -5,6 +5,7 @@ local CropData = require(ReplicatedStorage.Shared.CropData)
 local Layout = require(ReplicatedStorage.Shared.Layout)
 local PanenStatus = require(ReplicatedStorage.Shared.PanenStatus)
 local PukulLogic = require(ReplicatedStorage.Shared.PukulLogic)
+local ArahPukul = require(ReplicatedStorage.Shared.ArahPukul)
 local PlantModels = require(script.Parent.PlantModels)
 
 local PlotService = {}
@@ -89,6 +90,7 @@ function PlotService.buildGrid(index: number, parent: Instance?)
                 p.Position = Vector3.new(o.X + x, 1.2, o.Z + z)
                 p:SetAttribute("LahanIdx", index)
                 p:SetAttribute("PlotIdx", idx)
+                p.CanQuery = false
                 p.Parent = folder
         end
         tmpl:Destroy()
@@ -239,22 +241,96 @@ function PlotService.fillPlot(index: number, idx: number, cropId: string): boole
         return true
 end
 
+local function arahKarakter(player: Player, index: number): (BasePart?, Vector3, Vector3)
+        local char = player.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+        if not root then
+                return nil, Vector3.zero, Vector3.zero
+        end
+        local asal = (root.CFrame * CFrame.new(0, 0.8, 0)).Position
+        local arah = root.CFrame.LookVector
+        return root, asal, arah
+end
+
+local function sasaranRaycast(player: Player, index: number): (number?, Vector3?)
+        local folder = folders[index]
+        if not folder then
+                return nil, nil
+        end
+        local _, asal, arah = arahKarakter(player, index)
+        if asal == Vector3.zero then
+                return nil, nil
+        end
+        local params = RaycastParams.new()
+        params.FilterType = Enum.RaycastFilterType.Include
+        params.FilterDescendantsInstances = { folder }
+        local hasil = Workspace:Raycast(asal, arah * ArahPukul.Jangkauan, params)
+        if hasil then
+                local model = hasil.Instance
+                while model and model.Parent and not (model:IsA("Model") and string.sub(model.Name, 1, 8) == "Tanaman_") do
+                        model = model.Parent :: Instance
+                end
+                if model and model:IsA("Model") and model:GetAttribute("PlotIdx") ~= nil then
+                        return model:GetAttribute("PlotIdx"), hasil.Position
+                end
+        end
+        return nil, nil
+end
+
+local function sasaranKerucut(player: Player, index: number): (number?, Vector3?)
+        local pl = planted[index]
+        if not pl then
+                return nil, nil
+        end
+        local _, asal, arah = arahKarakter(player, index)
+        if asal == Vector3.zero then
+                return nil, nil
+        end
+        local daftar = {}
+        for idx in pairs(pl) do
+                local pos = plotPos(index, idx)
+                local info = CropData.byId[pl[idx].crop]
+                local b = info and CropData.Bentuk[info.id]
+                local radius = math.min(2.4, ((b and b.t or 2) * 0.5) + 0.8)
+                table.insert(daftar, { idx = idx, pos = { x = pos.X, y = 0, z = pos.Z }, radius = radius })
+        end
+        local asalT = { x = asal.X, y = 0, z = asal.Z }
+        local arahT = { x = arah.X, y = 0, z = arah.Z }
+        local pilih = ArahPukul.pilih(asalT, arahT, daftar)
+        if not pilih then
+                return nil, nil
+        end
+        local rec = planted[index][pilih.idx]
+        local info = CropData.byId[rec.crop]
+        local b = info and CropData.Bentuk[info.id]
+        local tinggi = math.min((b and b.t or 2) * 0.6, 2.4)
+        return pilih.idx, plotPos(index, pilih.idx) + Vector3.new(0, tinggi, 0)
+end
+
 function PlotService.punch(player: Player, idx: any): (boolean, string)
         local index = Land.landOf(player)
         if not index then
                 return false, "Kamu tidak punya lahan."
         end
-        if type(idx) ~= "number" or idx ~= idx or idx % 1 ~= 0 or idx < 0 or idx >= Layout.plotCount() then
-                return false, "Plot tidak sah."
+        local sasaran, titik = sasaranRaycast(player, index)
+        if sasaran == nil then
+                sasaran, titik = sasaranKerucut(player, index)
         end
+        if sasaran == nil then
+                return false, "Tidak ada tanaman di depanmu."
+        end
+        idx = sasaran
         local rec = planted[index] and planted[index][idx]
         if not rec then
                 return false, "Plot kosong."
         end
         local char = player.Character
         local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
-        if not root or (root.Position - plotPos(index, idx)).Magnitude > 26 then
+        if not root or (root.Position - plotPos(index, idx)).Magnitude > 18 then
                 return false, "Terlalu jauh. Dekati tanaman itu."
+        end
+        if titik == nil then
+                titik = plotPos(index, idx) + Vector3.new(0, 1.2, 0)
         end
         local t = now()
         local c = combo[player.UserId]
@@ -276,7 +352,7 @@ function PlotService.punch(player: Player, idx: any): (boolean, string)
                 local n, habis = PukulLogic.catat(rec.hits or 0, rec.lastHit or 0, t)
                 rec.hits = n
                 rec.lastHit = t
-                PlantModels.efekPukul(rec.model, tier)
+                PlantModels.efekKena(rec.model, titik, tier)
                 if habis then
                         rec.model:Destroy()
                         planted[index][idx] = nil
@@ -291,7 +367,11 @@ function PlotService.punch(player: Player, idx: any): (boolean, string)
         local y = CropData.Yield[info.rarity]
         local jumlah = rng:NextInteger(y.min, y.max)
         if Drop then
-                Drop.spawn(index, plotPos(index, idx) + Vector3.new(0, 2.6, 0), rec.crop, jumlah, c.n, tier)
+                local titikDrop = titik :: Vector3
+                if titikDrop.Y < 1.8 then
+                        titikDrop = Vector3.new(titikDrop.X, 1.8, titikDrop.Z)
+                end
+                Drop.spawn(index, titikDrop, rec.crop, jumlah, c.n, tier)
         end
         rec.model:Destroy()
         planted[index][idx] = nil

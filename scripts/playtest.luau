@@ -102,8 +102,8 @@ end
 
 local function pilihBenih(root, nama)
         for _, d in ipairs(root:GetDescendants()) do
-                if d:IsA("TextButton") and d.Text == "Pilih" and d.Parent then
-                        for _, c in ipairs(d.Parent:GetChildren()) do
+                if d:IsA("TextButton") and d.Text == "" then
+                        for _, c in ipairs(d:GetChildren()) do
                                 if c:IsA("TextLabel") and c.Text and string.find(c.Text, nama, 1, true) then
                                         d.Activated:Fire()
                                         return true
@@ -320,13 +320,77 @@ check("Judul panel Papan Tanam tampil", findGui(gui, "TextLabel", "Papan Tanam")
 check("Tab Tanam ada", findGui(gui, "TextButton", "Tanam") ~= nil, "-")
 check("Tab Combine Seed ada", findGui(gui, "TextButton", "Combine Seed") ~= nil, "-")
 check("Tab Status ada", findGui(gui, "TextButton", "Status") ~= nil, "-")
+check("Panel punya safe area atas (UIPadding >= 48)", (function()
+        for _, d in ipairs(gui:GetDescendants()) do
+                if d:IsA("UIPadding") and d.PaddingTop and d.PaddingTop.Offset and d.PaddingTop.Offset >= 48 then
+                        return true
+                end
+        end
+        return false
+end)(), "-")
+check("Panel berbasis skala + batas ukuran (UISizeConstraint)", (function()
+        for _, d in ipairs(gui:GetDescendants()) do
+                if d:IsA("UISizeConstraint") then
+                        return true
+                end
+        end
+        return false
+end)(), "-")
+check("Tombol angka 1/50/100/250/Maks tampil di tab Tanam", findGui(gui, "TextButton", "1") ~= nil and findGui(gui, "TextButton", "50") ~= nil and findGui(gui, "TextButton", "100") ~= nil and findGui(gui, "TextButton", "250") ~= nil and findGui(gui, "TextButton", "Maks") ~= nil, "-")
+check("Tab Combine: tombol Gabung tersembunyi saat tab Tanam", (function()
+        local g = findGui(gui, "TextButton", "Gabung")
+        while g and g.Parent do
+                if g.Visible == false then
+                        return true
+                end
+                g = g.Parent
+        end
+        return false
+end)(), "-")
+local tabGabungUI = findGui(gui, "TextButton", "Combine Seed")
+if tabGabungUI then
+        tabGabungUI.Activated:Fire()
+        Stub.Scheduler.advance(0.05)
+end
+check("Tab Combine: baris Benih A & B tampil", findGui(gui, "TextLabel", "Benih A") ~= nil and findGui(gui, "TextLabel", "Benih B") ~= nil, "-")
+check("Tab Combine: Mulai Tanam tersembunyi", (function()
+        local m = findGui(gui, "TextButton", "Mulai Tanam")
+        while m and m.Parent do
+                if m.Visible == false then
+                        return true
+                end
+                m = m.Parent
+        end
+        return false
+end)(), "-")
+local tabTanamUI
+for _, d in ipairs(gui:GetDescendants()) do
+        if d:IsA("TextButton") and d.Text == "Tanam" then
+                tabTanamUI = d
+                break
+        end
+end
+if tabTanamUI then
+        tabTanamUI.Activated:Fire()
+        Stub.Scheduler.advance(0.05)
+end
+check("Kembali ke tab Tanam: Mulai Tanam tampil lagi (daftar segar)", (function()
+        local m = findGui(gui, "TextButton", "Mulai Tanam")
+        while m and m.Parent do
+                if m.Visible == false then
+                        return false
+                end
+                m = m.Parent
+        end
+        return m ~= nil
+end)(), "-")
 
 section("Tanam lewat papan: 10 plot per soal, salah tertahan")
-check("Pilih benih Wortel di daftar", pilihBenih(gui, "Wortel"), "-")
-local jumlahBox = findTextBoxByPlaceholder(gui, "Jumlah")
-check("Kotak jumlah tampil", jumlahBox ~= nil)
-if jumlahBox then
-        jumlahBox.Text = "10"
+check("Pilih benih Wortel di daftar (klik baris)", pilihBenih(gui, "Wortel"), "-")
+local angka10 = findGui(gui, "TextButton", "10")
+check("Tombol angka 10 tampil", angka10 ~= nil)
+if angka10 then
+        angka10.Activated:Fire()
 end
 local mulaiBtn = findGui(gui, "TextButton", "Mulai Tanam")
 check("Tombol Mulai Tanam tampil", mulaiBtn ~= nil)
@@ -387,31 +451,53 @@ if t1 then
 end
 check("Buah berubah ke warna siap setelah matang", siapOk, "-")
 
-section("Punch siap panen: drop fisik + ambil dengan menyentuh")
+section("Punch presisi: tombol PUNCH asli + drop bentuk tanaman")
 burn(1.2)
 moveTo(P1, 5013, 5, 38)
-local okPunch, msgPunch = serverCall("PlotAct", P1, 0, "punch")
-check("Punch tanaman siap memberi drop", okPunch == true, tostring(msgPunch))
+Stub.Scheduler.advance(0.25)
+local tombolPunch = findGui(gui, "TextButton", "PUNCH")
+check("Tombol PUNCH bisa memukul tanaman di depan", tombolPunch ~= nil)
+if tombolPunch then
+        tombolPunch.Activated:Fire()
+        Stub.Scheduler.advance(0.5)
+end
 local drops = dunia and dunia:FindFirstChild("Drops_1", true)
-check("Folder drop hasil panen dibuat", drops ~= nil and #drops:GetChildren() >= 1, drops and tostring(#drops:GetChildren()) or "-")
-local dropPart = drops and drops:GetChildren()[1]
-check("Drop berisi atribut CropId", dropPart ~= nil and dropPart:GetAttribute("CropId") == "wortel", dropPart and tostring(dropPart:GetAttribute("CropId")) or "-")
-check("Drop tanpa label teks melayang", dropPart ~= nil and countClass(dropPart, "BillboardGui") == 0, "-")
+check("Tombol PUNCH memberi drop", drops ~= nil and #drops:GetChildren() >= 1, drops and tostring(#drops:GetChildren()) or "-")
+local dropModel = drops and drops:GetChildren()[1]
+local dropRoot = dropModel and dropModel:FindFirstChild("Hasil")
+check("Drop berupa model tanaman Hasil_wortel (bukan kotak)", dropModel ~= nil and dropModel:IsA("Model") and dropModel.Name == "Hasil_wortel" and dropRoot ~= nil, dropModel and dropModel.Name or "-")
+check("Drop wortel multi bagian sesuai bentuk", dropModel ~= nil and #dropModel:GetChildren() >= 3, dropModel and tostring(#dropModel:GetChildren()) or "-")
+check("Drop berisi atribut CropId", dropRoot ~= nil and dropRoot:GetAttribute("CropId") == "wortel", dropRoot and tostring(dropRoot:GetAttribute("CropId")) or "-")
+check("Warna drop = warna siap wortel", (function()
+        if not dropRoot then
+                return false
+        end
+        return math.abs(dropRoot.Color.r - 232 / 255) < 0.02 and math.abs(dropRoot.Color.g - 112 / 255) < 0.02 and math.abs(dropRoot.Color.b - 44 / 255) < 0.02
+end)(), "-")
+check("Drop tanpa label teks melayang", dropModel ~= nil and countClass(dropModel, "BillboardGui") == 0, "-")
 local wortelHasilSebelum = tasCount(P1, "hasil", "wortel")
-if dropPart then
-        dropPart.Touched:Fire(rootOf(P1))
+if dropRoot then
+        dropRoot.Touched:Fire(rootOf(P1))
         Stub.Scheduler.advance(1)
 end
 local wortelHasilSesudah = tasCount(P1, "hasil", "wortel")
 check("Drop masuk tas setelah disentuh", wortelHasilSesudah > wortelHasilSebelum, tostring(wortelHasilSebelum) .. " -> " .. tostring(wortelHasilSesudah))
+moveTo(P1, 5019, 5, 38)
+Stub.Scheduler.advance(0.15)
+local okPunch, msgPunch = serverCall("PlotAct", P1, 1, "punch")
+check("Punch presisi pindah sasaran tetap jalan", okPunch == true, tostring(msgPunch))
+local dropsSisa = dunia and dunia:FindFirstChild("Drops_1", true)
+local rootSisa = dropsSisa and dropsSisa:GetChildren()[1]
+rootSisa = rootSisa and rootSisa:FindFirstChild("Hasil")
+if rootSisa then
+        rootSisa.Touched:Fire(rootOf(P1))
+        Stub.Scheduler.advance(1)
+end
+check("Semua drop sudah dipungut (folder drop kembali kosong)", dropsSisa ~= nil and #dropsSisa:GetChildren() == 0, dropsSisa and tostring(#dropsSisa:GetChildren()) or "-")
 
 section("Punch masih tumbuh: 5x beruntun hancur, tanpa drop")
 moveTo(P1, 5085, 5, 18)
 check("Pilih benih Bayam", pilihBenih(gui, "Bayam"), "-")
-jumlahBox = findTextBoxByPlaceholder(gui, "Jumlah")
-if jumlahBox then
-        jumlahBox.Text = "10"
-end
 mulaiBtn = findGui(gui, "TextButton", "Mulai Tanam")
 burn(1.2)
 if mulaiBtn then
@@ -421,7 +507,7 @@ end
 burn(1.2)
 local okJ4, detJ4 = jawabSoal(gui)
 Stub.Scheduler.advance(0.1)
-check("Sesi bayam: 1 soal benar -> TERTANAM 19/500", okJ4 == true and findGui(dunia, "TextLabel", "TERTANAM 19/500") ~= nil, tostring(detJ4))
+check("Sesi bayam: 1 soal benar -> TERTANAM 18/500", okJ4 == true and findGui(dunia, "TextLabel", "TERTANAM 18/500") ~= nil, tostring(detJ4))
 check("Benih bayam habis (10)", tasCount(P1, "benih", "bayam") == 0, tostring(tasCount(P1, "benih", "bayam")))
 local bayam1 = grid and grid:FindFirstChild("Tanaman_10", true)
 check("Tanaman_10 (bayam) ada dan masih tumbuh", bayam1 ~= nil, "-")
@@ -436,6 +522,42 @@ local bayamHilang = grid and grid:FindFirstChild("Tanaman_10", true) == nil
 check("5x pukul menghancurkan tanaman tumbuh", bayamHilang, tostring(msgPg))
 local dropsBayam = dunia and dunia:FindFirstChild("Drops_1", true)
 check("Pukul tanaman tumbuh tidak memberi drop", dropsBayam ~= nil and #dropsBayam:GetChildren() == 0, dropsBayam and tostring(#dropsBayam:GetChildren()) or "-")
+
+section("Drop tiap arketipe bentuk tanaman (8 jenis)")
+local arketipe = {
+        { "pisang", 491 },
+        { "gandum", 492 },
+        { "kedelai", 493 },
+        { "labu_moschata", 494 },
+        { "arachis_duranensis", 495 },
+        { "jamur", 496 },
+        { "tetsukabuto", 497 },
+        { "bayam", 498 },
+}
+for _, a in ipairs(arketipe) do
+        local okF = MOD_PlotService.fillPlot(1, a[2], a[1])
+        check("Tanam langsung " .. a[1] .. " di plot " .. a[2], okF == true, tostring(okF))
+end
+Stub.Scheduler.advance(3.8)
+for _, a in ipairs(arketipe) do
+        local id, idx = a[1], a[2]
+        local lx, lz = MOD_Layout.plotLocal(idx)
+        moveTo(P1, 5000 + lx, 5, lz + 5)
+        Stub.Scheduler.advance(0.15)
+        local okP2, msgP2 = serverCall("PlotAct", P1, idx, "punch")
+        local model = dunia and dunia:FindFirstChild("Hasil_" .. id, true)
+        local rootP = model and model:FindFirstChild("Hasil")
+        local b = MOD_CropData.Bentuk[id]
+        check("Punch " .. id .. " memberi drop", okP2 == true and model ~= nil, tostring(msgP2))
+        check("Drop " .. id .. " bentuk " .. b.jenis .. " (>= 2 bagian)", model ~= nil and #model:GetChildren() >= 2, model and tostring(#model:GetChildren()) or "-")
+        check("Warna drop " .. id .. " = warna siap", (function()
+                if not rootP then
+                        return false
+                end
+                return math.abs(rootP.Color.r - b.siap[1] / 255) < 0.02 and math.abs(rootP.Color.g - b.siap[2] / 255) < 0.02 and math.abs(rootP.Color.b - b.siap[3] / 255) < 0.02
+        end)(), "-")
+        burn(1.0)
+end
 
 section("Combine Seed di papan: resep cocok, salah ditolak")
 moveTo(P1, 5085, 5, 18)
@@ -453,7 +575,7 @@ section("Status papan: siap panen vs masih tumbuh")
 burn(1.2)
 local okS, resS = serverCall("TanamAct", P1, "status")
 check("Status bisa diambil dari papan", okS == true and type(resS) == "table", tostring(okS))
-check("Tertanam total 18 (20 - 2 dihancurkan)", resS and resS.tertanamTotal == 18, resS and tostring(resS.tertanamTotal) or "-")
+check("Tertanam total 17 (20 tanam - 2 panen - 1 hancur)", resS and resS.tertanamTotal == 17, resS and tostring(resS.tertanamTotal) or "-")
 local adaWortelRow, adaBayamRow = false, false
 if resS and type(resS.status) == "table" then
         for _, row in ipairs(resS.status) do
@@ -530,8 +652,8 @@ if masukBtn then
 end
 local r3 = rootOf(P1)
 check("BALIK ke dunia lahan sukses", r3 and r3.Position.X > 5000, r3 and tostring(r3.Position) or "-")
-local labelBalik = findGui(dunia, "TextLabel", "TERTANAM 18/500")
-check("Papan tetap menunjukkan progres terakhir (18/500)", labelBalik ~= nil, labelBalik and labelBalik.Text or "-")
+local labelBalik = findGui(dunia, "TextLabel", "TERTANAM 17/500")
+check("Papan tetap menunjukkan progres terakhir (17/500)", labelBalik ~= nil, labelBalik and labelBalik.Text or "-")
 
 section("Simpan data saat keluar")
 Players.PlayerRemoving:Fire(P1)

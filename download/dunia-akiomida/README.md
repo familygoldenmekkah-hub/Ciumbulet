@@ -1,19 +1,36 @@
 # DUNIA AKIOMIDA (Roblox)
 
-Status: LIVE di Roblox (**versionNumber 33**, 6 Nov 2026) — **UJIAN MASSA
-PANEN + 3 PERBAIKAN AKAR**: ujian end-to-end 94 tahap (tanam 50 plot -> 5
-soal -> tunggu matang -> panen raya dengan tombol PUNCH asli -> 50 drop
-disentuh -> 288 buah masuk tas; combine 8 resep; 5x pukul hancur; tas penuh
-melayang) menemukan dan memperbaiki tiga bug fatal: penarget PUNCH yang tak
-pernah menemukan grid (kini rekursif -> tombol benar-benar memukul), state
-lahan yang mati setelah travel HUD (kini syncState + payload lahan), dan tab
-Combine Seed yang terbuka kosong (kini langsung terisi). Universe:
-10774464946 · Place: 77626159664192 · Label era: 9.6.0 "Uji Massa"
-Build: `tools/rojo build default.project.json -o build/DuniaAkiomida.rbxlx`
-(luau-lsp 0 temuan, tes offline 127 PASS / 0 FAIL, ujian massa 94 PASS / 0
-FAIL, playtest 72 PASS / 0 FAIL)
+Status: LIVE di Roblox (**versionNumber 34**, 6 Nov 2026) — **REVISI TAMPILAN
+HP** sesuai permintaan pemilik (urutan kerja D,E,F -> G -> A,B,C -> H):
 
-Skor banding Toram/Growtopia: **49/100** — lihat `RUBRIC.md`.
+1. **D — DROP SESUAI TANAMAN** — drop panen kini model mini produce per
+   arketipe (akar/pohon/tangkai/kacang/cendawan/dst, 8 pembentuk) memakai
+   warna siap tanaman, muncul dengan pantulan fisik + partikel + suara, dan
+   tiap slot tas mendapat ikon geometri yang sesuai bentuk + warnanya.
+2. **E — ANIMASI & EFEK PUNCH** — karakter memainkan ayunan tangan asli
+   (motor6d, original) SETIAP tombol ditekan; momen kena disinkronkan 0.12
+   detik setelah tekan; efek getar kamera naik dengan tier kombo; partikel
+   & suara tepat di titik kena.
+3. **F — PRESISI PUNCH** — raycast dari karakter ke depan (jangkauan 14)
+   dengan fallback hitbox kerucut; tanaman yang akan kena diberi highlight;
+   efek & drop lahir di titik pukul; server menghitung sasarannya sendiri
+   (anti-curang), bukan percaya klien.
+4. **G — TOMBOL KONTROL HP** — PUNCH diposisikan relatif terhadap tombol
+   Jump asli Roblox dengan jarak minimal 1 ukuran tombol, di area jempol
+   kanan bawah, gaya flat tanpa border.
+5. **A+B+C — PAPAN TANAM MINIMALIS** — panel berbasis skala + batas ukuran
+   + safe area 56 px (judul & tab tak lagi tertutup tombol menu), tab teks
+   dengan garis bawah aktif, daftar dibersihkan tiap pindah tab, nama benih
+   panjang terpotong rapi, baris utuh bisa diklik (tanpa tombol Pilih), tab
+   Tanam = tombol angka 1/10/50/100/250/Maks + Mulai Tanam, tab Combine =
+   hanya tombol Gabung (label Benih A/B di baris tersendiri, tidak lagi
+   menimpa teks lain), hijau hanya untuk aksi utama, satu font tiga ukuran.
+
+Universe: 10774464946 · Place: 77626159664192 · Label era: 9.7.0 "Tampilan HP"
+Build: `tools/rojo build default.project.json -o build/DuniaAkiomida.rbxlx`
+(luau-lsp 0 temuan, tes offline 175 PASS / 0 FAIL, playtest 116 PASS / 0 FAIL)
+
+Skor banding Toram/Growtopia: **50/100** — lihat `RUBRIC.md`.
 
 ## Alur tanam-panen FINAL (revisi pemilik, teruji massa v33)
 
@@ -29,14 +46,16 @@ Skor banding Toram/Growtopia: **49/100** — lihat `RUBRIC.md`.
   menampilkan "Tidak bisa di-combine" dan benih TIDAK terpakai. 8 resep rahasia
   di server: Triticale, Canola, Tangelo, Plumcot, Nectaplum, Pluerry,
   Tetsukabuto, Kacang tanah.
-- **PUNCH PERMANEN** — tombol selalu ada di layar dan KINI benar-benar
-  menembak tanaman terdekat (bug penarget grid diperbaiki v33). Pukul
-  tanaman siap -> drop sesuai peluang (peluang tetap rahasia, tanpa label);
-  drop belum masuk tas sampai disentuh. Pukul tanaman masih tumbuh boleh
-  kapan saja tanpa drop; 5x beruntun -> tanaman hancur.
+- **PUNCH PERMANEN & PRESISI (v34)** — tombol selalu ada di layar; kini
+  raycast presisi di depan karakter + highlight sasaran + animasi ayunan
+  karakter; pukul tanaman siap -> drop berbentuk tanaman sesuai peluang
+  (peluang tetap rahasia, tanpa label); drop belum masuk tas sampai
+  disentuh. Pukul tanaman masih tumbuh boleh kapan saja tanpa drop; 5x
+  beruntun -> tanaman hancur.
 - **STATUS DI PAPAN** — tab Status: per jenis "Siap Panen: N / Masih Tumbuh: M".
 - **VISUAL** — tanaman siap panen berubah warna; tiap jenis (termasuk hibrida)
-  punya bentuk model sendiri (8 arketipe geometri + warna/ukuran per jenis).
+  punya bentuk model sendiri (8 arketipe geometri + warna/ukuran per jenis);
+  drop panen & ikon tas mengikuti bentuk + warna tanamannya (v34).
 - **LARANGAN** — nol teks melayang/popup dunia untuk tanam-panen (label drop &
   "Tas Penuh" dihapus; tas penuh cukup lewat drop melayang). Satu-satunya
   notifikasi: "Tidak bisa di-combine" di dalam papan.

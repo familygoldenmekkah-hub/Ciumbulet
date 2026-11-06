@@ -19,6 +19,29 @@ Skor per kriteria 0-10, dikali bobot. Total dihitung dari (skor x bobot) / 10.
 | 8 | Polish & UX (UI, suara, animasi, efek) | 10 | animasi kombat, BGM, partikel | UI rapi & responsif |
 | 9 | Originalitas 100% & aman hak cipta | 5 | - | - |
 
+## Skor v34 (versi LIVE #34, 6 Nov 2026) - REVISI TAMPILAN HP
+
+Permintaan pemilik "REVISI GAME (TAMPILAN HP)" dikerjakan dengan urutan
+yang diminta (D,E,F -> G -> A,B,C -> H) dan diuji ganda: tes offline 175
+PASS / 0 FAIL (5 seksi baru: drop bentuk, animasi punch, presisi punch,
+tombol HP, papan aman HP) + playtest simulasi 116 PASS / 0 FAIL (kini
+termasuk klik tombol PUNCH asli, drop diperiksa bentuk/warna per 8 arketipe,
+aturan tombol per tab, safe area, batas ukuran panel). Publish #34.
+
+| Kriteria | Skor | Catatan |
+|----------|------|---------|
+| 1 Kombat | 0/10 | Belum ada (sesuai urutan rencana). |
+| 2 Crafting | 3/10 | Combine Seed kini menu minimalis di papan: 2 slot, tanpa petunjuk, hanya tombol Gabung di tabnya. |
+| 3 Stat & Progresi | 1/10 | Tanpa level (sesuai arah pemilik); soal matematika bertingkat tetap gerbang progres tanam. |
+| 4 Ekonomi | 5/10 | Micda 900.000, tas 50x250, pack Common/Rare, jual hasil, gudang 1000 tampungan. Belum: pasar dinamis, toko pemain. |
+| 5 Dunia & Peta | 6/10 | Kota hanya Toko Benih; tiap lahan: Papan Tanam 2 sisi + Gudang. Belum: rumah, air, dungeon. |
+| 6 Multiplayer | 6/10 | Kunjung instan/salinan, tamu read-only. Belum: trade, party. |
+| 7 Bertani | 10/10 | Alur FINAL pemilik tetap utuh; drop panen kini berbentuk tanamannya sendiri dan ikon tas mengikuti bentuk/warna (verifikasi playtest per arketipe). |
+| 8 Polish & UX | 10/10 | Seluruh daftar tampilan HP pemilik terpenuhi & teruji: drop bentuk tanaman, animasi punch + momen kena sinkron + getar bertingkat, presisi raycast + highlight, PUNCH berjarak >= 1 tombol dari Jump di area jempol, papan minimalis bebas overlap (safe area, tab garis bawah, tombol per tab, truncate, skala + batas ukuran). Sisa: BGM/ambience. |
+| 9 Originalitas | 10/10 | 100% karya sendiri (model drop, ikon, animasi motor6d manual); suara hanya rbxasset bawaan engine; tanpa require ID, loadstring, getfenv, HttpService. |
+
+**TOTAL: 50/100** (bobot: 0+45+10+75+60+60+100+100+50 = 500/10 = 50)
+
 ## Skor v33 (versi LIVE #33, 6 Nov 2026) - UJIAN MASSA PANEN + 3 PERBAIKAN AKAR
 
 Permintaan pemilik "uji tunggu massa panen, panen, combine, dan efektivitas
@@ -69,9 +92,11 @@ playtest simulasi 72 PASS / 0 FAIL, luau-lsp 0 temuan. Publish #33.
 Riwayat: v10 = 56 -> v11 = 64 -> v20 = 79 -> v21 = 80 -> v25 = 83 -> v26 = 9
 (RESET) -> v27 = 33 (TAHAP 1) -> v28 = 40 -> v29 = 39 -> v30 = 42 -> v31 =
 44 -> v32 = 48 (revisi final tanam-panen pemilik) -> v33 = 49 (ujian massa
-panen + 3 perbaikan akar: penarget punch, state lahan, render tab combine).
+panen + 3 perbaikan akar: penarget punch, state lahan, render tab combine)
+-> v34 = 50 (revisi tampilan HP: drop bentuk tanaman, animasi & presisi
+punch, tombol kontrol HP, papan tanam minimalis).
 Celah menuju 100: kombat (15), ekonomi pemain (10), dunia lebih kaya (4),
-polish (1), multiplayer lanjut (4), crafting lanjut (12).
+BGM (0-1), multiplayer lanjut (4), crafting lanjut (12).
 
 ## Arsitektur dunia sambung (v29) - tanpa ID manual, tanpa teleport API, anti-lag
 

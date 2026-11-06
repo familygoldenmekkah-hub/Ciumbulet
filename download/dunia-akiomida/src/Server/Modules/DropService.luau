@@ -4,18 +4,13 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
 local CropData = require(ReplicatedStorage.Shared.CropData)
+local DropModels = require(script.Parent.DropModels)
 
 local DropService = {}
 
 local Land, Tas
 
 local folders: { [number]: Folder } = {}
-
-local RARITY_COLOR = {
-        common = Color3.fromRGB(120, 200, 90),
-        rare = Color3.fromRGB(90, 150, 235),
-        epic = Color3.fromRGB(190, 110, 240),
-}
 
 function DropService.bind(deps)
         Land = deps.Land
@@ -45,11 +40,11 @@ function DropService.clearLahan(index: number)
         end
 end
 
-local function floatify(part: BasePart, basePos: Vector3)
-        part.Anchored = true
-        part.AssemblyLinearVelocity = Vector3.zero
-        part.AssemblyAngularVelocity = Vector3.zero
-        TweenService:Create(part, TweenInfo.new(1.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Position = basePos + Vector3.new(0, 2.8, 0) }):Play()
+local function floatify(root: BasePart, basePos: Vector3)
+        root.Anchored = true
+        root.AssemblyLinearVelocity = Vector3.zero
+        root.AssemblyAngularVelocity = Vector3.zero
+        TweenService:Create(root, TweenInfo.new(1.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Position = basePos + Vector3.new(0, 2.8, 0) }):Play()
 end
 
 function DropService.spawn(index: number, pos: Vector3, cropId: string, count: number, comboN: number, tier: number)
@@ -61,19 +56,16 @@ function DropService.spawn(index: number, pos: Vector3, cropId: string, count: n
         if not f then
                 return
         end
-        local warna = RARITY_COLOR[info.rarity] or RARITY_COLOR.common
-        local part = Instance.new("Part")
-        part.Name = "Hasil_" .. cropId
+        local model = DropModels.buat(pos, cropId, tier)
+        if not model then
+                return
+        end
+        local part = model.PrimaryPart :: BasePart
         part:SetAttribute("LahanIdx", index)
         part:SetAttribute("CropId", cropId)
         part:SetAttribute("Count", count)
-        local s = 1.5 + 0.3 * tier
-        part.Size = Vector3.new(s, s, s)
-        part.Color = warna
-        part.Material = Enum.Material.SmoothPlastic
-        part.CustomPhysicalProperties = PhysicalProperties.new(0.7, 0.25, 0.62, 1, 1)
-        part.Position = pos
-        part.Parent = f
+        model.Parent = f
+        local warna = part.Color
         local pem = Instance.new("ParticleEmitter")
         pem.Color = ColorSequence.new(warna)
         pem.Lifetime = NumberRange.new(0.45, 0.9)
@@ -98,9 +90,9 @@ function DropService.spawn(index: number, pos: Vector3, cropId: string, count: n
                 whoosh.Parent = part
                 whoosh:Play()
         end
-        part.AssemblyLinearVelocity = Vector3.new(math.random(-9, 9), 22 + 5 * tier, math.random(-9, 9))
-        part.AssemblyAngularVelocity = Vector3.new(math.random(-6, 6), math.random(-6, 6), math.random(-6, 6))
-        local basePos = pos + Vector3.new(0, 3.4, 0)
+        part.AssemblyLinearVelocity = Vector3.new(math.random(-7, 7), 18 + 5 * tier, math.random(-7, 7))
+        part.AssemblyAngularVelocity = Vector3.new(math.random(-5, 5), math.random(-5, 5), math.random(-5, 5))
+        local basePos = part.Position
         local kunci = 0
         local selesai = false
         part.Touched:Connect(function(hit)
@@ -131,17 +123,23 @@ function DropService.spawn(index: number, pos: Vector3, cropId: string, count: n
                 ding.PlaybackSpeed = 1.5
                 ding.Parent = part
                 ding:Play()
-                part.CanCollide = false
                 part.Anchored = true
+                part.CanCollide = false
+                for _, d in ipairs(model:GetDescendants()) do
+                        if d:IsA("BasePart") then
+                                d.Anchored = true
+                                d.CanCollide = false
+                        end
+                end
                 task.delay(0.9, function()
-                        if part.Parent then
-                                part:Destroy()
+                        if model.Parent then
+                                model:Destroy()
                         end
                 end)
         end)
         task.delay(900, function()
-                if part.Parent and not part.Anchored then
-                        part:Destroy()
+                if model.Parent and not part.Anchored then
+                        model:Destroy()
                 end
         end)
 end

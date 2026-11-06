@@ -468,6 +468,147 @@ do
         check("Batas gudang 1000 x 250", GudangLogic.MaksSlot == 1000 and GudangLogic.MaksIsi == 250, "-")
 end
 
+print("--- D: Drop panen sesuai bentuk tanaman ---")
+do
+        local DropBentuk = require("./../src/Shared/DropBentuk")
+        local JENIS = { akar = true, daun = true, bulat = true, tangkai = true, pohon = true, semak = true, kacang = true, cendawan = true }
+        local kurang, warnaSalah = {}, {}
+        for _, c in ipairs(CropData.Crops) do
+                local b = CropData.Bentuk[c.id]
+                local spes = b and DropBentuk.spesifikasi(b)
+                if not spes then
+                        table.insert(kurang, c.id)
+                elseif not JENIS[spes.jenis] then
+                        table.insert(kurang, c.id .. ":jenis")
+                elseif spes.buah[1] ~= b.siap[1] or spes.buah[2] ~= b.siap[2] or spes.buah[3] ~= b.siap[3] then
+                        table.insert(warnaSalah, c.id)
+                end
+        end
+        check("34 tanaman punya spesifikasi drop", #kurang == 0, table.concat(kurang, ", "))
+        check("Warna drop = warna siap tanaman (34)", #warnaSalah == 0, table.concat(warnaSalah, ", "))
+        check("8 hibrida punya drop sendiri", (function()
+                for _, id in ipairs({ "tangelo", "plumcot", "nectaplum", "kacang_tanah", "pluerry", "canola", "triticale", "tetsukabuto" }) do
+                        if not DropBentuk.spesifikasi(CropData.Bentuk[id]) then
+                                return false
+                        end
+                end
+                return true
+        end)(), "-")
+        local ikonOk = true
+        for jenis in pairs(JENIS) do
+                local bagian = DropBentuk.ikonBagian(jenis)
+                if type(bagian) ~= "table" or #bagian < 2 then
+                        ikonOk = false
+                else
+                        for _, g in ipairs(bagian) do
+                                if type(g.dx) ~= "number" or type(g.dy) ~= "number" or type(g.dw) ~= "number" or type(g.dh) ~= "number" or g.dx < 0 or g.dx > 1 or g.dy < 0 or g.dy > 1 or g.dw <= 0 or g.dh <= 0 then
+                                        ikonOk = false
+                                end
+                                if g.warna ~= "buah" and g.warna ~= "aksen" then
+                                        ikonOk = false
+                                end
+                        end
+                end
+        end
+        check("Ikon tas 8 arketipe lengkap & koordinat valid", ikonOk, "-")
+        check("Warna ikon berbeda antara buah dan aksen", (function()
+                local b = DropBentuk.ikonBagian("pohon")
+                return b[2].warna ~= b[3].warna
+        end)(), "-")
+        check("Spesifikasi rusak ditolak", DropBentuk.spesifikasi(nil) == nil and DropBentuk.spesifikasi({ jenis = "alien" }) == nil and DropBentuk.spesifikasi({ jenis = "akar", siap = "x", aksen = {} }) == nil, "-")
+        local spesW = DropBentuk.spesifikasi(CropData.Bentuk.wortel)
+        check("Skala drop masuk akal", spesW ~= nil and spesW.skala >= 0.7 and spesW.skala <= 1.8, tostring(spesW and spesW.skala))
+end
+
+print("--- E: Animasi & efek punch ---")
+do
+        local PukulAnim = require("./../src/Shared/PukulAnim")
+        local f1 = PukulAnim.fase(0, 0.05)
+        check("Animasi hidup segera setiap tombol ditekan", f1.memukul == true and f1.kena == false, tostring(f1.memukul))
+        local f2 = PukulAnim.fase(0, PukulAnim.MomenKena)
+        check("Momen kena sinkron di 0.12 dtk", f2.kena == true, tostring(f2.kena))
+        local f3 = PukulAnim.fase(0, PukulAnim.Durasi + 0.01)
+        check("Animasi selesai setelah 0.32 dtk", not f3.memukul and not f3.kena, tostring(f3.memukul))
+        local f4 = PukulAnim.fase(0, 0.16)
+        check("Sudut ayunan positif di tengah ayunan", f4.sudut > 0 and f4.p > 0, tostring(f4.sudut))
+        check("Tekan lagi = ayunan baru dari nol", PukulAnim.mulaiUlang(0.2, 0.25) == 0.25 and PukulAnim.mulaiUlang(nil, 1.0) == 1.0, "-")
+        local g1, g2, g3 = PukulAnim.getar(1), PukulAnim.getar(2), PukulAnim.getar(3)
+        check("Getaran naik dengan tier kombo", g3 > g2 and g2 > g1 and g1 > 0, tostring(g1) .. "/" .. tostring(g3))
+        check("Getaran aman untuk tier aneh", PukulAnim.getar(99) == PukulAnim.getar(3) and PukulAnim.getar(0) == PukulAnim.getar(1), "-")
+end
+
+print("--- F: Presisi punch (hitbox depan karakter) ---")
+do
+        local ArahPukul = require("./../src/Shared/ArahPukul")
+        local asal = { x = 0, y = 2, z = 0 }
+        local arah = { x = 0, y = 0, z = -1 }
+        local daftar = {
+                { idx = 7, pos = { x = 0, y = 0, z = -6 } },
+                { idx = 11, pos = { x = 0, y = 0, z = -11 } },
+                { idx = 3, pos = { x = 8, y = 0, z = -6 } },
+                { idx = 9, pos = { x = 0, y = 0, z = 5 } },
+                { idx = 21, pos = { x = 0, y = 0, z = -30 } },
+        }
+        local p = ArahPukul.pilih(asal, arah, daftar)
+        check("Raycast memilih tanaman terdekat di depan", p ~= nil and p.idx == 7, tostring(p and p.idx))
+        check("Titik pukul tepat di titik kena", p ~= nil and p.titik.x == 0 and p.titik.z == -6, p and tostring(p.titik.x) .. "," .. tostring(p.titik.z))
+        check("Sasaran menyamping ditolak", ArahPukul.pilih(asal, arah, { daftar[3] }) == nil, "-")
+        check("Sasaran di belakang ditolak", ArahPukul.pilih(asal, arah, { daftar[4] }) == nil, "-")
+        check("Sasaran di luar jangkauan ditolak", ArahPukul.pilih(asal, arah, { daftar[5] }) == nil, "-")
+        check("Pukul titik lain = sasaran lain", (function()
+                local q = ArahPukul.pilih({ x = 0, y = 2, z = -8 }, arah, daftar)
+                return q ~= nil and q.idx == 11
+        end)(), "-")
+        check("Radius per kandidat dipakai", ArahPukul.pilih(asal, arah, { { idx = 5, pos = { x = 2.4, y = 2, z = -5 }, radius = 3.0 } }) ~= nil, "-")
+        check("diDepan sesuai arah hadap", ArahPukul.diDepan(asal, arah, { x = 0, y = 0, z = -5 }) and not ArahPukul.diDepan(asal, arah, { x = 0, y = 0, z = 5 }), "-")
+        check("titikPukul sepanjang sinar", (function()
+                local t = ArahPukul.titikPukul(asal, arah, 6)
+                return t.x == 0 and t.y == 2 and t.z == -6
+        end)(), "-")
+        check("Arah nol aman", ArahPukul.pilih(asal, { x = 0, y = 0, z = 0 }, daftar) == nil, "-")
+        check("Jarak minimum ditolak", ArahPukul.pilih(asal, arah, { { idx = 1, pos = { x = 0, y = 0, z = -0.5 } } }) == nil, "-")
+end
+
+print("--- G: Tombol kontrol HP (Punch vs Jump) ---")
+do
+        local KontrolHP = require("./../src/Shared/KontrolHP")
+        local pos = KontrolHP.posisiPunch(70, 92, 24)
+        check("Gap punch-jump minimal 1 ukuran tombol", pos.gap >= 70, tostring(pos.gap))
+        check("Punch valid di area jempol kanan bawah", KontrolHP.valid(pos.dariKanan, 70, 92, 24), tostring(pos.dariKanan))
+        check("Punch tidak molor ke tengah layar", pos.dariKanan + 92 <= KontrolHP.BatasJempol, tostring(pos.dariKanan + 92))
+        check("Menempel tombol jump asli tetap valid", KontrolHP.valid(KontrolHP.dariTombol(94, 92, 70), 70, 92, 24), "-")
+        local pos2 = KontrolHP.posisiPunch(56, 80, 12)
+        check("Jump kecil tetap berjarak >= ukurannya", KontrolHP.valid(pos2.dariKanan, 56, 80, 12) and pos2.gap >= 56, tostring(pos2.gap))
+        local pos3 = KontrolHP.posisiPunch(120, 110, 20)
+        check("Jump besar tetap berjarak & dalam zona", pos3.gap >= 120 and KontrolHP.valid(pos3.dariKanan, 120, 110, 20), tostring(pos3.dariKanan))
+        check("Posisi vertikal di dasar layar", pos.dariBawah == KontrolHP.DariBawah and KontrolHP.DariBawah <= 40, tostring(pos.dariBawah))
+        check("Tata letak bertumpuk ditolak", not KontrolHP.valid(KontrolHP.Margin + KontrolHP.JumpBawaan, KontrolHP.JumpBawaan, KontrolHP.PunchBawaan), "-")
+end
+
+print("--- A/C: Papan Tanam aman di layar HP ---")
+do
+        local UIStyle = require("./../src/Shared/UIStyle")
+        check("Safe area atas >= 48 px (tak tertutup tombol menu)", UIStyle.AmanAtas >= 48, tostring(UIStyle.AmanAtas))
+        check("Panel berbasis skala dengan batas ukuran", UIStyle.LebarPanelMaks >= 600 and UIStyle.TinggiPanelMaks >= 440, tostring(UIStyle.LebarPanelMaks) .. "x" .. tostring(UIStyle.TinggiPanelMaks))
+        check("Satu font, tepat tiga ukuran", UIStyle.cekTigaUkuran() and UIStyle.UkuranJudul <= 20, tostring(UIStyle.UkuranJudul))
+        check("Judul diperkecil & hierarki jelas", UIStyle.UkuranIsi < UIStyle.UkuranJudul and UIStyle.UkuranKecil < UIStyle.UkuranIsi, "-")
+        check("Hijau hanya untuk aksi utama", UIStyle.Hijau[2] > UIStyle.Hijau[1] and UIStyle.Hijau[2] > UIStyle.Hijau[3], tostring(UIStyle.Hijau[2]))
+        check("Aksen beda dari latar gelap", UIStyle.Aksen[1] ~= UIStyle.Latar[1] and UIStyle.Aksen[3] > UIStyle.Latar[3], "-")
+        local t1, t2, t3 = UIStyle.tabTampak("tanam"), UIStyle.tabTampak("gabung"), UIStyle.tabTampak("status")
+        check("Tab Tanam: angka + Mulai tampil, tombol lain sembunyi", t1.angka and t1.mulai and not t1.gabung and not t1.status, "-")
+        check("Tab Combine: hanya tombol Gabung", t2.gabung and not t2.angka and not t2.mulai and not t2.status and not t2.daftarTanam, "-")
+        check("Tab Status: hanya status", t3.status and not t3.gabung and not t3.mulai and not t3.angka, "-")
+        check("Setiap tab tepat satu grup tombol", UIStyle.tabTunggal("tanam") and UIStyle.tabTunggal("gabung") and UIStyle.tabTunggal("status"), "-")
+        check("Tab tak dikenal aman (semua sembunyi)", not UIStyle.tabTampak("salah").angka and not UIStyle.tabTampak("salah").status, "-")
+        check("Nama benih panjang terpotong", #UIStyle.potong("Labu Cucurbita Moschata") <= UIStyle.NamaMaks + 3, UIStyle.potong("Labu Cucurbita Moschata"))
+        check("Potongan berakhiran elipsis", (function()
+                local s = UIStyle.potong(string.rep("a", 40))
+                return #s == UIStyle.NamaMaks + 2 and string.sub(s, -3) == "…"
+        end)(), "-")
+        check("Nama pendek utuh", UIStyle.potong("Wortel") == "Wortel", "-")
+        check("Input rusak aman", UIStyle.potong(nil) == "?" and UIStyle.potong(9) == "?", "-")
+end
+
 print(("="):rep(28))
 print(string.format("HASIL: %d PASS, %d FAIL", passed, failed))
 if failed > 0 then

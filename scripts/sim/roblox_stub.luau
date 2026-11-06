@@ -50,6 +50,8 @@ local SignalNames = {
         CharacterAdded = true,
         CharacterRemoving = true,
         Touched = true,
+        RenderStepped = true,
+        Heartbeat = true,
 }
 
 Vector3 = {}
@@ -109,6 +111,25 @@ CFrame = {}
 CFrame.__index = function(cf, k)
         if k == "Position" then
                 return vec3(cf.x, cf.y, cf.z)
+        end
+        if k == "LookVector" then
+                local m = cf.m
+                return vec3(-m[1][3], -m[2][3], -m[3][3])
+        end
+        if k == "UpVector" then
+                local m = cf.m
+                return vec3(m[1][2], m[2][2], m[3][2])
+        end
+        if k == "PointToObjectSpace" or k == "VectorToObjectSpace" then
+                return function(cf, p)
+                        local m = cf.m
+                        local dx, dy, dz = p.x - cf.x, p.y - cf.y, p.z - cf.z
+                        return vec3(
+                                m[1][1] * dx + m[2][1] * dy + m[3][1] * dz,
+                                m[1][2] * dx + m[2][2] * dy + m[3][2] * dz,
+                                m[1][3] * dx + m[2][3] * dy + m[3][3] * dz
+                        )
+                end
         end
         return CFrame[k]
 end
@@ -239,7 +260,15 @@ function PhysicalProperties.new(a, b, c, d, e)
 end
 
 UDim = {}
-UDim.__index = UDim
+UDim.__index = function(u, k)
+        if k == "Scale" then
+            return rawget(u, "s")
+        end
+        if k == "Offset" then
+            return rawget(u, "o")
+        end
+        return UDim[k]
+end
 function UDim.new(s, o)
         return setmetatable({ s = s or 0, o = o or 0 }, UDim)
 end
@@ -283,6 +312,9 @@ Enum = {
         PartType = makeEnum("PartType", { "Ball", "Cylinder", "Block" }),
         EasingStyle = makeEnum("EasingStyle", { "Linear", "Sine", "Quad", "Back", "Bounce", "Elastic" }),
         EasingDirection = makeEnum("EasingDirection", { "In", "Out", "InOut" }),
+        TextTruncate = makeEnum("TextTruncate", { "None", "AtEnd" }),
+        FillDirection = makeEnum("FillDirection", { "Horizontal", "Vertical" }),
+        HighlightDepthMode = makeEnum("HighlightDepthMode", { "AlwaysOnTop", "Occluded" }),
 }
 
 task = {}
@@ -403,6 +435,12 @@ local ISA = {
         Script = { "Instance" },
         Player = { "Instance" },
         RaycastParams = { "Instance" },
+        Highlight = { "Instance" },
+        UIPadding = { "Instance" },
+        UISizeConstraint = { "Instance" },
+        WeldConstraint = { "Instance" },
+        Attachment = { "Instance" },
+        Motor6D = { "Instance" },
 }
 
 local InstanceMethods = {}
@@ -598,6 +636,10 @@ function Instance.new(class)
         rawset(inst, "__children", {})
         rawset(inst, "__attrs", {})
         rawset(inst, "Name", class)
+        local GUI = { TextButton = true, TextLabel = true, TextBox = true, Frame = true, ScrollingFrame = true, ScreenGui = true }
+        if GUI[class] then
+                rawset(inst, "Visible", true)
+        end
         setmetatable(inst, InstanceMT)
         if class == "Part" or class == "WedgePart" or class == "SpawnLocation" then
                 inst.__cf = CFrame.new()
@@ -682,6 +724,8 @@ function Stub.install()
         local camera = Instance.new("Camera")
         camera.Name = "Camera"
         camera.FieldOfView = 70
+        camera.CFrame = CFrame.new(0, 0, 0)
+        camera.ViewportSize = Vector3.new(1024, 600, 0)
         camera.Parent = Workspace
         function camera:ViewportPointToRay(x, y)
                 return { Origin = vec3(x, y, 0), Direction = vec3(0, 0, -1) }
