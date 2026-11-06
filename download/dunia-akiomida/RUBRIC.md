@@ -19,6 +19,61 @@ Skor per kriteria 0-10, dikali bobot. Total dihitung dari (skor x bobot) / 10.
 | 8 | Polish & UX (UI, suara, animasi, efek) | 10 | animasi kombat, BGM, partikel | UI rapi & responsif |
 | 9 | Originalitas 100% & aman hak cipta | 5 | - | - |
 
+## Skor v44 (versi LIVE #44, 7 Nov 2026) - KABEL SERVER-AUTHORITATIVE (BUG INTEGRASI DITEMUKAN & DIPERBAIKI) + TIANG KANOPI 4X KARAKTER
+
+Permintaan pemilik (pesan langsung): (1) tiang kanopi baja mesin semai
+tingginya 4x tinggi karakter; (2) ujikan sambung kabel acak — apakah mudah
+atau ada bug belum terintegrasi.
+
+Hasil ujian kabel — DITEMUKAN BUG BELUM TERINTEGRASI (kritis):
+layout kabel selama ini dibuat di KLIEN (bukaKabel memanggil buatKabel
+lokal) dan server TIDAK PERNAH membuat/memvalidasi kabel — remote
+`SemaiAct("kabel")` polos tanpa argumen langsung mengaktifkan mesin, jadi
+exploiter bisa melewati minigame penjodohan sepenuhnya, dan "acak tiap
+kali" tidak pernah dijamin server.
+
+Diterapkan di #44:
+
+A. **Kabel kini 100% server-authoritative**: layout dibuat server saat
+   "atur" (disimpan di batch, dikirim ke klien hanya untuk ditampilkan);
+   `kabelJadi` WAJIB menerima mapping soket kiri->kanan dan memvalidasinya
+   lewat SemaiLogic.saringSambung + kabelSelesai di server; tanpa mapping,
+   mapping kosong, bolong, di luar rentang, pecahan, atau tertukar semuanya
+   DITOLAK.
+B. **Anti brute-force "penjodohan ulang"**: 3x pengajuan salah -> server
+   mengacak ulang susunan (versi naik) dan klien otomatis membangun ulang
+   modal ("Susunan kabel berubah!") — menebak permutasi jadi sia-sia;
+   percobaan salah 1-2x TIDAK menghapus jodohan parsial pemain.
+C. **Kemudahan pakai (hasil uji "mudah")**: saat menyeret kabel, soket
+   kanan yang dilewati ikut menyala — HIJAU bila warnanya jodoh, MERAH
+   bila bukan; lepas di radius 36 px; mode ketuk kiri lalu kanan tetap ada.
+D. **Tiang kanopi 4x tinggi karakter**: karakter acuan 5 stud -> tiang
+   baja 20 stud (sebelumnya 8), tebal 1.2, pelat dasar per tiang, balok
+   ikat atas empat sisi, penyokong silang X di kedua sisi; atap + garis
+   merah-krem naik ke 21.3 stud; lampu diganti gantung tali panjang
+   (neon hangat + PointLight) agar tetap menerangi mesin.
+E. **Pengujian**: tes offline 291 PASS / 0 FAIL (seksi baru Q: 12 cek
+   saringSambung/putuskanKabel/acak-ulang/keunikan susunan); playtest
+   130 PASS / 0 FAIL; ujian massa 113 PASS / 0 FAIL dengan alur kabel
+   end-to-end baru — soket DIBACA DARI LAYAR lalu: tanpa mapping DITOLAK,
+   mapping kosong DITOLAK, mapping tertukar DITOLAK, 3x gagal -> susunan
+   terlihat BERUBAH di layar, jodoh dari layar -> mesin aktif -> tuntas ->
+   klaim; luau-lsp 0 temuan (3 TypeError palsu di file tes dibersihkan).
+
+| # | Kriteria | Skor | Alasan |
+|---|----------|------|--------|
+| 1 Kombat | 0/10 | Belum ada monster/AI/bos. |
+| 2 Crafting | 4/10 | Minigame kabel kini benar-benar dijaga server (tak bisa dilewati), kualitas stasiun olah naik; konten crafting belum bertambah. |
+| 3 Stat & Progresi | 1/10 | Tanpa level (sesuai arah pemilik); soal matematika tetap gerbang tanam. |
+| 4 Ekonomi | 6.5/10 | Alur jual-beli + mesin semai tetap; faucet Micda kini tak bisa dimanipulasi lewat remote. Pasar dinamis & toko pemain belum ada. |
+| 5 Dunia & Peta | 7/10 | Kanopi mesin kini menjulang 4x karakter dengan penyokong X dan lampu gantung; belum: rumah, air, dungeon. |
+| 6 Multiplayer | 6.5/10 | Naik dari 6: satu celah remote eksploit (skip kabel) ditutup + validasi mapping + anti brute-force; trade/party belum ada. |
+| 7 Bertani | 10/10 | Alur tanam -> panen -> semai -> klaim teruji end-to-end (113 cek massa); blok per tanaman; tanpa blok_panen. |
+| 8 Polish & UX | 10/10 | Minigame kabel kini memberi umpan balik langsung saat menyeret (hijau/merah), tetap bisa drag atau ketuk; pesan acak-ulang jelas. Sisa: BGM/ambience, uji perangkat fisik. |
+| 9 Originalitas | 10/10 | Semua part, minigame, dan interaksi dibangun asli; tanpa aset/require luar. |
+
+**TOTAL: 55.25/100** (bobot: 0+60+10+97.5+70+65+100+100+50 = 552.5/10 = 55.25)
+
 ## Skor v43 (versi LIVE #43, 6 Nov 2026) - MESIN SEMAI PANEN: GILING BERSAMBUNG KABEL, BLOK PER TANAMAN, BUG BLOK_PANEN DIHAPUS
 
 Permintaan pemilik (pesan langsung): alur "pukul ambil" di semai panen

@@ -460,17 +460,37 @@ function BuildingKit.buildMesinSemai(parent: Instance, index: number, hooks): Mo
         for i = 0, 9 do
                 BuildingKit.part(model, Vector3.new(2.4, 0.14, 0.7), CFrame.new(-13.5 + i * 3, 1.22, -14.4), (i % 2 == 0) and STRIPE_KUNING or STEEL_DARK, Enum.Material.SmoothPlastic).CanCollide = false
         end
+        local sudutPenyokong = math.atan(18 / 20)
         for sx = -1, 1, 2 do
-                BuildingKit.part(model, Vector3.new(0.9, 8, 0.9), CFrame.new(sx * 11, 5, -9), STEEL_DARK, Enum.Material.Metal)
-                BuildingKit.part(model, Vector3.new(0.9, 8, 0.9), CFrame.new(sx * 11, 5, 9), STEEL_DARK, Enum.Material.Metal)
+                for sz = -1, 1, 2 do
+                        BuildingKit.part(model, Vector3.new(2.2, 0.4, 2.2), CFrame.new(sx * 11, 1.2, sz * 9), STEEL, Enum.Material.Metal)
+                        BuildingKit.part(model, Vector3.new(1.2, 20, 1.2), CFrame.new(sx * 11, 11, sz * 9), STEEL_DARK, Enum.Material.Metal)
+                end
+                BuildingKit.part(model, Vector3.new(0.7, 0.7, 19.2), CFrame.new(sx * 11, 20.65, 0), STEEL_DARK, Enum.Material.Metal)
+                local sokA = BuildingKit.part(model, Vector3.new(0.45, 26.91, 0.45), CFrame.new(sx * 11, 11, 0) * CFrame.Angles(sudutPenyokong, 0, 0), STEEL, Enum.Material.Metal)
+                sokA.CanCollide = false
+                local sokB = BuildingKit.part(model, Vector3.new(0.45, 26.91, 0.45), CFrame.new(sx * 11, 11, 0) * CFrame.Angles(-sudutPenyokong, 0, 0), STEEL, Enum.Material.Metal)
+                sokB.CanCollide = false
         end
-        local atap = BuildingKit.part(model, Vector3.new(26, 0.6, 22), CFrame.new(0, 9.4, 0) * CFrame.Angles(0, 0, math.rad(3)), STEEL_DARK, Enum.Material.Metal)
+        for sz = -1, 1, 2 do
+                BuildingKit.part(model, Vector3.new(23.2, 0.7, 0.7), CFrame.new(0, 20.65, sz * 9), STEEL_DARK, Enum.Material.Metal)
+        end
+        local atap = BuildingKit.part(model, Vector3.new(26, 0.6, 22), CFrame.new(0, 21.3, 0) * CFrame.Angles(0, 0, math.rad(3)), STEEL_DARK, Enum.Material.Metal)
         atap.CanCollide = false
         for i = 0, 3 do
-                BuildingKit.part(model, Vector3.new(25, 0.25, 1.6), CFrame.new(0, 9.95, -7 + i * 4.6) * CFrame.Angles(0, 0, math.rad(3)), (i % 2 == 0) and BRICKRED or CREAM, Enum.Material.SmoothPlastic).CanCollide = false
+                BuildingKit.part(model, Vector3.new(25, 0.25, 1.6), CFrame.new(0, 21.85, -7 + i * 4.6) * CFrame.Angles(0, 0, math.rad(3)), (i % 2 == 0) and BRICKRED or CREAM, Enum.Material.SmoothPlastic).CanCollide = false
         end
-        BuildingKit.lamp(model, -5, 9, 4)
-        BuildingKit.lamp(model, 6, 9, 4)
+        for _, lx in ipairs({ -5, 6 }) do
+                local tali = BuildingKit.part(model, Vector3.new(0.3, 7.4, 0.3), CFrame.new(lx, 17.3, 4), STEEL_DARK, Enum.Material.Metal)
+                tali.CanCollide = false
+                local kap = BuildingKit.part(model, Vector3.new(2.4, 0.9, 2.4), CFrame.new(lx, 13.35, 4), Color3.fromRGB(235, 205, 130), Enum.Material.Neon)
+                kap.CanCollide = false
+                local cahaya = Instance.new("PointLight")
+                cahaya.Range = 18
+                cahaya.Brightness = 0.6
+                cahaya.Color = Color3.fromRGB(255, 224, 178)
+                cahaya.Parent = kap
+        end
         BuildingKit.fenceLine(model, -15, 15, 15, 15, 1)
         BuildingKit.fenceLine(model, -15, -15, -15, 15, 1)
         BuildingKit.fenceLine(model, 15, -15, 15, 15, 1)

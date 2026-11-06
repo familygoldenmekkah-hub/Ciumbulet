@@ -760,17 +760,96 @@ if isiBtn then
         Stub.Scheduler.advance(0.3)
 end
 check("Modal kabel mesin terbuka", findGui(gui, "TextLabel", "Sambungkan Kabel Mesin") ~= nil, "-")
-local okKabel, msgKabel = serverCall("SemaiAct", P1, "kabel")
-check("Kabel terjodohkan -> mesin aktif", okKabel, tostring(msgKabel))
+local PALET = { { 214, 64, 56 }, { 76, 168, 82 }, { 58, 122, 214 }, { 240, 196, 60 }, { 168, 92, 224 }, { 240, 138, 44 }, { 60, 190, 190 }, { 232, 92, 150 } }
+local function warnaIdxKabel(c)
+        if not c then
+                return nil
+        end
+        for wi, w in ipairs(PALET) do
+                if math.abs(c.r - w[1] / 255) < 0.004 and math.abs(c.g - w[2] / 255) < 0.004 and math.abs(c.b - w[3] / 255) < 0.004 then
+                        return wi
+                end
+        end
+        return nil
+end
+local function bacaKabelGui()
+        local area = nil
+        for _, d in ipairs(gui:GetDescendants()) do
+                if d:IsA("Frame") and d.Name == "GarisKabel" then
+                        area = d.Parent
+                        break
+                end
+        end
+        if not area then
+                return nil
+        end
+        local kiri, kanan = {}, {}
+        for _, d in ipairs(area:GetChildren()) do
+                if d:IsA("Frame") and d.Size.xo == 48 then
+                        local stroke = nil
+                        for _, c in ipairs(d:GetChildren()) do
+                                if c:IsA("UIStroke") then
+                                        stroke = c
+                                end
+                        end
+                        local wi = stroke and warnaIdxKabel(stroke.Color) or nil
+                        if wi then
+                                local wadah = (d.Position.xs == 0) and kiri or kanan
+                                table.insert(wadah, { y = d.Position.ys, w = wi })
+                        end
+                end
+        end
+        if #kiri == 0 or #kiri ~= #kanan then
+                return nil
+        end
+        table.sort(kiri, function(a, b)
+                return a.y < b.y
+        end)
+        table.sort(kanan, function(a, b)
+                return a.y < b.y
+        end)
+        local sambung, kiriW, kananW = {}, {}, {}
+        for i = 1, #kiri do
+                kiriW[i] = kiri[i].w
+                kananW[i] = kanan[i].w
+                for j = 1, #kanan do
+                        if kanan[j].w == kiri[i].w then
+                                sambung[i] = j
+                        end
+                end
+                if not sambung[i] then
+                        return nil
+                end
+        end
+        return sambung, kiriW, kananW
+end
+local s0, kiri0, kanan0 = bacaKabelGui()
+check("Soket kabel acak terbaca dari layar (kiri & kanan)", s0 ~= nil, "-")
+local tolak1, tolakMsg1 = serverCall("SemaiAct", P1, "kabel")
+check("Kabel tanpa mapping DITOLAK server", tolak1 == false and type(tolakMsg1) == "string", tostring(tolakMsg1))
+local tolak2 = serverCall("SemaiAct", P1, "kabel", {})
+check("Mapping kosong DITOLAK server", tolak2 == false, "-")
+local tukar = {}
+for i = 1, #s0 do
+        tukar[i] = s0[i]
+end
+tukar[1], tukar[2] = tukar[2], tukar[1]
+local tolak3, tolakMsg3 = serverCall("SemaiAct", P1, "kabel", tukar)
+check("Mapping jodoh tertukar DITOLAK server", tolak3 == false, tostring(tolakMsg3))
+Stub.Scheduler.advance(0.4)
+local s1, kiri1, kanan1 = bacaKabelGui()
+check("3x gagal -> soket diacak ulang & terlihat beda di layar", s1 ~= nil and (table.concat(kiri0, ",") ~= table.concat(kiri1, ",") or table.concat(kanan0, ",") ~= table.concat(kanan1, ",")), "-")
+local okKabel, msgKabel = serverCall("SemaiAct", P1, "kabel", s1)
+check("Jodoh kabel dari layar -> mesin aktif", okKabel, tostring(msgKabel))
 Stub.Scheduler.advance(3.5)
 local stSemai1 = serverCall("GetState", P1)
 check("Batch mesin tercatat di papan", findGui(dunia, "TextLabel", "SEMAI TUNTAS - KLAIM HASIL") ~= nil, "-")
 local klaimBtn = findGui(gui, "TextButton", "Klaim Semua")
 check("Tombol Klaim Semua tampil setelah tuntas", klaimBtn ~= nil and tampakPenuh(klaimBtn), "-")
 local function micdaOf(pl)
-	local ls = pl:FindFirstChild("leaderstats")
-	local mv = ls and ls:FindFirstChild("Micda")
-	return mv and mv.Value or 0
+        local ls = pl:FindFirstChild("leaderstats")
+        local mv = ls and ls:FindFirstChild("Micda")
+        return mv and mv.Value or 0
 end
 local micda0 = micdaOf(P1)
 if klaimBtn then

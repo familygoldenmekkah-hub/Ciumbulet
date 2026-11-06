@@ -1,34 +1,35 @@
 # DUNIA AKIOMIDA (Roblox)
 
-Status: LIVE di Roblox (**versionNumber 43**, 6 Nov 2026) — **MESIN SEMAI
-PANEN: ISI JUMLAH + PENJODOHAN KABEL + GILING 3 DETIK + KLAIM, BLOK PER
-TANAMAN, BUG BLOK_PANEN DIHAPUS, TEMPAT MESIN TERHIAS**:
+Status: LIVE di Roblox (**versionNumber 44**, 7 Nov 2026) — **KABEL
+SERVER-AUTHORITATIVE (BUG INTEGRASI DITEMUKAN & DIPERBAIKI) + TIANG KANOPI
+MESIN 4X TINGGI KARAKTER**:
 
-1. **MESIN SEMAI MENGGANTIKAN MEJA PUKUL** — dekati mesin di lahan, pilih
-   hasil panen (mis. Nektarin), atur jumlah (preset 1/10/50/100/500/Maks,
-   kapasitas mesin 2000), lihat hitungan "Pukulan per item — Total
-   pukulan", lalu "Isi Mesin Semai". Item dipotong server saat diatur.
-2. **PENJODOHAN KABEL ACAK** — mesin baru aktif setelah modal "Sambungkan
-   Kabel Mesin" selesai: 4-6 pasang soket warna (8 warna) dengan susunan
-   dan posisi acak tiap kali; seret kabel ke soket warna yang sama (atau
-   ketuk kiri lalu kanan); garis kabel tergambar, warna salah ditolak,
-   semua jodoh = mesin menyala.
-3. **GILING 3 DETIK + SEMAI TUNTAS** — drum, cincin, gir, dan roda gila
-   berputar, cerobong berasap, lampu status kuning menyala, suara giling;
-   3 detik kemudian papan status mesin menyala hijau "SEMAI TUNTAS - KLAIM
-   HASIL" dan notifikasi muncul.
-4. **HASIL & KLAIM** — buka mesin lagi: daftar "+X Micda", "+N Benih",
-   "+M Blok" lalu "Klaim Semua" -> struk beranimasi, semua masuk tas
-   (tas penuh ditolak dengan pesan jelas).
-5. **BLOK SESUAI TANAMAN + BUG DIHAPUS** — item generik "Blok Panen"
-   (blok_panen) dihapus total; hasil blok kini selalu "Blok <Tanaman>"
-   (Blok Nektarin, Blok Wortel, ...) dengan ikon berwarna tanaman — diuji
-   khusus tidak pernah muncul lagi.
-6. **MESIN REALISTIS & TERHIAS** — mesin giling industri berkanopi: pondasi
-   diamond-plate, bodi baja, drum silinder berputar + 3 cincin oranye, roda
-   gila, gir, motor+cerobong asap, corong hopper V, kontrol berlampi 3
-   status, kabel warna, corong keluaran + peti hasil; area berpagar, tong,
-   peti, karung, kotak alat, pipa, dan garis peringatan kuning-hitam.
+1. **BUG KABEL DITEMUKAN SAAT DIUJI** — hasil ujian sambung kabel acak:
+   layout selama ini dibuat di KLIEN dan server tidak pernah membuat atau
+   memvalidasi kabel; `SemaiAct("kabel")` polos tanpa argumen langsung
+   mengaktifkan mesin, jadi minigame penjodohan bisa dilewati exploiter.
+2. **KABEL KINI DIJAGA SERVER** — susunan kabel dibuat server saat "Isi
+   Mesin Semai"; pengajuan "kabel jadi" WAJIB membawa mapping soket
+   kiri->kanan dan divalidasi server (saringSambung + kabelSelesai);
+   tanpa mapping, kosong, bolong, di luar rentang, pecahan, atau tertukar
+   semuanya DITOLAK.
+3. **PENJODOHAN ULANG ANTI TEBAK** — 3x pengajuan salah -> server mengacak
+   ulang susunan (versi naik) dan modal klien otomatis terbangun ulang
+   dengan pesan "Susunan kabel berubah!"; pada 1-2x salah jodohan parsial
+   pemain TIDAK hilang.
+4. **LEBIH MUDAH** — saat menyeret kabel, soket kanan yang dilewati
+   menyala HIJAU bila warnanya jodoh, MERAH bila bukan; tetap bisa drag
+   atau ketuk kiri lalu kanan; radius lepas 36 px.
+5. **TIANG KANOPI 4X TINGGI KARAKTER** — 4 tiang baja 20 stud (karakter
+   acuan 5 stud; sebelumnya 8 stud) dengan pelat dasar, balok ikat atas
+   empat sisi, penyokong silang X di kedua sisi; atap + garis merah-krem
+   naik ke 21,3 stud; lampu kini gantung tali panjang neon hangat agar
+   tetap menerangi mesin.
+
+Isi v43 tetap: mesin giling 3 detik + papan "SEMAI TUNTAS - KLAIM HASIL",
+klaim Micda + benih + blok SESUAI tanaman (bug blok_panen dihapus total),
+kapasitas mesin 2000, mesin berkanopi terhias (pagar, tong, peti, karung,
+kotak alat, pipa, garis peringatan kuning-hitam).
 
 Isi v42 tetap: punch tahan tombol + tinju boks terlihat, Atur Jual
 berkonfirmasi, jalan & toko dihias, beli pack berkonfirmasi + struk, popup
@@ -60,12 +61,13 @@ Isi v41 tetap: beli pack berkonfirmasi (Ya/Batal) + struk daftar benih yang
 didapat; popup Gerbang Dunia langsung tertutup saat pemain memilih tujuan;
 bug badai sync (kick pemain sah) diperbaiki; alat uji playtest/massa hidup.
 
-Universe: 10774464946 · Place: 77626159664192 · Label era: 10.0.0 "Mesin Semai Panen"
+Universe: 10774464946 · Place: 77626159664192 · Label era: 10.0.1 "Kabel Terjaga Server"
 Build: `tools/rojo build default.project.json -o build/DuniaAkiomida.rbxlx`
-(luau-lsp 0 temuan, tes offline 279 PASS / 0 FAIL, playtest 130 PASS / 0 FAIL,
-ujian massa 108 PASS / 0 FAIL — termasuk 15 cek end-to-end mesin semai)
+(luau-lsp 0 temuan, tes offline 291 PASS / 0 FAIL, playtest 130 PASS / 0 FAIL,
+ujian massa 113 PASS / 0 FAIL — termasuk ujian kabel end-to-end: 3 penolakan,
+susunan acak ulang terlihat di layar, jodoh dari layar)
 
-Skor banding Toram/Growtopia: **54.75/100** — lihat `RUBRIC.md`.
+Skor banding Toram/Growtopia: **55.25/100** — lihat `RUBRIC.md`.
 
 Isi era 9.8 (tetap berlaku):
 
@@ -211,6 +213,8 @@ Skor banding Toram/Growtopia: **51/100** — lihat `RUBRIC.md`.
 | v39 | **REVISI FINAL: UI, SISTEM PANEN, SERVER-AUTHORITATIVE & ANTI-EXPLOIT** (halaman "Lahanan"): (A) kolom kiri Micda + "Masuk Dunia-ku" vertikal rata kiri di bawah bar Roblox (TopbarInset + margin), jarak konsisten via UIListLayout; tombol PUNCH baru tanpa tulisan: ikon kepalan 9 bagian orisinal, UIStroke, UIGradient, bayangan, efek tekan mengecil 0.9, ukuran 0.92x Jump, 12-20 px di KIRI Jump, dasar segaris; (B) POHON vs HASIL PANEN dipisah: pohon + progres 5x pukul selalu tersimpan (tak pernah terhapus waktu), hasil panen tersimpan & hanya kedaluwarsa 900 dtk sejak pemain KELUAR (waktu server; online aman selamanya; rejoin < 15 menit = drop kembali di posisi semula; hitungan diulang dari keluar terbaru), label peringatan di Papan Tanam; (C) SERVER-AUTHORITATIVE: CurrencyService satu pintu (Get/Add/Spend + alasan whitelist + atomik + batas 24 mutasi/menit + tolak lonjakan 25.000 + ledger 24 transaksi tersimpan), AuditService log [AUDIT] + kick 20 insiden/5 menit, kunci sesi UpdateAsync anti-dua-server (data tamu tak menimpa asli), save UpdateAsync + retry 3x + autosave 75 dtk + BindToClose simpan & lepas kunci, drop ID unik + klaim atomik satu kali + jarak 14 stud + pemilik saja + maks 80 drop/lahan FIFO; (D) semua waktu dari server (GetServerTimeNow/os.time), cooldown pukul 0.35 dtk server, tidak ada remote menerima jumlah/waktu/harga/status klien; (E) tes exploit simulasi baru: Micda palsu/NaN/lonjakan/laju ditolak, kunci sesi, kedaluwarsa 899 vs 900 dtk, klaim ganda/jarak/milik, persistensi pohon+drop sanitasi. BUG DITEMUKAN & DIPERBAIKI: PlotService.serialize memetakan crop/readyAt lalu DuniaLogic.serPlots menyaring crop -> pohon SEBELUMNYA TIDAK PERNAH TERSIMPAN; kini serialize mentah + h/l tersimpan. Tes 243 PASS / 0 FAIL (7 seksi baru), luau-lsp 0 temuan; uji 7 layar termasuk tablet 2224x1668 (#39). |
 | v40 | (sesi otomatis) Menerbitkan #40; dokumentasinya menyebut efek struk berjenjang & modal 268 px yang TIDAK ada di sumber — klaim tidak akurat, kode tidak ditemukan di proyek. Fitur yang diminta pemilik benar-benar diimplementasikan di v41 (lihat atas). |
 | v41 | **PEMBELIAN BERKONFIRMASI + GERBANG OTOMATIS TERTUTUP + BUG BADAI SYNC DIPERBAIKI** (permintaan pemilik): (1) TOKO BENIH — tekan Pack Common/Rare TIDAK langsung membeli: muncul pop up "Konfirmasi Pembelian" berisi isi pack, kategori, dan harga dengan tombol Ya, Beli / Batal; setelah Ya, server merapatkan benih (tetap server-authoritative) lalu pop up "Pembelian Berhasil" menampilkan STRUK daftar benih yang didapat per jenis (ikon + nama + jumlah) plus total Micda — modul baru Shared/StrukBeli merangkum picks jadi baris struk; (2) GERBANG DUNIA — memilih Masuk/Pulang/Kunjungi yang berhasil langsung menutup pop up (tidak lagi menggantung setelah teleport); (3) BUG BADAI SYNC — panel Papan Tanam pada tab Status memanggil TanamAct("status") ulang di SETIAP Sync/TanamSync (50 pukulan = 50+ panggilan, rate limit 3/6 dtk meluap, AuditService mencatat 20 insiden dan MENENDANG pemain); kini tab Status hanya memuat ulang lewat klik tab atau tombol "Perbarui" — badai sync hilang; (4) ALAT UJI DIHIDUPKAN KEMBALI (jujur): generator playtest/massa ternyata membeku sejak v39 (daftar modul tidak pernah diperbarui + stub DataStore tanpa UpdateAsync sehingga semua load dianggap kunci sesi) — kini diperbaiki dan seluruh skenario disesuaikan dengan UI v39-v41 (tombol punch ikon, baris tanam klik-baris, tombol jumlah, teks status "Siap/Tumbuh", atribut drop DropId/LahanIdx, jarak & arah pukul server); playtest 130 PASS / 0 FAIL, ujian massa 93 PASS / 0 FAIL, tes offline 251 PASS / 0 FAIL (8 tes StrukBeli baru), luau-lsp 0 temuan (#41). |
+| v43 | **MESIN SEMAI PANEN** (permintaan pemilik): meja pukul diganti mesin giling — pilih hasil panen + atur jumlah (kapasitas 2000, total pukulan = jumlah x pukulan/item), batch dipotong & digulung server; aktif hanya setelah penjodohan kabel 4-6 pasang warna (drag atau ketuk), giling 3 dtk (drum/gir/roda putar, asap, suara), papan "SEMAI TUNTAS - KLAIM HASIL", klaim Micda + benih + blok SESUAI tanaman; item bug "blok_panen" dihapus total; area mesin dihias penuh. Ditemukan & diperbaiki: variabel menimpa fungsi warna modal kabel. Tes 279 offline, massa 108, playtest 130; luau-lsp 0 (#43). |
+| v44 | **KABEL SERVER-AUTHORITATIVE + TIANG KANOPI 4X KARAKTER** (permintaan pemilik): ujian sambung kabel acak MENEMUKAN bug integrasi kritis — layout kabel dibuat di klien dan server tidak pernah memvalidasi ("kabel" polos langsung aktif, minigame bisa dilewati exploiter); kini layout dibuat server saat atur, pengajuan wajib membawa mapping kiri->kanan dan divalidasi server (saringSambung + kabelSelesai), 3x salah = susunan diacak ulang (versi naik) dan modal dibangun ulang otomatis, jodohan parsial aman di 1-2x salah; soket target menyala hijau/merah saat kabel diseret; tiang kanopi kini 20 stud = 4x tinggi karakter (karakter acuan 5 stud) dengan pelat dasar, balok ikat empat sisi, penyokong X, atap naik ke 21,3 stud, lampu gantung tali panjang. Tes offline 291 (+12 seksi Q), massa 113 (alur kabel dari layar: tanpa mapping/kosong/tertukar DITOLAK, acak ulang terlihat, jodoh dari layar -> klaim), playtest 130; luau-lsp 0 temuan (#44). |
 
 ## Sesi update mandiri berikutnya (tanpa menunggu pemilik)
 

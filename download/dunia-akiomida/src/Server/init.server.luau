@@ -274,7 +274,7 @@ Net.get("SemaiAct").OnServerInvoke = function(player, action, a, b)
         if action == "atur" then
                 return MesinSemaiService.atur(player, a, b)
         elseif action == "kabel" then
-                return MesinSemaiService.kabelJadi(player)
+                return MesinSemaiService.kabelJadi(player, a)
         elseif action == "klaim" then
                 return MesinSemaiService.klaim(player)
         end

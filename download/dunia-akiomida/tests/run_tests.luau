@@ -70,7 +70,7 @@ do
         check("Dana awal 900.000", CropData.StartMoney == 900000, tostring(CropData.StartMoney))
         check("Tas 50 slot", CropData.TasSlots == 50 and TasLogic.MaxSlots == 50, "-")
         check("Stack 250", CropData.TasStack == 250 and TasLogic.MaxStack == 250, "-")
-        check("Blok per tanaman (tanpa blok_panen)", CropData.BlokId == nil and CropData.blokIdFor("nektarin") == "blok_nektarin" and CropData.blokCrop("blok_nektarin") == "nektarin" and CropData.blokNamaFor("nektarin") == "Blok Nektarin", tostring(CropData.BlokId))
+        check("Blok per tanaman (tanpa blok_panen)", (CropData :: any).BlokId == nil and CropData.blokIdFor("nektarin") == "blok_nektarin" and CropData.blokCrop("blok_nektarin") == "nektarin" and CropData.blokNamaFor("nektarin") == "Blok Nektarin", tostring((CropData :: any).BlokId))
         check("Pack Common 2.400 isi 3", CropData.Packs.common.price == 2400 and CropData.Packs.common.count == 3, "-")
         check("Pack Rare 9.000 isi 3", CropData.Packs.rare.price == 9000 and CropData.Packs.rare.count == 3, "-")
         check("Tidak ada pack epic di toko", CropData.Packs.epic == nil, "-")
@@ -948,7 +948,7 @@ do
         check("Nol / negatif / pecahan ditolak", JualLogic.saring("0", 50) == nil and JualLogic.saring("-3", 50) == nil and JualLogic.saring("2.5", 50) == nil, "-")
         check("Teks bukan angka ditolak", JualLogic.saring("abc", 50) == nil and JualLogic.saring("", 50) == nil, "-")
         check("Jumlah dipotong ke stok maksimum", JualLogic.saring("99", 40) == 40, "-")
-        check("Stok kosong selalu ditolak", JualLogic.saring("1", 0) == nil and JualLogic.saring("1", nil) ~= nil, "-")
+        check("Stok kosong selalu ditolak", JualLogic.saring("1", 0) == nil and JualLogic.saring("1", nil :: any) ~= nil, "-")
         check("Total harga = unit x jumlah", JualLogic.total(87, 3) == 261, "-")
 end
 
@@ -1045,6 +1045,82 @@ do
         else
                 check("Sambungan warna salah ditolak", true, "-")
         end
+end
+
+print("--- Q: Kabel server-authoritative (saring, putuskan, acak ulang) ---")
+do
+        local SemaiLogic = require("./../src/Shared/SemaiLogic")
+        local function shimK(seed: number)
+                local s0 = seed % 2147483647
+                if s0 == 0 then
+                        s0 = 12345
+                end
+                return {
+                        NextInteger = function(_, a: number, b: number)
+                                s0 = (s0 * 48271) % 2147483647
+                                return a + (s0 % (b - a + 1))
+                        end,
+                        NextNumber = function(_)
+                                s0 = (s0 * 48271) % 2147483647
+                                return s0 / 2147483647
+                        end,
+                }
+        end
+        local k = SemaiLogic.buatKabel(shimK(11))
+        local benar = {}
+        for i = 1, k.n do
+                for jx = 1, k.n do
+                        if k.kanan[jx] == k.kiri[i] then
+                                benar[i] = jx
+                        end
+                end
+        end
+        check("saringSambung menerima mapping jodoh", SemaiLogic.saringSambung(k, benar) ~= nil and SemaiLogic.kabelSelesai(k, SemaiLogic.saringSambung(k, benar)), "-")
+        check("putuskanKabel menerima jodoh", select(1, SemaiLogic.putuskanKabel(k, benar, 0, shimK(1))) == "jodoh" and select(3, SemaiLogic.putuskanKabel(k, benar, 2, shimK(1))) == 0, "-")
+        check("saringSambung menolak nil dan teks", SemaiLogic.saringSambung(k, nil) == nil and SemaiLogic.saringSambung(k, "hax") == nil, "-")
+        check("saringSambung menolak mapping kosong", SemaiLogic.saringSambung(k, {}) == nil, "-")
+        local bolong = {}
+        for i = 1, k.n - 1 do
+                bolong[i] = benar[i]
+        end
+        check("saringSambung menolak mapping bolong", SemaiLogic.saringSambung(k, bolong) == nil, "-")
+        check("saringSambung menolak indeks luar rentang", SemaiLogic.saringSambung(k, { [1] = 0, [2] = k.n + 1 }) == nil, "-")
+        check("saringSambung menolak pecahan & teks", SemaiLogic.saringSambung(k, { [1] = 1.5, [2] = "2" }) == nil, "-")
+        local rusak = {}
+        for i = 1, k.n do
+                rusak[i] = benar[i]
+        end
+        local t1, t2 = rusak[1], rusak[2]
+        rusak[1], rusak[2] = t2, t1
+        local st1, kb1, sl1 = SemaiLogic.putuskanKabel(k, rusak, 0, shimK(21))
+        check("Pasangan tertukar ditolak & dihitung", st1 == "salah" and sl1 == 1 and kb1 == k, tostring(st1))
+        local st2, _kb2, sl2 = SemaiLogic.putuskanKabel(k, rusak, sl1, shimK(21))
+        check("Percobaan salah kedua tetap ditolak", st2 == "salah" and sl2 == 2, tostring(st2))
+        local st3, kb3, sl3 = SemaiLogic.putuskanKabel(k, rusak, sl2, shimK(21))
+        check("Percobaan salah ketiga memicu acak ulang", st3 == "acak_ulang" and sl3 == 0 and kb3 ~= k, tostring(st3))
+        local unikBaru = true
+        for i = 1, kb3.n do
+                for jx = i + 1, kb3.n do
+                        if kb3.kiri[i] == kb3.kiri[jx] then
+                                unikBaru = false
+                        end
+                end
+        end
+        check("Layout acak ulang tetap sah (4-6, warna unik)", kb3.n >= 4 and kb3.n <= 6 and unikBaru, tostring(kb3.n))
+        local urutan = {}
+        for seed = 1, 6 do
+                local kk = SemaiLogic.buatKabel(shimK(seed * 97))
+                table.insert(urutan, table.concat(kk.kanan, ",") .. "|" .. table.concat(kk.kiri, ","))
+        end
+        local beda = 0
+        for i = 1, #urutan do
+                for jx = i + 1, #urutan do
+                        if urutan[i] ~= urutan[jx] then
+                                beda += 1
+                        end
+                end
+        end
+        check("Susunan kabel selalu beda tiap sesi (15 pasang banding)", beda >= 14, tostring(beda))
 end
 
 print(("="):rep(28))

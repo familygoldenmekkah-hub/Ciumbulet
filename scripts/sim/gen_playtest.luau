@@ -2546,132 +2546,164 @@ local SemaiLogic = {}
 SemaiLogic.KabelMin = 4
 SemaiLogic.KabelMaks = 6
 SemaiLogic.WarnaKabel = {
-	{ 214, 64, 56 },
-	{ 76, 168, 82 },
-	{ 58, 122, 214 },
-	{ 240, 196, 60 },
-	{ 168, 92, 224 },
-	{ 240, 138, 44 },
-	{ 60, 190, 190 },
-	{ 232, 92, 150 },
+        { 214, 64, 56 },
+        { 76, 168, 82 },
+        { 58, 122, 214 },
+        { 240, 196, 60 },
+        { 168, 92, 224 },
+        { 240, 138, 44 },
+        { 60, 190, 190 },
+        { 232, 92, 150 },
 }
 
 function SemaiLogic.saringJumlah(teks: any, dimiliki: any, kapasitas: number): number?
-	if type(teks) ~= "string" and type(teks) ~= "number" then
-		return nil
-	end
-	local n = tonumber(teks)
-	if not n or n ~= n or n % 1 ~= 0 or n < 1 then
-		return nil
-	end
-	n = math.floor(n)
-	if type(dimiliki) ~= "number" or dimiliki < 1 then
-		return nil
-	end
-	local maks = math.floor(dimiliki)
-	if type(kapasitas) == "number" and kapasitas >= 1 and maks > kapasitas then
-		maks = math.floor(kapasitas)
-	end
-	if n > maks then
-		n = maks
-	end
-	if n < 1 then
-		return nil
-	end
-	return n
+        if type(teks) ~= "string" and type(teks) ~= "number" then
+                return nil
+        end
+        local n = tonumber(teks)
+        if not n or n ~= n or n % 1 ~= 0 or n < 1 then
+                return nil
+        end
+        n = math.floor(n)
+        if type(dimiliki) ~= "number" or dimiliki < 1 then
+                return nil
+        end
+        local maks = math.floor(dimiliki)
+        if type(kapasitas) == "number" and kapasitas >= 1 and maks > kapasitas then
+                maks = math.floor(kapasitas)
+        end
+        if n > maks then
+                n = maks
+        end
+        if n < 1 then
+                return nil
+        end
+        return n
 end
 
 function SemaiLogic.pukulanPerItem(cfg: any): number
-	if type(cfg) ~= "table" or type(cfg.hits) ~= "number" or cfg.hits < 1 then
-		return 1
-	end
-	return math.floor(cfg.hits)
+        if type(cfg) ~= "table" or type(cfg.hits) ~= "number" or cfg.hits < 1 then
+                return 1
+        end
+        return math.floor(cfg.hits)
 end
 
 function SemaiLogic.pukulanTotal(jumlah: number, perItem: number): number
-	return math.floor(jumlah) * math.floor(perItem)
+        return math.floor(jumlah) * math.floor(perItem)
 end
 
 function SemaiLogic.gulung(rng: any, cfg: any, jumlah: number): { micda: number, benih: number, blok: number }
-	local jml = math.max(1, math.floor(jumlah))
-	local mMin = 1
-	local mMax = 1
-	local pBenih = 0
-	local pBlok = 0
-	if type(cfg) == "table" then
-		mMin = type(cfg.micdaMin) == "number" and math.max(0, cfg.micdaMin) or 1
-		mMax = type(cfg.micdaMax) == "number" and math.max(mMin, cfg.micdaMax) or mMin
-		pBenih = type(cfg.seed) == "number" and cfg.seed or 0
-		pBlok = type(cfg.blok) == "number" and cfg.blok or 0
-	end
-	local micda = 0
-	local benih = 0
-	local blok = 0
-	for _ = 1, jml do
-		micda += rng:NextInteger(mMin, mMax)
-		if rng:NextNumber() < pBenih then
-			benih += 1
-		end
-		if rng:NextNumber() < pBlok then
-			blok += 1
-		end
-	end
-	return { micda = micda, benih = benih, blok = blok }
+        local jml = math.max(1, math.floor(jumlah))
+        local mMin = 1
+        local mMax = 1
+        local pBenih = 0
+        local pBlok = 0
+        if type(cfg) == "table" then
+                mMin = type(cfg.micdaMin) == "number" and math.max(0, cfg.micdaMin) or 1
+                mMax = type(cfg.micdaMax) == "number" and math.max(mMin, cfg.micdaMax) or mMin
+                pBenih = type(cfg.seed) == "number" and cfg.seed or 0
+                pBlok = type(cfg.blok) == "number" and cfg.blok or 0
+        end
+        local micda = 0
+        local benih = 0
+        local blok = 0
+        for _ = 1, jml do
+                micda += rng:NextInteger(mMin, mMax)
+                if rng:NextNumber() < pBenih then
+                        benih += 1
+                end
+                if rng:NextNumber() < pBlok then
+                        blok += 1
+                end
+        end
+        return { micda = micda, benih = benih, blok = blok }
 end
 
 local function acakUrutan(rng: any, daftar: { number }): { number }
-	local out = {}
-	for i, v in ipairs(daftar) do
-		out[i] = v
-	end
-	for i = #out, 2, -1 do
-		local j = rng:NextInteger(1, i)
-		local tmp = out[i]
-		out[i] = out[j]
-		out[j] = tmp
-	end
-	return out
+        local out = {}
+        for i, v in ipairs(daftar) do
+                out[i] = v
+        end
+        for i = #out, 2, -1 do
+                local j = rng:NextInteger(1, i)
+                local tmp = out[i]
+                out[i] = out[j]
+                out[j] = tmp
+        end
+        return out
 end
 
 function SemaiLogic.buatKabel(rng: any): { n: number, kiri: { number }, kanan: { number } }
-	local palet = {}
-	for i = 1, #SemaiLogic.WarnaKabel do
-		table.insert(palet, i)
-	end
-	local pilihan = acakUrutan(rng, palet)
-	local n = rng:NextInteger(SemaiLogic.KabelMin, SemaiLogic.KabelMaks)
-	if n > #pilihan then
-		n = #pilihan
-	end
-	local kiri = {}
-	for i = 1, n do
-		kiri[i] = pilihan[i]
-	end
-	local kanan = acakUrutan(rng, kiri)
-	return { n = n, kiri = kiri, kanan = kanan }
+        local palet = {}
+        for i = 1, #SemaiLogic.WarnaKabel do
+                table.insert(palet, i)
+        end
+        local pilihan = acakUrutan(rng, palet)
+        local n = rng:NextInteger(SemaiLogic.KabelMin, SemaiLogic.KabelMaks)
+        if n > #pilihan then
+                n = #pilihan
+        end
+        local kiri = {}
+        for i = 1, n do
+                kiri[i] = pilihan[i]
+        end
+        local kanan = acakUrutan(rng, kiri)
+        return { n = n, kiri = kiri, kanan = kanan }
+end
+
+function SemaiLogic.saringSambung(kabel: any, masuk: any): { [number]: number }?
+        if type(kabel) ~= "table" or type(masuk) ~= "table" then
+                return nil
+        end
+        local n = kabel.n
+        if type(n) ~= "number" or n ~= n or n % 1 ~= 0 or n < 1 then
+                return nil
+        end
+        local out = {}
+        for i = 1, n do
+                local t = masuk[i]
+                if type(t) ~= "number" or t ~= t or t % 1 ~= 0 or t < 1 or t > n then
+                        return nil
+                end
+                out[i] = t
+        end
+        return out
+end
+
+function SemaiLogic.putuskanKabel(kabel: any, masuk: any, salah: number, rng: any): (string, any, number)
+        local hitung = type(salah) == "number" and salah or 0
+        local sambung = SemaiLogic.saringSambung(kabel, masuk)
+        if sambung and SemaiLogic.kabelSelesai(kabel, sambung) then
+                return "jodoh", kabel, 0
+        end
+        hitung += 1
+        if hitung >= 3 then
+                return "acak_ulang", SemaiLogic.buatKabel(rng), 0
+        end
+        return "salah", kabel, hitung
 end
 
 function SemaiLogic.kabelSelesai(kabel: any, sambung: any): boolean
-	if type(kabel) ~= "table" or type(sambung) ~= "table" then
-		return false
-	end
-	local kiri = kabel.kiri
-	local kanan = kabel.kanan
-	if type(kiri) ~= "table" or type(kanan) ~= "table" or kabel.n ~= #kiri or kabel.n ~= #kanan or kabel.n < 1 then
-		return false
-	end
-	local dipakai = {}
-	for i = 1, kabel.n do
-		local t = sambung[i]
-		if type(t) ~= "number" or t ~= math.floor(t) or t < 1 or t > kabel.n or dipakai[t] then
-			return false
-		end
-		if kiri[i] ~= kanan[t] then
-			return false
-		end
-		dipakai[t] = true
-	end
-	return true
+        if type(kabel) ~= "table" or type(sambung) ~= "table" then
+                return false
+        end
+        local kiri = kabel.kiri
+        local kanan = kabel.kanan
+        if type(kiri) ~= "table" or type(kanan) ~= "table" or kabel.n ~= #kiri or kabel.n ~= #kanan or kabel.n < 1 then
+                return false
+        end
+        local dipakai = {}
+        for i = 1, kabel.n do
+                local t = sambung[i]
+                if type(t) ~= "number" or t ~= math.floor(t) or t < 1 or t > kabel.n or dipakai[t] then
+                        return false
+                end
+                if kiri[i] ~= kanan[t] then
+                        return false
+                end
+                dipakai[t] = true
+        end
+        return true
 end
 
 return SemaiLogic
@@ -3444,17 +3476,37 @@ function BuildingKit.buildMesinSemai(parent: Instance, index: number, hooks): Mo
         for i = 0, 9 do
                 BuildingKit.part(model, Vector3.new(2.4, 0.14, 0.7), CFrame.new(-13.5 + i * 3, 1.22, -14.4), (i % 2 == 0) and STRIPE_KUNING or STEEL_DARK, Enum.Material.SmoothPlastic).CanCollide = false
         end
+        local sudutPenyokong = math.atan(18 / 20)
         for sx = -1, 1, 2 do
-                BuildingKit.part(model, Vector3.new(0.9, 8, 0.9), CFrame.new(sx * 11, 5, -9), STEEL_DARK, Enum.Material.Metal)
-                BuildingKit.part(model, Vector3.new(0.9, 8, 0.9), CFrame.new(sx * 11, 5, 9), STEEL_DARK, Enum.Material.Metal)
+                for sz = -1, 1, 2 do
+                        BuildingKit.part(model, Vector3.new(2.2, 0.4, 2.2), CFrame.new(sx * 11, 1.2, sz * 9), STEEL, Enum.Material.Metal)
+                        BuildingKit.part(model, Vector3.new(1.2, 20, 1.2), CFrame.new(sx * 11, 11, sz * 9), STEEL_DARK, Enum.Material.Metal)
+                end
+                BuildingKit.part(model, Vector3.new(0.7, 0.7, 19.2), CFrame.new(sx * 11, 20.65, 0), STEEL_DARK, Enum.Material.Metal)
+                local sokA = BuildingKit.part(model, Vector3.new(0.45, 26.91, 0.45), CFrame.new(sx * 11, 11, 0) * CFrame.Angles(sudutPenyokong, 0, 0), STEEL, Enum.Material.Metal)
+                sokA.CanCollide = false
+                local sokB = BuildingKit.part(model, Vector3.new(0.45, 26.91, 0.45), CFrame.new(sx * 11, 11, 0) * CFrame.Angles(-sudutPenyokong, 0, 0), STEEL, Enum.Material.Metal)
+                sokB.CanCollide = false
         end
-        local atap = BuildingKit.part(model, Vector3.new(26, 0.6, 22), CFrame.new(0, 9.4, 0) * CFrame.Angles(0, 0, math.rad(3)), STEEL_DARK, Enum.Material.Metal)
+        for sz = -1, 1, 2 do
+                BuildingKit.part(model, Vector3.new(23.2, 0.7, 0.7), CFrame.new(0, 20.65, sz * 9), STEEL_DARK, Enum.Material.Metal)
+        end
+        local atap = BuildingKit.part(model, Vector3.new(26, 0.6, 22), CFrame.new(0, 21.3, 0) * CFrame.Angles(0, 0, math.rad(3)), STEEL_DARK, Enum.Material.Metal)
         atap.CanCollide = false
         for i = 0, 3 do
-                BuildingKit.part(model, Vector3.new(25, 0.25, 1.6), CFrame.new(0, 9.95, -7 + i * 4.6) * CFrame.Angles(0, 0, math.rad(3)), (i % 2 == 0) and BRICKRED or CREAM, Enum.Material.SmoothPlastic).CanCollide = false
+                BuildingKit.part(model, Vector3.new(25, 0.25, 1.6), CFrame.new(0, 21.85, -7 + i * 4.6) * CFrame.Angles(0, 0, math.rad(3)), (i % 2 == 0) and BRICKRED or CREAM, Enum.Material.SmoothPlastic).CanCollide = false
         end
-        BuildingKit.lamp(model, -5, 9, 4)
-        BuildingKit.lamp(model, 6, 9, 4)
+        for _, lx in ipairs({ -5, 6 }) do
+                local tali = BuildingKit.part(model, Vector3.new(0.3, 7.4, 0.3), CFrame.new(lx, 17.3, 4), STEEL_DARK, Enum.Material.Metal)
+                tali.CanCollide = false
+                local kap = BuildingKit.part(model, Vector3.new(2.4, 0.9, 2.4), CFrame.new(lx, 13.35, 4), Color3.fromRGB(235, 205, 130), Enum.Material.Neon)
+                kap.CanCollide = false
+                local cahaya = Instance.new("PointLight")
+                cahaya.Range = 18
+                cahaya.Brightness = 0.6
+                cahaya.Color = Color3.fromRGB(255, 224, 178)
+                cahaya.Parent = kap
+        end
         BuildingKit.fenceLine(model, -15, 15, 15, 15, 1)
         BuildingKit.fenceLine(model, -15, -15, -15, 15, 1)
         BuildingKit.fenceLine(model, 15, -15, 15, 15, 1)
@@ -4083,90 +4135,90 @@ local mesin: { [number]: any } = {}
 local batch: { [number]: any } = {}
 
 local TEKS_TAHAP = {
-	kosong = { teks = "NONAKTIF", warna = { 208, 210, 216 } },
-	kabel = { teks = "SAMBUNGKAN KABEL", warna = { 255, 214, 110 } },
-	giling = { teks = "MENGGILING...", warna = { 255, 158, 74 } },
-	tuntas = { teks = "SEMAI TUNTAS - KLAIM HASIL", warna = { 122, 232, 130 } },
+        kosong = { teks = "NONAKTIF", warna = { 208, 210, 216 } },
+        kabel = { teks = "SAMBUNGKAN KABEL", warna = { 255, 214, 110 } },
+        giling = { teks = "MENGGILING...", warna = { 255, 158, 74 } },
+        tuntas = { teks = "SEMAI TUNTAS - KLAIM HASIL", warna = { 122, 232, 130 } },
 }
 
 local LAMPU_MATI = 0.55
 local LAMPU_NYALA = 0
 
 local function bagian(model: Instance, nama: string): any
-	local d = model:FindFirstChild(nama, true)
-	return d
+        local d = model:FindFirstChild(nama, true)
+        return d
 end
 
 local function baseOf(p: BasePart?): CFrame?
-	if p and p.Parent then
-		return p.CFrame
-	end
-	return nil
+        if p and p.Parent then
+                return p.CFrame
+        end
+        return nil
 end
 
 function MesinSemaiService.bind(deps)
-	Land = deps.Land
-	Tas = deps.Tas
-	Uang = deps.Uang
-	Net = deps.Net
-	World = deps.World
+        Land = deps.Land
+        Tas = deps.Tas
+        Uang = deps.Uang
+        Net = deps.Net
+        World = deps.World
 end
 
 function MesinSemaiService.registerMesin(index: number, model: Model)
-	local drum = bagian(model, "MesinDrum")
-	local m = {
-		pos = model:GetPivot().Position,
-		status = bagian(model, "StatusMesin"),
-		drum = drum,
-		drumBase = baseOf(drum),
-		girA = bagian(model, "MesinGirA"),
-		girABase = baseOf(bagian(model, "MesinGirA")),
-		girB = bagian(model, "MesinGirB"),
-		girBBase = baseOf(bagian(model, "MesinGirB")),
-		roda = bagian(model, "MesinRoda"),
-		rodaBase = baseOf(bagian(model, "MesinRoda")),
-		rib1 = bagian(model, "MesinRib1"),
-		rib1Base = baseOf(bagian(model, "MesinRib1")),
-		rib2 = bagian(model, "MesinRib2"),
-		rib2Base = baseOf(bagian(model, "MesinRib2")),
-		rib3 = bagian(model, "MesinRib3"),
-		rib3Base = baseOf(bagian(model, "MesinRib3")),
-		lampuMerah = bagian(model, "MesinLampuMerah"),
-		lampuKuning = bagian(model, "MesinLampuKuning"),
-		lampuHijau = bagian(model, "MesinLampuHijau"),
-		asap = bagian(model, "AsapMesin"),
-		suaraGiling = bagian(model, "SuaraGiling"),
-		suaraDing = bagian(model, "SuaraDing"),
-		suaraStart = bagian(model, "SuaraStart"),
-		blink = false,
-		mode = "",
-	}
-	mesin[index] = m
-	if m.asap then
-		m.asap.Enabled = false
-	end
-	if m.suaraGiling then
-		m.suaraGiling.Playing = false
-	end
-	MesinSemaiService.terapkanTahap(index)
+        local drum = bagian(model, "MesinDrum")
+        local m = {
+                pos = model:GetPivot().Position,
+                status = bagian(model, "StatusMesin"),
+                drum = drum,
+                drumBase = baseOf(drum),
+                girA = bagian(model, "MesinGirA"),
+                girABase = baseOf(bagian(model, "MesinGirA")),
+                girB = bagian(model, "MesinGirB"),
+                girBBase = baseOf(bagian(model, "MesinGirB")),
+                roda = bagian(model, "MesinRoda"),
+                rodaBase = baseOf(bagian(model, "MesinRoda")),
+                rib1 = bagian(model, "MesinRib1"),
+                rib1Base = baseOf(bagian(model, "MesinRib1")),
+                rib2 = bagian(model, "MesinRib2"),
+                rib2Base = baseOf(bagian(model, "MesinRib2")),
+                rib3 = bagian(model, "MesinRib3"),
+                rib3Base = baseOf(bagian(model, "MesinRib3")),
+                lampuMerah = bagian(model, "MesinLampuMerah"),
+                lampuKuning = bagian(model, "MesinLampuKuning"),
+                lampuHijau = bagian(model, "MesinLampuHijau"),
+                asap = bagian(model, "AsapMesin"),
+                suaraGiling = bagian(model, "SuaraGiling"),
+                suaraDing = bagian(model, "SuaraDing"),
+                suaraStart = bagian(model, "SuaraStart"),
+                blink = false,
+                mode = "",
+        }
+        mesin[index] = m
+        if m.asap then
+                m.asap.Enabled = false
+        end
+        if m.suaraGiling then
+                m.suaraGiling.Playing = false
+        end
+        MesinSemaiService.terapkanTahap(index)
 end
 
 local function setStatus(index: number)
-	local m = mesin[index]
-	if not m or not m.status or not m.status.Parent then
-		return
-	end
-	local b = batch[index]
-	local cfg = TEKS_TAHAP[b and b.tahap or "kosong"]
-	m.status.Text = cfg.teks
-	m.status.TextColor3 = Color3.fromRGB(cfg.warna[1], cfg.warna[2], cfg.warna[3])
+        local m = mesin[index]
+        if not m or not m.status or not m.status.Parent then
+                return
+        end
+        local b = batch[index]
+        local cfg = TEKS_TAHAP[b and b.tahap or "kosong"]
+        m.status.Text = cfg.teks
+        m.status.TextColor3 = Color3.fromRGB(cfg.warna[1], cfg.warna[2], cfg.warna[3])
 end
 
 local function setLampu(part: any, warna: Color3, nyala: boolean)
-	if part and part.Parent then
-		part.Color = warna
-		part.Transparency = nyala and LAMPU_NYALA or LAMPU_MATI
-	end
+        if part and part.Parent then
+                part.Color = warna
+                part.Transparency = nyala and LAMPU_NYALA or LAMPU_MATI
+        end
 end
 
 local MERAH_ON = Color3.fromRGB(232, 76, 60)
@@ -4175,335 +4227,353 @@ local HIJAU_ON = Color3.fromRGB(108, 220, 116)
 local LAMPU_OFF = Color3.fromRGB(72, 76, 84)
 
 local function lampuUpdate(index: number)
-	local m = mesin[index]
-	if not m then
-		return
-	end
-	local b = batch[index]
-	local tahap = b and b.tahap or "kosong"
-	if tahap ~= m.mode then
-		m.mode = tahap
-		m.blink = false
-	end
-	local merahNyala = tahap == "kosong"
-	local kuningNyala = tahap == "giling" or (tahap == "kabel" and m.blink)
-	local hijauNyala = tahap == "tuntas"
-	setLampu(m.lampuMerah, merahNyala and MERAH_ON or LAMPU_OFF, merahNyala)
-	setLampu(m.lampuKuning, kuningNyala and KUNING_ON or LAMPU_OFF, kuningNyala)
-	setLampu(m.lampuHijau, hijauNyala and HIJAU_ON or LAMPU_OFF, hijauNyala)
+        local m = mesin[index]
+        if not m then
+                return
+        end
+        local b = batch[index]
+        local tahap = b and b.tahap or "kosong"
+        if tahap ~= m.mode then
+                m.mode = tahap
+                m.blink = false
+        end
+        local merahNyala = tahap == "kosong"
+        local kuningNyala = tahap == "giling" or (tahap == "kabel" and m.blink)
+        local hijauNyala = tahap == "tuntas"
+        setLampu(m.lampuMerah, merahNyala and MERAH_ON or LAMPU_OFF, merahNyala)
+        setLampu(m.lampuKuning, kuningNyala and KUNING_ON or LAMPU_OFF, kuningNyala)
+        setLampu(m.lampuHijau, hijauNyala and HIJAU_ON or LAMPU_OFF, hijauNyala)
 end
 
 function MesinSemaiService.terapkanTahap(index: number)
-	setStatus(index)
-	lampuUpdate(index)
-	local m = mesin[index]
-	if not m then
-		return
-	end
-	local b = batch[index]
-	local tahap = b and b.tahap or "kosong"
-	local aktif = tahap == "giling"
-	if m.asap then
-		m.asap.Enabled = aktif
-	end
-	if m.suaraGiling then
-		m.suaraGiling.Playing = aktif
-	end
-	if tahap == "tuntas" and m.suaraDing then
-		m.suaraDing:Play()
-	end
-	if tahap == "giling" and m.suaraStart then
-		m.suaraStart:Play()
-	end
+        setStatus(index)
+        lampuUpdate(index)
+        local m = mesin[index]
+        if not m then
+                return
+        end
+        local b = batch[index]
+        local tahap = b and b.tahap or "kosong"
+        local aktif = tahap == "giling"
+        if m.asap then
+                m.asap.Enabled = aktif
+        end
+        if m.suaraGiling then
+                m.suaraGiling.Playing = aktif
+        end
+        if tahap == "tuntas" and m.suaraDing then
+                m.suaraDing:Play()
+        end
+        if tahap == "giling" and m.suaraStart then
+                m.suaraStart:Play()
+        end
 end
 
 RunService.Heartbeat:Connect(function(dt)
-	local now = os.clock()
-	for index, m in pairs(mesin) do
-		local b = batch[index]
-		if b and b.tahap == "giling" then
-			local sudut = now * 8
-			local putar = CFrame.Angles(sudut, 0, 0)
-			if m.drum and m.drumBase then
-				m.drum.CFrame = m.drumBase * putar
-			end
-			if m.rib1 and m.rib1Base then
-				m.rib1.CFrame = m.rib1Base * putar
-			end
-			if m.rib2 and m.rib2Base then
-				m.rib2.CFrame = m.rib2Base * putar
-			end
-			if m.rib3 and m.rib3Base then
-				m.rib3.CFrame = m.rib3Base * putar
-			end
-			if m.girA and m.girABase then
-				m.girA.CFrame = m.girABase * CFrame.Angles(now * 6, 0, 0)
-			end
-			if m.girB and m.girBBase then
-				m.girB.CFrame = m.girBBase * CFrame.Angles(-now * 6, 0, 0)
-			end
-			if m.roda and m.rodaBase then
-				m.roda.CFrame = m.rodaBase * CFrame.Angles(now * 10, 0, 0)
-			end
-		end
-	end
+        local now = os.clock()
+        for index, m in pairs(mesin) do
+                local b = batch[index]
+                if b and b.tahap == "giling" then
+                        local sudut = now * 8
+                        local putar = CFrame.Angles(sudut, 0, 0)
+                        if m.drum and m.drumBase then
+                                m.drum.CFrame = m.drumBase * putar
+                        end
+                        if m.rib1 and m.rib1Base then
+                                m.rib1.CFrame = m.rib1Base * putar
+                        end
+                        if m.rib2 and m.rib2Base then
+                                m.rib2.CFrame = m.rib2Base * putar
+                        end
+                        if m.rib3 and m.rib3Base then
+                                m.rib3.CFrame = m.rib3Base * putar
+                        end
+                        if m.girA and m.girABase then
+                                m.girA.CFrame = m.girABase * CFrame.Angles(now * 6, 0, 0)
+                        end
+                        if m.girB and m.girBBase then
+                                m.girB.CFrame = m.girBBase * CFrame.Angles(-now * 6, 0, 0)
+                        end
+                        if m.roda and m.rodaBase then
+                                m.roda.CFrame = m.rodaBase * CFrame.Angles(now * 10, 0, 0)
+                        end
+                end
+        end
 end)
 
 task.spawn(function()
-	while true do
-		task.wait(0.4)
-		for index, m in pairs(mesin) do
-			local b = batch[index]
-			local tahap = b and b.tahap or "kosong"
-			if tahap == "kabel" then
-				m.blink = not m.blink
-			elseif m.blink then
-				m.blink = false
-			end
-			lampuUpdate(index)
-		end
-	end
+        while true do
+                task.wait(0.4)
+                for index, m in pairs(mesin) do
+                        local b = batch[index]
+                        local tahap = b and b.tahap or "kosong"
+                        if tahap == "kabel" then
+                                m.blink = not m.blink
+                        elseif m.blink then
+                                m.blink = false
+                        end
+                        lampuUpdate(index)
+                end
+        end
 end)
 
 local function syncLahan(index: number, player: Player?)
-	local b = batch[index]
-	local p: any = { lahan = index, tahap = b and b.tahap or "kosong" }
-	if b then
-		p.crop = b.crop
-		p.jumlah = b.jumlah
-		p.pukulan = b.pukulan
-		p.micda = b.hasil.micda
-		p.benih = b.hasil.benih
-		p.blok = b.hasil.blok
-	end
-	local ev = Net.get("SemaiSync")
-	if player then
-		ev:FireClient(player, p)
-		return
-	end
-	for _, pl in ipairs(game:GetService("Players"):GetPlayers()) do
-		if Land.landOf(pl) == index then
-			ev:FireClient(pl, p)
-		end
-	end
+        local b = batch[index]
+        local p: any = { lahan = index, tahap = b and b.tahap or "kosong" }
+        if b then
+                p.crop = b.crop
+                p.jumlah = b.jumlah
+                p.pukulan = b.pukulan
+                p.micda = b.hasil.micda
+                p.benih = b.hasil.benih
+                p.blok = b.hasil.blok
+                if b.tahap == "kabel" then
+                        p.kabel = b.kabel
+                        p.kabelVersi = b.versi or 0
+                end
+        end
+        local ev = Net.get("SemaiSync")
+        if player then
+                ev:FireClient(player, p)
+                return
+        end
+        for _, pl in ipairs(game:GetService("Players"):GetPlayers()) do
+                if Land.landOf(pl) == index then
+                        ev:FireClient(pl, p)
+                end
+        end
 end
 
 function MesinSemaiService.syncTo(player, index: number)
-	syncLahan(index, player)
+        syncLahan(index, player)
 end
 
 function MesinSemaiService.clearLahan(index: number)
-	batch[index] = nil
-	local m = mesin[index]
-	if m then
-		m.mode = ""
-		m.blink = false
-	end
+        batch[index] = nil
+        local m = mesin[index]
+        if m then
+                m.mode = ""
+                m.blink = false
+        end
 end
 
 local function dekatMesin(player: Player, index: number): boolean
-	local m = mesin[index]
-	if not m then
-		return false
-	end
-	local char = player.Character
-	local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
-	if not root or (root.Position - m.pos).Magnitude > CropData.MesinSemai.JarakMaks then
-		return false
-	end
-	return true
+        local m = mesin[index]
+        if not m then
+                return false
+        end
+        local char = player.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+        if not root or (root.Position - m.pos).Magnitude > CropData.MesinSemai.JarakMaks then
+                return false
+        end
+        return true
 end
 
 function MesinSemaiService.atur(player, cropId: any, jumlah: any): (boolean, string)
-	local index = Land.landOf(player)
-	if not index then
-		return false, "Kamu tidak punya lahan."
-	end
-	if batch[index] then
-		return false, "Mesin masih berisi semaian. Selesaikan dulu."
-	end
-	if type(cropId) ~= "string" or not CropData.byId[cropId] then
-		return false, "Hasil panen tidak dikenal."
-	end
-	if type(jumlah) ~= "number" or jumlah ~= jumlah or jumlah % 1 ~= 0 or jumlah < 1 then
-		return false, "Jumlah tidak sah."
-	end
-	if not mesin[index] or not dekatMesin(player, index) then
-		return false, "Terlalu jauh dari mesin."
-	end
-	local info = CropData.byId[cropId]
-	local cfg = CropData.Giling[info.rarity]
-	local kapasitas = CropData.MesinSemai.Kapasitas
-	if jumlah > kapasitas then
-		jumlah = kapasitas
-	end
-	local dimiliki = Tas.count(player, "hasil", cropId)
-	if dimiliki < 1 then
-		return false, "Tidak ada " .. info.nama .. " di tas."
-	end
-	if jumlah > dimiliki then
-		jumlah = dimiliki
-	end
-	local diambil = Tas.remove(player, "hasil", cropId, jumlah)
-	if diambil < 1 then
-		return false, "Hasil panen tidak bisa diambil dari tas."
-	end
-	local hasil = SemaiLogic.gulung(rng, cfg, diambil)
-	batch[index] = {
-		pemilik = player.UserId,
-		crop = cropId,
-		jumlah = diambil,
-		pukulan = SemaiLogic.pukulanTotal(diambil, SemaiLogic.pukulanPerItem(cfg)),
-		hasil = hasil,
-		tahap = "kabel",
-	}
-	if World then
-		World.touch(index)
-	end
-	MesinSemaiService.terapkanTahap(index)
-	syncLahan(index)
-	return true, info.nama .. " x" .. tostring(diambil) .. " masuk mesin. Sambungkan kabelnya!", {
-		crop = cropId,
-		jumlah = diambil,
-		pukulan = batch[index].pukulan,
-		kapasitas = kapasitas,
-	}
+        local index = Land.landOf(player)
+        if not index then
+                return false, "Kamu tidak punya lahan."
+        end
+        if batch[index] then
+                return false, "Mesin masih berisi semaian. Selesaikan dulu."
+        end
+        if type(cropId) ~= "string" or not CropData.byId[cropId] then
+                return false, "Hasil panen tidak dikenal."
+        end
+        if type(jumlah) ~= "number" or jumlah ~= jumlah or jumlah % 1 ~= 0 or jumlah < 1 then
+                return false, "Jumlah tidak sah."
+        end
+        if not mesin[index] or not dekatMesin(player, index) then
+                return false, "Terlalu jauh dari mesin."
+        end
+        local info = CropData.byId[cropId]
+        local cfg = CropData.Giling[info.rarity]
+        local kapasitas = CropData.MesinSemai.Kapasitas
+        if jumlah > kapasitas then
+                jumlah = kapasitas
+        end
+        local dimiliki = Tas.count(player, "hasil", cropId)
+        if dimiliki < 1 then
+                return false, "Tidak ada " .. info.nama .. " di tas."
+        end
+        if jumlah > dimiliki then
+                jumlah = dimiliki
+        end
+        local diambil = Tas.remove(player, "hasil", cropId, jumlah)
+        if diambil < 1 then
+                return false, "Hasil panen tidak bisa diambil dari tas."
+        end
+        local hasil = SemaiLogic.gulung(rng, cfg, diambil)
+        batch[index] = {
+                pemilik = player.UserId,
+                crop = cropId,
+                jumlah = diambil,
+                pukulan = SemaiLogic.pukulanTotal(diambil, SemaiLogic.pukulanPerItem(cfg)),
+                hasil = hasil,
+                tahap = "kabel",
+                kabel = SemaiLogic.buatKabel(rng),
+                kabelSalah = 0,
+                versi = 0,
+        }
+        if World then
+                World.touch(index)
+        end
+        MesinSemaiService.terapkanTahap(index)
+        syncLahan(index)
+        return true, info.nama .. " x" .. tostring(diambil) .. " masuk mesin. Sambungkan kabelnya!", {
+                crop = cropId,
+                jumlah = diambil,
+                pukulan = batch[index].pukulan,
+                kapasitas = kapasitas,
+        }
 end
 
-function MesinSemaiService.kabelJadi(player): (boolean, string)
-	local index = Land.landOf(player)
-	if not index then
-		return false, "Kamu tidak punya lahan."
-	end
-	local b = batch[index]
-	if not b then
-		return false, "Mesin kosong. Isi dulu hasil panennya."
-	end
-	if b.pemilik ~= player.UserId then
-		return false, "Bukan semaianmu."
-	end
-	if b.tahap ~= "kabel" then
-		return false, "Kabel sudah tersambung."
-	end
-	if not dekatMesin(player, index) then
-		return false, "Terlalu jauh dari mesin."
-	end
-	b.tahap = "giling"
-	MesinSemaiService.terapkanTahap(index)
-	syncLahan(index)
-	local waktu = CropData.MesinSemai.WaktuGiling
-	task.delay(waktu, function()
-		local b2 = batch[index]
-		if b2 and b2.tahap == "giling" then
-			b2.tahap = "tuntas"
-			if World then
-				World.touch(index)
-			end
-			MesinSemaiService.terapkanTahap(index)
-			syncLahan(index)
-		end
-	end)
-	return true, "Mesin aktif! Menggiling selama " .. tostring(waktu) .. " detik."
+function MesinSemaiService.kabelJadi(player, masuk): (boolean, string)
+        local index = Land.landOf(player)
+        if not index then
+                return false, "Kamu tidak punya lahan."
+        end
+        local b = batch[index]
+        if not b then
+                return false, "Mesin kosong. Isi dulu hasil panennya."
+        end
+        if b.pemilik ~= player.UserId then
+                return false, "Bukan semaianmu."
+        end
+        if b.tahap ~= "kabel" then
+                return false, "Kabel sudah tersambung."
+        end
+        if not dekatMesin(player, index) then
+                return false, "Terlalu jauh dari mesin."
+        end
+        local putus, kabelHasil, salahBaru = SemaiLogic.putuskanKabel(b.kabel, masuk, b.kabelSalah or 0, rng)
+        if putus ~= "jodoh" then
+                b.kabelSalah = salahBaru
+                if putus == "acak_ulang" then
+                        b.kabel = kabelHasil
+                        b.versi = (b.versi or 0) + 1
+                        syncLahan(index)
+                        return false, "Susunan kabel diacak ulang. Sambungkan lagi dari awal."
+                end
+                return false, "Kabel belum terjodohkan semua dengan warna yang sama."
+        end
+        b.tahap = "giling"
+        MesinSemaiService.terapkanTahap(index)
+        syncLahan(index)
+        local waktu = CropData.MesinSemai.WaktuGiling
+        task.delay(waktu, function()
+                local b2 = batch[index]
+                if b2 and b2.tahap == "giling" then
+                        b2.tahap = "tuntas"
+                        if World then
+                                World.touch(index)
+                        end
+                        MesinSemaiService.terapkanTahap(index)
+                        syncLahan(index)
+                end
+        end)
+        return true, "Mesin aktif! Menggiling selama " .. tostring(waktu) .. " detik."
 end
 
 function MesinSemaiService.klaim(player): (boolean, string, any)
-	local index = Land.landOf(player)
-	if not index then
-		return false, "Kamu tidak punya lahan."
-	end
-	local b = batch[index]
-	if not b then
-		return false, "Mesin kosong. Belum ada hasil untuk diklaim."
-	end
-	if b.pemilik ~= player.UserId then
-		return false, "Bukan semaianmu."
-	end
-	if b.tahap == "kabel" then
-		return false, "Sambungkan kabel mesin dulu."
-	elseif b.tahap == "giling" then
-		return false, "Mesin masih menggiling. Tunggu sebentar."
-	end
-	if not dekatMesin(player, index) then
-		return false, "Terlalu jauh dari mesin."
-	end
-	local info = CropData.byId[b.crop]
-	local items = {}
-	if b.hasil.benih > 0 then
-		table.insert(items, { kind = "benih", id = b.crop, count = b.hasil.benih })
-	end
-	if b.hasil.blok > 0 then
-		table.insert(items, { kind = "blok", id = CropData.blokIdFor(b.crop), count = b.hasil.blok })
-	end
-	if #items > 0 and not Tas.canFitBatch(player, items) then
-		return false, "Tas penuh! Kosongkan slot dulu, lalu klaim lagi."
-	end
-	for _, it in ipairs(items) do
-		Tas.add(player, it.kind, it.id, it.count)
-	end
-	local okUang, msgUang = true, "ok"
-	if b.hasil.micda > 0 and Uang then
-		okUang, msgUang = Uang.AddMicda(player, b.hasil.micda, "semai_hasil")
-	end
-	local struk = {
-		crop = b.crop,
-		nama = info and info.nama or b.crop,
-		jumlah = b.jumlah,
-		pukulan = b.pukulan,
-		micda = b.hasil.micda,
-		benih = b.hasil.benih,
-		blok = b.hasil.blok,
-		uangOk = okUang,
-	}
-	batch[index] = nil
-	if World then
-		World.touch(index)
-	end
-	MesinSemaiService.terapkanTahap(index)
-	syncLahan(index)
-	if okUang then
-		return true, "Semai tuntas! Semua hasil masuk tas.", struk
-	end
-	return false, "Micda ditunda: " .. tostring(msgUang), struk
+        local index = Land.landOf(player)
+        if not index then
+                return false, "Kamu tidak punya lahan."
+        end
+        local b = batch[index]
+        if not b then
+                return false, "Mesin kosong. Belum ada hasil untuk diklaim."
+        end
+        if b.pemilik ~= player.UserId then
+                return false, "Bukan semaianmu."
+        end
+        if b.tahap == "kabel" then
+                return false, "Sambungkan kabel mesin dulu."
+        elseif b.tahap == "giling" then
+                return false, "Mesin masih menggiling. Tunggu sebentar."
+        end
+        if not dekatMesin(player, index) then
+                return false, "Terlalu jauh dari mesin."
+        end
+        local info = CropData.byId[b.crop]
+        local items = {}
+        if b.hasil.benih > 0 then
+                table.insert(items, { kind = "benih", id = b.crop, count = b.hasil.benih })
+        end
+        if b.hasil.blok > 0 then
+                table.insert(items, { kind = "blok", id = CropData.blokIdFor(b.crop), count = b.hasil.blok })
+        end
+        if #items > 0 and not Tas.canFitBatch(player, items) then
+                return false, "Tas penuh! Kosongkan slot dulu, lalu klaim lagi."
+        end
+        for _, it in ipairs(items) do
+                Tas.add(player, it.kind, it.id, it.count)
+        end
+        local okUang, msgUang = true, "ok"
+        if b.hasil.micda > 0 and Uang then
+                okUang, msgUang = Uang.AddMicda(player, b.hasil.micda, "semai_hasil")
+        end
+        local struk = {
+                crop = b.crop,
+                nama = info and info.nama or b.crop,
+                jumlah = b.jumlah,
+                pukulan = b.pukulan,
+                micda = b.hasil.micda,
+                benih = b.hasil.benih,
+                blok = b.hasil.blok,
+                uangOk = okUang,
+        }
+        batch[index] = nil
+        if World then
+                World.touch(index)
+        end
+        MesinSemaiService.terapkanTahap(index)
+        syncLahan(index)
+        if okUang then
+                return true, "Semai tuntas! Semua hasil masuk tas.", struk
+        end
+        return false, "Micda ditunda: " .. tostring(msgUang), struk
 end
 
 function MesinSemaiService.serializeLahan(index: number): { any }
-	local out = {}
-	local b = batch[index]
-	if b then
-		table.insert(out, { c = b.crop, j = b.jumlah, m = b.hasil.micda, b = b.hasil.benih, k = b.hasil.blok })
-	end
-	return out
+        local out = {}
+        local b = batch[index]
+        if b then
+                table.insert(out, { c = b.crop, j = b.jumlah, m = b.hasil.micda, b = b.hasil.benih, k = b.hasil.blok })
+        end
+        return out
 end
 
 function MesinSemaiService.restoreLahan(index: number, arr: any, ownerId: number?)
-	if not mesin[index] then
-		return
-	end
-	for _, rec in ipairs(arr or {}) do
-		if type(rec) == "table" and type(rec.c) == "string" and CropData.byId[rec.c] then
-			local info = CropData.byId[rec.c]
-			local jumlah = 1
-			local micda = info.jual
-			local benih = 0
-			local blok = 0
-			if type(rec.j) == "number" and rec.j >= 1 then
-				jumlah = math.min(math.floor(rec.j), CropData.MesinSemai.Kapasitas)
-				micda = type(rec.m) == "number" and math.max(0, math.floor(rec.m)) or 0
-				benih = type(rec.b) == "number" and math.max(0, math.floor(rec.b)) or 0
-				blok = type(rec.k) == "number" and math.max(0, math.floor(rec.k)) or 0
-			end
-			batch[index] = {
-				pemilik = ownerId,
-				crop = rec.c,
-				jumlah = jumlah,
-				pukulan = jumlah,
-				hasil = { micda = micda, benih = benih, blok = blok },
-				tahap = "tuntas",
-			}
-			break
-		end
-	end
-	MesinSemaiService.terapkanTahap(index)
+        if not mesin[index] then
+                return
+        end
+        for _, rec in ipairs(arr or {}) do
+                if type(rec) == "table" and type(rec.c) == "string" and CropData.byId[rec.c] then
+                        local info = CropData.byId[rec.c]
+                        local jumlah = 1
+                        local micda = info.jual
+                        local benih = 0
+                        local blok = 0
+                        if type(rec.j) == "number" and rec.j >= 1 then
+                                jumlah = math.min(math.floor(rec.j), CropData.MesinSemai.Kapasitas)
+                                micda = type(rec.m) == "number" and math.max(0, math.floor(rec.m)) or 0
+                                benih = type(rec.b) == "number" and math.max(0, math.floor(rec.b)) or 0
+                                blok = type(rec.k) == "number" and math.max(0, math.floor(rec.k)) or 0
+                        end
+                        batch[index] = {
+                                pemilik = ownerId,
+                                crop = rec.c,
+                                jumlah = jumlah,
+                                pukulan = jumlah,
+                                hasil = { micda = micda, benih = benih, blok = blok },
+                                tahap = "tuntas",
+                        }
+                        break
+                end
+        end
+        MesinSemaiService.terapkanTahap(index)
 end
 
 return MesinSemaiService
@@ -7433,6 +7503,7 @@ round(kabelTutup, UIStyle.SudutKecil)
 local kabelSfx = mk("Sound", { SoundId = "rbxasset://sounds/electronicpingshort.wav", Volume = 0.4, PlaybackSpeed = 1.15 }, gui)
 
 local kabelCfg: any = nil
+local kabelVersi = 0
 local kabelSambung: { [number]: number } = {}
 local kabelPilihKiri: number? = nil
 local kabelDrag: any = nil
@@ -7476,6 +7547,35 @@ local function tandaiPilih()
         end
 end
 
+local function terhubungKe(j: number): boolean
+        for _, v in pairs(kabelSambung) do
+                if v == j then
+                        return true
+                end
+        end
+        return false
+end
+
+local function soketDi(x: number, y: number): number?
+        for j, s in ipairs(soketKanan) do
+                local cx, cy = pusatSoket(s.frame)
+                if math.abs(x - cx) <= 36 and math.abs(y - cy) <= 36 then
+                        return j
+                end
+        end
+        return nil
+end
+
+local function sorotTarget(dari: number, hover: number?)
+        if kabelDrag and kabelDrag.over and soketKanan[kabelDrag.over] then
+                soketKanan[kabelDrag.over].frame.BackgroundColor3 = warna(UIStyle.AbuGelap)
+        end
+        if hover and soketKanan[hover] and not terhubungKe(hover) then
+                local cocok = kabelCfg and kabelCfg.kiri[dari] == soketKanan[hover].warna
+                soketKanan[hover].frame.BackgroundColor3 = cocok and warna(UIStyle.Hijau) or warna(UIStyle.Merah)
+        end
+end
+
 local function cobaSambung(i: number, j: number)
         if not kabelCfg or kabelSambung[i] then
                 return
@@ -7501,7 +7601,7 @@ local function cobaSambung(i: number, j: number)
                         task.delay(0.4, function()
                                 kabelDim.Visible = false
                                 task.spawn(function()
-                                        local ok, msg = Net.get("SemaiAct"):InvokeServer("kabel")
+                                        local ok, msg = Net.get("SemaiAct"):InvokeServer("kabel", kabelSambung)
                                         toast(ok and "Mesin Semai" or "Gagal", msg)
                                 end)
                         end)
@@ -7581,10 +7681,11 @@ local function bangunKabel()
 end
 
 bukaKabel = function()
-        if not (state.semai and state.semai.tahap == "kabel") then
+        if not (state.semai and state.semai.tahap == "kabel" and state.semai.kabel) then
                 return
         end
-        kabelCfg = SemaiLogic.buatKabel(Random.new())
+        kabelCfg = state.semai.kabel
+        kabelVersi = state.semai.kabelVersi or 0
         bangunKabel()
         kabelStatus.TextColor3 = warna(UIStyle.Aksen)
         kabelStatus.Text = "Terhubung 0/" .. tostring(kabelCfg.n)
@@ -7608,6 +7709,11 @@ UserInputService.InputChanged:Connect(function(input)
                 end
                 local sx, sy = pusatSoket(soketKiri[kabelDrag.dari].frame)
                 kabelDrag.garis = gambarGaris(sx, sy, x, y, warnaKabel(kabelCfg.kiri[kabelDrag.dari]), 8, 0.25)
+                local hover = soketDi(x, y)
+                if kabelDrag.over ~= hover then
+                        sorotTarget(kabelDrag.dari, hover)
+                        kabelDrag.over = hover
+                end
         end
 end)
 
@@ -7626,6 +7732,9 @@ UserInputService.InputEnded:Connect(function(input)
                                 target = j
                                 break
                         end
+                end
+                if kabelDrag.over and soketKanan[kabelDrag.over] then
+                        soketKanan[kabelDrag.over].frame.BackgroundColor3 = warna(UIStyle.AbuGelap)
                 end
                 if kabelDrag.garis then
                         kabelDrag.garis:Destroy()
@@ -8704,6 +8813,13 @@ end)
 Net.get("SemaiSync").OnClientEvent:Connect(function(p)
         if p.lahan == state.lahan then
                 state.semai = p
+                if kabelDim.Visible and p.tahap == "kabel" and p.kabel and (p.kabelVersi or 0) ~= kabelVersi then
+                        kabelCfg = p.kabel
+                        kabelVersi = p.kabelVersi or 0
+                        bangunKabel()
+                        kabelStatus.TextColor3 = warna(UIStyle.Merah)
+                        kabelStatus.Text = "Susunan kabel berubah! Sambungkan ulang dari awal."
+                end
                 if currentPanel == "semai" then
                         refreshSemai()
                 end
@@ -9056,7 +9172,7 @@ Net.get("SemaiAct").OnServerInvoke = function(player, action, a, b)
         if action == "atur" then
                 return MesinSemaiService.atur(player, a, b)
         elseif action == "kabel" then
-                return MesinSemaiService.kabelJadi(player)
+                return MesinSemaiService.kabelJadi(player, a)
         elseif action == "klaim" then
                 return MesinSemaiService.klaim(player)
         end

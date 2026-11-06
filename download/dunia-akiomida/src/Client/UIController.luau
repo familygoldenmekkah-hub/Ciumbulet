@@ -494,6 +494,7 @@ round(kabelTutup, UIStyle.SudutKecil)
 local kabelSfx = mk("Sound", { SoundId = "rbxasset://sounds/electronicpingshort.wav", Volume = 0.4, PlaybackSpeed = 1.15 }, gui)
 
 local kabelCfg: any = nil
+local kabelVersi = 0
 local kabelSambung: { [number]: number } = {}
 local kabelPilihKiri: number? = nil
 local kabelDrag: any = nil
@@ -537,6 +538,35 @@ local function tandaiPilih()
         end
 end
 
+local function terhubungKe(j: number): boolean
+        for _, v in pairs(kabelSambung) do
+                if v == j then
+                        return true
+                end
+        end
+        return false
+end
+
+local function soketDi(x: number, y: number): number?
+        for j, s in ipairs(soketKanan) do
+                local cx, cy = pusatSoket(s.frame)
+                if math.abs(x - cx) <= 36 and math.abs(y - cy) <= 36 then
+                        return j
+                end
+        end
+        return nil
+end
+
+local function sorotTarget(dari: number, hover: number?)
+        if kabelDrag and kabelDrag.over and soketKanan[kabelDrag.over] then
+                soketKanan[kabelDrag.over].frame.BackgroundColor3 = warna(UIStyle.AbuGelap)
+        end
+        if hover and soketKanan[hover] and not terhubungKe(hover) then
+                local cocok = kabelCfg and kabelCfg.kiri[dari] == soketKanan[hover].warna
+                soketKanan[hover].frame.BackgroundColor3 = cocok and warna(UIStyle.Hijau) or warna(UIStyle.Merah)
+        end
+end
+
 local function cobaSambung(i: number, j: number)
         if not kabelCfg or kabelSambung[i] then
                 return
@@ -562,7 +592,7 @@ local function cobaSambung(i: number, j: number)
                         task.delay(0.4, function()
                                 kabelDim.Visible = false
                                 task.spawn(function()
-                                        local ok, msg = Net.get("SemaiAct"):InvokeServer("kabel")
+                                        local ok, msg = Net.get("SemaiAct"):InvokeServer("kabel", kabelSambung)
                                         toast(ok and "Mesin Semai" or "Gagal", msg)
                                 end)
                         end)
@@ -642,10 +672,11 @@ local function bangunKabel()
 end
 
 bukaKabel = function()
-        if not (state.semai and state.semai.tahap == "kabel") then
+        if not (state.semai and state.semai.tahap == "kabel" and state.semai.kabel) then
                 return
         end
-        kabelCfg = SemaiLogic.buatKabel(Random.new())
+        kabelCfg = state.semai.kabel
+        kabelVersi = state.semai.kabelVersi or 0
         bangunKabel()
         kabelStatus.TextColor3 = warna(UIStyle.Aksen)
         kabelStatus.Text = "Terhubung 0/" .. tostring(kabelCfg.n)
@@ -669,6 +700,11 @@ UserInputService.InputChanged:Connect(function(input)
                 end
                 local sx, sy = pusatSoket(soketKiri[kabelDrag.dari].frame)
                 kabelDrag.garis = gambarGaris(sx, sy, x, y, warnaKabel(kabelCfg.kiri[kabelDrag.dari]), 8, 0.25)
+                local hover = soketDi(x, y)
+                if kabelDrag.over ~= hover then
+                        sorotTarget(kabelDrag.dari, hover)
+                        kabelDrag.over = hover
+                end
         end
 end)
 
@@ -687,6 +723,9 @@ UserInputService.InputEnded:Connect(function(input)
                                 target = j
                                 break
                         end
+                end
+                if kabelDrag.over and soketKanan[kabelDrag.over] then
+                        soketKanan[kabelDrag.over].frame.BackgroundColor3 = warna(UIStyle.AbuGelap)
                 end
                 if kabelDrag.garis then
                         kabelDrag.garis:Destroy()
@@ -1765,6 +1804,13 @@ end)
 Net.get("SemaiSync").OnClientEvent:Connect(function(p)
         if p.lahan == state.lahan then
                 state.semai = p
+                if kabelDim.Visible and p.tahap == "kabel" and p.kabel and (p.kabelVersi or 0) ~= kabelVersi then
+                        kabelCfg = p.kabel
+                        kabelVersi = p.kabelVersi or 0
+                        bangunKabel()
+                        kabelStatus.TextColor3 = warna(UIStyle.Merah)
+                        kabelStatus.Text = "Susunan kabel berubah! Sambungkan ulang dari awal."
+                end
                 if currentPanel == "semai" then
                         refreshSemai()
                 end
