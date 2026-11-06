@@ -7,13 +7,28 @@ dalam satu chunk Luau (sandbox CLI mengisolasi global antar modul).
 """
 import re
 import pathlib
+import sys
 
 ROOT = pathlib.Path("/home/z/my-project")
 SRC = ROOT / "download/dunia-akiomida/src"
 SIM = ROOT / "scripts/sim"
 
 STUB = (SIM / "roblox_stub.luau").read_text()
-SCENARIO = (ROOT / "scripts/playtest.luau").read_text()
+
+
+def scenario_text() -> str:
+    args = sys.argv[1:]
+    path = pathlib.Path(args[0]) if len(args) >= 1 else (ROOT / "scripts/playtest.luau")
+    return path.read_text()
+
+
+def output_path() -> pathlib.Path:
+    args = sys.argv[1:]
+    return pathlib.Path(args[1]) if len(args) >= 2 else (SIM / "gen_playtest.luau")
+
+
+SCENARIO = scenario_text()
+OUTFILE = output_path()
 
 MODULES_SHARED = ["CropData", "Recipes", "TasLogic", "Layout", "DuniaLogic", "SoalLogic", "GudangLogic", "PukulLogic", "PanenStatus"]
 MODULES_SERVER = [
@@ -151,8 +166,8 @@ def main() -> None:
         if b in combined.lower():
             hits = scan_banned(combined, "generated")
             raise SystemExit("nama game lain terdeteksi: " + ", ".join(hits))
-    (SIM / "gen_playtest.luau").write_text(out)
-    print("generated:", SIM / "gen_playtest.luau", len(out), "bytes")
+    OUTFILE.write_text(out)
+    print("generated:", OUTFILE, len(out), "bytes")
 
 
 if __name__ == "__main__":

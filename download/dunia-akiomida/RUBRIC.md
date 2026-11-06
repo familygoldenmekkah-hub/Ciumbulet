@@ -19,43 +19,38 @@ Skor per kriteria 0-10, dikali bobot. Total dihitung dari (skor x bobot) / 10.
 | 8 | Polish & UX (UI, suara, animasi, efek) | 10 | animasi kombat, BGM, partikel | UI rapi & responsif |
 | 9 | Originalitas 100% & aman hak cipta | 5 | - | - |
 
-## Skor v32 (versi LIVE #32, 6 Nov 2026) - REVISI FINAL TANAM-PANEN (14 poin pemilik)
+## Skor v33 (versi LIVE #33, 6 Nov 2026) - UJIAN MASSA PANEN + 3 PERBAIKAN AKAR
 
-Permintaan pemilik "Revisi Sistem Tanam & Panen (Final)" dieksekusi penuh:
-1. **Plot mati total untuk klik/tap** — popup "Plot Tanam" + seluruh teks
-   instruksinya dihapus (panel, raycast tap, papan instruksi kota, tulisan
-   di papan tanam, papan gudang, papan toko "PANDUAN TANAM", teks panel tas,
-   sapaan spawn dipangkas). Berlaku juga di lahan pemain lain.
-2. **Tanam hanya lewat Papan Tanam** — pilih benih + jumlah; label fisik
-   "TERTANAM X/500" kini hidup di DUA sisi papan (depan & belakang).
-3. **Soal tiap 10 plot** — 500 plot = 50 soal, acak tak berulang per pemain,
-   salah = tertahan, kesulitan naik (tambah/kurang -> kali -> bagi), kini
-   tampil INLINE di dalam panel papan.
-4. **Combine Seed di Papan Tanam** — menu baru hanya berisi DUA slot benih +
-   tombol Gabung. Tanpa daftar resep, tanpa petunjuk. Cocok -> benih hibrida.
-   Tidak cocok -> papan menolak dengan "Tidak bisa di-combine" DI DALAM
-   papan; benih tidak terpakai (playtest memverifikasi jumlah benih utuh).
-5. **Resep rahasia di server** — 8 resep persis daftar pemilik (Triticale,
-   Canola, Tangelo, Plumcot, Nectaplum, Pluerry, Tetsukabuto, Kacang tanah);
-   gabung di plot dihapus total dari sistem.
-6. **PUNCH permanen di layar** — tombol selalu terlihat; pukul tanaman siap
-   -> drop sesuai peluang (peluang disembunyikan), drop belum masuk tas sampai
-   disentuh; pukul tanaman yang masih tumbuh boleh kapan saja tanpa drop;
-   **5x beruntun -> tanaman hancur** (jeda > 8 dtk reset hitungan).
-7. **Status di Papan Tanam** — tab Status: per jenis tanaman "Siap Panen: N /
-   Masih Tumbuh: M" + total Tertanam X/500.
-8. **Visual tanaman** — tanaman siap panen BERUBAH WARNA (34 pasang warna
-   tumbuh vs siap) dan **tiap jenis (termasuk 8 hibrida) punya bentuk model
-   sendiri**: 8 arketipe geometri (akar, daun, bulat, tangkai, pohon, semak,
-   kacang, cendawan) x parameter ukuran/warna per jenis (CropData.Bentuk).
-9. **Larangan ditegakkan** — nol teks melayang/popup dunia untuk tanam-panen:
-   label nama drop, label "Tas Penuh! Ke Gudang", dan toast aksi tanam/punch
-   dihapus. Tas penuh kini CUKUP lewat visual (drop melayang). Satu-satunya
-   notifikasi: "Tidak bisa di-combine" di dalam papan. Playtest memverifikasi
-   0 BillboardGui dan 0 teks instruksi di dunia.
+Permintaan pemilik "uji tunggu massa panen, panen, combine, dan efektivitas
+punch" dijawab dengan ujian end-to-end baru (94 tahap, semua hijau):
 
-Validasi: tes offline 127 PASS / 0 FAIL, luau-lsp 0 temuan, playtest simulasi
-(server+UI asli) 72 PASS / 0 FAIL. Publish #32.
+1. **BUG FATAL PUNCH DITEMUKAN & DIPERBAIKI** — loop penarget PUNCH di klien
+   mencari PlotGrid langsung di folder Dunia, padahal grid berada di dalam
+   model seksi lahan. Akibatnya tombol PUNCH tidak pernah punya target sejak
+   fitur ini ada. Kini dicari rekursif -> tombol layar benar-benar memukul
+   tanaman terdekat (terverifikasi: tombol memanggil PlotAct -> drop muncul).
+2. **BUG STATE LAHAN DIPERBAIKI** — tombol HUD "Masuk Dunia-ku / Pulang ke
+   Kota" tidak pernah menyegarkan state klien, jadi setelah perjalanan cepat
+   penarget punch mati. Kini travel HUD memanggil syncState, dan payload Sync
+   server membawa lahan (provider baru) sehingga semua jalur teleport selalu
+   sinkron.
+3. **BUG TAB COMBINE DIPERBAIKI** — membuka tab Combine Seed menampilkan
+   daftar benih kosong sampai ada perubahan tas berikutnya. Kini daftar dua
+   slot langsung terisi saat tab dibuka.
+4. **UJIAN MASSA PANEN (94 PASS / 0 FAIL)** — tanam 50 wortel lewat papan
+   (5 soal inline, papan fisik 0 -> 50/500), status Masih Tumbuh 50 -> tunggu
+   3+ detik -> Siap Panen 50 + warna buah berubah, panen raya: pukulan
+   pertama lewat TOMBOL PUNCH asli (kick kamera terasa), 49 pukulan lanjutan,
+   kombo tier 1 -> 2 -> 3 (drop 1.8 -> 2.1 -> 2.4 + partikel/suara), 50 drop
+   disentuh satu per satu -> 288 buah masuk tas persis, papan kembali 0/500;
+   bayam tumbuh dipukul beruntun 5x -> hancur tanpa drop; combine GUI
+   Gandum+Rye -> Triticale, ditolak "Tidak bisa di-combine" dengan benih
+   utuh, 8 resep rahasia jadi semua + urutan dibalik tetap jadi; Tangelo
+   ditanam (bentuk pohon, warna siap sendiri) dan dipanen; gudang 250 -> 999
+   -> 998; tas penuh = drop melayang tak bisa diambil sampai ada ruang.
+
+Validasi: tes offline 127 PASS / 0 FAIL, ujian massa panen 94 PASS / 0 FAIL,
+playtest simulasi 72 PASS / 0 FAIL, luau-lsp 0 temuan. Publish #33.
 
 | Kriteria | Skor | Catatan |
 |----------|------|---------|
@@ -65,15 +60,16 @@ Validasi: tes offline 127 PASS / 0 FAIL, luau-lsp 0 temuan, playtest simulasi
 | 4 Ekonomi | 5/10 | Micda 900.000, tas 50x250, pack Common/Rare, jual hasil, gudang 1000 tampungan. Belum: pasar dinamis, toko pemain. |
 | 5 Dunia & Peta | 6/10 | Kota hanya Toko Benih; tiap lahan: Papan Tanam 2 sisi + Gudang. Dunia kini bersih dari teks instruksi. Belum: rumah, air, dungeon. |
 | 6 Multiplayer | 6/10 | Kunjung instan/salinan, tamu read-only kini juga untuk papan tanam (pemberitahuan di dalam panel). Belum: trade, party. |
-| 7 Bertani | 9/10 | Alur FINAL pemilik utuh: papan saja, 10 plot/soal, punch siap->drop peluang disentuh, punch tumbuh 5x hancur, status per jenis di papan, peluang disembunyikan. |
+| 7 Bertani | 10/10 | Alur FINAL pemilik kini TERUJI end-to-end: papan saja, 10 plot/soal, tunggu matang, punch siap -> drop peluang disentuh (tombol asli kini benar-benar memukul), punch tumbuh 5x hancur, status per jenis, combine 8 resep, tas penuh melayang. |
 | 8 Polish & UX | 9/10 | PUNCH permanen, 34 bentuk tanaman unik + warna siap berbeda, efek pukul tanaman tumbuh, panel papan 3 tab rapi, dunia tanpa teks melayang. Belum: BGM, animasi karakter. |
 | 9 Originalitas | 10/10 | 100% karya sendiri; suara hanya rbxasset bawaan engine; tanpa require ID, loadstring, getfenv, HttpService. |
 
-**TOTAL: 48/100** (bobot: 0+45+10+75+60+60+90+90+50 = 480/10 = 48)
+**TOTAL: 49/100** (bobot: 0+45+10+75+60+60+100+90+50 = 490/10 = 49)
 
 Riwayat: v10 = 56 -> v11 = 64 -> v20 = 79 -> v21 = 80 -> v25 = 83 -> v26 = 9
 (RESET) -> v27 = 33 (TAHAP 1) -> v28 = 40 -> v29 = 39 -> v30 = 42 -> v31 =
-44 -> v32 = 48 (revisi final tanam-panen pemilik).
+44 -> v32 = 48 (revisi final tanam-panen pemilik) -> v33 = 49 (ujian massa
+panen + 3 perbaikan akar: penarget punch, state lahan, render tab combine).
 Celah menuju 100: kombat (15), ekonomi pemain (10), dunia lebih kaya (4),
 polish (1), multiplayer lanjut (4), crafting lanjut (12).
 

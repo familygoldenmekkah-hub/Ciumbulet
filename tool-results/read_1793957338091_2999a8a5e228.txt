@@ -1,0 +1,2002 @@
+     1→-- AUTO-GENERATED oleh scripts/sim/gen.py - jangan edit manual
+     2→local Stub = {}
+     3→
+     4→local function noteError(where, err)
+     5→        local list = __SIM_ERRORS
+     6→        list[#list + 1] = string.format("[%s] %s", where, tostring(err))
+     7→end
+     8→
+     9→local Signal = {}
+    10→Signal.__index = Signal
+    11→
+    12→local function newSignal()
+    13→        return setmetatable({ __handlers = {} }, Signal)
+    14→end
+    15→
+    16→function Signal:Connect(fn)
+    17→        local h = { fn = fn }
+    18→        self.__handlers[#self.__handlers + 1] = h
+    19→        return { Disconnect = function()
+    20→                for i, x in ipairs(self.__handlers) do
+    21→                        if x == h then
+    22→                                table.remove(self.__handlers, i)
+    23→                                break
+    24→                        end
+    25→                end
+    26→        end }
+    27→end
+    28→
+    29→function Signal:Fire(...)
+    30→        local snapshot = {}
+    31→        for i, h in ipairs(self.__handlers) do
+    32→                snapshot[i] = h
+    33→        end
+    34→        for _, h in ipairs(snapshot) do
+    35→                local ok, err = coroutine.resume(coroutine.create(h.fn), ...)
+    36→                if not ok then
+    37→                        noteError("signal", err)
+    38→                end
+    39→        end
+    40→end
+    41→
+    42→local SignalNames = {
+    43→        Triggered = true,
+    44→        Activated = true,
+    45→        MouseButton1Click = true,
+    46→        InputBegan = true,
+    47→        InputEnded = true,
+    48→        Changed = true,
+    49→        PlayerAdded = true,
+    50→        PlayerRemoving = true,
+    51→        CharacterAdded = true,
+    52→        CharacterRemoving = true,
+    53→        Touched = true,
+    54→}
+    55→
+    56→Vector3 = {}
+    57→Vector3.__index = function(v, k)
+    58→        if k == "Magnitude" then
+    59→                return math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z)
+    60→        end
+    61→        if k == "X" then
+    62→                return v.x
+    63→        elseif k == "Y" then
+    64→                return v.y
+    65→        elseif k == "Z" then
+    66→                return v.z
+    67→        end
+    68→        return Vector3[k]
+    69→end
+    70→Vector3.__add = function(a, b)
+    71→        return setmetatable({ x = a.x + b.x, y = a.y + b.y, z = a.z + b.z }, Vector3)
+    72→end
+    73→Vector3.__sub = function(a, b)
+    74→        return setmetatable({ x = a.x - b.x, y = a.y - b.y, z = a.z - b.z }, Vector3)
+    75→end
+    76→Vector3.__mul = function(a, b)
+    77→        if type(a) == "number" then
+    78→                return setmetatable({ x = a * b.x, y = a * b.y, z = a * b.z }, Vector3)
+    79→        end
+    80→        if type(b) == "number" then
+    81→                return setmetatable({ x = a.x * b, y = a.y * b, z = a.z * b }, Vector3)
+    82→        end
+    83→        return setmetatable({ x = a.x * b.x, y = a.y * b.y, z = a.z * b.z }, Vector3)
+    84→end
+    85→Vector3.__unm = function(a)
+    86→        return setmetatable({ x = -a.x, y = -a.y, z = -a.z }, Vector3)
+    87→end
+    88→Vector3.__eq = function(a, b)
+    89→        return a.x == b.x and a.y == b.y and a.z == b.z
+    90→end
+    91→Vector3.__tostring = function(v)
+    92→        return string.format("%.3f, %.3f, %.3f", v.x, v.y, v.z)
+    93→end
+    94→
+    95→local function vec3(x, y, z)
+    96→        return setmetatable({ x = x or 0, y = y or 0, z = z or 0 }, Vector3)
+    97→end
+    98→Vector3.new = vec3
+    99→
+   100→Vector2 = {}
+   101→Vector2.__index = Vector2
+   102→Vector2.__eq = function(a, b)
+   103→        return a.x == b.x and a.y == b.y
+   104→end
+   105→function Vector2.new(x, y)
+   106→        return setmetatable({ x = x or 0, y = y or 0 }, Vector2)
+   107→end
+   108→
+   109→CFrame = {}
+   110→CFrame.__index = function(cf, k)
+   111→        if k == "Position" then
+   112→                return vec3(cf.x, cf.y, cf.z)
+   113→        end
+   114→        return CFrame[k]
+   115→end
+   116→CFrame.__mul = function(a, b)
+   117→        if getmetatable(b) == Vector3 then
+   118→                local m = a.m
+   119→                return vec3(
+   120→                        m[1][1] * b.x + m[1][2] * b.y + m[1][3] * b.z + a.x,
+   121→                        m[2][1] * b.x + m[2][2] * b.y + m[2][3] * b.z + a.y,
+   122→                        m[3][1] * b.x + m[3][2] * b.y + m[3][3] * b.z + a.z
+   123→                )
+   124→        end
+   125→        local am, bm = a.m, b.m
+   126→        local m = {}
+   127→        for i = 1, 3 do
+   128→                m[i] = {}
+   129→                for j = 1, 3 do
+   130→                        m[i][j] = am[i][1] * bm[1][j] + am[i][2] * bm[2][j] + am[i][3] * bm[3][j]
+   131→                end
+   132→        end
+   133→        local px = am[1][1] * b.x + am[1][2] * b.y + am[1][3] * b.z + a.x
+   134→        local py = am[2][1] * b.x + am[2][2] * b.y + am[2][3] * b.z + a.y
+   135→        local pz = am[3][1] * b.x + am[3][2] * b.y + am[3][3] * b.z + a.z
+   136→        return setmetatable({ x = px, y = py, z = pz, m = m }, CFrame)
+   137→end
+   138→CFrame.__eq = function(a, b)
+   139→        return a.x == b.x and a.y == b.y and a.z == b.z
+   140→end
+   141→CFrame.__tostring = function(cf)
+   142→        return string.format("CF(%.2f, %.2f, %.2f)", cf.x, cf.y, cf.z)
+   143→end
+   144→
+   145→local function mkcf(x, y, z, m)
+   146→        if not m then
+   147→                m = { { 1, 0, 0 }, { 0, 1, 0 }, { 0, 0, 1 } }
+   148→        end
+   149→        return setmetatable({ x = x, y = y, z = z, m = m }, CFrame)
+   150→end
+   151→
+   152→function CFrame.new(x, y, z)
+   153→        if type(x) == "table" and getmetatable(x) == Vector3 then
+   154→                return mkcf(x.x, x.y, x.z, nil)
+   155→        end
+   156→        return mkcf(x or 0, y or 0, z or 0, nil)
+   157→end
+   158→
+   159→function CFrame.Angles(rx, ry, rz)
+   160→        local cx, sx = math.cos(rx), math.sin(rx)
+   161→        local cy, sy = math.cos(ry), math.sin(ry)
+   162→        local cz, sz = math.cos(rz), math.sin(rz)
+   163→        local Rx = { { 1, 0, 0 }, { 0, cx, -sx }, { 0, sx, cx } }
+   164→        local Ry = { { cy, 0, sy }, { 0, 1, 0 }, { -sy, 0, cy } }
+   165→        local Rz = { { cz, -sz, 0 }, { sz, cz, 0 }, { 0, 0, 1 } }
+   166→        local function mulm(a, b)
+   167→                local m = {}
+   168→                for i = 1, 3 do
+   169→                        m[i] = {}
+   170→                        for j = 1, 3 do
+   171→                                m[i][j] = a[i][1] * b[1][j] + a[i][2] * b[2][j] + a[i][3] * b[3][j]
+   172→                        end
+   173→                end
+   174→                return m
+   175→        end
+   176→        return mkcf(0, 0, 0, mulm(Rx, mulm(Ry, Rz)))
+   177→end
+   178→
+   179→function CFrame:Inverse()
+   180→        local m = self.m
+   181→        local t = {
+   182→                { m[1][1], m[2][1], m[3][1] },
+   183→                { m[1][2], m[2][2], m[3][2] },
+   184→                { m[1][3], m[2][3], m[3][3] },
+   185→        }
+   186→        local tx = -(t[1][1] * self.x + t[1][2] * self.y + t[1][3] * self.z)
+   187→        local ty = -(t[2][1] * self.x + t[2][2] * self.y + t[2][3] * self.z)
+   188→        local tz = -(t[3][1] * self.x + t[3][2] * self.y + t[3][3] * self.z)
+   189→        return mkcf(tx, ty, tz, t)
+   190→end
+   191→
+   192→function CFrame:Lerp(other, t)
+   193→        local m = {}
+   194→        for i = 1, 3 do
+   195→                m[i] = {}
+   196→                for j = 1, 3 do
+   197→                        m[i][j] = self.m[i][j] * (1 - t) + other.m[i][j] * t
+   198→                end
+   199→        end
+   200→        return mkcf(
+   201→                self.x + (other.x - self.x) * t,
+   202→                self.y + (other.y - self.y) * t,
+   203→                self.z + (other.z - self.z) * t,
+   204→                m
+   205→        )
+   206→end
+   207→
+   208→Color3 = {}
+   209→Color3.__index = Color3
+   210→function Color3.new(r, g, b)
+   211→        return setmetatable({ r = r or 0, g = g or 0, b = b or 0 }, Color3)
+   212→end
+   213→function Color3.fromRGB(r, g, b)
+   214→        return Color3.new(r / 255, g / 255, b / 255)
+   215→end
+   216→
+   217→TweenInfo = {}
+   218→function TweenInfo.new(t, style, dir, repeatCount)
+   219→        return { t = t, style = style, dir = dir, repeatCount = repeatCount }
+   220→end
+   221→
+   222→ColorSequence = {}
+   223→function ColorSequence.new(c)
+   224→        return { c = c }
+   225→end
+   226→
+   227→NumberRange = {}
+   228→function NumberRange.new(a, b)
+   229→        return { a = a, b = b }
+   230→end
+   231→
+   232→NumberSequence = {}
+   233→function NumberSequence.new(a, b)
+   234→        return { a = a, b = b }
+   235→end
+   236→
+   237→PhysicalProperties = {}
+   238→function PhysicalProperties.new(a, b, c, d, e)
+   239→        return { a = a, b = b, c = c, d = d, e = e }
+   240→end
+   241→
+   242→UDim = {}
+   243→UDim.__index = UDim
+   244→function UDim.new(s, o)
+   245→        return setmetatable({ s = s or 0, o = o or 0 }, UDim)
+   246→end
+   247→
+   248→UDim2 = {}
+   249→UDim2.__index = UDim2
+   250→function UDim2.new(xs, xo, ys, yo)
+   251→        return setmetatable({ xs = xs or 0, xo = xo or 0, ys = ys or 0, yo = yo or 0 }, UDim2)
+   252→end
+   253→function UDim2.fromScale(xs, ys)
+   254→        return UDim2.new(xs, 0, ys, 0)
+   255→end
+   256→function UDim2.fromOffset(xo, yo)
+   257→        return UDim2.new(0, xo, 0, yo)
+   258→end
+   259→
+   260→local function makeEnum(name, values)
+   261→        local e = {}
+   262→        for _, v in ipairs(values) do
+   263→                e[v] = { __enum = name .. "." .. v }
+   264→        end
+   265→        return setmetatable(e, { __tostring = function()
+   266→                return name
+   267→        end })
+   268→end
+   269→
+   270→Enum = {
+   271→        Material = makeEnum("Material", { "Wood", "Glass", "Slate", "SmoothPlastic", "Fabric", "Ground", "Grass", "WoodPlanks", "Concrete", "Neon", "Plastic" }),
+   272→        SurfaceType = makeEnum("SurfaceType", { "Smooth", "Studs", "Weld", "Glue", "Inlet" }),
+   273→        NormalId = makeEnum("NormalId", { "Front", "Back", "Top", "Bottom", "Left", "Right" }),
+   274→        Font = makeEnum("Font", { "Gotham", "GothamBold", "GothamBlack", "Legacy" }),
+   275→        ZIndexBehavior = makeEnum("ZIndexBehavior", { "Sibling", "Global" }),
+   276→        UserInputType = makeEnum("UserInputType", { "MouseButton1", "Touch", "Keyboard" }),
+   277→        RaycastFilterType = makeEnum("RaycastFilterType", { "Exclude", "Include" }),
+   278→        TextXAlignment = makeEnum("TextXAlignment", { "Left", "Center", "Right" }),
+   279→        TextYAlignment = makeEnum("TextYAlignment", { "Top", "Center", "Bottom" }),
+   280→        SortOrder = makeEnum("SortOrder", { "LayoutOrder", "Name", "Custom" }),
+   281→        AutomaticSize = makeEnum("AutomaticSize", { "None", "X", "Y", "XY" }),
+   282→        HorizontalAlignment = makeEnum("HorizontalAlignment", { "Left", "Center", "Right" }),
+   283→        VerticalAlignment = makeEnum("VerticalAlignment", { "Top", "Center", "Bottom" }),
+   284→        PartType = makeEnum("PartType", { "Ball", "Cylinder", "Block" }),
+   285→        EasingStyle = makeEnum("EasingStyle", { "Linear", "Sine", "Quad", "Back", "Bounce", "Elastic" }),
+   286→        EasingDirection = makeEnum("EasingDirection", { "In", "Out", "InOut" }),
+   287→}
+   288→
+   289→task = {}
+   290→
+   291→Random = {}
+   292→function Random.new(seed)
+   293→        local state = (seed or 20261106) % 2147483647
+   294→        if state <= 0 then
+   295→                state = 1
+   296→        end
+   297→        local r = {}
+   298→        function r:NextInteger(a, b)
+   299→                state = (state * 48271) % 2147483647
+   300→                local span = b - a + 1
+   301→                if span <= 0 then
+   302→                        return a
+   303→                end
+   304→                return a + math.floor((state / 2147483647) * span)
+   305→        end
+   306→        function r:NextNumber()
+   307→                state = (state * 48271) % 2147483647
+   308→                return state / 2147483647
+   309→        end
+   310→        return r
+   311→end
+   312→
+   313→local Scheduler = {
+   314→        vtime = 0,
+   315→        pending = {},
+   316→}
+   317→
+   318→local function schedule(coro, at)
+   319→        Scheduler.pending[#Scheduler.pending + 1] = { at = at, coro = coro }
+   320→end
+   321→
+   322→local function resumeCoro(coro, where)
+   323→        local ok, err = coroutine.resume(coro)
+   324→        if not ok then
+   325→                noteError(where, err)
+   326→        end
+   327→end
+   328→
+   329→function task.wait(t)
+   330→        local coro = coroutine.running()
+   331→        schedule(coro, Scheduler.vtime + (t or 0.03))
+   332→        return coroutine.yield()
+   333→end
+   334→
+   335→function task.spawn(fn, ...)
+   336→        local n = select("#", ...)
+   337→        local args = { ... }
+   338→        local coro = coroutine.create(function()
+   339→                if n > 0 then
+   340→                        fn(table.unpack(args, 1, n))
+   341→                else
+   342→                        fn()
+   343→                end
+   344→        end)
+   345→        resumeCoro(coro, "task.spawn")
+   346→        return coro
+   347→end
+   348→
+   349→function task.delay(t, fn)
+   350→        local coro = coroutine.create(fn)
+   351→        schedule(coro, Scheduler.vtime + (t or 0))
+   352→        return coro
+   353→end
+   354→
+   355→function task.defer(fn, ...)
+   356→        return task.spawn(fn, ...)
+   357→end
+   358→
+   359→function Scheduler.advance(dt)
+   360→        local target = Scheduler.vtime + dt
+   361→        local guard = 0
+   362→        while guard < 20000 do
+   363→                guard += 1
+   364→                local bestIdx, bestAt = nil, math.huge
+   365→                for i, p in ipairs(Scheduler.pending) do
+   366→                        if p.at < bestAt then
+   367→                                bestIdx, bestAt = i, p.at
+   368→                        end
+   369→                end
+   370→                if not bestIdx or bestAt > target then
+   371→                        break
+   372→                end
+   373→                Scheduler.vtime = bestAt
+   374→                local p = table.remove(Scheduler.pending, bestIdx)
+   375→                if coroutine.status(p.coro) == "suspended" then
+   376→                        resumeCoro(p.coro, "scheduler")
+   377→                end
+   378→        end
+   379→        Scheduler.vtime = target
+   380→end
+   381→
+   382→local ISA = {
+   383→        Part = { "BasePart", "PVInstance", "Instance" },
+   384→        WedgePart = { "BasePart", "PVInstance", "Instance" },
+   385→        SpawnLocation = { "BasePart", "PVInstance", "Instance" },
+   386→        Model = { "PVInstance", "Instance" },
+   387→        Folder = { "Instance" },
+   388→        ProximityPrompt = { "Instance" },
+   389→        SurfaceGui = { "Instance" },
+   390→        TextLabel = { "GuiObject", "GuiBase2d", "Instance" },
+   391→        TextButton = { "GuiObject", "GuiBase2d", "Instance" },
+   392→        TextBox = { "GuiObject", "GuiBase2d", "Instance" },
+   393→        Frame = { "GuiObject", "GuiBase2d", "Instance" },
+   394→        ScrollingFrame = { "GuiObject", "GuiBase2d", "Instance" },
+   395→        ScreenGui = { "Instance" },
+   396→        UICorner = { "Instance" },
+   397→        UIListLayout = { "Instance" },
+   398→        UIGridLayout = { "Instance" },
+   399→        PointLight = { "Instance" },
+   400→        IntValue = { "Instance" },
+   401→        Camera = { "Instance" },
+   402→        ModuleScript = { "Instance" },
+   403→        LocalScript = { "Instance" },
+   404→        Script = { "Instance" },
+   405→        Player = { "Instance" },
+   406→        RaycastParams = { "Instance" },
+   407→}
+   408→
+   409→local InstanceMethods = {}
+   410→
+   411→function InstanceMethods:FindFirstChild(name, recursive)
+   412→        for _, c in ipairs(self.__children) do
+   413→                if c.Name == name then
+   414→                        return c
+   415→                end
+   416→        end
+   417→        if recursive then
+   418→                for _, c in ipairs(self.__children) do
+   419→                        local hit = c:FindFirstChild(name, true)
+   420→                        if hit then
+   421→                                return hit
+   422→                        end
+   423→                end
+   424→        end
+   425→        return nil
+   426→end
+   427→
+   428→function InstanceMethods:WaitForChild(name, timeout)
+   429→        return self:FindFirstChild(name)
+   430→end
+   431→
+   432→function InstanceMethods:GetChildren()
+   433→        local out = {}
+   434→        for i, c in ipairs(self.__children) do
+   435→                out[i] = c
+   436→        end
+   437→        return out
+   438→end
+   439→
+   440→function InstanceMethods:GetDescendants()
+   441→        local out = {}
+   442→        local function walk(i)
+   443→                for _, c in ipairs(i.__children) do
+   444→                        out[#out + 1] = c
+   445→                        walk(c)
+   446→                end
+   447→        end
+   448→        walk(self)
+   449→        return out
+   450→end
+   451→
+   452→function InstanceMethods:FindFirstChildWhichIsA(class)
+   453→        for _, c in ipairs(self.__children) do
+   454→                if c:IsA(class) then
+   455→                        return c
+   456→                end
+   457→        end
+   458→        return nil
+   459→end
+   460→
+   461→function InstanceMethods:IsA(class)
+   462→        if self.__class == class then
+   463→                return true
+   464→        end
+   465→        local chain = ISA[self.__class]
+   466→        if chain then
+   467→                for _, c in ipairs(chain) do
+   468→                        if c == class then
+   469→                                return true
+   470→                        end
+   471→                end
+   472→        end
+   473→        return false
+   474→end
+   475→
+   476→function InstanceMethods:SetAttribute(k, v)
+   477→        self.__attrs[k] = v
+   478→end
+   479→
+   480→function InstanceMethods:GetAttribute(k)
+   481→        return self.__attrs[k]
+   482→end
+   483→
+   484→function InstanceMethods:Destroy()
+   485→        local p = self.Parent
+   486→        if p then
+   487→                local list = p.__children
+   488→                for i, c in ipairs(list) do
+   489→                        if c == self then
+   490→                                table.remove(list, i)
+   491→                                break
+   492→                        end
+   493→                end
+   494→        end
+   495→        self.Parent = nil
+   496→        self.__destroyed = true
+   497→end
+   498→
+   499→function InstanceMethods:Clone()
+   500→        local copy = Instance.new(self.__class)
+   501→        copy.Name = self.Name
+   502→        for k, v in pairs(self) do
+   503→                if k ~= "__children" and k ~= "Parent" and k ~= "__attrs" and k ~= "__class" and type(v) ~= "function" then
+   504→                        copy[k] = v
+   505→                end
+   506→        end
+   507→        for k, v in pairs(self.__attrs) do
+   508→                copy.__attrs[k] = v
+   509→        end
+   510→        return copy
+   511→end
+   512→
+   513→function InstanceMethods:GetPivot()
+   514→        if self:IsA("BasePart") then
+   515→                return self.CFrame
+   516→        end
+   517→        if self.WorldPivot then
+   518→                return self.WorldPivot
+   519→        end
+   520→        local p = self:FindFirstChildWhichIsA("BasePart")
+   521→        return p and p.CFrame or CFrame.new()
+   522→end
+   523→
+   524→function InstanceMethods:PivotTo(target)
+   525→        local current = self:GetPivot()
+   526→        local delta = target * current:Inverse()
+   527→        if self:IsA("BasePart") then
+   528→                self.CFrame = delta * self.CFrame
+   529→                return
+   530→        end
+   531→        self.WorldPivot = target
+   532→        for _, d in ipairs(self:GetDescendants()) do
+   533→                if d:IsA("BasePart") then
+   534→                        d.CFrame = delta * d.CFrame
+   535→                end
+   536→        end
+   537→end
+   538→
+   539→local function baseIndex(inst, k)
+   540→        if k == "Position" and inst:IsA("BasePart") then
+   541→                local cf = rawget(inst, "__cf")
+   542→                return cf and cf.Position or CFrame.new().Position
+   543→        end
+   544→        if k == "CFrame" and inst:IsA("BasePart") then
+   545→                return rawget(inst, "__cf") or CFrame.new()
+   546→        end
+   547→        if InstanceMethods[k] then
+   548→                return InstanceMethods[k]
+   549→        end
+   550→        if SignalNames[k] then
+   551→                local s = newSignal()
+   552→                rawset(inst, k, s)
+   553→                return s
+   554→        end
+   555→        if k == "ClassName" then
+   556→                return inst.__class
+   557→        end
+   558→        return nil
+   559→end
+   560→
+   561→local InstanceMT = {
+   562→        __index = baseIndex,
+   563→        __newindex = function(inst, k, v)
+   564→                if k == "Parent" then
+   565→                        local old = rawget(inst, "Parent")
+   566→                        if old then
+   567→                                local list = old.__children
+   568→                                for i, c in ipairs(list) do
+   569→                                        if c == inst then
+   570→                                                table.remove(list, i)
+   571→                                                break
+   572→                                        end
+   573→                                end
+   574→                        end
+   575→                        rawset(inst, "Parent", v)
+   576→                        if v then
+   577→                                table.insert(v.__children, inst)
+   578→                        end
+   579→                        return
+   580→                end
+   581→                if k == "CFrame" and inst:IsA("BasePart") then
+   582→                        rawset(inst, "__cf", v)
+   583→                        return
+   584→                end
+   585→                if k == "Position" and inst:IsA("BasePart") then
+   586→                        local cf = rawget(inst, "__cf") or CFrame.new()
+   587→                        rawset(inst, "__cf", mkcf(v.x, v.y, v.z, cf.m))
+   588→                        return
+   589→                end
+   590→                rawset(inst, k, v)
+   591→        end,
+   592→}
+   593→
+   594→Instance = {}
+   595→
+   596→function Instance.new(class)
+   597→        local inst = {}
+   598→        rawset(inst, "__class", class)
+   599→        rawset(inst, "__children", {})
+   600→        rawset(inst, "__attrs", {})
+   601→        rawset(inst, "Name", class)
+   602→        setmetatable(inst, InstanceMT)
+   603→        if class == "Part" or class == "WedgePart" or class == "SpawnLocation" then
+   604→                inst.__cf = CFrame.new()
+   605→                inst.Size = vec3(4, 1, 2)
+   606→                inst.Anchored = false
+   607→                inst.CanCollide = true
+   608→                inst.CanQuery = true
+   609→                inst.TopSurface = Enum.SurfaceType.Studs
+   610→                inst.BottomSurface = Enum.SurfaceType.Smooth
+   611→        end
+   612→        if class == "RemoteEvent" then
+   613→                inst.OnClientEvent = newSignal()
+   614→                inst.OnServerEvent = newSignal()
+   615→                function inst:FireClient(player, ...)
+   616→                        local gs = game
+   617→                        local lp = gs and gs:GetService("Players").LocalPlayer
+   618→                        if lp and player == lp then
+   619→                                self.OnClientEvent:Fire(...)
+   620→                        end
+   621→                end
+   622→                function inst:FireAllClients(...)
+   623→                        self.OnClientEvent:Fire(...)
+   624→                end
+   625→                function inst:FireServer(...)
+   626→                        self.OnServerEvent:Fire(...)
+   627→                end
+   628→        elseif class == "RemoteFunction" then
+   629→                function inst:InvokeServer(...)
+   630→                        local gs = game
+   631→                        local lp = gs and gs:GetService("Players").LocalPlayer
+   632→                        if not lp then
+   633→                                error("InvokeServer tanpa LocalPlayer")
+   634→                        end
+   635→                        return self.OnServerInvoke(lp, ...)
+   636→                end
+   637→        elseif class == "ParticleEmitter" then
+   638→                function inst:Emit(n)
+   639→                        return nil
+   640→                end
+   641→        elseif class == "Sound" then
+   642→                function inst:Play()
+   643→                        return nil
+   644→                end
+   645→        end
+   646→        return inst
+   647→end
+   648→
+   649→local function moduleScript(name, path)
+   650→        local m = Instance.new("ModuleScript")
+   651→        m.Name = name
+   652→        m.__requirePath = path
+   653→        return m
+   654→end
+   655→
+   656→function Stub.install()
+   657→        __SIM_ERRORS = {}
+   658→        RaycastParams = { new = function()
+   659→                return {}
+   660→        end }
+   661→
+   662→        local Players = Instance.new("Players")
+   663→        Players.LocalPlayer = nil
+   664→        local playerList = {}
+   665→        Players.__playerList = playerList
+   666→        function Players:GetPlayers()
+   667→                local out = {}
+   668→                for i, p in ipairs(playerList) do
+   669→                        out[i] = p
+   670→                end
+   671→                return out
+   672→        end
+   673→        function Players:GetPlayerFromCharacter(char)
+   674→                for _, p in ipairs(playerList) do
+   675→                        if p.Character == char then
+   676→                                return p
+   677→                        end
+   678→                end
+   679→                return nil
+   680→        end
+   681→
+   682→        local Workspace = Instance.new("Workspace")
+   683→        local camera = Instance.new("Camera")
+   684→        camera.Name = "Camera"
+   685→        camera.Parent = Workspace
+   686→        function camera:ViewportPointToRay(x, y)
+   687→                return { Origin = vec3(x, y, 0), Direction = vec3(0, 0, -1) }
+   688→        end
+   689→        Workspace.CurrentCamera = camera
+   690→        Workspace.StreamingEnabled = true
+   691→        function Workspace:GetServerTimeNow()
+   692→                return Scheduler.vtime
+   693→        end
+   694→        function Workspace:RequestStreamAroundAsync(pos, radius)
+   695→                return nil
+   696→        end
+   697→        function Workspace:Raycast(origin, dir, params)
+   698→                return nil
+   699→        end
+   700→        workspace = Workspace
+   701→
+   702→        local ReplicatedStorage = Instance.new("ReplicatedStorage")
+   703→        local shared = Instance.new("Folder")
+   704→        shared.Name = "Shared"
+   705→        shared.Parent = ReplicatedStorage
+   706→        for _, n in ipairs({ "CropData", "Recipes", "TasLogic", "Layout", "DuniaLogic", "SoalLogic", "GudangLogic", "PukulLogic", "PanenStatus" }) do
+   707→                local m = moduleScript(n, "./../download/dunia-akiomida/src/Shared/" .. n)
+   708→                m.Parent = shared
+   709→        end
+   710→        local remotesModule = moduleScript("Remotes", "./../download/dunia-akiomida/src/Remotes/init")
+   711→        remotesModule.Parent = ReplicatedStorage
+   712→
+   713→        local DataStoreService = Instance.new("DataStoreService")
+   714→        local stores = {}
+   715→        function DataStoreService:GetDataStore(name)
+   716→                if not stores[name] then
+   717→                        local ds = { __data = {} }
+   718→                        function ds:GetAsync(key)
+   719→                                return self.__data[key]
+   720→                        end
+   721→                        function ds:SetAsync(key, value)
+   722→                                self.__data[key] = value
+   723→                                return true
+   724→                        end
+   725→                        stores[name] = ds
+   726→                end
+   727→                return stores[name]
+   728→        end
+   729→        Stub.stores = stores
+   730→
+   731→        local RunService = Instance.new("RunService")
+   732→        __SIM_IS_SERVER = true
+   733→        function RunService:IsServer()
+   734→                return __SIM_IS_SERVER
+   735→        end
+   736→
+   737→        local UserInputService = Instance.new("UserInputService")
+   738→
+   739→        local TweenService = Instance.new("TweenService")
+   740→        function TweenService:Create(target, info, props)
+   741→                local tween = {}
+   742→                local completed = newSignal()
+   743→                tween.Completed = completed
+   744→                function tween:Play()
+   745→                        for k, v in pairs(props) do
+   746→                                target[k] = v
+   747→                        end
+   748→                        completed:Fire(Enum and "Completed" or "Completed")
+   749→                end
+   750→                return tween
+   751→        end
+   752→
+   753→        local Debris = Instance.new("Debris")
+   754→        function Debris:AddItem(item, t)
+   755→                return nil
+   756→        end
+   757→
+   758→        local services = {
+   759→                Players = Players,
+   760→                Workspace = Workspace,
+   761→                ReplicatedStorage = ReplicatedStorage,
+   762→                DataStoreService = DataStoreService,
+   763→                RunService = RunService,
+   764→                UserInputService = UserInputService,
+   765→                TweenService = TweenService,
+   766→                Debris = Debris,
+   767→        }
+   768→
+   769→        game = Instance.new("DataModel")
+   770→        function game:GetService(name)
+   771→                local s = services[name]
+   772→                if not s then
+   773→                        error("No service named " .. tostring(name))
+   774→                end
+   775→                return s
+   776→        end
+   777→        function game:BindToClose(fn)
+   778→                __SIM_BIND_TO_CLOSE = fn
+   779→        end
+   780→
+   781→        Stub.Services = services
+   782→        Stub.Scheduler = Scheduler
+   783→        Stub.noteError = noteError
+   784→        Stub.moduleScript = moduleScript
+   785→        Stub.newSignal = newSignal
+   786→
+   787→        function Stub.addPlayer(userId, name)
+   788→                local p = Instance.new("Player")
+   789→                p.UserId = userId
+   790→                p.Name = name
+   791→                p.Parent = Players
+   792→                table.insert(playerList, p)
+   793→                return p
+   794→        end
+   795→
+   796→        function Stub.setLocalPlayer(p)
+   797→                Players.LocalPlayer = p
+   798→        end
+   799→
+   800→        function Stub.giveCharacter(p, x, y, z)
+   801→                if p.Character then
+   802→                        p.Character:Destroy()
+   803→                end
+   804→                local char = Instance.new("Model")
+   805→                char.Name = p.Name
+   806→                local root = Instance.new("Part")
+   807→                root.Name = "HumanoidRootPart"
+   808→                root.Anchored = false
+   809→                root.CanCollide = true
+   810→                root.Size = vec3(2, 2, 1)
+   811→                root.Position = vec3(x or 0, y or 3, z or 0)
+   812→                root.Parent = char
+   813→                char.Parent = Workspace
+   814→                p.Character = char
+   815→                return char, root
+   816→        end
+   817→end
+   818→
+   819→function Stub.serverScript()
+   820→        local script = Instance.new("Script")
+   821→        script.Name = "Server"
+   822→        local modules = Instance.new("Folder")
+   823→        modules.Name = "Modules"
+   824→        modules.Parent = script
+   825→        for _, n in ipairs({ "LandService", "DataService", "SmashService", "PlotService", "ShopService", "WorldBuilder", "RateLimit", "DevCodeVault", "BuildingKit", "TasService", "ZonaService", "TanamService", "GudangService", "DropService", "PlantModels" }) do
+   826→                local m = moduleScript(n, "./../download/dunia-akiomida/src/Server/Modules/" .. n)
+   827→                m.Parent = modules
+   828→        end
+   829→        return script
+   830→end
+   831→
+   832→function Stub.clientScript()
+   833→        local script = Instance.new("LocalScript")
+   834→        script.Name = "Client"
+   835→        local ui = moduleScript("UIController", "./../download/dunia-akiomida/src/Client/UIController")
+   836→        ui.Parent = script
+   837→        return script
+   838→end
+   839→
+   840→
+   841→Stub.install()
+   842→local MOD_CropData = (function()
+   843→local CropData = {}
+   844→
+   845→CropData.GrowTime = 3
+   846→CropData.StartMoney = 900000
+   847→CropData.TasSlots = 50
+   848→CropData.TasStack = 250
+   849→CropData.BlokId = "blok_panen"
+   850→
+   851→CropData.Packs = {
+   852→        common = { price = 2400, count = 3 },
+   853→        rare = { price = 9000, count = 3 },
+   854→}
+   855→
+   856→CropData.Yield = {
+   857→        common = { min = 1, max = 10 },
+   858→        rare = { min = 1, max = 6 },
+   859→        epic = { min = 1, max = 4 },
+   860→}
+   861→
+   862→CropData.Smash = {
+   863→        common = { hits = 5, seed = 0.45, blok = 0.20, micdaMin = 1, micdaMax = 5 },
+   864→        rare = { hits = 10, seed = 0.30, blok = 0.15, micdaMin = 3, micdaMax = 9 },
+   865→        epic = { hits = 15, seed = 0.10, blok = 0.15, micdaMin = 9, micdaMax = 19 },
+   866→}
+   867→
+   868→CropData.Crops = {
+   869→        { id = "wortel", nama = "Wortel", rarity = "common", jual = 1 },
+   870→        { id = "pisang", nama = "Pisang", rarity = "common", jual = 1 },
+   871→        { id = "bayam", nama = "Bayam", rarity = "common", jual = 1 },
+   872→        { id = "kentang", nama = "Kentang", rarity = "common", jual = 1 },
+   873→        { id = "ubi_jalar", nama = "Ubi Jalar", rarity = "common", jual = 2 },
+   874→        { id = "jambu_biji", nama = "Jambu Biji", rarity = "common", jual = 2 },
+   875→        { id = "singkong", nama = "Singkong", rarity = "common", jual = 2 },
+   876→        { id = "tebu", nama = "Tebu", rarity = "common", jual = 5 },
+   877→        { id = "kedelai", nama = "Kedelai", rarity = "common", jual = 6 },
+   878→        { id = "jamur", nama = "Jamur", rarity = "common", jual = 6 },
+   879→        { id = "brokoli", nama = "Brokoli", rarity = "common", jual = 7 },
+   880→        { id = "sorgum", nama = "Sorgum", rarity = "common", jual = 17 },
+   881→        { id = "jeruk_mandarin", nama = "Jeruk Mandarin", rarity = "rare", jual = 2 },
+   882→        { id = "plum", nama = "Plum", rarity = "rare", jual = 3 },
+   883→        { id = "aprikot", nama = "Aprikot", rarity = "rare", jual = 4 },
+   884→        { id = "nektarin", nama = "Nektarin", rarity = "rare", jual = 5 },
+   885→        { id = "brassica_rapa", nama = "Brassica Rapa", rarity = "rare", jual = 7 },
+   886→        { id = "brassica_oleracea", nama = "Brassica Oleracea", rarity = "rare", jual = 7 },
+   887→        { id = "grapefruit", nama = "Grapefruit", rarity = "rare", jual = 10 },
+   888→        { id = "labu_moschata", nama = "Labu Cucurbita Moschata", rarity = "rare", jual = 15 },
+   889→        { id = "labu_maxima", nama = "Labu Cucurbita Maxima", rarity = "rare", jual = 17 },
+   890→        { id = "gandum", nama = "Gandum", rarity = "rare", jual = 19 },
+   891→        { id = "arachis_duranensis", nama = "Arachis Duranensis", rarity = "rare", jual = 20 },
+   892→        { id = "arachis_ipaensis", nama = "Arachis Ipaensis", rarity = "rare", jual = 20 },
+   893→        { id = "rye", nama = "Rye", rarity = "rare", jual = 40 },
+   894→        { id = "ceri", nama = "Ceri", rarity = "rare", jual = 87 },
+   895→        { id = "tangelo", nama = "Tangelo", rarity = "epic", jual = 17 },
+   896→        { id = "plumcot", nama = "Plumcot", rarity = "epic", jual = 22 },
+   897→        { id = "nectaplum", nama = "Nectaplum", rarity = "epic", jual = 25 },
+   898→        { id = "kacang_tanah", nama = "Kacang Tanah", rarity = "epic", jual = 30 },
+   899→        { id = "pluerry", nama = "Pluerry", rarity = "epic", jual = 35 },
+   900→        { id = "canola", nama = "Canola", rarity = "epic", jual = 60 },
+   901→        { id = "triticale", nama = "Triticale", rarity = "epic", jual = 67 },
+   902→        { id = "tetsukabuto", nama = "Tetsukabuto", rarity = "epic", jual = 75 },
+   903→}
+   904→
+   905→CropData.byId = {}
+   906→for _, c in ipairs(CropData.Crops) do
+   907→        CropData.byId[c.id] = c
+   908→end
+   909→
+   910→CropData.PukulMaks = 5
+   911→
+   912→CropData.Bentuk = {
+   913→        wortel = { jenis = "akar", t = 2.0, w = 1.0, b = 3, warna = { 224, 178, 120 }, siap = { 232, 112, 44 }, aksen = { 74, 142, 70 } },
+   914→        kentang = { jenis = "akar", t = 1.4, w = 1.2, b = 3, warna = { 198, 178, 142 }, siap = { 188, 140, 88 }, aksen = { 88, 148, 78 } },
+   915→        singkong = { jenis = "akar", t = 2.8, w = 1.0, b = 3, warna = { 168, 142, 110 }, siap = { 148, 104, 66 }, aksen = { 96, 156, 84 } },
+   916→        brassica_rapa = { jenis = "akar", t = 1.6, w = 1.3, b = 3, warna = { 222, 214, 224 }, siap = { 196, 148, 190 }, aksen = { 104, 162, 92 } },
+   917→        ubi_jalar = { jenis = "kacang", t = 0.9, w = 2.2, b = 5, warna = { 214, 150, 96 }, siap = { 226, 104, 58 }, aksen = { 88, 152, 86 } },
+   918→        bayam = { jenis = "daun", t = 1.5, w = 1.4, b = 1, warna = { 84, 146, 80 }, siap = { 44, 110, 60 }, aksen = { 110, 170, 96 } },
+   919→        brokoli = { jenis = "daun", t = 1.7, w = 1.5, b = 1, warna = { 96, 132, 70 }, siap = { 58, 118, 66 }, aksen = { 118, 166, 92 } },
+   920→        brassica_oleracea = { jenis = "daun", t = 1.9, w = 1.9, b = 1, warna = { 130, 168, 104 }, siap = { 170, 200, 132 }, aksen = { 96, 150, 88 } },
+   921→        labu_moschata = { jenis = "bulat", t = 1.1, w = 2.6, b = 1, warna = { 198, 142, 80 }, siap = { 230, 148, 58 }, aksen = { 96, 140, 70 } },
+   922→        labu_maxima = { jenis = "bulat", t = 1.3, w = 3.2, b = 1, warna = { 210, 120, 70 }, siap = { 236, 108, 52 }, aksen = { 90, 134, 66 } },
+   923→        tetsukabuto = { jenis = "bulat", t = 1.2, w = 2.8, b = 1, warna = { 120, 158, 92 }, siap = { 92, 140, 190 }, aksen = { 70, 120, 80 } },
+   924→        gandum = { jenis = "tangkai", t = 2.6, w = 1.6, b = 5, warna = { 146, 150, 72 }, siap = { 224, 182, 84 }, aksen = { 126, 152, 80 } },
+   925→        rye = { jenis = "tangkai", t = 3.0, w = 1.6, b = 5, warna = { 120, 136, 110 }, siap = { 150, 164, 128 }, aksen = { 110, 140, 96 } },
+   926→        triticale = { jenis = "tangkai", t = 2.8, w = 1.7, b = 5, warna = { 150, 142, 96 }, siap = { 216, 176, 110 }, aksen = { 96, 140, 104 } },
+   927→        sorgum = { jenis = "tangkai", t = 3.4, w = 1.8, b = 4, warna = { 150, 116, 66 }, siap = { 186, 88, 52 }, aksen = { 110, 150, 88 } },
+   928→        tebu = { jenis = "tangkai", t = 4.4, w = 1.6, b = 3, warna = { 130, 158, 96 }, siap = { 150, 96, 140 }, aksen = { 112, 160, 92 } },
+   929→        canola = { jenis = "tangkai", t = 2.4, w = 1.6, b = 5, warna = { 140, 168, 96 }, siap = { 240, 214, 70 }, aksen = { 120, 160, 96 } },
+   930→        pisang = { jenis = "pohon", t = 4.6, w = 2.6, b = 3, warna = { 120, 156, 88 }, siap = { 232, 208, 88 }, aksen = { 96, 148, 80 } },
+   931→        jambu_biji = { jenis = "pohon", t = 3.8, w = 2.2, b = 4, warna = { 110, 150, 90 }, siap = { 196, 190, 96 }, aksen = { 88, 140, 76 } },
+   932→        jeruk_mandarin = { jenis = "pohon", t = 3.4, w = 2.0, b = 5, warna = { 120, 164, 88 }, siap = { 238, 146, 44 }, aksen = { 84, 136, 72 } },
+   933→        grapefruit = { jenis = "pohon", t = 4.0, w = 2.4, b = 4, warna = { 116, 158, 92 }, siap = { 240, 168, 60 }, aksen = { 80, 132, 70 } },
+   934→        plum = { jenis = "pohon", t = 3.6, w = 2.2, b = 5, warna = { 122, 150, 96 }, siap = { 150, 86, 168 }, aksen = { 86, 136, 74 } },
+   935→        aprikot = { jenis = "pohon", t = 3.7, w = 2.2, b = 5, warna = { 118, 152, 92 }, siap = { 232, 138, 104 }, aksen = { 84, 134, 72 } },
+   936→        nektarin = { jenis = "pohon", t = 3.5, w = 2.1, b = 5, warna = { 116, 150, 90 }, siap = { 226, 92, 88 }, aksen = { 82, 132, 70 } },
+   937→        ceri = { jenis = "pohon", t = 3.0, w = 1.9, b = 6, warna = { 118, 148, 92 }, siap = { 216, 54, 58 }, aksen = { 80, 128, 68 } },
+   938→        tangelo = { jenis = "pohon", t = 3.6, w = 2.2, b = 5, warna = { 126, 160, 94 }, siap = { 244, 120, 52 }, aksen = { 226, 86, 70 } },
+   939→        plumcot = { jenis = "pohon", t = 3.6, w = 2.2, b = 5, warna = { 120, 148, 94 }, siap = { 168, 84, 180 }, aksen = { 210, 90, 110 } },
+   940→        nectaplum = { jenis = "pohon", t = 3.5, w = 2.1, b = 5, warna = { 118, 146, 92 }, siap = { 178, 58, 96 }, aksen = { 230, 120, 80 } },
+   941→        pluerry = { jenis = "pohon", t = 3.2, w = 2.0, b = 6, warna = { 120, 150, 94 }, siap = { 210, 70, 86 }, aksen = { 140, 80, 170 } },
+   942→        kedelai = { jenis = "semak", t = 1.6, w = 1.8, b = 6, warna = { 108, 146, 88 }, siap = { 222, 186, 70 }, aksen = { 96, 140, 82 } },
+   943→        arachis_duranensis = { jenis = "kacang", t = 0.8, w = 2.4, b = 5, warna = { 130, 160, 100 }, siap = { 220, 180, 90 }, aksen = { 104, 150, 88 } },
+   944→        arachis_ipaensis = { jenis = "kacang", t = 0.8, w = 2.2, b = 5, warna = { 140, 164, 96 }, siap = { 198, 146, 72 }, aksen = { 112, 154, 90 } },
+   945→        kacang_tanah = { jenis = "kacang", t = 1.0, w = 2.8, b = 6, warna = { 150, 168, 104 }, siap = { 236, 196, 110 }, aksen = { 100, 146, 86 } },
+   946→        jamur = { jenis = "cendawan", t = 1.8, w = 1.6, b = 1, warna = { 196, 150, 120 }, siap = { 206, 64, 56 }, aksen = { 224, 214, 196 } },
+   947→}
+   948→
+   949→function CropData.byRarity(rarity: string): { any }
+   950→        local out = {}
+   951→        for _, c in ipairs(CropData.Crops) do
+   952→                if c.rarity == rarity then
+   953→                        table.insert(out, c)
+   954→                end
+   955→        end
+   956→        return out
+   957→end
+   958→
+   959→return CropData
+   960→
+   961→end)()
+   962→
+   963→local MOD_Recipes = (function()
+   964→local Recipes = {}
+   965→
+   966→Recipes.List = {
+   967→        { a = "jeruk_mandarin", b = "grapefruit", out = "tangelo" },
+   968→        { a = "plum", b = "aprikot", out = "plumcot" },
+   969→        { a = "nektarin", b = "plum", out = "nectaplum" },
+   970→        { a = "arachis_duranensis", b = "arachis_ipaensis", out = "kacang_tanah" },
+   971→        { a = "ceri", b = "plum", out = "pluerry" },
+   972→        { a = "brassica_rapa", b = "brassica_oleracea", out = "canola" },
+   973→        { a = "gandum", b = "rye", out = "triticale" },
+   974→        { a = "labu_maxima", b = "labu_moschata", out = "tetsukabuto" },
+   975→}
+   976→
+   977→function Recipes.find(a: string, b: string): string?
+   978→        for _, r in ipairs(Recipes.List) do
+   979→                if (r.a == a and r.b == b) or (r.a == b and r.b == a) then
+   980→                        return r.out
+   981→                end
+   982→        end
+   983→        return nil
+   984→end
+   985→
+   986→return Recipes
+   987→
+   988→end)()
+   989→
+   990→local MOD_TasLogic = (function()
+   991→export type Slot = { kind: string, id: string, count: number }
+   992→
+   993→local TasLogic = {}
+   994→
+   995→TasLogic.MaxSlots = 50
+   996→TasLogic.MaxStack = 250
+   997→
+   998→function TasLogic.usedSlots(tas: { any }): number
+   999→        return #tas
+  1000→end
+  1001→
+  1002→function TasLogic.countOf(tas: { any }, kind: string, id: string): number
+  1003→        local total = 0
+  1004→        for _, s in ipairs(tas) do
+  1005→                if s.kind == kind and s.id == id then
+  1006→                        total += s.count
+  1007→                end
+  1008→        end
+  1009→        return total
+  1010→end
+  1011→
+  1012→function TasLogic.roomFor(tas: { any }, kind: string, id: string, want: number): number
+  1013→        local room = 0
+  1014→        for _, s in ipairs(tas) do
+  1015→                if s.kind == kind and s.id == id then
+  1016→                        room += TasLogic.MaxStack - s.count
+  1017→                end
+  1018→        end
+  1019→        local used = #tas
+  1020→        if used < TasLogic.MaxSlots then
+  1021→                room += (TasLogic.MaxSlots - used) * TasLogic.MaxStack
+  1022→        end
+  1023→        if room > want then
+  1024→                return want
+  1025→        end
+  1026→        return room
+  1027→end
+  1028→
+  1029→function TasLogic.add(tas: { any }, kind: string, id: string, count: number): number
+  1030→        local left = count
+  1031→        for _, s in ipairs(tas) do
+  1032→                if left <= 0 then
+  1033→                        break
+  1034→                end
+  1035→                if s.kind == kind and s.id == id and s.count < TasLogic.MaxStack then
+  1036→                        local put = math.min(TasLogic.MaxStack - s.count, left)
+  1037→                        s.count += put
+  1038→                        left -= put
+  1039→                end
+  1040→        end
+  1041→        while left > 0 do
+  1042→                if #tas >= TasLogic.MaxSlots then
+  1043→                        break
+  1044→                end
+  1045→                local put = math.min(TasLogic.MaxStack, left)
+  1046→                table.insert(tas, { kind = kind, id = id, count = put })
+  1047→                left -= put
+  1048→        end
+  1049→        return count - left
+  1050→end
+  1051→
+  1052→function TasLogic.remove(tas: { any }, kind: string, id: string, count: number): number
+  1053→        local left = count
+  1054→        for i = #tas, 1, -1 do
+  1055→                if left <= 0 then
+  1056→                        break
+  1057→                end
+  1058→                local s = tas[i]
+  1059→                if s.kind == kind and s.id == id then
+  1060→                        local take = math.min(s.count, left)
+  1061→                        s.count -= take
+  1062→                        left -= take
+  1063→                        if s.count <= 0 then
+  1064→                                table.remove(tas, i)
+  1065→                        end
+  1066→                end
+  1067→        end
+  1068→        return count - left
+  1069→end
+  1070→
+  1071→function TasLogic.canFitBatch(tas: { any }, items: { any }): boolean
+  1072→        local clone = {}
+  1073→        for i, s in ipairs(tas) do
+  1074→                clone[i] = { kind = s.kind, id = s.id, count = s.count }
+  1075→        end
+  1076→        for _, it in ipairs(items) do
+  1077→                local put = TasLogic.add(clone, it.kind, it.id, it.count)
+  1078→                if put < it.count then
+  1079→                        return false
+  1080→                end
+  1081→        end
+  1082→        return true
+  1083→end
+  1084→
+  1085→return TasLogic
+  1086→
+  1087→end)()
+  1088→
+  1089→local MOD_Layout = (function()
+  1090→local Layout = {}
+  1091→
+  1092→Layout.LahanCount = 24
+  1093→Layout.Cols = 6
+  1094→Layout.Rows = 4
+  1095→Layout.SizeX = 240
+  1096→Layout.SizeZ = 220
+  1097→Layout.Gap = 40
+  1098→
+  1099→Layout.PlotCols = 25
+  1100→Layout.PlotRows = 20
+  1101→Layout.PlotSize = 4
+  1102→Layout.PlotPitch = 6
+  1103→Layout.PlotBlockX = 10
+  1104→Layout.PlotBlockZ = 30
+  1105→Layout.PlotBlockW = 150
+  1106→Layout.PlotBlockD = 120
+  1107→
+  1108→function Layout.cellOrigin(index: number): (number, number)
+  1109→        local row = math.floor((index - 1) / Layout.Cols)
+  1110→        local col = (index - 1) % Layout.Cols
+  1111→        return col * (Layout.SizeX + Layout.Gap), row * (Layout.SizeZ + Layout.Gap)
+  1112→end
+  1113→
+  1114→function Layout.plotCount(): number
+  1115→        return Layout.PlotCols * Layout.PlotRows
+  1116→end
+  1117→
+  1118→function Layout.plotLocal(idx: number): (number, number)
+  1119→        local col = idx % Layout.PlotCols
+  1120→        local row = math.floor(idx / Layout.PlotCols)
+  1121→        local x = Layout.PlotBlockX + 1 + Layout.PlotSize / 2 + Layout.PlotPitch * col
+  1122→        local z = Layout.PlotBlockZ + 1 + Layout.PlotSize / 2 + Layout.PlotPitch * row
+  1123→        return x, z
+  1124→end
+  1125→
+  1126→function Layout.duniaOffsetX(): number
+  1127→        return 5000
+  1128→end
+  1129→
+  1130→return Layout
+  1131→
+  1132→end)()
+  1133→
+  1134→local MOD_DuniaLogic = (function()
+  1135→local DuniaLogic = {}
+  1136→
+  1137→DuniaLogic.SaveEvery = 60
+  1138→DuniaLogic.MaxPlots = 500
+  1139→DuniaLogic.MaxMeja = 6
+  1140→
+  1141→function DuniaLogic.keyFor(userId: number): string
+  1142→        return "d_" .. tostring(userId)
+  1143→end
+  1144→
+  1145→function DuniaLogic.cleanName(nama: any): string?
+  1146→        if type(nama) ~= "string" then
+  1147→                return nil
+  1148→        end
+  1149→        local n = nama:gsub("^%s+", ""):gsub("%s+$", "")
+  1150→        if #n < 1 or #n > 30 then
+  1151→                return nil
+  1152→        end
+  1153→        return n
+  1154→end
+  1155→
+  1156→function DuniaLogic.serPlots(planted: any): { [number]: { c: string, r: number } }
+  1157→        local out = {}
+  1158→        if type(planted) ~= "table" then
+  1159→                return out
+  1160→        end
+  1161→        for idx, rec in pairs(planted) do
+  1162→                if
+  1163→                        type(idx) == "number"
+  1164→                        and idx >= 0
+  1165→                        and idx < DuniaLogic.MaxPlots
+  1166→                        and idx == math.floor(idx)
+  1167→                        and type(rec) == "table"
+  1168→                        and type(rec.crop) == "string"
+  1169→                        and #rec.crop <= 40
+  1170→                        and type(rec.readyAt) == "number"
+  1171→                        and rec.readyAt == rec.readyAt
+  1172→                then
+  1173→                        out[idx] = { c = rec.crop, r = math.floor(rec.readyAt) }
+  1174→                end
+  1175→        end
+  1176→        return out
+  1177→end
+  1178→
+  1179→function DuniaLogic.desPlots(arr: any): { [number]: { c: string, r: number } }
+  1180→        local out = {}
+  1181→        if type(arr) ~= "table" then
+  1182→                return out
+  1183→        end
+  1184→        for idx, rec in pairs(arr) do
+  1185→                if
+  1186→                        type(idx) == "number"
+  1187→                        and idx >= 0
+  1188→                        and idx < DuniaLogic.MaxPlots
+  1189→                        and idx == math.floor(idx)
+  1190→                        and type(rec) == "table"
+  1191→                        and type(rec.c) == "string"
+  1192→                        and #rec.c <= 40
+  1193→                        and type(rec.r) == "number"
+  1194→                        and rec.r == rec.r
+  1195→                then
+  1196→                        out[idx] = { c = rec.c, r = math.floor(rec.r) }
+  1197→                end
+  1198→        end
+  1199→        return out
+  1200→end
+  1201→
+  1202→function DuniaLogic.serMeja(slots: any): { { c: string, h: number } }
+  1203→        local out = {}
+  1204→        if type(slots) ~= "table" then
+  1205→                return out
+  1206→        end
+  1207→        for i, s in ipairs(slots) do
+  1208→                if #out >= DuniaLogic.MaxMeja then
+  1209→                        break
+  1210→                end
+  1211→                if type(s) == "table" and type(s.crop) == "string" and #s.crop <= 40 and type(s.hitsLeft) == "number" then
+  1212→                        table.insert(out, { c = s.crop, h = math.max(1, math.floor(s.hitsLeft)) })
+  1213→                end
+  1214→        end
+  1215→        return out
+  1216→end
+  1217→
+  1218→function DuniaLogic.desMeja(arr: any): { { c: string, h: number } }
+  1219→        local out = {}
+  1220→        if type(arr) ~= "table" then
+  1221→                return out
+  1222→        end
+  1223→        for _, s in ipairs(arr) do
+  1224→                if #out >= DuniaLogic.MaxMeja then
+  1225→                        break
+  1226→                end
+  1227→                if type(s) == "table" and type(s.c) == "string" and #s.c <= 40 and type(s.h) == "number" then
+  1228→                        table.insert(out, { c = s.c, h = math.max(1, math.floor(s.h)) })
+  1229→                end
+  1230→        end
+  1231→        return out
+  1232→end
+  1233→
+  1234→return DuniaLogic
+  1235→
+  1236→end)()
+  1237→
+  1238→local MOD_SoalLogic = (function()
+  1239→local SoalLogic = {}
+  1240→
+  1241→local function sig(op: string, a: number, b: number): string
+  1242→        return op .. ":" .. a .. ":" .. b
+  1243→end
+  1244→
+  1245→function SoalLogic.buat(rng: Random, nomor: number, used: { [string]: boolean }): { teks: string, jawab: number, op: string, a: number, b: number }
+  1246→        local op: string
+  1247→        if nomor <= 20 then
+  1248→                op = rng:NextNumber() < 0.5 and "tambah" or "kurang"
+  1249→        elseif nomor <= 35 then
+  1250→                op = "kali"
+  1251→        else
+  1252→                op = "bagi"
+  1253→        end
+  1254→        local a, b, jawab = 2, 2, 4
+  1255→        for _ = 1, 80 do
+  1256→                if op == "tambah" then
+  1257→                        a = rng:NextInteger(12, 99)
+  1258→                        b = rng:NextInteger(7, 99)
+  1259→                        jawab = a + b
+  1260→                elseif op == "kurang" then
+  1261→                        a = rng:NextInteger(25, 99)
+  1262→                        b = rng:NextInteger(6, a - 2)
+  1263→                        jawab = a - b
+  1264→                elseif op == "kali" then
+  1265→                        a = rng:NextInteger(3, 15)
+  1266→                        b = rng:NextInteger(3, 12)
+  1267→                        jawab = a * b
+  1268→                else
+  1269→                        b = rng:NextInteger(3, 12)
+  1270→                        local hasil = rng:NextInteger(3, 15)
+  1271→                        a = b * hasil
+  1272→                        jawab = hasil
+  1273→                end
+  1274→                if not used[sig(op, a, b)] then
+  1275→                        used[sig(op, a, b)] = true
+  1276→                        break
+  1277→                end
+  1278→        end
+  1279→        local tanda = "+"
+  1280→        if op == "kurang" then
+  1281→                tanda = "-"
+  1282→        elseif op == "kali" then
+  1283→                tanda = "×"
+  1284→        elseif op == "bagi" then
+  1285→                tanda = "÷"
+  1286→        end
+  1287→        return { teks = tostring(a) .. " " .. tanda .. " " .. tostring(b) .. " = ?", jawab = jawab, op = op, a = a, b = b }
+  1288→end
+  1289→
+  1290→return SoalLogic
+  1291→
+  1292→end)()
+  1293→
+  1294→local MOD_GudangLogic = (function()
+  1295→local GudangLogic = {}
+  1296→
+  1297→GudangLogic.MaksSlot = 1000
+  1298→GudangLogic.MaksIsi = 250
+  1299→
+  1300→function GudangLogic.baru(): { s: { { id: string, count: number } } }
+  1301→        return { s = {} }
+  1302→end
+  1303→
+  1304→function GudangLogic.terpakai(gd: any): number
+  1305→        if type(gd) ~= "table" or type(gd.s) ~= "table" then
+  1306→                return 0
+  1307→        end
+  1308→        return #gd.s
+  1309→end
+  1310→
+  1311→function GudangLogic.simpan(gd: any, id: any, n: any): (boolean, string)
+  1312→        if type(id) ~= "string" or #id == 0 or #id > 40 then
+  1313→                return false, "Barang tidak sah."
+  1314→        end
+  1315→        if type(n) ~= "number" or n ~= n or n % 1 ~= 0 or n < 1 or n > GudangLogic.MaksIsi then
+  1316→                return false, "Jumlah setor harus 1 sampai 250."
+  1317→        end
+  1318→        if GudangLogic.terpakai(gd) >= GudangLogic.MaksSlot then
+  1319→                return false, "Gudang penuh! Tampungan 1000 sudah habis."
+  1320→        end
+  1321→        table.insert(gd.s, { id = id, count = n })
+  1322→        return true, "Tampungan terpakai " .. GudangLogic.terpakai(gd) .. "/" .. GudangLogic.MaksSlot .. " (sisa " .. GudangLogic.MaksSlot - GudangLogic.terpakai(gd) .. ")."
+  1323→end
+  1324→
+  1325→function GudangLogic.ambil(gd: any, i: any, n: any): (boolean, string, number)
+  1326→        if type(i) ~= "number" or i ~= i or i % 1 ~= 0 or i < 1 or i > GudangLogic.terpakai(gd) then
+  1327→                return false, "Slot gudang tidak ada.", 0
+  1328→        end
+  1329→        local s = gd.s[i]
+  1330→        if type(n) ~= "number" or n ~= n or n % 1 ~= 0 or n < 1 then
+  1331→                n = s.count
+  1332→        end
+  1333→        n = math.max(1, math.min(math.floor(n), s.count, GudangLogic.MaksIsi))
+  1334→        return true, "OK", n
+  1335→end
+  1336→
+  1337→function GudangLogic.kurangi(gd: any, i: number, n: number)
+  1338→        local s = gd.s[i]
+  1339→        if not s then
+  1340→                return
+  1341→        end
+  1342→        s.count -= n
+  1343→        if s.count <= 0 then
+  1344→                table.remove(gd.s, i)
+  1345→        end
+  1346→end
+  1347→
+  1348→function GudangLogic.ser(gd: any): { { id: string, count: number } }
+  1349→        local out = {}
+  1350→        if type(gd) ~= "table" or type(gd.s) ~= "table" then
+  1351→                return out
+  1352→        end
+  1353→        for _, s in ipairs(gd.s) do
+  1354→                if #out >= GudangLogic.MaksSlot then
+  1355→                        break
+  1356→                end
+  1357→                if type(s) == "table" and type(s.id) == "string" and #s.id <= 40 and type(s.count) == "number" and s.count == s.count and s.count >= 1 then
+  1358→                        table.insert(out, { id = s.id, count = math.min(GudangLogic.MaksIsi, math.floor(s.count)) })
+  1359→                end
+  1360→        end
+  1361→        return out
+  1362→end
+  1363→
+  1364→function GudangLogic.des(x: any): { s: { { id: string, count: number } } }
+  1365→        local gd = GudangLogic.baru()
+  1366→        if type(x) ~= "table" then
+  1367→                return gd
+  1368→        end
+  1369→        for _, s in ipairs(x) do
+  1370→                if #gd.s >= GudangLogic.MaksSlot then
+  1371→                        break
+  1372→                end
+  1373→                if type(s) == "table" and type(s.id) == "string" and #s.id <= 40 and type(s.count) == "number" and s.count == s.count and s.count >= 1 then
+  1374→                        table.insert(gd.s, { id = s.id, count = math.min(GudangLogic.MaksIsi, math.floor(s.count)) })
+  1375→                end
+  1376→        end
+  1377→        return gd
+  1378→end
+  1379→
+  1380→return GudangLogic
+  1381→
+  1382→end)()
+  1383→
+  1384→local MOD_PukulLogic = (function()
+  1385→local PukulLogic = {}
+  1386→
+  1387→PukulLogic.MaksPukul = 5
+  1388→PukulLogic.Jendela = 8
+  1389→
+  1390→function PukulLogic.catat(hits: number, lastHit: number, t: number, jendela: number?): (number, boolean)
+  1391→        local h = type(hits) == "number" and hits or 0
+  1392→        local l = type(lastHit) == "number" and lastHit or 0
+  1393→        local j = type(jendela) == "number" and jendela or PukulLogic.Jendela
+  1394→        local beruntun = (l > 0 and t - l <= j and t - l >= 0) and (h + 1) or 1
+  1395→        if beruntun < 1 then
+  1396→                beruntun = 1
+  1397→        end
+  1398→        return beruntun, beruntun >= PukulLogic.MaksPukul
+  1399→end
+  1400→
+  1401→return PukulLogic
+  1402→
+  1403→end)()
+  1404→
+  1405→local MOD_PanenStatus = (function()
+  1406→local PanenStatus = {}
+  1407→
+  1408→function PanenStatus.hitung(records: any, t: number): { { id: string, siap: number, tumbuh: number } }
+  1409→        local per: { [string]: { id: string, siap: number, tumbuh: number } } = {}
+  1410→        local urut: { { id: string, siap: number, tumbuh: number } } = {}
+  1411→        if type(records) ~= "table" then
+  1412→                return urut
+  1413→        end
+  1414→        for _, rec in pairs(records) do
+  1415→                if type(rec) == "table" and type(rec.crop) == "string" and #rec.crop <= 40 then
+  1416→                        local key = rec.crop
+  1417→                        local entri = per[key]
+  1418→                        if not entri then
+  1419→                                entri = { id = key, siap = 0, tumbuh = 0 }
+  1420→                                per[key] = entri
+  1421→                                table.insert(urut, entri)
+  1422→                        end
+  1423→                        local siap = type(rec.readyAt) == "number" and t >= rec.readyAt
+  1424→                        if siap then
+  1425→                                entri.siap += 1
+  1426→                        else
+  1427→                                entri.tumbuh += 1
+  1428→                        end
+  1429→                end
+  1430→        end
+  1431→        return urut
+  1432→end
+  1433→
+  1434→return PanenStatus
+  1435→
+  1436→end)()
+  1437→
+  1438→local MOD_Remotes = (function()
+  1439→local ReplicatedStorage = game:GetService("ReplicatedStorage")
+  1440→local RunService = game:GetService("RunService")
+  1441→
+  1442→local Remotes = {}
+  1443→
+  1444→local FOLDER_NAME = "Remotes"
+  1445→
+  1446→local DEFINITIONS = {
+  1447→        Notify = "RemoteEvent",
+  1448→        Sync = "RemoteEvent",
+  1449→        PlotSync = "RemoteEvent",
+  1450→        SmashSync = "RemoteEvent",
+  1451→        TanamSync = "RemoteEvent",
+  1452→        GudangSync = "RemoteEvent",
+  1453→        OpenPanel = "RemoteEvent",
+  1454→        GetState = "RemoteFunction",
+  1455→        DuniaAct = "RemoteFunction",
+  1456→        PlotAct = "RemoteFunction",
+  1457→        SmashAct = "RemoteFunction",
+  1458→        ShopAct = "RemoteFunction",
+  1459→        TanamAct = "RemoteFunction",
+  1460→        GudangAct = "RemoteFunction",
+  1461→        RedeemDevCode = "RemoteFunction",
+  1462→}
+  1463→
+  1464→local function folder(): Folder
+  1465→        local f = ReplicatedStorage:FindFirstChild(FOLDER_NAME)
+  1466→        if not f then
+  1467→                f = Instance.new("Folder")
+  1468→                f.Name = FOLDER_NAME
+  1469→                f.Parent = ReplicatedStorage
+  1470→        end
+  1471→        return f :: Folder
+  1472→end
+  1473→
+  1474→function Remotes.init()
+  1475→        assert(RunService:IsServer(), "Remotes.init is server-only")
+  1476→        local f = folder()
+  1477→        for name, className in DEFINITIONS do
+  1478→                if not f:FindFirstChild(name) then
+  1479→                        local remote = Instance.new(className)
+  1480→                        remote.Name = name
+  1481→                        remote.Parent = f
+  1482→                end
+  1483→        end
+  1484→end
+  1485→
+  1486→function Remotes.get(name: string): any
+  1487→        assert(DEFINITIONS[name], "Unknown remote: " .. tostring(name))
+  1488→        local f = folder()
+  1489→        if RunService:IsServer() then
+  1490→                return f:FindFirstChild(name) or error("Remote not initialized: " .. name)
+  1491→        end
+  1492→        return f:WaitForChild(name, 30) or error("Remote never arrived: " .. name)
+  1493→end
+  1494→
+  1495→return Remotes
+  1496→
+  1497→end)()
+  1498→
+  1499→local MOD_RateLimit = (function()
+  1500→local RateLimit = {}
+  1501→
+  1502→RateLimit.clock = os.clock
+  1503→
+  1504→local buckets: { [number]: { [string]: { tokens: number, last: number } } } = {}
+  1505→
+  1506→function RateLimit.allow(userId: number, key: string, perSecond: number, burst: number): boolean
+  1507→        local user = buckets[userId]
+  1508→        if not user then
+  1509→                user = {}
+  1510→                buckets[userId] = user
+  1511→        end
+  1512→        local b = user[key]
+  1513→        local now = RateLimit.clock()
+  1514→        if not b then
+  1515→                b = { tokens = burst, last = now }
+  1516→                user[key] = b
+  1517→        end
+  1518→        b.tokens = math.min(burst, b.tokens + (now - b.last) * perSecond)
+  1519→        b.last = now
+  1520→        if b.tokens >= 1 then
+  1521→                b.tokens -= 1
+  1522→                return true
+  1523→        end
+  1524→        return false
+  1525→end
+  1526→
+  1527→function RateLimit.clear(userId: number)
+  1528→        buckets[userId] = nil
+  1529→end
+  1530→
+  1531→return RateLimit
+  1532→
+  1533→end)()
+  1534→
+  1535→local MOD_DevCodeVault = (function()
+  1536→local DevCodeVault = {}
+  1537→
+  1538→DevCodeVault.CODE = "CKZhwbrsRLjms6Da5h"
+  1539→
+  1540→return DevCodeVault
+  1541→
+  1542→end)()
+  1543→
+  1544→local MOD_BuildingKit = (function()
+  1545→local BuildingKit = {}
+  1546→
+  1547→local CREAM = Color3.fromRGB(234, 222, 192)
+  1548→local DARKWOOD = Color3.fromRGB(84, 62, 44)
+  1549→local FLOORWOOD = Color3.fromRGB(128, 96, 62)
+  1550→local BRICKRED = Color3.fromRGB(148, 62, 48)
+  1551→local STONE = Color3.fromRGB(128, 128, 126)
+  1552→local GLASS = Color3.fromRGB(200, 228, 235)
+  1553→
+  1554→BuildingKit.CREAM = CREAM
+  1555→BuildingKit.DARKWOOD = DARKWOOD
+  1556→BuildingKit.FLOORWOOD = FLOORWOOD
+  1557→BuildingKit.BRICKRED = BRICKRED
+  1558→BuildingKit.STONE = STONE
+  1559→BuildingKit.GLASS = GLASS
+  1560→
+  1561→function BuildingKit.part(parent: Instance, size: Vector3, cf: CFrame, color: Color3, material: Enum.Material?, transparency: number?): Part
+  1562→        local p = Instance.new("Part")
+  1563→        p.Anchored = true
+  1564→        p.Size = size
+  1565→        p.CFrame = cf
+  1566→        p.Color = color
+  1567→        p.Material = material or Enum.Material.SmoothPlastic
+  1568→        p.TopSurface = Enum.SurfaceType.Smooth
+  1569→        p.BottomSurface = Enum.SurfaceType.Smooth
+  1570→        if transparency then
+  1571→                p.Transparency = transparency
+  1572→        end
+  1573→        p.Parent = parent
+  1574→        return p
+  1575→end
+  1576→
+  1577→function BuildingKit.wedge(parent: Instance, size: Vector3, cf: CFrame, color: Color3, material: Enum.Material?): WedgePart
+  1578→        local w = Instance.new("WedgePart")
+  1579→        w.Anchored = true
+  1580→        w.Size = size
+  1581→        w.CFrame = cf
+  1582→        w.Color = color
+  1583→        w.Material = material or Enum.Material.SmoothPlastic
+  1584→        w.Parent = parent
+  1585→        return w
+  1586→end
+  1587→
+  1588→function BuildingKit.gableRoof(parent: Instance, w: number, d: number, oh: number, y0: number, color: Color3)
+  1589→        local slope = math.rad(30)
+  1590→        local hd = d / 2 + oh
+  1591→        local rise = hd * math.tan(slope)
+  1592→        local slabLen = hd / math.cos(slope)
+  1593→        BuildingKit.part(parent, Vector3.new(w + 2 * oh, 1, slabLen), CFrame.new(0, y0 + rise / 2, -hd / 2) * CFrame.Angles(-slope, 0, 0), color, Enum.Material.Slate)
+  1594→        BuildingKit.part(parent, Vector3.new(w + 2 * oh, 1, slabLen), CFrame.new(0, y0 + rise / 2, hd / 2) * CFrame.Angles(slope, 0, 0), color, Enum.Material.Slate)
+  1595→        for sx = -1, 1, 2 do
+  1596→                local x = sx * (w / 2 - 0.5)
+  1597→                BuildingKit.wedge(parent, Vector3.new(1, rise, d / 2), CFrame.new(x, y0 + rise / 2, -d / 4), color, Enum.Material.Slate)
+  1598→                BuildingKit.wedge(parent, Vector3.new(1, rise, d / 2), CFrame.new(x, y0 + rise / 2, d / 4) * CFrame.Angles(0, math.rad(180), 0), color, Enum.Material.Slate)
+  1599→        end
+  1600→end
+  1601→
+  1602→function BuildingKit.lamp(parent: Instance, x: number, ceilingY: number, z: number)
+  1603→        local rod = BuildingKit.part(parent, Vector3.new(0.5, 3, 0.5), CFrame.new(x, ceilingY - 1.5, z), DARKWOOD, Enum.Material.Wood)
+  1604→        rod.CanCollide = false
+  1605→        local shade = BuildingKit.part(parent, Vector3.new(2, 1, 2), CFrame.new(x, ceilingY - 3.5, z), Color3.fromRGB(235, 205, 130), Enum.Material.Neon)
+  1606→        shade.CanCollide = false
+  1607→        local light = Instance.new("PointLight")
+  1608→        light.Range = 16
+  1609→        light.Brightness = 0.6
+  1610→        light.Color = Color3.fromRGB(255, 224, 178)
+  1611→        light.Parent = shade
+  1612→end
+  1613→
+  1614→function BuildingKit.streetLamp(parent: Instance, x: number, groundTop: number, z: number)
+  1615→        BuildingKit.part(parent, Vector3.new(2, 8, 2), CFrame.new(x, groundTop + 4, z), DARKWOOD, Enum.Material.Wood)
+  1616→        local head = BuildingKit.part(parent, Vector3.new(2, 1, 2), CFrame.new(x, groundTop + 8.5, z), Color3.fromRGB(235, 205, 130), Enum.Material.Neon)
+  1617→        local light = Instance.new("PointLight")
+  1618→        light.Range = 20
+  1619→        light.Brightness = 0.55
+  1620→        light.Color = Color3.fromRGB(255, 224, 178)
+  1621→        light.Parent = head
+  1622→end
+  1623→
+  1624→function BuildingKit.fenceLine(parent: Instance, x1: number, z1: number, x2: number, z2: number, groundTop: number)
+  1625→        local dx, dz = x2 - x1, z2 - z1
+  1626→        local len = math.sqrt(dx * dx + dz * dz)
+  1627→        if len < 2 then
+  1628→                return
+  1629→        end
+  1630→        local alongX = math.abs(dx) >= math.abs(dz)
+  1631→        local size = alongX and Vector3.new(len, 2, 1) or Vector3.new(1, 2, len)
+  1632→        local mid = Vector3.new((x1 + x2) / 2, groundTop + 3, (z1 + z2) / 2)
+  1633→        BuildingKit.part(parent, size, CFrame.new(mid), DARKWOOD, Enum.Material.Wood)
+  1634→        local n = math.max(1, math.floor(len / 40))
+  1635→        for i = 0, n do
+  1636→                local t = i / n
+  1637→                local px = x1 + dx * t
+  1638→                local pz = z1 + dz * t
+  1639→                BuildingKit.part(parent, Vector3.new(2, 6, 2), CFrame.new(px, groundTop + 3, pz), DARKWOOD, Enum.Material.Wood)
+  1640→        end
+  1641→end
+  1642→
+  1643→function BuildingKit.marker(parent: Instance, cx: number, cz: number, groundTop: number, w: number, d: number, color: Color3)
+  1644→        local y = groundTop + 0.15
+  1645→        local t = 0.4
+  1646→        local mk = function(size: Vector3, pos: Vector3)
+  1647→                local p = BuildingKit.part(parent, size, CFrame.new(pos), color, Enum.Material.SmoothPlastic, 0.35)
+  1648→                p.CanCollide = false
+  1649→                return p
+  1650→        end
+  1651→        mk(Vector3.new(w, t, t), Vector3.new(cx, y, cz - d / 2))
+  1652→        mk(Vector3.new(w, t, t), Vector3.new(cx, y, cz + d / 2))
+  1653→        mk(Vector3.new(t, t, d), Vector3.new(cx - w / 2, y, cz))
+  1654→        mk(Vector3.new(t, t, d), Vector3.new(cx + w / 2, y, cz))
+  1655→end
+  1656→
+  1657→local function trim(parent: Instance, w: number, d: number, y: number)
+  1658→        BuildingKit.part(parent, Vector3.new(w + 2, 1, 0.5), CFrame.new(0, y, -(d / 2 + 0.75)), BuildingKit.DARKWOOD, Enum.Material.Wood)
+  1659→        BuildingKit.part(parent, Vector3.new(w + 2, 1, 0.5), CFrame.new(0, y, d / 2 + 0.75), BuildingKit.DARKWOOD, Enum.Material.Wood)
+  1660→        BuildingKit.part(parent, Vector3.new(0.5, 1, d + 2), CFrame.new(-(w / 2 + 0.75), y, 0), BuildingKit.DARKWOOD, Enum.Material.Wood)
+  1661→        BuildingKit.part(parent, Vector3.new(0.5, 1, d + 2), CFrame.new(w / 2 + 0.75, y, 0), BuildingKit.DARKWOOD, Enum.Material.Wood)
+  1662→end
+  1663→
+  1664→local function seedBag(parent: Instance, cf: CFrame, color: Color3)
+  1665→        local body = BuildingKit.part(parent, Vector3.new(1.2, 1.4, 0.8), cf, color, Enum.Material.Fabric)
+  1666→        local band = BuildingKit.part(parent, Vector3.new(1.3, 0.25, 0.9), cf * CFrame.new(0, 0.35, 0), Color3.fromRGB(84, 62, 44), Enum.Material.Fabric)
+  1667→        band.CanCollide = false
+  1668→        return body
+  1669→end
+  1670→
+  1671→local function potPlant(parent: Instance, cf: CFrame)
+  1672→        local pot = BuildingKit.part(parent, Vector3.new(1.2, 1, 1.2), cf, Color3.fromRGB(172, 96, 66), Enum.Material.SmoothPlastic)
+  1673→        local tanah = BuildingKit.part(parent, Vector3.new(1, 0.2, 1), cf * CFrame.new(0, 0.55, 0), Color3.fromRGB(84, 62, 44), Enum.Material.Ground)
+  1674→        tanah.CanCollide = false
+  1675→        local tanaman = BuildingKit.part(parent, Vector3.new(0.9, 1.2, 0.9), cf * CFrame.new(0, 1.25, 0), Color3.fromRGB(88, 140, 66), Enum.Material.Grass)
+  1676→        tanaman.CanCollide = false
+  1677→        return pot
+  1678→end
+  1679→
+  1680→local function priceTag(parent: Instance, cf: CFrame, teks: string)
+  1681→        local papan = BuildingKit.part(parent, Vector3.new(2.4, 1.2, 0.2), cf, BuildingKit.DARKWOOD, Enum.Material.Wood)
+  1682→        local gui = Instance.new("SurfaceGui")
+  1683→        gui.Face = Enum.NormalId.Front
+  1684→        gui.CanvasSize = Vector2.new(240, 120)
+  1685→        local label = Instance.new("TextLabel")
+  1686→        label.Size = UDim2.fromScale(1, 1)
+  1687→        label.BackgroundTransparency = 1
+  1688→        label.Text = teks
+  1689→        label.TextColor3 = Color3.fromRGB(255, 232, 180)
+  1690→        label.TextScaled = true
+  1691→        label.Font = Enum.Font.GothamBold
+  1692→        label.Parent = gui
+  1693→        gui.Parent = papan
+  1694→        return papan
+  1695→end
+  1696→
+  1697→local function textBoard(parent: Instance, size: Vector3, cf: CFrame, teks: string, face: Enum.NormalId)
+  1698→        local papan = BuildingKit.part(parent, size, cf, BuildingKit.CREAM, Enum.Material.Wood)
+  1699→        local gui = Instance.new("SurfaceGui")
+  1700→        gui.Face = face
+  1701→        gui.CanvasSize = Vector2.new(400, 120)
+  1702→        local label = Instance.new("TextLabel")
+  1703→        label.Size = UDim2.fromScale(1, 1)
+  1704→        label.BackgroundTransparency = 1
+  1705→        label.Text = teks
+  1706→        label.TextColor3 = Color3.fromRGB(84, 62, 44)
+  1707→        label.TextScaled = true
+  1708→        label.Font = Enum.Font.GothamBold
+  1709→        label.Parent = gui
+  1710→        gui.Parent = papan
+  1711→        return papan
+  1712→end
+  1713→
+  1714→local function hingedDoor(model: Instance, size: Vector3, closedCF: CFrame, hingeLocal: Vector3, openAngle: number): Part
+  1715→        local leaf = BuildingKit.part(model, size, closedCF, BuildingKit.DARKWOOD, Enum.Material.Wood)
+  1716→        leaf:SetAttribute("PintuDaun", true)
+  1717→        local prompt = Instance.new("ProximityPrompt")
+  1718→        prompt.ActionText = "Buka Pintu"
+  1719→        prompt.ObjectText = "Pintu"
+  1720→        prompt.HoldDuration = 0.2
+  1721→        prompt.MaxActivationDistance = 9
+  1722→        prompt.RequiresLineOfSight = false
+  1723→        prompt.Parent = leaf
+  1724→        local terbuka = false
+  1725→        local bergerak = false
+  1726→        local storedClosed: CFrame? = nil
+  1727→        local function swing(target: CFrame, nextAction: string)
+  1728→                bergerak = true
+  1729→                prompt.Enabled = false
+  1730→                local from = leaf.CFrame
+  1731→                task.spawn(function()
+  1732→                        for i = 1, 6 do
+  1733→                                task.wait(0.04)
+  1734→                                leaf.CFrame = from:Lerp(target, i / 6)
+  1735→                        end
+  1736→                        leaf.CFrame = target
+  1737→                        prompt.ActionText = nextAction
+  1738→                        prompt.Enabled = true
+  1739→                        bergerak = false
+  1740→                end)
+  1741→        end
+  1742→        prompt.Triggered:Connect(function()
+  1743→                if bergerak then
+  1744→                        return
+  1745→                end
+  1746→                if not terbuka then
+  1747→                        local base = leaf.CFrame
+  1748→                        storedClosed = base
+  1749→                        local hinge = base * CFrame.new(hingeLocal.X, hingeLocal.Y, hingeLocal.Z)
+  1750→                        local openCF = hinge * CFrame.Angles(0, openAngle, 0) * hinge:Inverse() * base
+  1751→                        terbuka = true
+  1752→                        swing(openCF, "Tutup Pintu")
+  1753→                else
+  1754→                        terbuka = false
+  1755→                        swing(storedClosed or leaf.CFrame, "Buka Pintu")
+  1756→                end
+  1757→        end)
+  1758→        return leaf
+  1759→end
+  1760→
+  1761→function BuildingKit.buildToko(parent: Instance): Model
+  1762→        local model = Instance.new("Model")
+  1763→        model.Name = "TokoBenih"
+  1764→        local w, d = 40, 30
+  1765→        BuildingKit.part(model, Vector3.new(w + 2, 1, d + 2), CFrame.new(0, 0.5, 0), STONE, Enum.Material.Slate)
+  1766→        BuildingKit.part(model, Vector3.new(w - 2, 1, d - 2), CFrame.new(0, 1.5, 0), FLOORWOOD, Enum.Material.WoodPlanks)
+  1767→        BuildingKit.part(model, Vector3.new(w, 20, 1), CFrame.new(0, 11, d / 2 - 0.5), CREAM)
+  1768→        BuildingKit.part(model, Vector3.new(1, 20, d - 2), CFrame.new(-(w / 2 - 0.5), 11, 0), CREAM)
+  1769→        BuildingKit.part(model, Vector3.new(1, 20, d - 2), CFrame.new(w / 2 - 0.5, 11, 0), CREAM)
+  1770→        local fz = -(d / 2 - 0.5)
+  1771→        BuildingKit.part(model, Vector3.new(5, 20, 1), CFrame.new(-17.5, 11, fz), CREAM)
+  1772→        BuildingKit.part(model, Vector3.new(2, 20, 1), CFrame.new(-4, 11, fz), CREAM)
+  1773→        BuildingKit.part(model, Vector3.new(2, 20, 1), CFrame.new(4, 11, fz), CREAM)
+  1774→        BuildingKit.part(model, Vector3.new(5, 20, 1), CFrame.new(17.5, 11, fz), CREAM)
+  1775→        BuildingKit.part(model, Vector3.new(10, 4, 1), CFrame.new(-10, 3, fz), CREAM)
+  1776→        BuildingKit.part(model, Vector3.new(10, 4, 1), CFrame.new(10, 3, fz), CREAM)
+  1777→        BuildingKit.part(model, Vector3.new(6, 9, 1), CFrame.new(0, 16.5, fz), CREAM)
+  1778→        local glassL = BuildingKit.part(model, Vector3.new(10, 8, 0.4), CFrame.new(-10, 9, fz), GLASS, Enum.Material.Glass, 0.5)
+  1779→        glassL.CanCollide = false
+  1780→        local glassR = BuildingKit.part(model, Vector3.new(10, 8, 0.4), CFrame.new(10, 9, fz), GLASS, Enum.Material.Glass, 0.5)
+  1781→        glassR.CanCollide = false
+  1782→        for sx = -1, 1, 2 do
+  1783→                for sz = -1, 1, 2 do
+  1784→                        BuildingKit.part(model, Vector3.new(2, 20, 2), CFrame.new(sx * (w / 2 - 1), 11, sz * (d / 2 - 1)), DARKWOOD, Enum.Material.Wood)
+  1785→                end
+  1786→        end
+  1787→        trim(model, w, d, 1.5)
+  1788→        trim(model, w, d, 20.5)
+  1789→        BuildingKit.gableRoof(model, w, d, 3, 21, BRICKRED)
+  1790→        BuildingKit.part(model, Vector3.new(w, 1, 4), CFrame.new(0, 12.5, -(d / 2 + 2)), BRICKRED, Enum.Material.Slate)
+  1791→        BuildingKit.part(model, Vector3.new(2, 12, 2), CFrame.new(-17, 6, -(d / 2 + 4)), DARKWOOD, Enum.Material.Wood)
+  1792→        BuildingKit.part(model, Vector3.new(2, 12, 2), CFrame.new(17, 6, -(d / 2 + 4)), DARKWOOD, Enum.Material.Wood)
+  1793→        local sign = BuildingKit.part(model, Vector3.new(16, 4, 0.5), CFrame.new(0, 14, -(d / 2 + 0.4)), DARKWOOD, Enum.Material.Wood)
+  1794→        local gui = Instance.new("SurfaceGui")
+  1795→        gui.Face = Enum.NormalId.Front
+  1796→        gui.CanvasSize = Vector2.new(400, 100)
+  1797→        local label = Instance.new("TextLabel")
+  1798→        label.Size = UDim2.fromScale(1, 1)
+  1799→        label.BackgroundTransparency = 1
+  1800→        label.Text = "TOKO BENIH"
+  1801→        label.TextColor3 = Color3.fromRGB(255, 232, 180)
+  1802→        label.TextScaled = true
+  1803→        label.Font = Enum.Font.GothamBold
+  1804→        label.Parent = gui
+  1805→        gui.Parent = sign
+  1806→        BuildingKit.part(model, Vector3.new(12, 4, 3), CFrame.new(-8, 4, -10), DARKWOOD, Enum.Material.Wood)
+  1807→        local rakKiri = BuildingKit.part(model, Vector3.new(8, 8, 2), CFrame.new(-10, 6, 13), DARKWOOD, Enum.Material.Wood)
+  1808→        local rakKanan = BuildingKit.part(model, Vector3.new(8, 8, 2), CFrame.new(10, 6, 13), DARKWOOD, Enum.Material.Wood)
+  1809→        BuildingKit.part(model, Vector3.new(2, 8, 8), CFrame.new(-18, 6, 4), DARKWOOD, Enum.Material.Wood)
+  1810→        BuildingKit.part(model, Vector3.new(2, 8, 8), CFrame.new(18, 6, 4), DARKWOOD, Enum.Material.Wood)
+  1811→        BuildingKit.part(model, Vector3.new(6, 4, 3), CFrame.new(0, 4, 2), DARKWOOD, Enum.Material.Wood)
+  1812→        rakKiri:SetAttribute("Rak", true)
+  1813→        rakKanan:SetAttribute("Rak", true)
+  1814→
+  1815→        local BAG_A = Color3.fromRGB(150, 108, 62)
+  1816→        local BAG_B = Color3.fromRGB(96, 128, 72)
+  1817→        local BAG_C = Color3.fromRGB(196, 168, 120)
+  1818→
+  1819→        for sx = -1, 1, 2 do
+  1820→                local rx = sx * 10
+  1821→                BuildingKit.part(model, Vector3.new(8, 0.3, 1.6), CFrame.new(rx, 5.4, 11.6), FLOORWOOD, Enum.Material.WoodPlanks).CanCollide = false
+  1822→                BuildingKit.part(model, Vector3.new(8, 0.3, 1.6), CFrame.new(rx, 8, 11.6), FLOORWOOD, Enum.Material.WoodPlanks).CanCollide = false
+  1823→                seedBag(model, CFrame.new(rx - 2.6, 6.2, 11.6), BAG_A)
+  1824→                seedBag(model, CFrame.new(rx, 6.2, 11.6), BAG_B)
+  1825→                seedBag(model, CFrame.new(rx + 2.6, 6.2, 11.6), BAG_C)
+  1826→                seedBag(model, CFrame.new(rx - 1.6, 8.8, 11.6), BAG_B)
+  1827→                seedBag(model, CFrame.new(rx + 1.6, 8.8, 11.6), BAG_A)
+  1828→                seedBag(model, CFrame.new(rx - 1.6, 11.4, 13), BAG_A)
+  1829→                seedBag(model, CFrame.new(rx + 1.6, 11.4, 13), BAG_B)
+  1830→                potPlant(model, CFrame.new(rx + 3.4, 10.5, 13))
+  1831→        end
+  1832→        seedBag(model, CFrame.new(-18, 10.4, 4), BAG_C)
+  1833→        seedBag(model, CFrame.new(-18, 10.4, 5.6), BAG_A)
+  1834→        seedBag(model, CFrame.new(18, 10.4, 4), BAG_B)
+  1835→        potPlant(model, CFrame.new(18, 10.4, 5.8))
+  1836→        potPlant(model, CFrame.new(-10, 5.6, -14))
+  1837→        potPlant(model, CFrame.new(10, 5.6, -14))
+  1838→        seedBag(model, CFrame.new(-11.4, 5.2, -10.4), BAG_A)
+  1839→        seedBag(model, CFrame.new(-4.6, 5.2, -9.6), BAG_B)
+  1840→        BuildingKit.part(model, Vector3.new(1.6, 1, 1.2), CFrame.new(-3.4, 4.5, -10), Color3.fromRGB(56, 44, 36), Enum.Material.Wood)
+  1841→        BuildingKit.part(model, Vector3.new(1.2, 0.3, 0.9), CFrame.new(-3.4, 5.15, -10), Color3.fromRGB(255, 214, 110), Enum.Material.Neon)
+  1842→        BuildingKit.part(model, Vector3.new(2.2, 2.2, 2.2), CFrame.new(2, 3.1, -5.4), BAG_C, Enum.Material.Fabric)
+  1843→        BuildingKit.part(model, Vector3.new(2.2, 2.2, 2.2), CFrame.new(4.5, 3.1, -6.4), BAG_A, Enum.Material.Fabric)
+  1844→        BuildingKit.part(model, Vector3.new(2.2, 1.6, 2.2), CFrame.new(3.2, 5.2, -5.9), BAG_B, Enum.Material.Fabric)
+  1845→        BuildingKit.part(model, Vector3.new(3, 2, 3), CFrame.new(-16.5, 3, -3), Color3.fromRGB(122, 96, 58), Enum.Material.WoodPlanks)
+  1846→        seedBag(model, CFrame.new(-16.5, 4.8, -3), BAG_A)
+  1847→        seedBag(model, CFrame.new(-15.3, 4.8, -3.4), BAG_B)
+  1848→        priceTag(model, CFrame.new(-13.2, 6.4, -8.4) * CFrame.Angles(0, math.rad(90), 0), "Pack Common 2.400")
+  1849→        priceTag(model, CFrame.new(-13.2, 4.9, -11.6) * CFrame.Angles(0, math.rad(90), 0), "Pack Rare 9.000")
+  1850→        priceTag(model, CFrame.new(-10, 10.6, 11.9), "Benih Aneka")
+  1851→        priceTag(model, CFrame.new(10, 10.6, 11.9), "Benih Pilihan")
+  1852→        textBoard(model, Vector3.new(10, 3, 0.4), CFrame.new(-8, 12.5, -14.1), "PACK BENIH 3 ISI", Enum.NormalId.Back)
+  1853→        textBoard(model, Vector3.new(9, 1.6, 0.3), CFrame.new(0, 17.2, -8), "BENIH SEGAR SETIAP HARI", Enum.NormalId.Front)
+  1854→
+  1855→        local PACK_COLORS = { BAG_A, BAG_B, BAG_C }
+  1856→        for sx = -1, 1, 2 do
+  1857→                local rx = sx * 10
+  1858→                for tier = 0, 1 do
+  1859→                        local py = 5.55 + tier * 2.6
+  1860→                        for i = 0, 7 do
+  1861→                                BuildingKit.part(model, Vector3.new(0.62, 0.85, 0.14), CFrame.new(rx - 3.2 + i * 0.92, py + 0.45, 11.62), PACK_COLORS[(i + tier) % 3 + 1], Enum.Material.SmoothPlastic)
+  1862→                        end
+  1863→                end
+  1864→                BuildingKit.part(model, Vector3.new(2, 2.4, 1.2), CFrame.new(rx - 2, 10.7, 13), PACK_COLORS[sx == 1 and 1 or 2], Enum.Material.Fabric)
+  1865→                BuildingKit.part(model, Vector3.new(2, 2.4, 1.2), CFrame.new(rx + 2, 10.7, 13), PACK_COLORS[sx == 1 and 3 or 1], Enum.Material.Fabric)
+  1866→                for t2 = 0, 1 do
+  1867→                        local sy = 5.55 + t2 * 2.6
+  1868→                        BuildingKit.part(model, Vector3.new(1.2, 0.3, 6), CFrame.new(sx * 16.3, sy, 4), FLOORWOOD, Enum.Material.WoodPlanks).CanCollide = false
+  1869→                        for i = 0, 5 do
+  1870→                                BuildingKit.part(model, Vector3.new(0.14, 0.85, 0.62), CFrame.new(sx * 15.55, sy + 0.58, 1.5 + i * 1.05), PACK_COLORS[(i + t2) % 3 + 1], Enum.Material.SmoothPlastic)
+  1871→                        end
+  1872→                end
+  1873→        end
+  1874→        local function crate(cx: number, cy: number, cz: number)
+  1875→                BuildingKit.part(model, Vector3.new(2.4, 2.4, 2.4), CFrame.new(cx, cy, cz), Color3.fromRGB(150, 116, 74), Enum.Material.WoodPlanks)
+  1876→                BuildingKit.part(model, Vector3.new(1.8, 0.2, 1.8), CFrame.new(cx, cy + 1.3, cz), FLOORWOOD, Enum.Material.WoodPlanks).CanCollide = false
+  1877→        end
+  1878→        crate(-14, 1.3, -5)
+  1879→        crate(-14, 3.7, -5)
+  1880→        crate(-11.5, 1.3, -3.5)
+  1881→        seedBag(model, CFrame.new(-14, 5.4, -5), BAG_B)
+  1882→        seedBag(model, CFrame.new(-13.4, 5.4, -5.2), BAG_A)
+  1883→        BuildingKit.part(model, Vector3.new(3.4, 1.1, 2), CFrame.new(-6, 6.55, -10), GLASS, Enum.Material.Glass, 0.4).CanCollide = false
+  1884→        BuildingKit.part(model, Vector3.new(0.8, 0.6, 1.4), CFrame.new(-4.2, 6.3, -10), Color3.fromRGB(56, 44, 36), Enum.Material.Wood)
+  1885→        seedBag(model, CFrame.new(-6.8, 6.75, -10), BAG_C)
+  1886→        seedBag(model, CFrame.new(-5.6, 6.75, -9.6), BAG_A)
+  1887→        textBoard(model, Vector3.new(3, 1.4, 0.3), CFrame.new(-8, 7.6, -10), "BUKA", Enum.NormalId.Back)
+  1888→        textBoard(model, Vector3.new(14, 1.6, 0.2), CFrame.new(0, 16, 6), "BENIH UNGGUL SETIAP HARI", Enum.NormalId.Front)
+  1889→        BuildingKit.part(model, Vector3.new(0.2, 2.6, 0.2), CFrame.new(-5, 18, 6), DARKWOOD, Enum.Material.Wood).CanCollide = false
+  1890→        BuildingKit.part(model, Vector3.new(0.2, 2.6, 0.2), CFrame.new(5, 18, 6), DARKWOOD, Enum.Material.Wood).CanCollide = false
+  1891→        local mat = BuildingKit.part(model, Vector3.new(6, 0.1, 3), CFrame.new(0, 2.05, -12.5), BRICKRED, Enum.Material.Fabric)
+  1892→        mat.CanCollide = false
+  1893→        BuildingKit.part(model, Vector3.new(0.4, 5, 0.4), CFrame.new(6, 2.5, -18), DARKWOOD, Enum.Material.Wood)
+  1894→        textBoard(model, Vector3.new(4.2, 3, 0.3), CFrame.new(6, 6.2, -18), "PROMO PACK BENIH", Enum.NormalId.Back)
+  1895→        BuildingKit.part(model, Vector3.new(2.2, 2.2, 2.2), CFrame.new(16, 1.3, 10.6), BAG_C, Enum.Material.Fabric)
+  1896→        BuildingKit.part(model, Vector3.new(2.2, 2.2, 2.2), CFrame.new(13.6, 1.3, 10.8), BAG_A, Enum.Material.Fabric)
+  1897→        BuildingKit.part(model, Vector3.new(2, 1.8, 2), CFrame.new(14.8, 3.2, 10.7), BAG_B, Enum.Material.Fabric)
+  1898→        potPlant(model, CFrame.new(-15.5, 2.5, -12.5))
+  1899→        potPlant(model, CFrame.new(15.5, 2.5, -12.5))
+  1900→        local BUAH_A = Color3.fromRGB(214, 92, 76)
+  1901→        local BUAH_B = Color3.fromRGB(226, 176, 64)
+  1902→        local BUAH_C = Color3.fromRGB(120, 168, 82)
+  1903→        local BUAH_L = { BUAH_A, BUAH_B, BUAH_C }
+  1904→        for i = 0, 5 do
+  1905→                BuildingKit.part(model, Vector3.new(0.9, 0.9, 0.9), CFrame.new(-13.4 + i * 0.95, 2.55, 12.2), BUAH_L[i % 3 + 1], Enum.Material.SmoothPlastic).CanCollide = false
+  1906→                BuildingKit.part(model, Vector3.new(0.9, 0.9, 0.9), CFrame.new(13.4 + i * 0.95, 2.55, 12.2), BUAH_L[(i + 1) % 3 + 1], Enum.Material.SmoothPlastic).CanCollide = false
+  1907→        end
+  1908→        for sx = -1, 1, 2 do
+  1909→                BuildingKit.part(model, Vector3.new(1.4, 2.6, 1.4), CFrame.new(sx * 15.5, 2.3, 14.8), Color3.fromRGB(122, 96, 58), Enum.Material.WoodPlanks)
+  1910→                BuildingKit.part(model, Vector3.new(1.5, 0.25, 1.5), CFrame.new(sx * 15.5, 3.7, 14.8), FLOORWOOD, Enum.Material.WoodPlanks).CanCollide = false
+  1911→                seedBag(model, CFrame.new(sx * 12.6, 1.7, 15), BAG_A)
+  1912→                seedBag(model, CFrame.new(sx * 12.6, 3.3, 15), BAG_C)
+  1913→        end
+  1914→        BuildingKit.part(model, Vector3.new(2.6, 3.2, 2.6), CFrame.new(16.8, 2.1, -12.5), Color3.fromRGB(122, 96, 58), Enum.Material.WoodPlanks)
+  1915→        BuildingKit.part(model, Vector3.new(2.7, 0.3, 2.7), CFrame.new(16.8, 3.8, -12.5), FLOORWOOD, Enum.Material.WoodPlanks).CanCollide = false
+  1916→        for i = 0, 2 do
+  1917→                seedBag(model, CFrame.new(-17 + i * 1.7, 1.5 + (i % 2) * 1.3, -17 + (i % 2) * 1.2), BUAH_L[i + 1])
+  1918→        end
+  1919→        potPlant(model, CFrame.new(19, 2.5, 2))
+  1920→        potPlant(model, CFrame.new(-19, 2.5, -6))
+  1921→
+  1922→        BuildingKit.part(model, Vector3.new(6.4, 2, 1), CFrame.new(0, 11, fz), CREAM)
+  1923→        hingedDoor(model, Vector3.new(3, 10, 0.5), CFrame.new(-1.5, 5, fz), Vector3.new(-1.55, 0, 0), -math.rad(105))
+  1924→        hingedDoor(model, Vector3.new(3, 10, 0.5), CFrame.new(1.5, 5, fz), Vector3.new(1.55, 0, 0), math.rad(105))
+  1925→
+  1926→        BuildingKit.part(model, Vector3.new(0.2, 2.4, 0.2), CFrame.new(-4, 18.6, -8), DARKWOOD, Enum.Material.Wood).CanCollide = false
+  1927→        BuildingKit.part(model, Vector3.new(0.2, 2.4, 0.2), CFrame.new(4, 18.6, -8), DARKWOOD, Enum.Material.Wood).CanCollide = false
+  1928→        BuildingKit.lamp(model, -12, 21, 0)
+  1929→        BuildingKit.lamp(model, 0, 21, 0)
+  1930→        BuildingKit.lamp(model, 12, 21, 0)
+  1931→        model.Parent = parent
+  1932→        model.WorldPivot = CFrame.new(0, 0, 0)
+  1933→        return model
+  1934→end
+  1935→
+  1936→function BuildingKit.buildSemai(parent: Instance): Model
+  1937→        local model = Instance.new("Model")
+  1938→        model.Name = "SemaiPanen"
+  1939→        local w, d = 30, 30
+  1940→        BuildingKit.part(model, Vector3.new(w + 2, 1, d + 2), CFrame.new(0, 0.5, 0), STONE, Enum.Material.Slate)
+  1941→        BuildingKit.part(model, Vector3.new(w - 2, 1, d - 2), CFrame.new(0, 1.5, 0), FLOORWOOD, Enum.Material.WoodPlanks)
+  1942→        BuildingKit.part(model, Vector3.new(w, 20, 1), CFrame.new(0, 11, d / 2 - 0.5), CREAM)
+  1943→        BuildingKit.part(model, Vector3.new(1, 20, d - 2), CFrame.new(-(w / 2 - 0.5), 11, 0), CREAM)
+  1944→        BuildingKit.part(model, Vector3.new(1, 20, d - 2), CFrame.new(w / 2 - 0.5, 11, 0), CREAM)
+  1945→        local fz = -(d / 2 - 0.5)
+  1946→        BuildingKit.part(model, Vector3.new(5, 20, 1), CFrame.new(-12.5, 11, fz), CREAM)
+  1947→        BuildingKit.part(model, Vector3.new(5, 20, 1), CFrame.new(12.5, 11, fz), CREAM)
+  1948→        BuildingKit.part(model, Vector3.new(20, 9, 1), CFrame.new(0, 16.5, fz), CREAM)
+  1949→        for sx = -1, 1, 2 do
+  1950→                BuildingKit.part(model, Vector3.new(2, 20, 2), CFrame.new(sx * 11, 11, -13.5), DARKWOOD, Enum.Material.Wood)
+  1951→                BuildingKit.part(model, Vector3.new(2, 20, 2), CFrame.new(sx * 13, 11, 13), DARKWOOD, Enum.Material.Wood)
+  1952→        end
+  1953→        trim(model, w, d, 1.5)
+  1954→        trim(model, w, d, 20.5)
+  1955→        BuildingKit.gableRoof(model, w, d, 3, 21, BRICKRED)
+  1956→        BuildingKit.part(model, Vector3.new(12, 4, 4), CFrame.new(0, 4, 2), DARKWOOD, Enum.Material.Wood)
+  1957→        local pad = BuildingKit.part(model, Vector3.new(8, 0.4, 4), CFrame.new(0, 2.4, -6), BRICKRED, Enum.Material.SmoothPlastic, 0.3)
+  1958→        pad.CanCollide = false
+  1959→        BuildingKit.part(model, Vector3.new(20.4, 2, 1), CFrame.new(0, 11, fz), CREAM)
+  1960→        hingedDoor(model, Vector3.new(10, 10, 0.5), CFrame.new(-5, 5, fz), Vector3.new(-5.05, 0, 0), -math.rad(105))
+  1961→        hingedDoor(model, Vector3.new(10, 10, 0.5), CFrame.new(5, 5, fz), Vector3.new(5.05, 0, 0), math.rad(105))
+  1962→        BuildingKit.lamp(model, -6, 21, 0)
+  1963→        BuildingKit.lamp(model, 6, 21, 0)
+  1964→        model.Parent = parent
+  1965→        model.WorldPivot = CFrame.new(0, 0, 0)
+  1966→        return model
+  1967→end
+  1968→
+  1969→return BuildingKit
+  1970→
+  1971→end)()
+  1972→
+  1973→local MOD_LandService = (function()
+  1974→local ReplicatedStorage = game:GetService("ReplicatedStorage")
+  1975→
+  1976→local Layout = MOD_Layout
+  1977→
+  1978→local LandService = {}
+  1979→
+  1980→local ownerOf: { [number]: number } = {}
+  1981→local landOf: { [number]: number } = {}
+  1982→local umumSpawn: SpawnLocation? = nil
+  1983→local kotaSpawn: SpawnLocation? = nil
+  1984→
+  1985→function LandService.registerUmum(spawn: SpawnLocation)
+  1986→        umumSpawn = spawn
+  1987→end
+  1988→
+  1989→function LandService.registerKota(spawn: SpawnLocation)
+  1990→        kotaSpawn = spawn
+  1991→end
+  1992→
+  1993→function LandService.origin(index: number): Vector3
+  1994→        local x, z = Layout.cellOrigin(index)
+  1995→        return Vector3.new(x + Layout.duniaOffsetX(), 0, z)
+  1996→end
+  1997→
+  1998→function LandService.ownerOf(index: number): number?
+  1999→        return ownerOf[index]
+  2000→end
+
+[showing lines 1-2000 of 6112; use offset=2001 with limit to continue reading]

@@ -1,21 +1,21 @@
 # DUNIA AKIOMIDA (Roblox)
 
-Status: LIVE di Roblox (**versionNumber 32**, 6 Nov 2026) — **REVISI FINAL
-TANAM-PANEN** (14 poin pemilik): plot mati untuk klik/tap (popup "Plot Tanam"
-dan semua teks instruksi dihapus dari dunia), tanam HANYA lewat Papan Tanam,
-Combine Seed jadi menu 2 slot di papan (tanpa petunjuk resep, ditolak =
-"Tidak bisa di-combine", benih tidak terpakai), PUNCH permanen di layar
-(drop peluang diambil dengan menyentuh; pukul tanaman tumbuh 5x = hancur),
-status Siap Panen/Masih Tumbuh per jenis di papan, 34 tanaman (termasuk 8
-hibrida) punya bentuk model + warna siap sendiri, dan dunia kini bebas teks
-melayang. Universe: 10774464946 · Place: 77626159664192 · Label era: 9.5.0
-"Papan Final"
+Status: LIVE di Roblox (**versionNumber 33**, 6 Nov 2026) — **UJIAN MASSA
+PANEN + 3 PERBAIKAN AKAR**: ujian end-to-end 94 tahap (tanam 50 plot -> 5
+soal -> tunggu matang -> panen raya dengan tombol PUNCH asli -> 50 drop
+disentuh -> 288 buah masuk tas; combine 8 resep; 5x pukul hancur; tas penuh
+melayang) menemukan dan memperbaiki tiga bug fatal: penarget PUNCH yang tak
+pernah menemukan grid (kini rekursif -> tombol benar-benar memukul), state
+lahan yang mati setelah travel HUD (kini syncState + payload lahan), dan tab
+Combine Seed yang terbuka kosong (kini langsung terisi). Universe:
+10774464946 · Place: 77626159664192 · Label era: 9.6.0 "Uji Massa"
 Build: `tools/rojo build default.project.json -o build/DuniaAkiomida.rbxlx`
-(luau-lsp 0 temuan, tes offline 127 PASS / 0 FAIL, playtest 72 PASS / 0 FAIL)
+(luau-lsp 0 temuan, tes offline 127 PASS / 0 FAIL, ujian massa 94 PASS / 0
+FAIL, playtest 72 PASS / 0 FAIL)
 
-Skor banding Toram/Growtopia: **48/100** — lihat `RUBRIC.md`.
+Skor banding Toram/Growtopia: **49/100** — lihat `RUBRIC.md`.
 
-## Alur tanam-panen FINAL (revisi pemilik, v32)
+## Alur tanam-panen FINAL (revisi pemilik, teruji massa v33)
 
 - **TANAM LEWAT PAPAN** — plot tidak merespons klik/tap sama sekali (popup
   "Plot Tanam" dan semua teks instruksinya dihapus, termasuk untuk lahan
@@ -29,10 +29,11 @@ Skor banding Toram/Growtopia: **48/100** — lihat `RUBRIC.md`.
   menampilkan "Tidak bisa di-combine" dan benih TIDAK terpakai. 8 resep rahasia
   di server: Triticale, Canola, Tangelo, Plumcot, Nectaplum, Pluerry,
   Tetsukabuto, Kacang tanah.
-- **PUNCH PERMANEN** — tombol selalu ada di layar. Pukul tanaman siap -> drop
-  sesuai peluang (peluang tetap rahasia, tanpa label); drop belum masuk tas
-  sampai disentuh. Pukul tanaman masih tumbuh boleh kapan saja tanpa drop;
-  5x beruntun -> tanaman hancur.
+- **PUNCH PERMANEN** — tombol selalu ada di layar dan KINI benar-benar
+  menembak tanaman terdekat (bug penarget grid diperbaiki v33). Pukul
+  tanaman siap -> drop sesuai peluang (peluang tetap rahasia, tanpa label);
+  drop belum masuk tas sampai disentuh. Pukul tanaman masih tumbuh boleh
+  kapan saja tanpa drop; 5x beruntun -> tanaman hancur.
 - **STATUS DI PAPAN** — tab Status: per jenis "Siap Panen: N / Masih Tumbuh: M".
 - **VISUAL** — tanaman siap panen berubah warna; tiap jenis (termasuk hibrida)
   punya bentuk model sendiri (8 arketipe geometri + warna/ukuran per jenis).
@@ -101,6 +102,7 @@ Skor banding Toram/Growtopia: **48/100** — lihat `RUBRIC.md`.
 | v30 | **Playtest otomatis + perbaikan akar masalah**: (1) UI klien kini benar-benar dimuat (init.client me-require UIController — akar dari "beli gak bisa" & "gak bisa balik ke lahan"); (2) 500 plot per lahan dibangun di koordinat dunia yang benar (X+5000, sebelumnya nyasar ke kota); (3) status siap-panen tersinkron ke semua pemain (tombol Panen muncul); (4) gabung benih = tanam 2 benih resep di PLOT YANG SAMA + tombol Gabung di panel plot; (5) pintu Toko & Semai kini pintu sungguhan berengsel buka-tutup (bukan melompong); (6) interior toko makin penuh: barisan paket benih di rak, peti kayu, etalase kaca kasir, poster, spanduk gantung, papan promo, alas pintu, gunung karung, pot; (7) teleport diperkuat: tunggu streaming selesai sebelum lepas anchor, jangkar gagal-aman 5 dtk, pengawas jurang 15 dtk. Tes 106 PASS, playtest 51 PASS, 0 FAIL (#30). |
 | v31 | **Sistem tanam-panen baru sesuai blueprint pemilik**: (1) PAPAN TANAM fisik per lahan dengan label hidup "TERTANAM X/500" — pilih benih + jumlah, plot terisi otomatis 10 per 10, tanpa klik plot; (2) SOAL MATEMATIKA acak per pemain tiap 10 plot (500 plot = 50 soal), salah = tertahan sampai benar, kesulitan naik tambah/kurang -> kali -> bagi; (3) PANEN PUNCH: tombol layar muncul dekat tanaman siap, hasil memantul + bunyi + partikel, kombo x4/x8 memperbesar efek, ambil dengan menyentuh; (4) tas penuh = hasil MELAYANG tidak bisa diambil; (5) GUDANG hasil panen per lahan: setor 1-250 = 1 tampungan dari 1000 (250 -> 999 -> 998 persis contoh pemilik), ambil kembali, persisten di AKM_Dunia; (6) tombol perjalanan cepat HUD, teleport placeWait, beli longgar, rak toko penuh. Tes 132 PASS / 0 FAIL, luau-lsp 0 temuan, simulasi alur main hijau (#31). |
 | v32 | **REVISI FINAL tanam-panen (14 poin pemilik)**: (1) plot mati untuk klik/tap — popup "Plot Tanam" + semua teks instruksi dihapus dari dunia & UI (papan kota, papan tanam, papan gudang, papan toko, panel tas, sapaan spawn); (2) tanam hanya lewat Papan Tanam, label "TERTANAM X/500" hidup di dua sisi; (3) soal tiap 10 plot kini inline di papan; (4) Combine Seed jadi menu 2 slot di papan — tanpa resep/petunjuk, cocok = benih hibrida, tidak cocok = "Tidak bisa di-combine" di dalam papan & benih tidak terpakai; gabung di plot dihapus dari sistem; (5) 8 resep rahasia di server persis daftar pemilik; (6) PUNCH permanen di layar: pukul siap -> drop peluang (peluang disembunyikan) diambil dengan menyentuh, pukul tumbuh boleh kapan saja & 5x beruntun = hancur; (7) tab Status: Siap Panen / Masih Tumbuh per jenis; (8) 34 tanaman (termasuk 8 hibrida) punya bentuk model sendiri + warna siap berbeda; (9) dunia bebas teks melayang (label drop & "Tas Penuh" dihapus; melayang tetap sebagai sinyal visual). Tes 127 PASS / 0 FAIL, luau-lsp 0 temuan, playtest 72 PASS / 0 FAIL (#32). |
+| v33 | **UJIAN MASSA PANEN + 3 perbaikan akar**: ujian end-to-end baru 94 tahap — tanam 50 wortel lewat papan (5 soal), tunggu matang (warna berubah, status Siap 50), panen raya dengan tombol PUNCH asli (kick kamera + kombo tier 1->2->3: drop 1.8->2.1->2.4), 50 drop disentuh -> 288 buah persis, bayam tumbuh 5x pukul hancur tanpa drop, combine GUI Gandum+Rye -> Triticale + penolakan "Tidak bisa di-combine" (benih utuh) + 8 resep & urutan dibalik, Tangelo (bentuk pohon) ditanam & dipanen, gudang 999->998, tas penuh = drop melayang. Ditemukan & diperbaiki: (1) penarget PUNCH tak pernah menemukan PlotGrid (grid ada di dalam model seksi; kini FindFirstChild rekursif — tombol kini benar-benar memukul); (2) travel HUD tidak menyegarkan state lahan (kini syncState + payload Sync membawa lahan via provider baru); (3) tab Combine Seed terbuka kosong (kini refresh saat tab dibuka). Tes 127 + massa 94 + playtest 72, semua 0 FAIL; luau-lsp 0 temuan (#33). |
 
 ## Sesi update mandiri berikutnya (tanpa menunggu pemilik)
 

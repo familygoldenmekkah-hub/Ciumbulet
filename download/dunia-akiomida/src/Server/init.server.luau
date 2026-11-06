@@ -104,6 +104,7 @@ local hooks = {
 }
 ZonaService.setHooks(hooks)
 DataService.setZoneProvider(ZonaService.zoneOf)
+DataService.setLahanProvider(LandService.landOf)
 
 WorldBuilder.buildHub(hooks)
 

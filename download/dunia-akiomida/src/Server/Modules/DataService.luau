@@ -11,6 +11,7 @@ local store = DataStoreService:GetDataStore("AKM_T1")
 local cache: { [number]: any } = {}
 local dirty: { [number]: boolean } = {}
 local zoneProvider: ((Player) -> (string, string?))? = nil
+local lahanProvider: ((Player) -> number?)? = nil
 
 local function defaultData()
         return { m = CropData.StartMoney, t = {}, dev = false }
@@ -18,6 +19,10 @@ end
 
 function DataService.setZoneProvider(fn)
         zoneProvider = fn
+end
+
+function DataService.setLahanProvider(fn)
+        lahanProvider = fn
 end
 
 local function push(player: Player)
@@ -30,6 +35,9 @@ local function push(player: Player)
                 local z, dn = zoneProvider(player)
                 payload.zone = z
                 payload.dunia = dn
+        end
+        if lahanProvider then
+                payload.lahan = lahanProvider(player)
         end
         Net.get("Sync"):FireClient(player, payload)
         local ls = player:FindFirstChild("leaderstats")

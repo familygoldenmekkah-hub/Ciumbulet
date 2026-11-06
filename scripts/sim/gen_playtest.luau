@@ -682,6 +682,7 @@ function Stub.install()
         local Workspace = Instance.new("Workspace")
         local camera = Instance.new("Camera")
         camera.Name = "Camera"
+        camera.FieldOfView = 70
         camera.Parent = Workspace
         function camera:ViewportPointToRay(x, y)
                 return { Origin = vec3(x, y, 0), Direction = vec3(0, 0, -1) }
@@ -2081,6 +2082,7 @@ local store = DataStoreService:GetDataStore("AKM_T1")
 local cache: { [number]: any } = {}
 local dirty: { [number]: boolean } = {}
 local zoneProvider: ((Player) -> (string, string?))? = nil
+local lahanProvider: ((Player) -> number?)? = nil
 
 local function defaultData()
         return { m = CropData.StartMoney, t = {}, dev = false }
@@ -2088,6 +2090,10 @@ end
 
 function DataService.setZoneProvider(fn)
         zoneProvider = fn
+end
+
+function DataService.setLahanProvider(fn)
+        lahanProvider = fn
 end
 
 local function push(player: Player)
@@ -2100,6 +2106,9 @@ local function push(player: Player)
                 local z, dn = zoneProvider(player)
                 payload.zone = z
                 payload.dunia = dn
+        end
+        if lahanProvider then
+                payload.lahan = lahanProvider(player)
         end
         Net.get("Sync"):FireClient(player, payload)
         local ls = player:FindFirstChild("leaderstats")
@@ -4652,9 +4661,15 @@ travelBtn.Activated:Connect(function()
         if state.zone == "dunia" then
                 local ok, msg = Net.get("DuniaAct"):InvokeServer("pulang")
                 toast(ok and "Pulang" or "Gagal", msg)
+                if ok then
+                        syncState()
+                end
         else
                 local ok, msg = Net.get("DuniaAct"):InvokeServer("masuk")
                 toast(ok and "Gerbang Dunia" or "Gagal", msg)
+                if ok then
+                        syncState()
+                end
         end
 end)
 
@@ -4882,6 +4897,45 @@ local function muatStatus()
 end
 
 local tabAktif = "tanam"
+local function refreshGabung()
+        for _, col in ipairs({ slotAList, slotBList }) do
+                for _, c in ipairs(col:GetChildren()) do
+                        if c:IsA("Frame") then
+                                c:Destroy()
+                        end
+                end
+        end
+        local order = 0
+        for _, s in ipairs(state.tas) do
+                if s.kind == "benih" then
+                        order += 1
+                        local info = CropData.byId[s.id]
+                        local nama = info and info.nama or s.id
+                        local rowA = mk("Frame", { Size = UDim2.new(1, -8, 0, 46), BackgroundColor3 = s.id == slotA and Color3.fromRGB(52, 78, 122) or Color3.fromRGB(34, 38, 46), LayoutOrder = order }, slotAList)
+                        round(rowA, 6)
+                        mk("TextLabel", { Size = UDim2.new(0.5, -8, 1, -8), Position = UDim2.new(0, 8, 0, 4), BackgroundTransparency = 1, Text = nama .. " x" .. s.count, TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1), TextXAlignment = Enum.TextXAlignment.Left }, rowA)
+                        local pilihA = mk("TextButton", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -6, 0, 4), Size = UDim2.new(0.24, -6, 1, -8), BackgroundColor3 = Color3.fromRGB(58, 84, 138), Text = "Pilih", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1) }, rowA)
+                        round(pilihA, 6)
+                        pilihA.Activated:Connect(function()
+                                slotA = s.id
+                                refreshGabung()
+                        end)
+                        local rowB = mk("Frame", { Size = UDim2.new(1, -8, 0, 46), BackgroundColor3 = s.id == slotB and Color3.fromRGB(52, 78, 122) or Color3.fromRGB(34, 38, 46), LayoutOrder = order }, slotBList)
+                        round(rowB, 6)
+                        mk("TextLabel", { Size = UDim2.new(0.5, -8, 1, -8), Position = UDim2.new(0.5, 6, 0, 4), BackgroundTransparency = 1, Text = nama .. " x" .. s.count, TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1), TextXAlignment = Enum.TextXAlignment.Left }, rowB)
+                        local pilihB = mk("TextButton", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -6, 0, 4), Size = UDim2.new(0.24, -6, 1, -8), BackgroundColor3 = Color3.fromRGB(58, 84, 138), Text = "Pilih", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1) }, rowB)
+                        round(pilihB, 6)
+                        pilihB.Activated:Connect(function()
+                                slotB = s.id
+                                refreshGabung()
+                        end)
+                end
+        end
+        if order == 0 then
+                mk("TextLabel", { Size = UDim2.new(1, -8, 0, 40), BackgroundTransparency = 1, Text = "Tidak ada benih di tas.", TextScaled = true, Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(150, 150, 155), LayoutOrder = 1 }, slotAList)
+                mk("TextLabel", { Size = UDim2.new(1, -8, 0, 40), BackgroundTransparency = 1, Text = "Tidak ada benih di tas.", TextScaled = true, Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(150, 150, 155), LayoutOrder = 1 }, slotBList)
+        end
+end
 local function setTab(nama: string)
         tabAktif = nama
         tanamTab.Visible = nama == "tanam"
@@ -4894,6 +4948,8 @@ local function setTab(nama: string)
         tabStatusBtn.BackgroundColor3 = nama == "status" and aktif or non
         if nama == "status" then
                 muatStatus()
+        elseif nama == "gabung" then
+                refreshGabung()
         end
 end
 
@@ -4951,46 +5007,6 @@ local function refreshTanam()
         if aktif and t.soal then
                 soalNomor.Text = "Soal " .. tostring(t.soal.nomor) .. " dari " .. tostring(t.totalSoal) .. " — tertanam " .. tostring(t.tertanam) .. "/" .. tostring(t.jumlah)
                 soalTeks.Text = t.soal.teks
-        end
-end
-
-local function refreshGabung()
-        for _, col in ipairs({ slotAList, slotBList }) do
-                for _, c in ipairs(col:GetChildren()) do
-                        if c:IsA("Frame") then
-                                c:Destroy()
-                        end
-                end
-        end
-        local order = 0
-        for _, s in ipairs(state.tas) do
-                if s.kind == "benih" then
-                        order += 1
-                        local info = CropData.byId[s.id]
-                        local nama = info and info.nama or s.id
-                        local rowA = mk("Frame", { Size = UDim2.new(1, -8, 0, 46), BackgroundColor3 = s.id == slotA and Color3.fromRGB(52, 78, 122) or Color3.fromRGB(34, 38, 46), LayoutOrder = order }, slotAList)
-                        round(rowA, 6)
-                        mk("TextLabel", { Size = UDim2.new(0.5, -8, 1, -8), Position = UDim2.new(0, 8, 0, 4), BackgroundTransparency = 1, Text = nama .. " x" .. s.count, TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1), TextXAlignment = Enum.TextXAlignment.Left }, rowA)
-                        local pilihA = mk("TextButton", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -6, 0, 4), Size = UDim2.new(0.24, -6, 1, -8), BackgroundColor3 = Color3.fromRGB(58, 84, 138), Text = "Pilih", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1) }, rowA)
-                        round(pilihA, 6)
-                        pilihA.Activated:Connect(function()
-                                slotA = s.id
-                                refreshGabung()
-                        end)
-                        local rowB = mk("Frame", { Size = UDim2.new(1, -8, 0, 46), BackgroundColor3 = s.id == slotB and Color3.fromRGB(52, 78, 122) or Color3.fromRGB(34, 38, 46), LayoutOrder = order }, slotBList)
-                        round(rowB, 6)
-                        mk("TextLabel", { Size = UDim2.new(0.5, -8, 1, -8), Position = UDim2.new(0, 8, 0, 4), BackgroundTransparency = 1, Text = nama .. " x" .. s.count, TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1), TextXAlignment = Enum.TextXAlignment.Left }, rowB)
-                        local pilihB = mk("TextButton", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -6, 0, 4), Size = UDim2.new(0.24, -6, 1, -8), BackgroundColor3 = Color3.fromRGB(58, 84, 138), Text = "Pilih", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1) }, rowB)
-                        round(pilihB, 6)
-                        pilihB.Activated:Connect(function()
-                                slotB = s.id
-                                refreshGabung()
-                        end)
-                end
-        end
-        if order == 0 then
-                mk("TextLabel", { Size = UDim2.new(1, -8, 0, 40), BackgroundTransparency = 1, Text = "Tidak ada benih di tas.", TextScaled = true, Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(150, 150, 155), LayoutOrder = 1 }, slotAList)
-                mk("TextLabel", { Size = UDim2.new(1, -8, 0, 40), BackgroundTransparency = 1, Text = "Tidak ada benih di tas.", TextScaled = true, Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(150, 150, 155), LayoutOrder = 1 }, slotBList)
         end
 end
 
@@ -5142,7 +5158,7 @@ task.spawn(function()
                         local char = player.Character
                         local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
                         local grid = Workspace:FindFirstChild("Dunia")
-                        local folder = grid and grid:FindFirstChild("PlotGrid_" .. state.lahan)
+                        local folder = grid and grid:FindFirstChild("PlotGrid_" .. state.lahan, true)
                         if root and folder then
                                 local best = 26
                                 for _, m in ipairs(folder:GetChildren()) do
@@ -5167,6 +5183,7 @@ Net.get("Sync").OnClientEvent:Connect(function(payload)
         if payload.zone then
                 state.zone = payload.zone
                 state.dunia = payload.dunia
+                state.lahan = payload.lahan
                 if state.zone == "dunia" then
                         zonaLabel.Text = "Dunia " .. tostring(state.dunia or "Petani")
                         travelBtn.Text = "Pulang ke Kota"
@@ -5377,6 +5394,7 @@ local hooks = {
 }
 ZonaService.setHooks(hooks)
 DataService.setZoneProvider(ZonaService.zoneOf)
+DataService.setLahanProvider(LandService.landOf)
 
 WorldBuilder.buildHub(hooks)
 

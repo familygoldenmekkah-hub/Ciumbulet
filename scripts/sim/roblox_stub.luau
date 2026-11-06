@@ -681,6 +681,7 @@ function Stub.install()
         local Workspace = Instance.new("Workspace")
         local camera = Instance.new("Camera")
         camera.Name = "Camera"
+        camera.FieldOfView = 70
         camera.Parent = Workspace
         function camera:ViewportPointToRay(x, y)
                 return { Origin = vec3(x, y, 0), Direction = vec3(0, 0, -1) }
