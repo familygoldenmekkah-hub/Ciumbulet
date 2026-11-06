@@ -8,6 +8,8 @@ local DropModels = require(script.Parent.DropModels)
 local KlaimDrop = require(ReplicatedStorage.Shared.KlaimDrop)
 local PanenWaktu = require(ReplicatedStorage.Shared.PanenWaktu)
 local DuniaLogic = require(ReplicatedStorage.Shared.DuniaLogic)
+local TanahDrops = require(ReplicatedStorage.Shared.TanahDrops)
+local Layout = require(ReplicatedStorage.Shared.Layout)
 
 local DropService = {}
 
@@ -75,6 +77,63 @@ local function idBaru(index: number): string
         counters[index] = (counters[index] or 0) + 1
         local unik = tostring(os.time()):sub(-8)
         return "d" .. tostring(index) .. "x" .. tostring(counters[index]) .. "y" .. unik .. tostring(math.random(100, 999))
+end
+
+local PENGECUALI_AWAL = { "Drops_", "PlotGrid_" }
+
+local function tanahDiBawah(index: number, pos: Vector3): number?
+        local dunia = Workspace:FindFirstChild("Dunia")
+        local rayY: number? = nil
+        if dunia then
+                local excl: { Instance } = {}
+                for _, c in ipairs(dunia:GetDescendants()) do
+                        if c:IsA("Folder") or c:IsA("Model") then
+                                local nm = c.Name
+                                for _, awalan in ipairs(PENGECUALI_AWAL) do
+                                        if string.sub(nm, 1, #awalan) == awalan then
+                                                table.insert(excl, c)
+                                                break
+                                        end
+                                end
+                        end
+                end
+                for _, pl in ipairs(Players:GetPlayers()) do
+                        local char = pl.Character
+                        if char then
+                                table.insert(excl, char)
+                        end
+                end
+                local params = RaycastParams.new()
+                params.FilterType = Enum.RaycastFilterType.Exclude
+                params.FilterDescendantsInstances = excl
+                local hit = Workspace:Raycast(pos + Vector3.new(0, 8, 0), Vector3.new(0, -90, 0), params)
+                if hit then
+                        rayY = hit.Position.Y
+                end
+        end
+        local o = Land and Land.origin and Land.origin(index)
+        if o then
+                local lx = pos.X - o.X
+                local lz = pos.Z - o.Z
+                if Layout.diAreaPlot(lx, lz) then
+                        if rayY == nil or Layout.PlotTopY > rayY - 0.01 then
+                                return Layout.PlotTopY
+                        end
+                end
+        end
+        return rayY
+end
+
+local function letakkanDiAtasTanah(rec: any)
+        local part = rec.part
+        if not part or not part.Parent or not rec.groundY then
+                return
+        end
+        local half = part.Size.Y / 2
+        local p = part.Position
+        part.AssemblyLinearVelocity = Vector3.zero
+        part.AssemblyAngularVelocity = Vector3.zero
+        part.CFrame = CFrame.new(p.X, TanahDrops.istirahatY(rec.groundY, half), p.Z) * part.CFrame.Rotation
 end
 
 local function pasangClaim(index: number, rec: any, part: BasePart, basePos: Vector3)
@@ -156,6 +215,20 @@ local function bangunModel(index: number, rec: any): boolean
         model.Parent = f
         rec.model = model
         rec.part = part
+        rec.groundY = tanahDiBawah(index, part.Position)
+        rec.lahir = os.clock()
+        rec.settle = 0
+        if rec.groundY then
+                local half = part.Size.Y / 2
+                local bawah = TanahDrops.bagianBawah(part.Position.Y, half)
+                if TanahDrops.perluNaik(bawah, rec.groundY, half) or bawah < rec.groundY + 0.4 then
+                        local target = rec.groundY + half + 0.55
+                        local naik = target - part.Position.Y
+                        if naik > 0 then
+                                model:PivotTo(model:GetPivot() + Vector3.new(0, naik, 0))
+                        end
+                end
+        end
         local warna = part.Color
         local pem = Instance.new("ParticleEmitter")
         pem.Color = ColorSequence.new(warna)
@@ -188,6 +261,39 @@ local function bangunModel(index: number, rec: any): boolean
         pasangClaim(index, rec, part, basePos)
         return true
 end
+
+task.spawn(function()
+        while true do
+                task.wait(0.25)
+                local kini = os.clock()
+                for _, map in pairs(rekaman) do
+                        for _, rec in pairs(map) do
+                                local part = rec.part
+                                if rec.status == "ada" and part and part.Parent and part:IsDescendantOf(Workspace) and rec.groundY then
+                                        local half = part.Size.Y / 2
+                                        local bawah = TanahDrops.bagianBawah(part.Position.Y, half)
+                                        if not part.Anchored then
+                                                if TanahDrops.perluNaik(bawah, rec.groundY, half) then
+                                                        letakkanDiAtasTanah(rec)
+                                                        rec.settle = 0
+                                                else
+                                                        local v = part.AssemblyLinearVelocity
+                                                        if (v and v.Magnitude or 0) < 0.6 then
+                                                                rec.settle += 1
+                                                        else
+                                                                rec.settle = 0
+                                                        end
+                                                        if TanahDrops.harusTidur(rec.settle, kini - (rec.lahir or kini)) then
+                                                                letakkanDiAtasTanah(rec)
+                                                                part.Anchored = true
+                                                        end
+                                                end
+                                        end
+                                end
+                        end
+                end
+        end
+end)
 
 function DropService.spawn(index: number, pos: Vector3, cropId: string, count: number, comboN: number, tier: number)
         local info = CropData.byId[cropId]

@@ -1,7 +1,47 @@
 # DUNIA AKIOMIDA (Roblox)
 
-Status: LIVE di Roblox (**versionNumber 46**, 7 Nov 2026; #46 = publish ulang setelah rename internal, nol perubahan perilaku dari #45) — **DUA TUAS
-KANAN-KIRI MENGGANTIKAN KABEL + POP-UP SEMAI LEBIH BESAR & JELAS**:
+Status: LIVE di Roblox (**versionNumber 48**, 7 Nov 2026) — **TANPA ITEM BLOK +
+NAMA BENIH "BENIH X" + DROP TIDAK PERNAH TENGGELAM LAGI + UJIAN SIKLUS PENUH**:
+
+1. **ITEM "BLOK" DIBUANG TOTAL** — sesuai laporan pemilik bahwa tidak ada item
+   bernama blok: helper blokIdFor/blokNamaFor/blokCrop dihapus dari CropData,
+   rasio blok dihapus dari konfigurasi giling, gulung mesin kini hanya
+   menghasilkan Micda + benih sesuai tanaman, baris blok dihapus dari pop-up
+   semai & struk klaim, ikon slot blok dihapus dari tas. Tidak ada satu pun
+   jalur kode yang bisa menghasilkan item blok lagi (dipagari tes).
+2. **NAMA BENIH WAJIB "BENIH X"** — fungsi baru CropData.namaBenih(): benih
+   selalu tampil "Benih Wortel" dst., dan baru menjadi "Wortel" setelah
+   dipanen. Ditegakkan di SEMUA layar: slot tas (benih vs hasil kini beda
+   nama), daftar pilih benih Papan Tanam, dua slot Combine Seed, struk
+   pembelian pack ("Benih Gandum"), dan struk klaim semai.
+3. **DROP PANEN DIJAMIN TERGELETAK DI ATAS TANAH** — akar keluhan "terkadang
+   tenggelam ke dalam tanah kayak ngebug" dibunuh berlapis: (a) saat spawn
+   server menghitung permukaan tanah (raycast + aturan deterministik permukaan
+   plot 1.4 stud, karakter & folder drop/plot dikecualikan) lalu mengangkat
+   drop 0.55 stud di atas tanah sebelum memantul; (b) pengawas 0.25 dtk
+   mengangkat kembali drop yang menembus tanah; (c) setelah diam 2 tick (atau
+   2.5 dtk) drop dipastikan duduk DI ATAS tanah lalu di-anchor — mustahil
+   tenggelam, tidak menggelinding jauh, tetap bisa diambil sentuh. Logika
+   murninya ada di modul baru Shared/TanahDrops dan diuji offline.
+4. **UJIAN PEMILIK SIKLUS PENUH (15 cek end-to-end)** — beli pack common
+   (900.000 -> 897.600) -> 3 Benih Wortel masuk tas -> tanam lewat papan ->
+   panen punch 3 plot -> ambil drop masuk tas sebagai "Wortel" BUKAN benih ->
+   semai panen atur jumlah seluruh hasil -> pukulan = jumlah x 5 -> tuas
+   KANAN lalu KIRI (kiri duluan DITOLAK) -> giling 3 dtk -> klaim Micda +
+   benih kembali "Benih Wortel" -> nol item blok sepanjang siklus. Tes
+   offline kini 319 PASS / 0 FAIL (naik dari 293; +9 seksi TanahDrops, +15
+   seksi Ujian pemilik), luau-lsp 0 temuan, rojo build sukses.
+5. **UJIAN PLAYTEST & MASSA DIJALANKAN ULANG (dengan perbaikan simulator)** —
+   kedua generator ternyata mati di boot: daftar modul gen.py tidak memuat
+   TanahDrops + stub Roblox belum punya CFrame __add/__sub, properti Rotation,
+   dan IsDescendantOf. Ketiganya ditambahkan ke simulator (bukan ke kode
+   game), lalu: PLAYTEST 130 PASS / 0 FAIL dan UJIAN MASSA 116 PASS / 0 FAIL —
+   termasuk alur dunia nyata: tanam lewat papan -> punch -> drop spawn di atas
+   tanah -> sentuh masuk tas sebagai "Wortel" -> 5x pukul hancur tanaman
+   tumbuh -> 8 arketipe drop -> gudang -> tuas. Publish #48 (final).
+
+Isi v45-v46 tetap (dua tuas kanan-kiri menggantikan kabel + pop-up semai
+lebih besar & jelas):
 
 1. **DUA TUAS FISIK DI UJUNG MESIN** — minigame sambung kabel DIHAPUS TOTAL
    (modal, fungsi SemaiLogic kabel, remote "kabel", dan label "Sambungkan
@@ -62,14 +102,13 @@ Isi v41 tetap: beli pack berkonfirmasi (Ya/Batal) + struk daftar benih yang
 didapat; popup Gerbang Dunia langsung tertutup saat pemain memilih tujuan;
 bug badai sync (kick pemain sah) diperbaiki; alat uji playtest/massa hidup.
 
-Universe: 10774464946 · Place: 77626159664192 · Label era: 10.0.2 "Dua Tuas"
+Universe: 10774464946 · Place: 77626159664192 · Label era: 10.0.3 "Benih X & Tanah Kering"
 Build: `tools/rojo build default.project.json -o build/DuniaAkiomida.rbxlx`
-(luau-lsp 0 temuan, tes offline 293 PASS / 0 FAIL, playtest 130 PASS / 0 FAIL,
-ujian massa 119 PASS / 0 FAIL — termasuk alur tuas end-to-end: prompt kanan
-aktif duluan, kiri-duluan & tekan-ulang DITOLAK server, dua tuas -> langsung
-menggiling)
+(luau-lsp 0 temuan; tes offline 319 PASS / 0 FAIL; playtest 130 PASS / 0 FAIL;
+ujian massa 116 PASS / 0 FAIL — termasuk ujian siklus penuh beli->tanam->
+panen->ambil->semai->klaim dan pagar tanpa-blok)
 
-Skor banding Toram/Growtopia: **55.25/100** — lihat `RUBRIC.md`.
+Skor banding Toram/Growtopia: **56.0/100** — lihat `RUBRIC.md`.
 
 Isi era 9.8 (tetap berlaku):
 
@@ -219,6 +258,8 @@ Skor banding Toram/Growtopia: **51/100** — lihat `RUBRIC.md`.
 | v44 | **KABEL SERVER-AUTHORITATIVE + TIANG KANOPI 4X KARAKTER** (permintaan pemilik): ujian sambung kabel acak MENEMUKAN bug integrasi kritis — layout kabel dibuat di klien dan server tidak pernah memvalidasi ("kabel" polos langsung aktif, minigame bisa dilewati exploiter); kini layout dibuat server saat atur, pengajuan wajib membawa mapping kiri->kanan dan divalidasi server (saringSambung + kabelSelesai), 3x salah = susunan diacak ulang (versi naik) dan modal dibangun ulang otomatis, jodohan parsial aman di 1-2x salah; soket target menyala hijau/merah saat kabel diseret; tiang kanopi kini 20 stud = 4x tinggi karakter (karakter acuan 5 stud) dengan pelat dasar, balok ikat empat sisi, penyokong X, atap naik ke 21,3 stud, lampu gantung tali panjang. Tes offline 291 (+12 seksi Q), massa 113 (alur kabel dari layar: tanpa mapping/kosong/tertukar DITOLAK, acak ulang terlihat, jodoh dari layar -> klaim), playtest 130; luau-lsp 0 temuan (#44). |
 | v46 | (republish) rename internal (jalur daya, judul seksi tes) — nol perubahan perilaku; massa 116 / playtest 130 / offline 293, semua 0 FAIL (#46). |
 | v45 | **DUA TUAS KANAN-KIRI + POP-UP SEMAI LEBAR & JELAS** (permintaan pemilik): kabel dihapus total (modal, fungsi SemaiLogic kabel, remote "kabel", label); dua tuas baja fisik berlabel di ujung kanan & kiri mesin dengan lampu status, tombol "Tekan Tuas" per tuas; ditekan -> server validasi urutan (KANAN dulu, lalu KIRI; tekan-ulang/kiri-duluan/sisi asing DITOLAK) -> lengan tuas berpindah sendiri (tween) + bunyi; keduanya selesai -> mesin LANGSUNG menggiling 3 dtk; prompt hanya aktif pada tuas bergiliran; panel semai diperluas 760x620 dengan strip 3 langkah, tombol -/+ & chip jumlah, kartu langkah tuas berstatus SELESAI/TEKAN!/TUNGGU; BUG shadow variabel (prompt menempel ke pedestal salah) ditemukan ujian massa & diperbaiki. Tes offline 293, massa 119 (alur tuas end-to-end dari dunia), playtest 130; luau-lsp 0 temuan (#45). |
+| v47 | **TANPA ITEM BLOK + NAMA BENIH "BENIH X" + DROP TIDAK TENGGELAM + UJIAN SIKLUS PENUH** (permintaan pemilik): (1) item "blok" dibuang total (helper CropData, rasio giling, baris struk/pop-up, ikon tas) — mesin kini hanya keluar Micda + benih sesuai tanaman; (2) benih wajib tampil "Benih X" (Benih Wortel) dan baru jadi "Wortel" setelah panen — ditegakkan di slot tas, pilih benih papan tanam, slot Combine Seed, struk beli & struk klaim; (3) bug drop panen "terkadang tenggelam ke tanah" dibunuh berlapis: hitung permukaan tanah saat spawn (raycast + aturan plot 1.4 stud via modul baru Shared/TanahDrops), angkat drop 0.55 stud sebelum memantul, pengawas 0.25 dtk mengangkat yang menembus, lalu anchor tepat DI ATAS tanah setelah diam — tetap bisa diambil sentuh; (4) ujian pemilik 15 cek end-to-end: beli pack -> 3 Benih Wortel -> tanam -> panen punch -> ambil masuk tas sebagai "Wortel" (bukan benih) -> semai atur jumlah -> tuas KANAN-KIRI (kiri duluan ditolak) -> giling 3 dtk -> klaim Micda + benih kembali, nol blok. Tes offline 319 PASS / 0 FAIL, luau-lsp 0 (#47). |
+| v48 | (finalisasi v47) simulator playtest/massa diperbaiki (daftar modul gen.py + stub CFrame __add/__sub, Rotation, IsDescendantOf) lalu DIJALANKAN ULANG: playtest 130 PASS / 0 FAIL, ujian massa 116 PASS / 0 FAIL, offline 319 PASS / 0 FAIL, luau-lsp 0; penjaga kecepatan drop dibuat aman untuk drop pulihan; publish #48. |
 
 ## Sesi update mandiri berikutnya (tanpa menunggu pemilik)
 

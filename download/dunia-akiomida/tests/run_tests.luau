@@ -70,7 +70,8 @@ do
         check("Dana awal 900.000", CropData.StartMoney == 900000, tostring(CropData.StartMoney))
         check("Tas 50 slot", CropData.TasSlots == 50 and TasLogic.MaxSlots == 50, "-")
         check("Stack 250", CropData.TasStack == 250 and TasLogic.MaxStack == 250, "-")
-        check("Blok per tanaman (tanpa blok_panen)", (CropData :: any).BlokId == nil and CropData.blokIdFor("nektarin") == "blok_nektarin" and CropData.blokCrop("blok_nektarin") == "nektarin" and CropData.blokNamaFor("nektarin") == "Blok Nektarin", tostring((CropData :: any).BlokId))
+        check("Benih wajib bernama 'Benih X'", CropData.namaBenih("wortel") == "Benih Wortel" and CropData.namaBenih("jeruk_mandarin") == "Benih Jeruk Mandarin" and CropData.namaBenih("kacang_tanah") == "Benih Kacang Tanah", tostring(CropData.namaBenih("wortel")))
+        check("Item 'blok' dibuang total dari data tanaman", (CropData :: any).blokIdFor == nil and (CropData :: any).blokNamaFor == nil and (CropData :: any).blokCrop == nil and (CropData :: any).BlokId == nil, "-")
         check("Pack Common 2.400 isi 3", CropData.Packs.common.price == 2400 and CropData.Packs.common.count == 3, "-")
         check("Pack Rare 9.000 isi 3", CropData.Packs.rare.price == 9000 and CropData.Packs.rare.count == 3, "-")
         check("Tidak ada pack epic di toko", CropData.Packs.epic == nil, "-")
@@ -79,12 +80,12 @@ do
         check("Panen Rare 1-6", y.rare.min == 1 and y.rare.max == 6, "-")
         check("Panen Epic 1-4", y.epic.min == 1 and y.epic.max == 4, "-")
         local s = CropData.Giling
-        check("Giling Common 5x, benih 45%, blok 20%, Micda 1-5",
-                s.common.hits == 5 and s.common.seed == 0.45 and s.common.blok == 0.20 and s.common.micdaMin == 1 and s.common.micdaMax == 5, "-")
-        check("Giling Rare 10x, benih 30%, blok 15%, Micda 3-9",
-                s.rare.hits == 10 and s.rare.seed == 0.30 and s.rare.blok == 0.15 and s.rare.micdaMin == 3 and s.rare.micdaMax == 9, "-")
-        check("Giling Epic 15x, benih 10%, blok 15%, Micda 9-19",
-                s.epic.hits == 15 and s.epic.seed == 0.10 and s.epic.blok == 0.15 and s.epic.micdaMin == 9 and s.epic.micdaMax == 19, "-")
+        check("Giling Common 5x, benih 45%, Micda 1-5",
+                s.common.hits == 5 and s.common.seed == 0.45 and s.common.blok == nil and s.common.micdaMin == 1 and s.common.micdaMax == 5, "-")
+        check("Giling Rare 10x, benih 30%, Micda 3-9",
+                s.rare.hits == 10 and s.rare.seed == 0.30 and s.rare.blok == nil and s.rare.micdaMin == 3 and s.rare.micdaMax == 9, "-")
+        check("Giling Epic 15x, benih 10%, Micda 9-19",
+                s.epic.hits == 15 and s.epic.seed == 0.10 and s.epic.blok == nil and s.epic.micdaMin == 9 and s.epic.micdaMax == 19, "-")
         check("Kapasitas mesin semai 2000 & giling 3 dtk", CropData.MesinSemai.Kapasitas == 2000 and CropData.MesinSemai.WaktuGiling == 3, "-")
 end
 
@@ -95,7 +96,7 @@ do
         check("3 pick jadi 2 baris struk", #rows == 2, tostring(#rows))
         check("Urutan baris sesuai kemunculan pertama", rows[1].id == "gandum" and rows[2].id == "rye", "-")
         check("Jumlah baris teragregasi benar", rows[1].count == 2 and rows[2].count == 1, tostring(rows[1].count) .. "/" .. tostring(rows[2].count))
-        check("Nama baris memakai nama resmi tanaman", rows[1].nama == "Gandum" and rows[2].nama == "Rye", rows[1].nama .. "/" .. rows[2].nama)
+        check("Nama baris struk memakai nama benih (Benih X)", rows[1].nama == "Benih Gandum" and rows[2].nama == "Benih Rye", rows[1].nama .. "/" .. rows[2].nama)
         local pool = CropData.byRarity("common")
         local picks = {}
         for _ = 1, CropData.Packs.common.count do
@@ -111,7 +112,7 @@ do
         end
         check("Semua baris struk benih dikenal & berjumlah positif", kenal, "-")
         local rareStruk = StrukBeli.rangkum({ "plum", "plum", "plum" }, CropData.byId)
-        check("Struk pack rare konsisten", #rareStruk == 1 and rareStruk[1].id == "plum" and rareStruk[1].count == 3 and rareStruk[1].nama == "Plum", "-")
+        check("Struk pack rare konsisten", #rareStruk == 1 and rareStruk[1].id == "plum" and rareStruk[1].count == 3 and rareStruk[1].nama == "Benih Plum", "-")
 end
 
 print("--- Resep gabung (8) ---")
@@ -165,16 +166,16 @@ do
         check("Mengurangi 60", removed == 60 and TasLogic.countOf(tas, "benih", "wortel") == 191, tostring(TasLogic.countOf(tas, "benih", "wortel")))
         local full = {}
         for i = 1, 50 do
-                TasLogic.add(full, "blok", "b" .. i, 1)
+                TasLogic.add(full, "hasil", "h" .. i, 1)
         end
         check("50 slot penuh", TasLogic.usedSlots(full) == 50, tostring(TasLogic.usedSlots(full)))
         check("Item baru ditolak saat penuh", TasLogic.roomFor(full, "hasil", "wortel", 1) == 0, "-")
-        check("Item lama masih bisa menumpuk", TasLogic.roomFor(full, "blok", "b1", 10) == 10, "-")
+        check("Item lama masih bisa menumpuk", TasLogic.roomFor(full, "hasil", "h1", 10) == 10, "-")
         local batch = { { kind = "benih", id = "plum", count = 1 }, { kind = "benih", id = "aprikot", count = 1 } }
         check("Batch muat di tas kosong", TasLogic.canFitBatch({}, batch), "-")
         check("Batch ditolak saat penuh", not TasLogic.canFitBatch(full, batch), "-")
-        local over = TasLogic.add(full, "blok", "b1", 300)
-        check("Tambah melebihi stack terpotong", TasLogic.countOf(full, "blok", "b1") == 250 and over >= 50, tostring(over))
+        local over = TasLogic.add(full, "hasil", "h1", 300)
+        check("Tambah melebihi stack terpotong", TasLogic.countOf(full, "hasil", "h1") == 250 and over >= 50, tostring(over))
 end
 
 print("--- Denah lahan ---")
@@ -992,9 +993,9 @@ do
         end
         local a = SemaiLogic.gulung(shimSemai(7), CropData.Giling.common, 500)
         local b = SemaiLogic.gulung(shimSemai(7), CropData.Giling.common, 500)
-        check("Gulung hasil deterministik per benih acak", a.micda == b.micda and a.benih == b.benih and a.blok == b.blok, tostring(a.micda))
+        check("Gulung hasil deterministik per benih acak", a.micda == b.micda and a.benih == b.benih, tostring(a.micda))
         check("Gulung micda dalam rentang rarity", a.micda >= 500 and a.micda <= 2500, tostring(a.micda))
-        check("Gulung benih & blok tak melebihi jumlah", a.benih <= 500 and a.blok <= 500, "-")
+        check("Gulung TIDAK menghasilkan item blok (dibuang total)", a.blok == nil and b.blok == nil and a.benih <= 500, "-")
         local t = SemaiLogic.tuasBaru()
         check("Tuas baru: kanan & kiri belum aktif", t.kanan == false and t.kiri == false, "-")
         check("Sisi tidak dikenal ditolak", SemaiLogic.saringSisi("atas") == nil and SemaiLogic.saringSisi(1) == nil and SemaiLogic.saringSisi(nil) == nil, "-")
@@ -1046,6 +1047,107 @@ do
         SemaiLogic.prosesTekan(dua, "kanan")
         local ok2, kode2 = SemaiLogic.prosesTekan(dua, "kiri")
         check("Alur dua langkah berurutan sukses tanpa galat", ok2 and kode2 == "ok" and dua.kanan and dua.kiri, tostring(kode2))
+end
+
+print("--- T: TanahDrops (drop WAJIB tergeletak di atas tanah) ---")
+do
+        local TanahDrops = require("./../src/Shared/TanahDrops")
+        check("Bagian bawah drop = Y - setengah tinggi", TanahDrops.bagianBawah(2.0, 0.45) == 1.55, tostring(TanahDrops.bagianBawah(2.0, 0.45)))
+        check("Tenggelam terdeteksi saat bawah menembus tanah", TanahDrops.tenggelam(1.30, 1.40) and not TanahDrops.tenggelam(1.50, 1.40), "-")
+        check("Posisi istirahat selalu DI ATAS permukaan tanah", TanahDrops.istirahatY(1.4, 0.45) > 1.4, tostring(TanahDrops.istirahatY(1.4, 0.45)))
+        check("Perlu naik saat drop tenggelam", TanahDrops.perluNaik(1.2, 1.4, 0.45), "-")
+        check("Tidur (anchor) setelah 2 tick diam atau lewat 2,5 dtk", TanahDrops.harusTidur(2, 0.6) and TanahDrops.harusTidur(0, 3.0) and not TanahDrops.harusTidur(1, 0.5), "-")
+        check("Area plot terdeteksi deterministik", Layout.diAreaPlot(13, 33) and not Layout.diAreaPlot(5, 33) and not Layout.diAreaPlot(13, 5), "-")
+        check("Permukaan atas plot 1.4 stud", Layout.PlotTopY == 1.4, tostring(Layout.PlotTopY))
+        local groundY = 1.4
+        local half = 0.45
+        local y = 0.7
+        local settle = 0
+        local anchored = false
+        for tick = 1, 6 do
+                local bawah = TanahDrops.bagianBawah(y, half)
+                if TanahDrops.perluNaik(bawah, groundY, half) then
+                        y = TanahDrops.istirahatY(groundY, half)
+                        settle = 0
+                else
+                        settle += 1
+                        if TanahDrops.harusTidur(settle, tick * 0.25) then
+                                y = TanahDrops.istirahatY(groundY, half)
+                                anchored = true
+                                break
+                        end
+                end
+        end
+        check("Watchdog mengangkat drop yang tenggelam lalu menganchornya di atas tanah", anchored and y == TanahDrops.istirahatY(groundY, half), tostring(y))
+        local yAman = TanahDrops.istirahatY(groundY, half)
+        check("Setelah dianggap tidur, bawah drop tidak menembus tanah", not TanahDrops.tenggelam(TanahDrops.bagianBawah(yAman, half), groundY), "-")
+end
+
+print("--- U: UJIAN PEMILIK - beli benih -> tanam -> panen -> ambil -> semai panen ---")
+do
+        local SemaiLogic = require("./../src/Shared/SemaiLogic")
+        local s0 = 9137
+        local function dadu(a: number, b: number): number
+                s0 = (s0 * 48271) % 2147483647
+                return a + (s0 % (b - a + 1))
+        end
+        local function undi(): number
+                s0 = (s0 * 48271) % 2147483647
+                return s0 / 2147483647
+        end
+        local micda = CropData.StartMoney
+        local tas = {}
+        check("Ujian dimulai dari dunia baru: 900.000 Micda & tas kosong", micda == 900000 and TasLogic.usedSlots(tas) == 0, tostring(micda))
+        local pack = CropData.Packs.common
+        micda -= pack.price
+        for _ = 1, pack.count do
+                TasLogic.add(tas, "benih", "wortel", 1)
+        end
+        check("1) Beli pack common: 3 benih masuk tas & Micda terpotong 2.400", TasLogic.countOf(tas, "benih", "wortel") == 3 and micda == 897600, tostring(TasLogic.countOf(tas, "benih", "wortel")) .. "/" .. tostring(micda))
+        check("2) Benih di tas bernama 'Benih Wortel' (bukan 'Wortel')", CropData.namaBenih("wortel") == "Benih Wortel", "-")
+        local ditanam = TasLogic.remove(tas, "benih", "wortel", 3)
+        check("3) Tanam 3 Benih Wortel lewat papan: benih keluar dari tas", ditanam == 3 and TasLogic.countOf(tas, "benih", "wortel") == 0, tostring(ditanam))
+        local totalHasil = 0
+        for _ = 1, 3 do
+                totalHasil += dadu(CropData.Yield.common.min, CropData.Yield.common.max)
+        end
+        check("4) Panen punch: 3 plot menghasilkan buah dewasa bernama 'Wortel'", totalHasil >= 3 and totalHasil <= 30 and CropData.byId.wortel.nama == "Wortel", tostring(totalHasil))
+        TasLogic.add(tas, "hasil", "wortel", totalHasil)
+        check("5) Ambil drop dari tanah: masuk tas sebagai 'Wortel', BUKAN benih", TasLogic.countOf(tas, "hasil", "wortel") == totalHasil and TasLogic.countOf(tas, "benih", "wortel") == 0, "-")
+        local jumlah = SemaiLogic.saringJumlah(tostring(totalHasil), totalHasil, CropData.MesinSemai.Kapasitas)
+        check("6) Semai panen - atur jumlah = seluruh hasil panen", jumlah == totalHasil, tostring(jumlah))
+        local diambil = TasLogic.remove(tas, "hasil", "wortel", jumlah)
+        check("7) Hasil panen masuk mesin (tas kosong dari hasil)", diambil == totalHasil and TasLogic.countOf(tas, "hasil", "wortel") == 0, tostring(diambil))
+        local cfg = CropData.Giling[CropData.byId.wortel.rarity]
+        check("8) Total pukulan = jumlah x 5 (rarity common)", SemaiLogic.pukulanTotal(diambil, SemaiLogic.pukulanPerItem(cfg)) == diambil * 5, "-")
+        local tuas = SemaiLogic.tuasBaru()
+        local tolakKiri = SemaiLogic.prosesTekan(tuas, "kiri")
+        local okKanan = SemaiLogic.prosesTekan(tuas, "kanan")
+        local okKiri = SemaiLogic.prosesTekan(tuas, "kiri")
+        check("9) Mesin hanya aktif setelah tuas KANAN lalu KIRI", not tolakKiri and okKanan and okKiri and SemaiLogic.tuasSelesai(tuas), "-")
+        check("10) Giling 3 detik sesuai spesifikasi", CropData.MesinSemai.WaktuGiling == 3, tostring(CropData.MesinSemai.WaktuGiling))
+        local hasil = { micda = 0, benih = 0 }
+        for _ = 1, diambil do
+                hasil.micda += dadu(cfg.micdaMin, cfg.micdaMax)
+                if undi() < cfg.seed then
+                        hasil.benih += 1
+                end
+        end
+        micda += hasil.micda
+        if hasil.benih > 0 then
+                TasLogic.add(tas, "benih", "wortel", hasil.benih)
+        end
+        check("11) Klaim: Micda hasil gilingan masuk rekening", micda > 897600, tostring(micda))
+        check("12) Klaim: TIDAK ada item blok yang dihasilkan", (hasil :: any).blok == nil, "-")
+        check("13) Klaim: benih kembali bernama 'Benih Wortel' & siap ditanam lagi", CropData.namaBenih("wortel") == "Benih Wortel" and TasLogic.countOf(tas, "benih", "wortel") == hasil.benih, tostring(hasil.benih))
+        local adaBlok = false
+        for _, s in ipairs(tas) do
+                if string.find(tostring(s.id), "blok", 1, true) then
+                        adaBlok = true
+                end
+        end
+        check("14) Tidak ada satu pun item 'blok' di tas sepanjang ujian", not adaBlok, "-")
+        check("15) Siklus utuh server-side: beli -> tanam -> panen -> ambil -> semai -> klaim BERJALAN", TasLogic.countOf(tas, "benih", "wortel") == hasil.benih and micda == CropData.StartMoney - pack.price + hasil.micda, tostring(micda))
 end
 
 print(("="):rep(28))

@@ -22,9 +22,9 @@ CropData.Yield = {
 }
 
 CropData.Giling = {
-        common = { hits = 5, seed = 0.45, blok = 0.20, micdaMin = 1, micdaMax = 5 },
-        rare = { hits = 10, seed = 0.30, blok = 0.15, micdaMin = 3, micdaMax = 9 },
-        epic = { hits = 15, seed = 0.10, blok = 0.15, micdaMin = 9, micdaMax = 19 },
+        common = { hits = 5, seed = 0.45, micdaMin = 1, micdaMax = 5 },
+        rare = { hits = 10, seed = 0.30, micdaMin = 3, micdaMax = 9 },
+        epic = { hits = 15, seed = 0.10, micdaMin = 9, micdaMax = 19 },
 }
 
 CropData.Crops = {
@@ -108,23 +108,12 @@ CropData.Bentuk = {
         jamur = { jenis = "cendawan", t = 1.8, w = 1.6, b = 1, warna = { 196, 150, 120 }, siap = { 206, 64, 56 }, aksen = { 224, 214, 196 } },
 }
 
-function CropData.blokIdFor(cropId: string): string
-        return "blok_" .. tostring(cropId)
-end
-
-function CropData.blokNamaFor(cropId: string): string
+function CropData.namaBenih(cropId: string): string
         local info = CropData.byId[cropId]
         if not info then
-                return "Blok"
+                return "Benih"
         end
-        return "Blok " .. info.nama
-end
-
-function CropData.blokCrop(blokId: string): string?
-        if type(blokId) ~= "string" then
-                return nil
-        end
-        return string.match(blokId, "^blok_(.+)$")
+        return "Benih " .. info.nama
 end
 
 function CropData.byRarity(rarity: string): { any }

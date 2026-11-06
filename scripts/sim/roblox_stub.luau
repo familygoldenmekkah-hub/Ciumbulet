@@ -132,6 +132,9 @@ CFrame.__index = function(cf, k)
                 local m = cf.m
                 return vec3(m[1][2], m[2][2], m[3][2])
         end
+        if k == "Rotation" then
+                return setmetatable({ x = 0, y = 0, z = 0, m = cf.m }, CFrame)
+        end
         if k == "PointToObjectSpace" or k == "VectorToObjectSpace" then
                 return function(cf, p)
                         local m = cf.m
@@ -169,6 +172,21 @@ CFrame.__mul = function(a, b)
 end
 CFrame.__eq = function(a, b)
         return a.x == b.x and a.y == b.y and a.z == b.z
+end
+CFrame.__add = function(a, b)
+        if getmetatable(b) == Vector3 then
+                return setmetatable({ x = a.x + b.x, y = a.y + b.y, z = a.z + b.z, m = a.m }, CFrame)
+        end
+        if getmetatable(a) == Vector3 then
+                return setmetatable({ x = a.x + b.x, y = a.y + b.y, z = a.z + b.z, m = b.m }, CFrame)
+        end
+        error("CFrame + CFrame tidak didukung stub")
+end
+CFrame.__sub = function(a, b)
+        if getmetatable(b) == Vector3 then
+                return setmetatable({ x = a.x - b.x, y = a.y - b.y, z = a.z - b.z, m = a.m }, CFrame)
+        end
+        error("CFrame - bukan Vector3 tidak didukung stub")
 end
 CFrame.__tostring = function(cf)
         return string.format("CF(%.2f, %.2f, %.2f)", cf.x, cf.y, cf.z)
@@ -616,6 +634,17 @@ function InstanceMethods:PivotTo(target)
         end
 end
 
+function InstanceMethods:IsDescendantOf(ancestor)
+        local p = self.Parent
+        while p do
+                if p == ancestor then
+                        return true
+                end
+                p = p.Parent
+        end
+        return false
+end
+
 function InstanceMethods:GetPropertyChangedSignal(prop)
         local cache = rawget(self, "__propSignals")
         if not cache then
@@ -814,7 +843,7 @@ function Stub.install()
         local shared = Instance.new("Folder")
         shared.Name = "Shared"
         shared.Parent = ReplicatedStorage
-        for _, n in ipairs({ "CropData", "Recipes", "TasLogic", "Layout", "DuniaLogic", "SoalLogic", "GudangLogic", "PukulLogic", "PanenStatus" }) do
+        for _, n in ipairs({ "CropData", "Recipes", "TasLogic", "Layout", "DuniaLogic", "SoalLogic", "GudangLogic", "PukulLogic", "PanenStatus", "TanahDrops" }) do
                 local m = moduleScript(n, "./../download/dunia-akiomida/src/Shared/" .. n)
                 m.Parent = shared
         end

@@ -19,6 +19,71 @@ Skor per kriteria 0-10, dikali bobot. Total dihitung dari (skor x bobot) / 10.
 | 8 | Polish & UX (UI, suara, animasi, efek) | 10 | animasi kombat, BGM, partikel | UI rapi & responsif |
 | 9 | Originalitas 100% & aman hak cipta | 5 | - | - |
 
+## Skor v47 (versi LIVE #48, 7 Nov 2026) - TANPA ITEM BLOK + NAMA BENIH "BENIH X" + DROP TIDAK PERNAH TENGGELAM LAGI + UJIAN SIKLUS PENUH
+
+Permintaan pemilik (pesan langsung): (1) "Di item kita gak ada item namanya
+blok ya itu dibuang aja" — item blok dihapus total; (2) benih wajib memakai
+nama "Benih X" (mis. Benih Wortel) dan baru bernama "Wortel" setelah panen —
+benih dan hasil matang harus terbedakan jelas; (3) hasil panen yang jatuh
+jangan sampai tertelan ke dalam tanah — wajib tergeletak di atas tanah
+(sebelumnya terkadang tenggelam kayak ngebug); (4) drop yang diambil masuk tas
+sebagai tanaman dewasa (tanam Benih Wortel -> panen -> tas berisi Wortel);
+(5) lakukan ujian: beli benih -> tanam -> panen -> lihat perubahan -> ambil ->
+semai panen -> pastikan berfungsi, tanpa bug, terintegrasi server.
+
+Diterapkan di #47:
+
+A. **Item "blok" dibuang total**: helper CropData blokIdFor/blokNamaFor/
+   blokCrop dihapus, rasio blok di konfigurasi giling dihapus, gulung mesin
+   kini hanya menghasilkan Micda + benih, struk klaim & pop-up semai tidak
+   lagi menampilkan baris blok, ikon slot blok dihapus dari UI tas.
+B. **Penamaan benih "Benih X" ditegakkan**: fungsi baru CropData.namaBenih();
+   slot tas kini menampilkan "Benih Wortel" untuk benih dan "Wortel" untuk
+   hasil; daftar pilih benih di Papan Tanam, dua slot Combine Seed, struk
+   pembelian pack, dan struk klaim semai semuanya memakai awalan "Benih ".
+   Hasil panen tetap tampil sebagai nama dewasa (Wortel).
+C. **Drop panen dijamin tergeletak di atas tanah (bug tenggelam dibunuh)**:
+   modul baru Shared/TanahDrops (logika murni teruji offline); saat spawn,
+   server menghitung permukaan tanah dengan raycast + aturan deterministik
+   permukaan plot 1.4 stud, drop diangkat ke 0.55 stud di atas tanah sebelum
+   memantul; pengawas 0.25 dtk mengangkat drop yang menembus tanah, dan
+   setelah diam 2 tick (atau 2.5 dtk) drop dipastikan duduk di atas tanah lalu
+   di-anchor — tidak mungkin tenggelam, tidak menggelinding jauh, tetap bisa
+   diambil sentuh.
+D. **Integrasi server dipertahankan**: klaim mesin kini hanya memberi Micda +
+   benih (sesuai tanaman) lewat Tas.canFitBatch; raycast tanah mengecualikan
+   karakter & folder drop/plot supaya tidak salah ambil permukaan.
+E. **Ujian siklus penuh (seksi U baru)**: 15 cek end-to-end — beli pack common
+   (900.000 -> 897.600) -> 3 Benih Wortel masuk tas -> tanam lewat papan ->
+   panen punch 3 plot (yield 1-10) -> ambil drop masuk tas sebagai "Wortel"
+   BUKAN benih -> semai panen atur jumlah seluruh hasil -> total pukulan =
+   jumlah x 5 -> tuas KANAN lalu KIRI (kiri duluan DITOLAK) -> giling 3 dtk ->
+   klaim Micda + benih kembali "Benih Wortel" -> nol item blok sepanjang
+   siklus; plus 9 cek seksi T (TanahDrops: tenggelam terdeteksi, diangkat,
+   di-anchor di atas tanah, area plot 1.4).
+F. **Pengujian**: tes offline 319 PASS / 0 FAIL (naik dari 293), luau-lsp
+   0 temuan, rojo build sukses. Playtest & massa dijalankan ulang setelah
+   simulator diperbaiki (daftar modul gen.py + stub Roblox kurang CFrame
+   __add/__sub, Rotation, IsDescendantOf — diperbaiki di simulator, bukan di
+   kode game): PLAYTEST 130 PASS / 0 FAIL, UJIAN MASSA 116 PASS / 0 FAIL
+   (alur dunia nyata: papan tanam -> punch -> drop di atas tanah -> sentuh
+   masuk tas "Wortel" -> 5x pukul hancur -> 8 arketipe -> gudang -> tuas).
+   Publish #48 (final).
+
+| # | Kriteria | Skor | Alasan |
+|---|----------|------|--------|
+| 1 Kombat | 0/10 | Belum ada monster/AI/bos. |
+| 2 Crafting | 4/10 | Mesin semai kini bersih: keluaran Micda + benih per tanaman; item palsu hilang dari rantai olah. |
+| 3 Stat & Progresi | 1/10 | Tanpa level (sesuai arah pemilik); soal matematika tetap gerbang tanam. |
+| 4 Ekonomi | 7/10 | Identitas item jelas (Benih X vs X) dan tidak ada lagi item hantu "blok" di tas/struk — ekonomi lebih bisa dipercaya. |
+| 5 Dunia & Peta | 7/10 | Drop panen kini pasti tergeletak rapi di atas tanah/plot (tidak ada lagi hasil "tenggelam" di dalam tanah). |
+| 6 Multiplayer | 6.5/10 | Klaim drop & tuas tetap dijaga per-pemilik; trade/party belum ada. |
+| 7 Bertani | 10/10 | Siklus penuh beli -> tanam -> panen -> ambil -> semai -> klaim teruji 15 cek end-to-end dengan penamaan benih/hasil yang benar. |
+| 8 Polish & UX | 10/10 | Nama "Benih Wortel" vs "Wortel" konsisten di semua layar; keluhan drop tenggelam (ngebug) hilang lewat pengawas tanah. |
+| 9 Originalitas | 10/10 | Semua logika & model tetap buatan sendiri; TanahDrops modul orisinal. |
+
+**TOTAL: 56.0/100** (bobot: 0+60+10+105+70+65+100+100+50 = 560/10 = 56.0)
+
 ## Skor v45 (versi LIVE #46, 7 Nov 2026 — #46 republish rename internal tanpa perubahan perilaku) - DUA TUAS KANAN-KIRI MENGGANTIKAN KABEL + POP-UP SEMAI LEBIH BESAR & JELAS
 
 Permintaan pemilik (pesan langsung): (1) ganti mekanisme sambung kabel dengan

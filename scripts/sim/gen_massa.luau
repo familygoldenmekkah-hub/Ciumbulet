@@ -133,6 +133,9 @@ CFrame.__index = function(cf, k)
                 local m = cf.m
                 return vec3(m[1][2], m[2][2], m[3][2])
         end
+        if k == "Rotation" then
+                return setmetatable({ x = 0, y = 0, z = 0, m = cf.m }, CFrame)
+        end
         if k == "PointToObjectSpace" or k == "VectorToObjectSpace" then
                 return function(cf, p)
                         local m = cf.m
@@ -170,6 +173,21 @@ CFrame.__mul = function(a, b)
 end
 CFrame.__eq = function(a, b)
         return a.x == b.x and a.y == b.y and a.z == b.z
+end
+CFrame.__add = function(a, b)
+        if getmetatable(b) == Vector3 then
+                return setmetatable({ x = a.x + b.x, y = a.y + b.y, z = a.z + b.z, m = a.m }, CFrame)
+        end
+        if getmetatable(a) == Vector3 then
+                return setmetatable({ x = a.x + b.x, y = a.y + b.y, z = a.z + b.z, m = b.m }, CFrame)
+        end
+        error("CFrame + CFrame tidak didukung stub")
+end
+CFrame.__sub = function(a, b)
+        if getmetatable(b) == Vector3 then
+                return setmetatable({ x = a.x - b.x, y = a.y - b.y, z = a.z - b.z, m = a.m }, CFrame)
+        end
+        error("CFrame - bukan Vector3 tidak didukung stub")
 end
 CFrame.__tostring = function(cf)
         return string.format("CF(%.2f, %.2f, %.2f)", cf.x, cf.y, cf.z)
@@ -617,6 +635,17 @@ function InstanceMethods:PivotTo(target)
         end
 end
 
+function InstanceMethods:IsDescendantOf(ancestor)
+        local p = self.Parent
+        while p do
+                if p == ancestor then
+                        return true
+                end
+                p = p.Parent
+        end
+        return false
+end
+
 function InstanceMethods:GetPropertyChangedSignal(prop)
         local cache = rawget(self, "__propSignals")
         if not cache then
@@ -815,7 +844,7 @@ function Stub.install()
         local shared = Instance.new("Folder")
         shared.Name = "Shared"
         shared.Parent = ReplicatedStorage
-        for _, n in ipairs({ "CropData", "Recipes", "TasLogic", "Layout", "DuniaLogic", "SoalLogic", "GudangLogic", "PukulLogic", "PanenStatus" }) do
+        for _, n in ipairs({ "CropData", "Recipes", "TasLogic", "Layout", "DuniaLogic", "SoalLogic", "GudangLogic", "PukulLogic", "PanenStatus", "TanahDrops" }) do
                 local m = moduleScript(n, "./../download/dunia-akiomida/src/Shared/" .. n)
                 m.Parent = shared
         end
@@ -994,9 +1023,9 @@ CropData.Yield = {
 }
 
 CropData.Giling = {
-        common = { hits = 5, seed = 0.45, blok = 0.20, micdaMin = 1, micdaMax = 5 },
-        rare = { hits = 10, seed = 0.30, blok = 0.15, micdaMin = 3, micdaMax = 9 },
-        epic = { hits = 15, seed = 0.10, blok = 0.15, micdaMin = 9, micdaMax = 19 },
+        common = { hits = 5, seed = 0.45, micdaMin = 1, micdaMax = 5 },
+        rare = { hits = 10, seed = 0.30, micdaMin = 3, micdaMax = 9 },
+        epic = { hits = 15, seed = 0.10, micdaMin = 9, micdaMax = 19 },
 }
 
 CropData.Crops = {
@@ -1080,23 +1109,12 @@ CropData.Bentuk = {
         jamur = { jenis = "cendawan", t = 1.8, w = 1.6, b = 1, warna = { 196, 150, 120 }, siap = { 206, 64, 56 }, aksen = { 224, 214, 196 } },
 }
 
-function CropData.blokIdFor(cropId: string): string
-        return "blok_" .. tostring(cropId)
-end
-
-function CropData.blokNamaFor(cropId: string): string
+function CropData.namaBenih(cropId: string): string
         local info = CropData.byId[cropId]
         if not info then
-                return "Blok"
+                return "Benih"
         end
-        return "Blok " .. info.nama
-end
-
-function CropData.blokCrop(blokId: string): string?
-        if type(blokId) ~= "string" then
-                return nil
-        end
-        return string.match(blokId, "^blok_(.+)$")
+        return "Benih " .. info.nama
 end
 
 function CropData.byRarity(rarity: string): { any }
@@ -1144,34 +1162,35 @@ local MOD_StrukBeli = (function()
 local StrukBeli = {}
 
 function StrukBeli.rangkum(picks: { any }, byId: { [string]: any }): { any }
-	local urut = {}
-	local hitung: { [string]: number } = {}
-	for _, id in ipairs(picks) do
-		local kunci = tostring(id)
-		if not hitung[kunci] then
-			hitung[kunci] = 0
-			table.insert(urut, id)
-		end
-		hitung[kunci] += 1
-	end
-	local rows = {}
-	for _, id in ipairs(urut) do
-		local info = byId and byId[id]
-		table.insert(rows, {
-			id = id,
-			nama = (info and info.nama) or tostring(id),
-			count = hitung[tostring(id)],
-		})
-	end
-	return rows
+        local urut = {}
+        local hitung: { [string]: number } = {}
+        for _, id in ipairs(picks) do
+                local kunci = tostring(id)
+                if not hitung[kunci] then
+                        hitung[kunci] = 0
+                        table.insert(urut, id)
+                end
+                hitung[kunci] += 1
+        end
+        local rows = {}
+        for _, id in ipairs(urut) do
+                local info = byId and byId[id]
+                local nama = (info and info.nama) or tostring(id)
+                table.insert(rows, {
+                        id = id,
+                        nama = "Benih " .. nama,
+                        count = hitung[tostring(id)],
+                })
+        end
+        return rows
 end
 
 function StrukBeli.totalBaris(rows: { any }): number
-	local n = 0
-	for _, r in ipairs(rows) do
-		n += r.count
-	end
-	return n
+        local n = 0
+        for _, r in ipairs(rows) do
+                n += r.count
+        end
+        return n
 end
 
 return StrukBeli
@@ -1295,27 +1314,33 @@ Layout.PlotBlockX = 10
 Layout.PlotBlockZ = 30
 Layout.PlotBlockW = 150
 Layout.PlotBlockD = 120
+Layout.PlotTopY = 1.4
+
+function Layout.diAreaPlot(lx: number, lz: number): boolean
+        return lx >= Layout.PlotBlockX and lx <= Layout.PlotBlockX + Layout.PlotBlockW
+                and lz >= Layout.PlotBlockZ and lz <= Layout.PlotBlockZ + Layout.PlotBlockD
+end
 
 function Layout.cellOrigin(index: number): (number, number)
-	local row = math.floor((index - 1) / Layout.Cols)
-	local col = (index - 1) % Layout.Cols
-	return col * (Layout.SizeX + Layout.Gap), row * (Layout.SizeZ + Layout.Gap)
+        local row = math.floor((index - 1) / Layout.Cols)
+        local col = (index - 1) % Layout.Cols
+        return col * (Layout.SizeX + Layout.Gap), row * (Layout.SizeZ + Layout.Gap)
 end
 
 function Layout.plotCount(): number
-	return Layout.PlotCols * Layout.PlotRows
+        return Layout.PlotCols * Layout.PlotRows
 end
 
 function Layout.plotLocal(idx: number): (number, number)
-	local col = idx % Layout.PlotCols
-	local row = math.floor(idx / Layout.PlotCols)
-	local x = Layout.PlotBlockX + 1 + Layout.PlotSize / 2 + Layout.PlotPitch * col
-	local z = Layout.PlotBlockZ + 1 + Layout.PlotSize / 2 + Layout.PlotPitch * row
-	return x, z
+        local col = idx % Layout.PlotCols
+        local row = math.floor(idx / Layout.PlotCols)
+        local x = Layout.PlotBlockX + 1 + Layout.PlotSize / 2 + Layout.PlotPitch * col
+        local z = Layout.PlotBlockZ + 1 + Layout.PlotSize / 2 + Layout.PlotPitch * row
+        return x, z
 end
 
 function Layout.duniaOffsetX(): number
-	return 5000
+        return 5000
 end
 
 return Layout
@@ -2546,113 +2571,107 @@ local SemaiLogic = {}
 SemaiLogic.UrutanTuas = { "kanan", "kiri" }
 
 function SemaiLogic.saringJumlah(teks: any, dimiliki: any, kapasitas: number): number?
-	if type(teks) ~= "string" and type(teks) ~= "number" then
-		return nil
-	end
-	local n = tonumber(teks)
-	if not n or n ~= n or n % 1 ~= 0 or n < 1 then
-		return nil
-	end
-	n = math.floor(n)
-	if type(dimiliki) ~= "number" or dimiliki < 1 then
-		return nil
-	end
-	local maks = math.floor(dimiliki)
-	if type(kapasitas) == "number" and kapasitas >= 1 and maks > kapasitas then
-		maks = math.floor(kapasitas)
-	end
-	if n > maks then
-		n = maks
-	end
-	if n < 1 then
-		return nil
-	end
-	return n
+        if type(teks) ~= "string" and type(teks) ~= "number" then
+                return nil
+        end
+        local n = tonumber(teks)
+        if not n or n ~= n or n % 1 ~= 0 or n < 1 then
+                return nil
+        end
+        n = math.floor(n)
+        if type(dimiliki) ~= "number" or dimiliki < 1 then
+                return nil
+        end
+        local maks = math.floor(dimiliki)
+        if type(kapasitas) == "number" and kapasitas >= 1 and maks > kapasitas then
+                maks = math.floor(kapasitas)
+        end
+        if n > maks then
+                n = maks
+        end
+        if n < 1 then
+                return nil
+        end
+        return n
 end
 
 function SemaiLogic.pukulanPerItem(cfg: any): number
-	if type(cfg) ~= "table" or type(cfg.hits) ~= "number" or cfg.hits < 1 then
-		return 1
-	end
-	return math.floor(cfg.hits)
+        if type(cfg) ~= "table" or type(cfg.hits) ~= "number" or cfg.hits < 1 then
+                return 1
+        end
+        return math.floor(cfg.hits)
 end
 
 function SemaiLogic.pukulanTotal(jumlah: number, perItem: number): number
-	return math.floor(jumlah) * math.floor(perItem)
+        return math.floor(jumlah) * math.floor(perItem)
 end
 
-function SemaiLogic.gulung(rng: any, cfg: any, jumlah: number): { micda: number, benih: number, blok: number }
-	local jml = math.max(1, math.floor(jumlah))
-	local mMin = 1
-	local mMax = 1
-	local pBenih = 0
-	local pBlok = 0
-	if type(cfg) == "table" then
-		mMin = type(cfg.micdaMin) == "number" and math.max(0, cfg.micdaMin) or 1
-		mMax = type(cfg.micdaMax) == "number" and math.max(mMin, cfg.micdaMax) or mMin
-		pBenih = type(cfg.seed) == "number" and cfg.seed or 0
-		pBlok = type(cfg.blok) == "number" and cfg.blok or 0
-	end
-	local micda = 0
-	local benih = 0
-	local blok = 0
-	for _ = 1, jml do
-		micda += rng:NextInteger(mMin, mMax)
-		if rng:NextNumber() < pBenih then
-			benih += 1
-		end
-		if rng:NextNumber() < pBlok then
-			blok += 1
-		end
-	end
-	return { micda = micda, benih = benih, blok = blok }
+function SemaiLogic.gulung(rng: any, cfg: any, jumlah: number): { micda: number, benih: number }
+        local jml = math.max(1, math.floor(jumlah))
+        local mMin = 1
+        local mMax = 1
+        local pBenih = 0
+        if type(cfg) == "table" then
+                mMin = type(cfg.micdaMin) == "number" and math.max(0, cfg.micdaMin) or 1
+                mMax = type(cfg.micdaMax) == "number" and math.max(mMin, cfg.micdaMax) or mMin
+                pBenih = type(cfg.seed) == "number" and cfg.seed or 0
+        end
+        local micda = 0
+        local benih = 0
+        for _ = 1, jml do
+                micda += rng:NextInteger(mMin, mMax)
+                if rng:NextNumber() < pBenih then
+                        benih += 1
+                end
+        end
+        return { micda = micda, benih = benih }
 end
 
 function SemaiLogic.tuasBaru(): { kanan: boolean, kiri: boolean }
-	return { kanan = false, kiri = false }
+        return { kanan = false, kiri = false }
 end
 
 function SemaiLogic.saringSisi(sisi: any): string?
-	if sisi == "kanan" or sisi == "kiri" then
-		return sisi
-	end
-	return nil
+        if sisi == "kanan" or sisi == "kiri" then
+                return sisi
+        end
+        return nil
 end
 
 function SemaiLogic.tuasBerikut(tuas: any): string?
-	if type(tuas) ~= "table" then
-		return nil
-	end
-	if tuas.kanan ~= true then
-		return "kanan"
-	end
-	if tuas.kiri ~= true then
-		return "kiri"
-	end
-	return nil
+        if type(tuas) ~= "table" then
+                return nil
+        end
+        if tuas.kanan ~= true then
+                return "kanan"
+        end
+        if tuas.kiri ~= true then
+                return "kiri"
+        end
+        return nil
 end
 
 function SemaiLogic.tuasSelesai(tuas: any): boolean
-	return type(tuas) == "table" and tuas.kanan == true and tuas.kiri == true
+        return type(tuas) == "table" and tuas.kanan == true and tuas.kiri == true
 end
 
 function SemaiLogic.prosesTekan(tuas: any, sisi: any): (boolean, string)
-	local sisiBersih = SemaiLogic.saringSisi(sisi)
-	if not sisiBersih then
-		return false, "sisi"
-	end
-	if type(tuas) ~= "table" then
-		return false, "tuas"
-	end
-	if tuas[sisiBersih] == true then
-		return false, "sudah"
-	end
-	local berikut = SemaiLogic.tuasBerikut(tuas)
-	if berikut ~= sisiBersih then
-		return false, "urutan"
-	end
-	tuas[sisiBersih] = true
-	return true, "ok"
+        local sisiBersih = SemaiLogic.saringSisi(sisi)
+        if not sisiBersih then
+                return false, "sisi"
+        end
+        if type(tuas) ~= "table" then
+                return false, "tuas"
+        end
+        if tuas[sisiBersih] == true then
+                return false, "sudah"
+        end
+        local berikut = SemaiLogic.tuasBerikut(tuas)
+        if berikut ~= sisiBersih then
+                return false, "urutan"
+        end
+        tuas[sisiBersih] = true
+        return true, "ok"
 end
 
 return SemaiLogic
@@ -2690,6 +2709,38 @@ function JualLogic.total(unit: number, n: number): number
 end
 
 return JualLogic
+
+end)()
+
+local MOD_TanahDrops = (function()
+local TanahDrops = {}
+
+TanahDrops.SELISIH_TENGGELAM = 0.05
+TanahDrops.DUDUK_DIATAS = 0.08
+TanahDrops.TIDUR_CEWAH = 2
+TanahDrops.TIDUR_MAKS = 2.5
+
+function TanahDrops.bagianBawah(rootY: number, setengah: number): number
+        return rootY - setengah
+end
+
+function TanahDrops.tenggelam(rootBottomY: number, groundY: number): boolean
+        return rootBottomY < groundY - TanahDrops.SELISIH_TENGGELAM
+end
+
+function TanahDrops.istirahatY(groundY: number, setengah: number): number
+        return groundY + setengah + TanahDrops.DUDUK_DIATAS
+end
+
+function TanahDrops.harusTidur(settleTicks: number, umur: number): boolean
+        return settleTicks >= TanahDrops.TIDUR_CEWAH or umur > TanahDrops.TIDUR_MAKS
+end
+
+function TanahDrops.perluNaik(rootBottomY: number, groundY: number, setengah: number): boolean
+        return TanahDrops.tenggelam(rootBottomY, groundY) or rootBottomY < groundY
+end
+
+return TanahDrops
 
 end)()
 
@@ -4422,7 +4473,6 @@ local function syncLahan(index: number, player: Player?)
                 p.pukulan = b.pukulan
                 p.micda = b.hasil.micda
                 p.benih = b.hasil.benih
-                p.blok = b.hasil.blok
                 if b.tahap == "tuas" then
                         p.tuas = { kanan = b.tuas.kanan, kiri = b.tuas.kiri }
                 end
@@ -4627,9 +4677,6 @@ function MesinSemaiService.klaim(player): (boolean, string, any)
         if b.hasil.benih > 0 then
                 table.insert(items, { kind = "benih", id = b.crop, count = b.hasil.benih })
         end
-        if b.hasil.blok > 0 then
-                table.insert(items, { kind = "blok", id = CropData.blokIdFor(b.crop), count = b.hasil.blok })
-        end
         if #items > 0 and not Tas.canFitBatch(player, items) then
                 return false, "Tas penuh! Kosongkan slot dulu, lalu klaim lagi."
         end
@@ -4647,7 +4694,6 @@ function MesinSemaiService.klaim(player): (boolean, string, any)
                 pukulan = b.pukulan,
                 micda = b.hasil.micda,
                 benih = b.hasil.benih,
-                blok = b.hasil.blok,
                 uangOk = okUang,
         }
         batch[index] = nil
@@ -4666,7 +4712,7 @@ function MesinSemaiService.serializeLahan(index: number): { any }
         local out = {}
         local b = batch[index]
         if b then
-                table.insert(out, { c = b.crop, j = b.jumlah, m = b.hasil.micda, b = b.hasil.benih, k = b.hasil.blok })
+                table.insert(out, { c = b.crop, j = b.jumlah, m = b.hasil.micda, b = b.hasil.benih })
         end
         return out
 end
@@ -4681,12 +4727,10 @@ function MesinSemaiService.restoreLahan(index: number, arr: any, ownerId: number
                         local jumlah = 1
                         local micda = info.jual
                         local benih = 0
-                        local blok = 0
                         if type(rec.j) == "number" and rec.j >= 1 then
                                 jumlah = math.min(math.floor(rec.j), CropData.MesinSemai.Kapasitas)
                                 micda = type(rec.m) == "number" and math.max(0, math.floor(rec.m)) or 0
                                 benih = type(rec.b) == "number" and math.max(0, math.floor(rec.b)) or 0
-                                blok = type(rec.k) == "number" and math.max(0, math.floor(rec.k)) or 0
                         end
                         resetTuas(index)
                         batch[index] = {
@@ -4694,7 +4738,7 @@ function MesinSemaiService.restoreLahan(index: number, arr: any, ownerId: number
                                 crop = rec.c,
                                 jumlah = jumlah,
                                 pukulan = jumlah,
-                                hasil = { micda = micda, benih = benih, blok = blok },
+                                hasil = { micda = micda, benih = benih },
                                 tahap = "tuntas",
                         }
                         break
@@ -6857,6 +6901,8 @@ local DropModels = MOD_DropModels
 local KlaimDrop = MOD_KlaimDrop
 local PanenWaktu = MOD_PanenWaktu
 local DuniaLogic = MOD_DuniaLogic
+local TanahDrops = MOD_TanahDrops
+local Layout = MOD_Layout
 
 local DropService = {}
 
@@ -6924,6 +6970,63 @@ local function idBaru(index: number): string
         counters[index] = (counters[index] or 0) + 1
         local unik = tostring(os.time()):sub(-8)
         return "d" .. tostring(index) .. "x" .. tostring(counters[index]) .. "y" .. unik .. tostring(math.random(100, 999))
+end
+
+local PENGECUALI_AWAL = { "Drops_", "PlotGrid_" }
+
+local function tanahDiBawah(index: number, pos: Vector3): number?
+        local dunia = Workspace:FindFirstChild("Dunia")
+        local rayY: number? = nil
+        if dunia then
+                local excl: { Instance } = {}
+                for _, c in ipairs(dunia:GetDescendants()) do
+                        if c:IsA("Folder") or c:IsA("Model") then
+                                local nm = c.Name
+                                for _, awalan in ipairs(PENGECUALI_AWAL) do
+                                        if string.sub(nm, 1, #awalan) == awalan then
+                                                table.insert(excl, c)
+                                                break
+                                        end
+                                end
+                        end
+                end
+                for _, pl in ipairs(Players:GetPlayers()) do
+                        local char = pl.Character
+                        if char then
+                                table.insert(excl, char)
+                        end
+                end
+                local params = RaycastParams.new()
+                params.FilterType = Enum.RaycastFilterType.Exclude
+                params.FilterDescendantsInstances = excl
+                local hit = Workspace:Raycast(pos + Vector3.new(0, 8, 0), Vector3.new(0, -90, 0), params)
+                if hit then
+                        rayY = hit.Position.Y
+                end
+        end
+        local o = Land and Land.origin and Land.origin(index)
+        if o then
+                local lx = pos.X - o.X
+                local lz = pos.Z - o.Z
+                if Layout.diAreaPlot(lx, lz) then
+                        if rayY == nil or Layout.PlotTopY > rayY - 0.01 then
+                                return Layout.PlotTopY
+                        end
+                end
+        end
+        return rayY
+end
+
+local function letakkanDiAtasTanah(rec: any)
+        local part = rec.part
+        if not part or not part.Parent or not rec.groundY then
+                return
+        end
+        local half = part.Size.Y / 2
+        local p = part.Position
+        part.AssemblyLinearVelocity = Vector3.zero
+        part.AssemblyAngularVelocity = Vector3.zero
+        part.CFrame = CFrame.new(p.X, TanahDrops.istirahatY(rec.groundY, half), p.Z) * part.CFrame.Rotation
 end
 
 local function pasangClaim(index: number, rec: any, part: BasePart, basePos: Vector3)
@@ -7005,6 +7108,20 @@ local function bangunModel(index: number, rec: any): boolean
         model.Parent = f
         rec.model = model
         rec.part = part
+        rec.groundY = tanahDiBawah(index, part.Position)
+        rec.lahir = os.clock()
+        rec.settle = 0
+        if rec.groundY then
+                local half = part.Size.Y / 2
+                local bawah = TanahDrops.bagianBawah(part.Position.Y, half)
+                if TanahDrops.perluNaik(bawah, rec.groundY, half) or bawah < rec.groundY + 0.4 then
+                        local target = rec.groundY + half + 0.55
+                        local naik = target - part.Position.Y
+                        if naik > 0 then
+                                model:PivotTo(model:GetPivot() + Vector3.new(0, naik, 0))
+                        end
+                end
+        end
         local warna = part.Color
         local pem = Instance.new("ParticleEmitter")
         pem.Color = ColorSequence.new(warna)
@@ -7037,6 +7154,39 @@ local function bangunModel(index: number, rec: any): boolean
         pasangClaim(index, rec, part, basePos)
         return true
 end
+
+task.spawn(function()
+        while true do
+                task.wait(0.25)
+                local kini = os.clock()
+                for _, map in pairs(rekaman) do
+                        for _, rec in pairs(map) do
+                                local part = rec.part
+                                if rec.status == "ada" and part and part.Parent and part:IsDescendantOf(Workspace) and rec.groundY then
+                                        local half = part.Size.Y / 2
+                                        local bawah = TanahDrops.bagianBawah(part.Position.Y, half)
+                                        if not part.Anchored then
+                                                if TanahDrops.perluNaik(bawah, rec.groundY, half) then
+                                                        letakkanDiAtasTanah(rec)
+                                                        rec.settle = 0
+                                                else
+                                                        local v = part.AssemblyLinearVelocity
+                                                        if (v and v.Magnitude or 0) < 0.6 then
+                                                                rec.settle += 1
+                                                        else
+                                                                rec.settle = 0
+                                                        end
+                                                        if TanahDrops.harusTidur(rec.settle, kini - (rec.lahir or kini)) then
+                                                                letakkanDiAtasTanah(rec)
+                                                                part.Anchored = true
+                                                        end
+                                                end
+                                        end
+                                end
+                        end
+                end
+        end
+end)
 
 function DropService.spawn(index: number, pos: Vector3, cropId: string, count: number, comboN: number, tier: number)
         local info = CropData.byId[cropId]
@@ -7429,16 +7579,6 @@ local function ikonSlot(cell: Frame, s: any?)
                 return
         end
         local wadah = mk("Frame", { Name = "Ikon", Size = UDim2.new(0, 28, 0, 28), Position = UDim2.new(0, 6, 0, 5), BackgroundTransparency = 1 }, cell)
-        if s.kind == "blok" then
-                local cropId = CropData.blokCrop(s.id)
-                local bInfo = nil
-                if cropId then
-                        bInfo = CropData.Bentuk[cropId]
-                end
-                local badan = mk("Frame", { Size = UDim2.fromScale(0.62, 0.62), Position = UDim2.fromScale(0.19, 0.19), BackgroundColor3 = bInfo and warna3b(bInfo.siap) or warna(UIStyle.AbuGelap), BorderSizePixel = 0 }, wadah)
-                mk("Frame", { Size = UDim2.fromScale(0.72, 0.22), Position = UDim2.fromScale(0.14, 0.12), BackgroundColor3 = bInfo and warna3b(bInfo.aksen) or warna(UIStyle.Abu), BorderSizePixel = 0, ZIndex = 2 }, badan)
-                return
-        end
         local info = CropData.byId[s.id]
         local b = info and CropData.Bentuk[info.id]
         local buahC = warna3b(b and b.siap)
@@ -7464,7 +7604,7 @@ local function refreshTas()
                 if s then
                         local info = CropData.byId[s.id]
                         slot.frame.BackgroundColor3 = s.kind == "benih" and warna(UIStyle.Permukaan) or warna(UIStyle.PermukaanAktif)
-                        slot.nama.Text = UIStyle.potong(s.kind == "blok" and CropData.blokNamaFor(CropData.blokCrop(s.id) or "") or (info and info.nama or s.id))
+                        slot.nama.Text = UIStyle.potong(info and (s.kind == "benih" and ("Benih " .. info.nama) or info.nama) or s.id)
                         slot.count.Text = "x" .. s.count
                         ikonSlot(slot.frame, s)
                 else
@@ -7555,7 +7695,7 @@ travelBtn.Activated:Connect(function()
 end)
 
 local semaiPanel = makePanel("semai")
-mk("TextLabel", { Size = UDim2.new(1, -8, 0, 46), Position = UDim2.new(0, 4, 0, 0), BackgroundTransparency = 1, Text = "Mesin semai mengubah hasil panen jadi Micda, benih, dan blok. Pilih hasil panen, atur jumlah, isi mesin, lalu tekan dua tuas sampai SEMAI TUNTAS.", TextWrapped = true, TextSize = UIStyle.UkuranIsi, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left }, semaiPanel)
+mk("TextLabel", { Size = UDim2.new(1, -8, 0, 46), Position = UDim2.new(0, 4, 0, 0), BackgroundTransparency = 1, Text = "Mesin semai mengubah hasil panen jadi Micda dan benih baru. Pilih hasil panen, atur jumlah, isi mesin, lalu tekan dua tuas sampai SEMAI TUNTAS.", TextWrapped = true, TextSize = UIStyle.UkuranIsi, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left }, semaiPanel)
 local semaiLangkah = mk("Frame", { Size = UDim2.new(1, -8, 0, 54), Position = UDim2.new(0, 4, 0, 50), BackgroundTransparency = 1 }, semaiPanel)
 mk("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, semaiLangkah)
 for li, lt in ipairs({ { "1", "Pilih hasil panen" }, { "2", "Isi jumlah" }, { "3", "Tekan 2 tuas" } }) do
@@ -7781,9 +7921,6 @@ local function refreshSemai()
                 barisHasil(nil, "+" .. fmt(b.micda or 0) .. " Micda", "Micda")
                 if (b.benih or 0) > 0 then
                         barisHasil({ kind = "benih", id = b.crop, count = b.benih }, "Benih " .. UIStyle.potong(nama, 18), "x" .. tostring(b.benih))
-                end
-                if (b.blok or 0) > 0 then
-                        barisHasil({ kind = "blok", id = CropData.blokIdFor(b.crop), count = b.blok }, CropData.blokNamaFor(b.crop), "x" .. tostring(b.blok))
                 end
                 local btnKlaim = mk("TextButton", { Size = UDim2.new(1, -8, 0, 52), BackgroundColor3 = warna(UIStyle.Hijau), Text = "Klaim Semua", TextSize = UIStyle.UkuranJudul, Font = FONTB, TextColor3 = Color3.new(1, 1, 1), LayoutOrder = 9 }, semaiScroll)
                 round(btnKlaim)
@@ -8015,9 +8152,6 @@ bukaStrukKlaim = function(s: any)
         if (s.benih or 0) > 0 then
                 baris({ kind = "benih", id = s.crop, count = s.benih }, "Benih " .. UIStyle.potong(s.nama, 18), "x" .. tostring(s.benih))
         end
-        if (s.blok or 0) > 0 then
-                baris({ kind = "blok", id = CropData.blokIdFor(s.crop), count = s.blok }, CropData.blokNamaFor(s.crop), "x" .. tostring(s.blok))
-        end
         mk("TextLabel", { Size = UDim2.new(1, 0, 0, 24), BackgroundTransparency = 1, Text = "Hasil dari " .. tostring(s.jumlah) .. " x " .. UIStyle.potong(s.nama, 14) .. " (" .. tostring(s.pukulan) .. " pukulan) — semua masuk tas", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true }, modalIsi)
         aturModalTombol("struk")
         modalDim.Visible = true
@@ -8160,7 +8294,7 @@ local function refreshGabung()
                         if s.id == slotA then
                                 mk("Frame", { Size = UDim2.new(0, 3, 1, -8), Position = UDim2.new(0, 4, 0, 4), BackgroundColor3 = warna(UIStyle.Aksen), BorderSizePixel = 0 }, pilihA)
                         end
-                        mk("TextLabel", { Size = UDim2.new(0.68, -8, 1, -8), Position = UDim2.new(0, 12, 0, 4), BackgroundTransparency = 1, Text = UIStyle.potong(nama), TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, pilihA)
+                        mk("TextLabel", { Size = UDim2.new(0.68, -8, 1, -8), Position = UDim2.new(0, 12, 0, 4), BackgroundTransparency = 1, Text = UIStyle.potong("Benih " .. nama), TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, pilihA)
                         mk("TextLabel", { Size = UDim2.new(0.24, -8, 1, -8), Position = UDim2.new(0.68, 8, 0, 4), BackgroundTransparency = 1, Text = "x" .. s.count, TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Right }, pilihA)
                         pilihA.Activated:Connect(function()
                                 slotA = s.id
@@ -8171,7 +8305,7 @@ local function refreshGabung()
                         if s.id == slotB then
                                 mk("Frame", { Size = UDim2.new(0, 3, 1, -8), Position = UDim2.new(0, 4, 0, 4), BackgroundColor3 = warna(UIStyle.Aksen), BorderSizePixel = 0 }, pilihB)
                         end
-                        mk("TextLabel", { Size = UDim2.new(0.68, -8, 1, -8), Position = UDim2.new(0, 12, 0, 4), BackgroundTransparency = 1, Text = UIStyle.potong(nama), TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, pilihB)
+                        mk("TextLabel", { Size = UDim2.new(0.68, -8, 1, -8), Position = UDim2.new(0, 12, 0, 4), BackgroundTransparency = 1, Text = UIStyle.potong("Benih " .. nama), TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, pilihB)
                         mk("TextLabel", { Size = UDim2.new(0.24, -8, 1, -8), Position = UDim2.new(0.68, 8, 0, 4), BackgroundTransparency = 1, Text = "x" .. s.count, TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Right }, pilihB)
                         pilihB.Activated:Connect(function()
                                 slotB = s.id
@@ -8251,7 +8385,7 @@ refreshTanam = function()
                         if s.id == selectedSeed then
                                 mk("Frame", { Size = UDim2.new(0, 3, 1, -8), Position = UDim2.new(0, 4, 0, 4), BackgroundColor3 = warna(UIStyle.Aksen), BorderSizePixel = 0 }, row)
                         end
-                        mk("TextLabel", { Size = UDim2.new(0.66, -8, 1, -8), Position = UDim2.new(0, 12, 0, 4), BackgroundTransparency = 1, Text = UIStyle.potong(info and info.nama or s.id), TextSize = UIStyle.UkuranIsi, Font = FON, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, row)
+                        mk("TextLabel", { Size = UDim2.new(0.66, -8, 1, -8), Position = UDim2.new(0, 12, 0, 4), BackgroundTransparency = 1, Text = UIStyle.potong(info and ("Benih " .. info.nama) or s.id), TextSize = UIStyle.UkuranIsi, Font = FON, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, row)
                         mk("TextLabel", { Size = UDim2.new(0.26, -8, 1, -8), Position = UDim2.new(0.66, 8, 0, 4), BackgroundTransparency = 1, Text = "x" .. s.count, TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Right }, row)
                         row.Activated:Connect(function()
                                 selectedSeed = s.id

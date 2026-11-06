@@ -280,7 +280,6 @@ local function syncLahan(index: number, player: Player?)
                 p.pukulan = b.pukulan
                 p.micda = b.hasil.micda
                 p.benih = b.hasil.benih
-                p.blok = b.hasil.blok
                 if b.tahap == "tuas" then
                         p.tuas = { kanan = b.tuas.kanan, kiri = b.tuas.kiri }
                 end
@@ -485,9 +484,6 @@ function MesinSemaiService.klaim(player): (boolean, string, any)
         if b.hasil.benih > 0 then
                 table.insert(items, { kind = "benih", id = b.crop, count = b.hasil.benih })
         end
-        if b.hasil.blok > 0 then
-                table.insert(items, { kind = "blok", id = CropData.blokIdFor(b.crop), count = b.hasil.blok })
-        end
         if #items > 0 and not Tas.canFitBatch(player, items) then
                 return false, "Tas penuh! Kosongkan slot dulu, lalu klaim lagi."
         end
@@ -505,7 +501,6 @@ function MesinSemaiService.klaim(player): (boolean, string, any)
                 pukulan = b.pukulan,
                 micda = b.hasil.micda,
                 benih = b.hasil.benih,
-                blok = b.hasil.blok,
                 uangOk = okUang,
         }
         batch[index] = nil
@@ -524,7 +519,7 @@ function MesinSemaiService.serializeLahan(index: number): { any }
         local out = {}
         local b = batch[index]
         if b then
-                table.insert(out, { c = b.crop, j = b.jumlah, m = b.hasil.micda, b = b.hasil.benih, k = b.hasil.blok })
+                table.insert(out, { c = b.crop, j = b.jumlah, m = b.hasil.micda, b = b.hasil.benih })
         end
         return out
 end
@@ -539,12 +534,10 @@ function MesinSemaiService.restoreLahan(index: number, arr: any, ownerId: number
                         local jumlah = 1
                         local micda = info.jual
                         local benih = 0
-                        local blok = 0
                         if type(rec.j) == "number" and rec.j >= 1 then
                                 jumlah = math.min(math.floor(rec.j), CropData.MesinSemai.Kapasitas)
                                 micda = type(rec.m) == "number" and math.max(0, math.floor(rec.m)) or 0
                                 benih = type(rec.b) == "number" and math.max(0, math.floor(rec.b)) or 0
-                                blok = type(rec.k) == "number" and math.max(0, math.floor(rec.k)) or 0
                         end
                         resetTuas(index)
                         batch[index] = {
@@ -552,7 +545,7 @@ function MesinSemaiService.restoreLahan(index: number, arr: any, ownerId: number
                                 crop = rec.c,
                                 jumlah = jumlah,
                                 pukulan = jumlah,
-                                hasil = { micda = micda, benih = benih, blok = blok },
+                                hasil = { micda = micda, benih = benih },
                                 tahap = "tuntas",
                         }
                         break
