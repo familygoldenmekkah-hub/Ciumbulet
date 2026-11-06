@@ -4,7 +4,7 @@ local CropData = require(ReplicatedStorage.Shared.CropData)
 
 local SmashService = {}
 
-local Land, Tas, Data, Net, Notify
+local Land, Tas, Data, Net, Notify, World
 local rng = Random.new()
 
 local MAX_SLOTS = 6
@@ -28,6 +28,7 @@ function SmashService.bind(deps)
         Data = deps.Data
         Net = deps.Net
         Notify = deps.Notify
+        World = deps.World
 end
 
 function SmashService.registerTable(index: number, pos: Vector3)
@@ -71,6 +72,21 @@ function SmashService.refundLahan(index: number, player)
         slots[index] = {}
 end
 
+local function makeHasilModel(index: number, slotCount: number, info: any): Model
+        local model = Instance.new("Model")
+        model.Name = "Hasil_" .. slotCount
+        local part = Instance.new("Part")
+        part.Anchored = true
+        part.CanQuery = false
+        part.Size = RARITY_SIZE[info.rarity]
+        part.Color = RARITY_COLOR[info.rarity]
+        part.Material = Enum.Material.SmoothPlastic
+        part.Position = tables[index] + Vector3.new(-10 + slotCount * 4, part.Size.Y / 2 + 0.1, 0)
+        part.Parent = model
+        model.Parent = workspace:FindFirstChild("Dunia")
+        return model
+end
+
 function SmashService.place(player, cropId: any): (boolean, string)
         local index = Land.landOf(player)
         if not index then
@@ -92,18 +108,11 @@ function SmashService.place(player, cropId: any): (boolean, string)
         end
         Tas.remove(player, "hasil", cropId, 1)
         local info = CropData.byId[cropId]
-        local model = Instance.new("Model")
-        model.Name = "Hasil_" .. #slots[index]
-        local part = Instance.new("Part")
-        part.Anchored = true
-        part.CanQuery = false
-        part.Size = RARITY_SIZE[info.rarity]
-        part.Color = RARITY_COLOR[info.rarity]
-        part.Material = Enum.Material.SmoothPlastic
-        part.Position = tables[index] + Vector3.new(-10 + #slots[index] * 4, part.Size.Y / 2 + 0.1, 0)
-        part.Parent = model
-        model.Parent = workspace:FindFirstChild("Dunia")
+        local model = makeHasilModel(index, #slots[index], info)
         table.insert(slots[index], { crop = cropId, hitsLeft = CropData.Smash[info.rarity].hits, model = model })
+        if World then
+                World.touch()
+        end
         syncLahan(index, player)
         return true, info.nama .. " diletakkan di meja."
 end
@@ -130,6 +139,9 @@ function SmashService.hit(player, slotIdx: any): (boolean, string)
                 table.remove(slots[index], slotIdx)
                 local micda = rng:NextInteger(cfg.micdaMin, cfg.micdaMax)
                 Data.addMicda(player, micda)
+                if World then
+                        World.touch()
+                end
                 local pesan = "+" .. micda .. " Micda"
                 if rng:NextNumber() < cfg.seed then
                         local put = Tas.add(player, "benih", s.crop, 1)
@@ -173,8 +185,33 @@ function SmashService.take(player, slotIdx: any): (boolean, string)
         s.model:Destroy()
         table.remove(slots[index], slotIdx)
         Tas.add(player, "hasil", s.crop, 1)
+        if World then
+                World.touch()
+        end
         syncLahan(index, player)
         return true, "Diambil kembali."
+end
+
+function SmashService.serializeLahan(index: number): { { c: string, h: number } }
+        local out = {}
+        for _, s in ipairs(slots[index] or {}) do
+                table.insert(out, { c = s.crop, h = s.hitsLeft })
+        end
+        return out
+end
+
+function SmashService.restoreLahan(index: number, arr: { any })
+        if not tables[index] then
+                return
+        end
+        slots[index] = slots[index] or {}
+        for _, rec in ipairs(arr or {}) do
+                local info = CropData.byId[rec.c]
+                if info and #slots[index] < MAX_SLOTS then
+                        local model = makeHasilModel(index, #slots[index], info)
+                        table.insert(slots[index], { crop = rec.c, hitsLeft = rec.h, model = model })
+                end
+        end
 end
 
 return SmashService

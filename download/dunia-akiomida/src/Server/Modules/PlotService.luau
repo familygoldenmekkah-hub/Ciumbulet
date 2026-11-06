@@ -1,4 +1,5 @@
 local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local CropData = require(ReplicatedStorage.Shared.CropData)
@@ -6,7 +7,7 @@ local Layout = require(ReplicatedStorage.Shared.Layout)
 
 local PlotService = {}
 
-local Land, Tas, Net
+local Land, Tas, Net, World
 local rng = Random.new()
 
 local folders: { [number]: Folder } = {}
@@ -23,6 +24,7 @@ function PlotService.bind(deps)
         Land = deps.Land
         Tas = deps.Tas
         Net = deps.Net
+        World = deps.World
 end
 
 local function plotPos(index: number, idx: number): Vector3
@@ -132,7 +134,7 @@ function PlotService.stateOf(index: number, idx: number): string
         return "tumbuh"
 end
 
-function PlotService.startLoop(index: number, ownerPlayer: Player)
+function PlotService.startLoop(index: number)
         if running[index] then
                 return
         end
@@ -150,8 +152,8 @@ function PlotService.startLoop(index: number, ownerPlayer: Player)
                                                         head.Size = Vector3.new(3, 2, 3)
                                                         head.Position = plotPos(index, idx) + Vector3.new(0, 3, 0)
                                                 end
-                                                if ownerPlayer.Parent then
-                                                        sync(ownerPlayer, index, idx)
+                                                for _, p in ipairs(Players:GetPlayers()) do
+                                                        sync(p, index, idx)
                                                 end
                                         end
                                 end
@@ -195,6 +197,9 @@ function PlotService.plant(player: Player, idx: number, cropId: string): (boolea
                 model = model,
                 ready = false,
         }
+        if World then
+                World.touch()
+        end
         sync(player, index, idx)
         return true, "Ditanam."
 end
@@ -228,8 +233,44 @@ function PlotService.harvest(player: Player, idx: number): (boolean, string)
         rec.model:Destroy()
         planted[index][idx] = nil
         Tas.add(player, "hasil", rec.crop, jumlah)
+        if World then
+                World.touch()
+        end
         sync(player, index, idx)
         return true, "Panen " .. jumlah .. " " .. info.nama .. "."
+end
+
+function PlotService.serialize(index: number): { [number]: { c: string, r: number } }
+        local out = {}
+        local pl = planted[index]
+        if not pl then
+                return out
+        end
+        for idx, rec in pairs(pl) do
+                out[idx] = { c = rec.crop, r = rec.readyAt }
+        end
+        return out
+end
+
+function PlotService.restore(index: number, arr: { [number]: { c: string, r: number } })
+        local pl = planted[index]
+        if not pl then
+                return
+        end
+        for idx, rec in pairs(arr or {}) do
+                if not pl[idx] and CropData.byId[rec.c] then
+                        local model = makePlantModel(index, idx, rec.c)
+                        local ready = now() >= rec.r
+                        pl[idx] = { crop = rec.c, readyAt = rec.r, model = model, ready = ready }
+                        if ready then
+                                local head = model:FindFirstChild("Kepala")
+                                if head then
+                                        head.Size = Vector3.new(3, 2, 3)
+                                        head.Position = plotPos(index, idx) + Vector3.new(0, 3, 0)
+                                end
+                        end
+                end
+        end
 end
 
 return PlotService

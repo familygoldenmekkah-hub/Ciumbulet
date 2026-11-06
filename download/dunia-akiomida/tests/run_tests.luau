@@ -14,7 +14,7 @@ local function check(name: string, ok: boolean, detail: string?)
         end
 end
 
-print("=== TES DUNIA AKIOMIDA - TAHAP 1 ===")
+print("=== TES DUNIA AKIOMIDA - TAHAP 2 DUNIA PRIBADI ===")
 
 print("--- Data tanaman (34) ---")
 do
@@ -215,14 +215,36 @@ do
         RateLimit.clear(999)
 end
 
-print("--- Config place ---")
+print("--- Logika dunia pribadi ---")
 do
-        local PlaceConfig = require("./../src/Server/Modules/PlaceConfig")
-        check("ID place lahan terisi", PlaceConfig.LahanPlaceId > 0, tostring(PlaceConfig.LahanPlaceId))
-        check("Teleport nonaktif tanpa place kota", PlaceConfig.useTeleport() == false, "-")
-        PlaceConfig.KotaPlaceId = 12345
-        check("Teleport aktif bila place kota beda", PlaceConfig.useTeleport() == true, "-")
-        PlaceConfig.KotaPlaceId = 0
+        local DuniaLogic = require("./../src/Shared/DuniaLogic")
+        check("Key dunia dari userId", DuniaLogic.keyFor(42) == "d_42", tostring(DuniaLogic.keyFor(42)))
+        check("Mode hub tanpa data", DuniaLogic.modeOf(nil) == "hub", "-")
+        check("Mode hub data rusak", DuniaLogic.modeOf({ md = "dunia" }) == "hub" and DuniaLogic.modeOf({ md = "dunia", pemilik = 0 }) == "hub" and DuniaLogic.modeOf({ md = "dunia", pemilik = "x" }) == "hub" and DuniaLogic.modeOf("rusak") == "hub", "-")
+        check("Mode dunia valid", DuniaLogic.modeOf({ md = "dunia", pemilik = 7 }) == "dunia", "-")
+        check("Owner dari data join", DuniaLogic.ownerOf({ md = "dunia", pemilik = 7 }) == 7 and DuniaLogic.ownerOf(nil) == 0, "-")
+        check("Role pemilik vs tamu", DuniaLogic.roleFor(7, 7) == "pemilik" and DuniaLogic.roleFor(8, 7) == "tamu" and DuniaLogic.roleFor(8, 0) == "tamu", "-")
+        check("Rendezvous segar diterima", DuniaLogic.fresh({ k = "abc", t = 1000 }, 1030) == true, "-")
+        check("Rendezvous kedaluwarsa ditolak", DuniaLogic.fresh({ k = "abc", t = 1000 }, 1091) == false, "-")
+        check("Rendezvous rusak ditolak", DuniaLogic.fresh(nil, 1000) == false and DuniaLogic.fresh({ t = "x" }, 1000) == false and DuniaLogic.fresh({ k = "a" }, 1000) == false, "-")
+        local pl = { [0] = { crop = "wortel", readyAt = 123.7, model = {} }, [499] = { crop = "ceri", readyAt = 99 }, rusak = { crop = "x", readyAt = 1 }, [-1] = { crop = "y", readyAt = 1 }, [3] = { crop = 9, readyAt = 1 } }
+        local ser = DuniaLogic.serPlots(pl)
+        check("Serialize plot menyaring data", ser[0] ~= nil and ser[0].c == "wortel" and ser[0].r == 123 and ser[499] ~= nil and ser[499].c == "ceri" and ser.rusak == nil and ser[-1] == nil and ser[3] == nil, "-")
+        local des = DuniaLogic.desPlots(ser)
+        check("Deserialize plot roundtrip", des[0] ~= nil and des[0].c == "wortel" and des[0].r == 123 and des[499] ~= nil and des[499].c == "ceri", "-")
+        check("Deserialize plot tolak rusak", DuniaLogic.desPlots({ [5] = { c = 9, r = 1 } })[5] == nil and DuniaLogic.desPlots(nil)[5] == nil and DuniaLogic.desPlots({ [6] = { c = "wortel", r = "x" } })[6] == nil, "-")
+        check("Batas plot 500 ditegakkan", DuniaLogic.serPlots({ [500] = { crop = "x", readyAt = 1 } })[500] == nil and DuniaLogic.desPlots({ [501] = { c = "x", r = 1 } })[501] == nil, "-")
+        local mj = { { crop = "plum", hitsLeft = 3, model = {} }, { crop = "aprikot", hitsLeft = -2 }, { crop = 5, hitsLeft = 1 } }
+        local ser2 = DuniaLogic.serMeja(mj)
+        check("Serialize meja menyaring data", #ser2 == 2 and ser2[1].c == "plum" and ser2[1].h == 3 and ser2[2].c == "aprikot" and ser2[2].h == 1, tostring(#ser2))
+        local des2 = DuniaLogic.desMeja(ser2)
+        check("Deserialize meja roundtrip", des2[1] ~= nil and des2[1].c == "plum" and des2[1].h == 3, "-")
+        local penuh = {}
+        for _ = 1, 9 do
+                table.insert(penuh, { crop = "plum", hitsLeft = 2 })
+        end
+        check("Meja maks 6 slot", #DuniaLogic.serMeja(penuh) == 6 and #DuniaLogic.desMeja(DuniaLogic.serMeja(penuh)) == 6, "-")
+        check("Konstanta anti-lag", DuniaLogic.Ttl == 90 and DuniaLogic.Heartbeat == 30 and DuniaLogic.SaveEvery == 60, "-")
 end
 
 print(("="):rep(28))

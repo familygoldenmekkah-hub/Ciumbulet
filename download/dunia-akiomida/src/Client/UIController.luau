@@ -15,6 +15,9 @@ local state = {
         lahan = nil,
         plot = {},
         semai = {},
+        zone = "kota",
+        dunia = nil,
+        role = "hub",
 }
 
 local function fmt(n: number): string
@@ -41,6 +44,7 @@ local PANEL_TITLES = {
         plot = "Plot Tanam",
         semai = "Semai Panen",
         toko = "Toko Benih",
+        gerbang = "Gerbang Dunia",
 }
 
 local function mk(class: string, props: { [string]: any }, parent: Instance?): Instance
@@ -75,6 +79,9 @@ round(tasBtn)
 
 local toastHolder = mk("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 66), Size = UDim2.new(0, 470, 0, 220), BackgroundTransparency = 1 }, gui)
 mk("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder, HorizontalAlignment = Enum.HorizontalAlignment.Center }, toastHolder)
+
+local zonaLabel = mk("TextLabel", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 8), Size = UDim2.new(0, 260, 0, 24), BackgroundColor3 = Color3.fromRGB(18, 20, 24), BackgroundTransparency = 0.25, Text = "Pusat Kota", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.fromRGB(255, 214, 110) }, gui)
+round(zonaLabel, 6)
 
 local toastOrder = 0
 local function toast(title: string, msg: string)
@@ -167,6 +174,24 @@ local selALabel = mk("TextLabel", { Size = UDim2.new(0.5, -14, 0, 30), Position 
 local selBLabel = mk("TextLabel", { Size = UDim2.new(0.5, -14, 0, 30), Position = UDim2.new(0.5, 6, 1, -78), BackgroundTransparency = 1, Text = "Benih B: -", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.fromRGB(255, 214, 110), TextXAlignment = Enum.TextXAlignment.Left }, combinePanel)
 local combineBtn = mk("TextButton", { Size = UDim2.new(1, -16, 0, 40), Position = UDim2.new(0, 8, 1, -34), BackgroundColor3 = Color3.fromRGB(46, 110, 62), Text = "Gabung Sekarang", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1) }, combinePanel)
 round(combineBtn)
+
+local gerbangPanel = makePanel("gerbang")
+mk("TextLabel", { Size = UDim2.new(1, -16, 0, 56), Position = UDim2.new(0, 8, 0, 4), BackgroundTransparency = 1, Text = "Setiap pemain punya dunia pribadi terpisah. Tamu bisa berkunjung tanpa bisa mengubah apa pun. Tidak perlu mengatur ID apa pun.", TextWrapped = true, TextScaled = true, Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(200, 200, 205), TextXAlignment = Enum.TextXAlignment.Left }, gerbangPanel)
+local masukBtn = mk("TextButton", { Size = UDim2.new(1, -16, 0, 52), Position = UDim2.new(0, 8, 0, 68), BackgroundColor3 = Color3.fromRGB(46, 110, 62), Text = "Masuk Dunia-ku", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1) }, gerbangPanel)
+round(masukBtn)
+mk("TextLabel", { Size = UDim2.new(1, -16, 0, 26), Position = UDim2.new(0, 8, 0, 130), BackgroundTransparency = 1, Text = "Kunjungi dunia pemain lain:", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.fromRGB(255, 214, 110), TextXAlignment = Enum.TextXAlignment.Left }, gerbangPanel)
+local kunjungiNama = mk("TextBox", { Size = UDim2.new(1, -16, 0, 44), Position = UDim2.new(0, 8, 0, 158), BackgroundColor3 = Color3.fromRGB(30, 33, 40), Text = "", PlaceholderText = "Ketik nama pemain...", TextScaled = true, Font = Enum.Font.Gotham, TextColor3 = Color3.new(1, 1, 1), ClearTextOnFocus = false }, gerbangPanel)
+round(kunjungiNama, 6)
+local kunjungiBtn = mk("TextButton", { Size = UDim2.new(1, -16, 0, 44), Position = UDim2.new(0, 8, 0, 210), BackgroundColor3 = Color3.fromRGB(58, 84, 138), Text = "Kunjungi", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1) }, gerbangPanel)
+round(kunjungiBtn)
+masukBtn.Activated:Connect(function()
+        local ok, msg = Net.get("DuniaAct"):InvokeServer("masuk")
+        toast(ok and "Gerbang Dunia" or "Gagal", msg)
+end)
+kunjungiBtn.Activated:Connect(function()
+        local ok, msg = Net.get("DuniaAct"):InvokeServer("kunjungi", kunjungiNama.Text)
+        toast(ok and "Kunjungan" or "Gagal", msg)
+end)
 
 local function seedList(): { any }
         local out = {}
@@ -498,6 +523,11 @@ Net.get("OpenPanel").OnClientEvent:Connect(function(name)
         elseif name == "toko" then
                 openPanel("toko")
                 refreshToko()
+        elseif name == "gerbang" then
+                openPanel("gerbang")
+        elseif name == "combine" then
+                openPanel("combine")
+                refreshCombine()
         end
 end)
 
@@ -507,7 +537,15 @@ task.spawn(function()
                 state.micda = st.micda or 0
                 state.tas = st.tas or {}
                 state.lahan = st.lahan
+                state.zone = st.zone or "kota"
+                state.dunia = st.dunia
+                state.role = st.role or "hub"
                 micdaLabel.Text = fmt(state.micda) .. " Micda"
+                if state.zone == "dunia" then
+                        zonaLabel.Text = "Dunia " .. tostring(state.dunia or "Petani")
+                else
+                        zonaLabel.Text = "Pusat Kota"
+                end
                 refreshTas()
         end
 end)

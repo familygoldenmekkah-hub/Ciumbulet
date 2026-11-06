@@ -19,29 +19,49 @@ Skor per kriteria 0-10, dikali bobot. Total dihitung dari (skor x bobot) / 10.
 | 8 | Polish & UX (UI, suara, animasi, efek) | 10 | animasi kombat, BGM, partikel | UI rapi & responsif |
 | 9 | Originalitas 100% & aman hak cipta | 5 | - | - |
 
-## Skor v27 (versi LIVE #27, 6 Nov 2026) - TAHAP 1: ALUR INTI (resep blog pemilik)
+## Skor v28 (versi LIVE #28, 6 Nov 2026) - TAHAP 2: DUNIA PRIBADI TER-INSTANS
 
-Dibangun dari nol sesuai resep TAHAP 1 pemilik: LAHAN, PUSAT KOTA, SEMAI PANEN,
-COMBINE SEED. Tanpa rumah, ruangan, koperasi, kolam (hanya penanda area).
-Semua logika uang/tas/beli/jual/pukul/drop/gabung di ServerScriptService; client
-hanya menampilkan dan mengirim permintaan.
+Permintaan pemilik terpenuhi: TANPA ID PLACE MANUAL sama sekali (PlaceConfig
+dihapus), anti-lag saat banyak pemain keluar-masuk, dan pemain lain bisa
+mengunjungi dunia pemain lain tanpa saling mengganggu. Arsitektur: satu place,
+dua jenis server - Pusat Kota (hub publik ringan) dan dunia pribadi per-
+instance lewat `TeleportService:ReserveServer(game.PlaceId)` (model dunia-
+per-server), rendezvous MemoryStore TTL 90 dtk + heartbeat 30 dtk, persistensi
+dunia DataStore AKM_Dunia (tanaman + meja semai bertahan saat offline).
 
 | Kriteria | Skor | Catatan |
 |----------|------|---------|
-| 1 Kombat | 0/10 | Tidak ada di TAHAP 1 (sesuai resep). |
-| 2 Crafting | 1/10 | Gabung benih 8 resep (data tabel, validasi penuh server, urutan bebas, salah resep ditolak tanpa potong). |
+| 1 Kombat | 0/10 | Belum ada (sesuai urutan rencana). |
+| 2 Crafting | 1/10 | Gabung benih 8 resep; kini di Meja Gabung Pusat Kota (server cek jarak meja 24 stud). |
 | 3 Stat & Progresi | 0/10 | Tanpa sistem level (sesuai arah pemilik). |
-| 4 Ekonomi | 5/10 | Micda awal 900.000 persisten DataStore (antar-place siap); Toko Benih jual pack Common 2.400 / Rare 9.000 (3 benih acak, epic TIDAK dijual) dan beli hasil panen harga/unit x jumlah. Sink & faucet jelas. Belum: pasar dinamis, toko pemain. |
-| 5 Dunia & Peta | 4/10 | 10 lahan 240x220 per denah wajib (2x5, jarak 40), pagar, jalan 10 stud, lampu, papan nama (tempat saja), penanda area Koperasi/Kolam/Rumah/4 ruangan (tidak dibangun). Zona Pusat Kota terpisah 2600 stud: spawn dekat gerbang + Toko Benih 40x30 resep lengkap (pondasi batu, dinding krem 1 stud, tiang sudut, bukaan 6x10 tanpa daun, 2 etalase 10x8 dasar 3, atap pelana 30 derajat overhang 3 merah bata, kanopi 2 tiang, papan 16x4, kasir 12x3, 4 rak 8x2x8, meja 6x3, 3 lampu, lantai kayu). Belum: dungeon, dekorasi lebih kaya. |
-| 6 Multiplayer | 3/10 | Pengunjung boleh masuk lahan tapi server menolak semua perubahan isi; klaim lahan otomatis & lepas saat keluar; respawn di lahan sendiri. Belum: party/trade/aktivitas bersama. |
-| 7 Bertani | 8/10 | 500 plot grid 25x20 (4x4, pitch 6) per lahan, status kosong/tumbuh/siap, hanya pemilik bisa tanam/panen; tumbuh 3 detik; panen acak Common 1-10 / Rare 1-6 / Epic 1-4; tas 50 slot x 250 (satu jenis per slot, tas penuh ditolak + diberi tahu); Semai Panen 30x30: letakkan hasil di meja, pukul 5/10/15x, hadiah Micda 1-5/3-9/9-19 + peluang benih 45/30/10% & blok 20/15/15% (dihitung terpisah). |
-| 8 Polish & UX | 4/10 | UI lengkap alur inti (HUD Micda, tas 50 slot, panel plot + hitung mundur, gabung benih, semai panen, toko beli/jual, toast), bangunan modular sesuai arahan modeling (maks 3 warna utama, kelipatan 2 stud). Belum: BGM, animasi, efek partikel. |
-| 9 Originalitas | 10/10 | 100% karya sendiri; tanpa require ID, loadstring, getfenv, HttpService; tanpa model/script luar; semua dari Part buatan sendiri. |
+| 4 Ekonomi | 5/10 | Micda 900.000 persisten lintas server (DataStore AKM_T1 global, sama di hub & dunia); Toko Benih & jual hasil di Pusat Kota. Belum: pasar dinamis, toko pemain. |
+| 5 Dunia & Peta | 5/10 | Pusat Kota fungsional (spawn, gerbang dunia 10 stud, Toko Benih lengkap, Meja Gabung, papan, lampu) + dunia pribadi terinstans: 1 lahan penuh 500 plot + pagar + meja semai + papan nama pemilik + gerbang pulang. Belum: rumah/ruangan/kolam nyata, air, dungeon. |
+| 6 Multiplayer | 6/10 | **Kunjung antar dunia nyata**: masuk dunia sendiri (instance pribadi), kunjungi pemain lain yang online (join server aktifnya) atau offline (mode baca dari data tersimpan); tamu TIDAK bisa tanam/panen/pukul/taruh - semua aksi mutasi ditolak server dengan pesan. Anti-ganggu terjamin. Belum: trade, party, daftar dunia publik. |
+| 7 Bertani | 8/10 | 500 plot per dunia pribadi; tumbuh 3 dtk; panen 1-10/1-6/1-4; tas 50x250; **tanaman & meja semai kini PERSISTEN saat pemain offline** (timestamp readyAt disimpan, siap saat dimuat). |
+| 8 Polish & UX | 5/10 | Panel Gerbang Dunia baru (Masuk Dunia-ku + Kunjungi via nama), label zona HUD (Pusat Kota / Dunia <nama>), toast status teleport. Belum: BGM, animasi, partikel. |
+| 9 Originalitas | 10/10 | 100% karya sendiri; tanpa require ID, loadstring, getfenv, HttpService. |
 
-**TOTAL: 33/100** (bobot: 0+15+0+75+40+30+80+40+50 = 330/10)
+**TOTAL: 40/100** (bobot: 0+15+0+75+50+60+80+50+50 = 380/10)
 
-Riwayat: v10 = 56 -> v11 = 64 (penilaian owner) -> v20 = 79 -> v21 = 80 -> v25 = 83 -> v26 = 9 (RESET TOTAL) -> v27 = 33 (TAHAP 1 dari nol).
-Celah menuju 100: kombat (15), ekonomi pemain (10), polish (6), dunia lebih kaya (6), multiplayer (7).
+Riwayat: v10 = 56 -> v11 = 64 -> v20 = 79 -> v21 = 80 -> v25 = 83 -> v26 = 9 (RESET) -> v27 = 33 (TAHAP 1) -> v28 = 40 (TAHAP 2 dunia pribadi).
+Celah menuju 100: kombat (15), ekonomi pemain (10), polish (5), dunia lebih kaya (5), multiplayer lanjut (4).
+
+## Arsitektur dunia pribadi (v28) - tanpa ID manual, anti-lag
+
+- Server Pusat Kota = join biasa (tanpa teleport data). Ringan (~70 part); bila
+  ramai, Roblox otomatis membagi pemain ke beberapa server hub - tidak pernah
+  jadi bottleneck.
+- Dunia pribadi = server tersendiri via `ReserveServer(game.PlaceId)` - TIDAK
+  perlu membuat/mengisi ID place apa pun. Beban komputasi & render dunia satu
+  pemain sepenuhnya terisolasi dari pemain lain: ramai sekalipun tidak saling
+  membuat lag (model Growtopia: 1 dunia = 1 server).
+- Rendezvous: MemoryStoreSortedMap AKM_DuniaAktif (kunci d_<userId>, TTL 90 dtk,
+  heartbeat 30 dtk) + save dunia tiap 60 dtk bila berubah, saat pemilik keluar,
+  saat server kosong, dan BindToClose.
+- Role: pemilik (aksi penuh) vs tamu (hanya lihat-jalan). PlotAct/SmashAct di
+  dunia divalidasi role + kepemilikan lahan di server.
+- Teleport gagal (Studio/awal server) ditangani pcall + pesan jujur; data rusak
+  disanitasi (DuniaLogic: batas 500 plot, 6 slot meja, tipe ketat) - 90 tes PASS.
 
 ## Keamanan TAHAP 1 (wajib resep, semua dipenuhi)
 
@@ -51,22 +71,25 @@ Celah menuju 100: kombat (15), ekonomi pemain (10), polish (6), dunia lebih kaya
 - Tanpa model/script luar - semua Part buatan sendiri.
 - Data penting (Micda, tas) hanya di server + DataStore AKM_T1; ReplicatedStorage hanya config statis.
 
-## Anti-lag TAHAP 1 (semua dipenuhi)
+## Anti-lag TAHAP 1-2 (semua dipenuhi)
 
+- Dunia pribadi = server terpisah (ReserveServer): beban terisolasi, ramai
+  pemain keluar-masuk tidak mengganggu server lain.
 - Plot = Part sederhana tanpa Script, diklon dari satu template.
-- Grid plot dibuat saat lahan diklaim, dihancurkan saat dilepas.
-- Sisa waktu tumbuh dihitung on-demand (readyAt timestamp), tanpa loop per plot; 1 heartbeat per lahan hanya menyentuh plot yang baru siap.
-- Visual tanaman hanya dibuat saat ditanam.
+- Sisa waktu tumbuh dihitung on-demand (readyAt timestamp), tanpa loop per plot;
+  1 heartbeat per lahan hanya menyentuh plot yang baru siap.
+- Visual tanaman hanya dibuat saat ditanam / dimuat dari data.
+- Rendezvous MemoryStore hanya 1 operasi per 30 dtk per dunia; save dunia hanya
+  bila berubah (flag dirty) tiap 60 dtk.
 - StreamingEnabled aktif; semua objek Anchored; tanpa Mesh berat.
 
 ## Catatan penting place Pusat Kota
 
-Universe 10774464946 hanya punya SATU place (77626159664192), dan Open Cloud
-tidak mengizinkan membuat place baru. Karena itu Pusat Kota dibangun sebagai
-zona terpisah 2600 stud (streaming terpisah, anti-lag) dan gerbang memakai
-logika TeleportService penuh: begitu pemilik membuat place kedua di dashboard
-dan memasukkan ID-nya ke `src/Server/Modules/PlaceConfig.luau` (KotaPlaceId),
-gerbang otomatis berpindah ke teleport lintas-place sesungguhnya.
+Semenjak v28, Pusat Kota dan dunia pribadi berada di place yang SAMA dan
+dipisah lewat instancing ReserveServer - tidak ada lagi kebutuhan membuat
+place kedua atau mengisi ID manual (PlaceConfig sudah dihapus dari kode).
+Gerbang di dunia pribadi mengembalikan pemain ke Pusat Kota dengan
+TeleportAsync biasa; gerbang di Pusat Kota membuka panel Masuk/Kunjungi dunia.
 
 ## Catatan kepatuhan syariah (permintaan pemilik, tetap berlaku)
 
