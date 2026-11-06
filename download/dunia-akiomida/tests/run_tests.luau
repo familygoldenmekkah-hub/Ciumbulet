@@ -569,20 +569,141 @@ do
         check("Jarak minimum ditolak", ArahPukul.pilih(asal, arah, { { idx = 1, pos = { x = 0, y = 0, z = -0.5 } } }) == nil, "-")
 end
 
-print("--- G: Tombol kontrol HP (Punch vs Jump) ---")
+print("--- G: Tombol kontrol HP (Punch vs Jump, skala murni) ---")
 do
         local KontrolHP = require("./../src/Shared/KontrolHP")
-        local pos = KontrolHP.posisiPunch(70, 92, 24)
-        check("Gap punch-jump minimal 1 ukuran tombol", pos.gap >= 70, tostring(pos.gap))
-        check("Punch valid di area jempol kanan bawah", KontrolHP.valid(pos.dariKanan, 70, 92, 24), tostring(pos.dariKanan))
-        check("Punch tidak molor ke tengah layar", pos.dariKanan + 92 <= KontrolHP.BatasJempol, tostring(pos.dariKanan + 92))
-        check("Menempel tombol jump asli tetap valid", KontrolHP.valid(KontrolHP.dariTombol(94, 92, 70), 70, 92, 24), "-")
-        local pos2 = KontrolHP.posisiPunch(56, 80, 12)
-        check("Jump kecil tetap berjarak >= ukurannya", KontrolHP.valid(pos2.dariKanan, 56, 80, 12) and pos2.gap >= 56, tostring(pos2.gap))
-        local pos3 = KontrolHP.posisiPunch(120, 110, 20)
-        check("Jump besar tetap berjarak & dalam zona", pos3.gap >= 120 and KontrolHP.valid(pos3.dariKanan, 120, 110, 20), tostring(pos3.dariKanan))
-        check("Posisi vertikal di dasar layar", pos.dariBawah == KontrolHP.DariBawah and KontrolHP.DariBawah <= 40, tostring(pos.dariBawah))
-        check("Tata letak bertumpuk ditolak", not KontrolHP.valid(KontrolHP.Margin + KontrolHP.JumpBawaan, KontrolHP.JumpBawaan, KontrolHP.PunchBawaan), "-")
+        local layar = { { 640, 360 }, { 667, 375 }, { 844, 390 }, { 915, 412 }, { 1284, 720 }, { 375, 667 } }
+        local semuaOk, rincian = true, ""
+        for _, l in ipairs(layar) do
+                local dasar = math.min(l[1], l[2])
+                for _, fr in ipairs({ 0.16, 0.19, 0.22 }) do
+                        local ok, alasan = KontrolHP.valid(l[1], l[2], fr * dasar)
+                        if not ok then
+                                semuaOk = false
+                                rincian = l[1] .. "x" .. l[2] .. " jump " .. tostring(fr) .. " -> " .. alasan
+                        end
+                end
+                if not KontrolHP.valid(l[1], l[2], nil) then
+                        semuaOk = false
+                        rincian = l[1] .. "x" .. l[2] .. " default"
+                end
+        end
+        check("Punch valid di 6 ukuran layar HP", semuaOk, rincian)
+        local pos = KontrolHP.posisiPunch(667, 375, nil)
+        check("Punch sedikit lebih besar dari Jump", pos.punchPx > pos.jumpPx and pos.punchPx <= pos.jumpPx * KontrolHP.BesarMaks, tostring(pos.punchPx / pos.jumpPx))
+        check("Gap punch-jump sekitar 1 ukuran tombol", math.abs(pos.gapPx - pos.jumpPx) < 0.01, tostring(pos.gapPx))
+        check("Punch di kiri Jump dengan dasar segaris", (function()
+                local pp = KontrolHP.rectPunch(667, 375, nil)
+                local pj = KontrolHP.rectJump(667, 375, nil)
+                return pp.x + pp.w <= pj.x and math.abs((pp.y + pp.h) - (pj.y + pj.h)) < 0.5
+        end)(), "-")
+        check("Punch tak pernah menimpa Jump di semua layar", (function()
+                for _, l in ipairs(layar) do
+                        if KontrolHP.tumpangTindih(KontrolHP.rectPunch(l[1], l[2], nil), KontrolHP.rectJump(l[1], l[2], nil)) then
+                                return false
+                        end
+                end
+                return true
+        end)(), "-")
+        check("Punch tidak menutupi area tanam tengah layar", (function()
+                for _, l in ipairs(layar) do
+                        if KontrolHP.tumpangTindih(KontrolHP.rectPunch(l[1], l[2], nil), KontrolHP.zonaTanam(l[1], l[2])) then
+                                return false
+                        end
+                end
+                return true
+        end)(), "-")
+        check("Punch merapat saat ukuran jump asli terukur", (function()
+                local pos2 = KontrolHP.posisiPunch(667, 375, 70)
+                return pos2.dariKananPx < KontrolHP.Anggaran * 667 and pos2.gapPx >= 70 * KontrolHP.JarakMinKelipatan
+        end)(), tostring(KontrolHP.posisiPunch(667, 375, 70).dariKananPx))
+        check("Jump raksasa ditolak demi area tanam", not KontrolHP.valid(640, 360, 0.3 * 360), "-")
+        check("Posisi punch murni skala (0-1) di kaki layar", (function()
+                local p = KontrolHP.posisiPunch(915, 412, nil)
+                return p.skalaX > 0 and p.skalaX < 1 and p.skalaY > 0.9 and p.skalaLebar > 0 and p.skalaTinggi > 0
+        end)(), "-")
+        check("Punch tetap dalam layar saat jump nyata besar", (function()
+                local pp = KontrolHP.rectPunch(1284, 720, 96)
+                return pp.x >= 0 and pp.y >= 0 and pp.x + pp.w <= 1284 and pp.y + pp.h <= 720
+        end)(), "-")
+end
+
+print("--- HUD: Saldo & tombol navigasi di semua layar HP ---")
+do
+        local HUDLayout = require("./../src/Shared/HUDLayout")
+        local layar = { { 640, 360 }, { 667, 375 }, { 844, 390 }, { 915, 412 }, { 1284, 720 }, { 375, 667 } }
+        check("Saldo selalu di bawah ikon menu Roblox (inset 58)", (function()
+                for _, l in ipairs(layar) do
+                        local s = HUDLayout.rectSaldo(l[1], l[2], 0, 58)
+                        if s.y < 58 + 2 then
+                                return false
+                        end
+                end
+                return true
+        end)(), "-")
+        check("Saldo memuat ikon + angka + satuan utuh dalam kotak", (function()
+                for _, l in ipairs(layar) do
+                        local s = HUDLayout.rectSaldo(l[1], l[2], 0, 58)
+                        if s.w < HUDLayout.SaldoLebarMin or s.h < 24 then
+                                return false
+                        end
+                        for _, r in ipairs({ HUDLayout.rectIkon(s), HUDLayout.rectAngka(s), HUDLayout.rectSatuan(s) }) do
+                                if r.w <= 0 or r.h <= 0 or not HUDLayout.diDalam(r, s) then
+                                        return false
+                                end
+                        end
+                        if HUDLayout.tumpangTindih(HUDLayout.rectAngka(s), HUDLayout.rectSatuan(s)) then
+                                return false
+                        end
+                end
+                return true
+        end)(), "-")
+        check("Inset kiri ikut menggeser saldo ke kanan", (function()
+                local s1 = HUDLayout.rectSaldo(915, 412, 0, 58)
+                local s2 = HUDLayout.rectSaldo(915, 412, 12, 58)
+                return s2.x > s1.x and s2.y == s1.y
+        end)(), "-")
+        local s367 = HUDLayout.rectSaldo(667, 375, 0, 58)
+        local navPendek = HUDLayout.rectNav(667, 375, 0, 58, 33)
+        local navPanjang = HUDLayout.rectNav(667, 375, 0, 58, 213)
+        local navRaksasa = HUDLayout.rectNav(667, 375, 0, 58, 400)
+        check("Tombol nav tepat di bawah saldo & rata kiri", (function()
+                return navPendek.x == s367.x and navPendek.y >= s367.y + s367.h and (navPendek.y - (s367.y + s367.h)) < s367.h * 0.5
+        end)(), tostring(navPendek.y))
+        check("Lebar nav dalam batas minimum & maksimum", navPendek.w >= navPendek.minim and navPendek.w <= navPendek.maks and navPanjang.w <= navPanjang.maks, tostring(navPanjang.w))
+        check("Nama terpanjang terpotong, tidak keluar kotak", navRaksasa.terpotong and navRaksasa.w <= navRaksasa.maks, tostring(navRaksasa.w))
+        check("Nama terpendek tidak terpotong", not navPendek.terpotong, "-")
+        check("Posisi nav tidak bergeser saat teks berganti", navPendek.x == navPanjang.x and navPanjang.x == navRaksasa.x and navPendek.y == navPanjang.y and navPanjang.y == navRaksasa.y, "-")
+        check("Nav tak pernah menimpa saldo di semua layar", (function()
+                for _, l in ipairs(layar) do
+                        local s = HUDLayout.rectSaldo(l[1], l[2], 0, 58)
+                        local n = HUDLayout.rectNav(l[1], l[2], 0, 58, 999)
+                        if HUDLayout.tumpangTindih(s, n) then
+                                return false
+                        end
+                end
+                return true
+        end)(), "-")
+        check("Nav nama terpanjang tetap berada di dalam layar", (function()
+                for _, l in ipairs(layar) do
+                        local n = HUDLayout.rectNav(l[1], l[2], 0, 58, 999)
+                        if n.x < 0 or n.x + n.w > l[1] + 0.5 or n.y + n.h > l[2] + 0.5 then
+                                return false
+                        end
+                end
+                return true
+        end)(), "-")
+        check("Tas sebaris & setinggi saldo di kanan atas", (function()
+                for _, l in ipairs(layar) do
+                        local a = HUDLayout.areaAman(l[1], l[2], 0, 58)
+                        local bt = HUDLayout.batasTas(a)
+                        local bs = HUDLayout.batasSaldo(a)
+                        if math.abs(bt.tinggi - bs.tinggi) > 0.01 or bt.lebar < HUDLayout.TasLebarMin then
+                                return false
+                        end
+                end
+                return true
+        end)(), "-")
 end
 
 print("--- A/C: Papan Tanam aman di layar HP ---")

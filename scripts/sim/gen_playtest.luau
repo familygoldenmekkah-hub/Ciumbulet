@@ -574,6 +574,30 @@ function InstanceMethods:PivotTo(target)
         end
 end
 
+function InstanceMethods:GetPropertyChangedSignal(prop)
+        local cache = rawget(self, "__propSignals")
+        if not cache then
+                cache = {}
+                rawset(self, "__propSignals", cache)
+        end
+        if not cache[prop] then
+                cache[prop] = newSignal()
+        end
+        return cache[prop]
+end
+
+function InstanceMethods:GetPropertyChangedSignal(prop)
+        local cache = rawget(self, "__propSignals")
+        if not cache then
+                cache = {}
+                rawset(self, "__propSignals", cache)
+        end
+        if not cache[prop] then
+                cache[prop] = newSignal()
+        end
+        return cache[prop]
+end
+
 local function baseIndex(inst, k)
         if k == "Position" and inst:IsA("BasePart") then
                 local cf = rawget(inst, "__cf")
@@ -781,6 +805,9 @@ function Stub.install()
 
         local UserInputService = Instance.new("UserInputService")
 
+        local GuiService = Instance.new("GuiService")
+        GuiService.TopbarInset = { Min = { X = 0, Y = 58, x = 0, y = 58 }, Max = { X = 1024, Y = 658, x = 1024, y = 658 } }
+
         local TweenService = Instance.new("TweenService")
         function TweenService:Create(target, info, props)
                 local tween = {}
@@ -807,6 +834,7 @@ function Stub.install()
                 DataStoreService = DataStoreService,
                 RunService = RunService,
                 UserInputService = UserInputService,
+                GuiService = GuiService,
                 TweenService = TweenService,
                 Debris = Debris,
         }
@@ -1690,45 +1718,247 @@ end)()
 local MOD_KontrolHP = (function()
 local KontrolHP = {}
 
-KontrolHP.Margin = 24
-KontrolHP.DariBawah = 24
-KontrolHP.JumpBawaan = 70
-KontrolHP.PunchBawaan = 92
-KontrolHP.BatasJempol = 380
+KontrolHP.JumpSkala = 0.19
+KontrolHP.PunchSkala = 0.235
+KontrolHP.InsetSkala = 0.032
+KontrolHP.JarakKelipatan = 1
+KontrolHP.JarakMinKelipatan = 0.4
+KontrolHP.Anggaran = 0.4
+KontrolHP.AnggaranKeras = 0.62
+KontrolHP.BesarMin = 1.08
+KontrolHP.BesarMaks = 1.5
+KontrolHP.RasioPunch = KontrolHP.PunchSkala / KontrolHP.JumpSkala
+KontrolHP.ZonaTanamX = 0.25
+KontrolHP.ZonaTanamLebar = 0.35
+KontrolHP.ZonaTanamY = 0.2
+KontrolHP.ZonaTanamTinggi = 0.6
+KontrolHP.ZonaJempolX = 0.45
+KontrolHP.ZonaJempolY = 0.55
 
-function KontrolHP.posisiPunch(jumpSize: number?, punchSize: number?, margin: number?): { gap: number, dariKanan: number, dariBawah: number }
-        local j = type(jumpSize) == "number" and jumpSize or KontrolHP.JumpBawaan
-        local p = type(punchSize) == "number" and punchSize or KontrolHP.PunchBawaan
-        local m = type(margin) == "number" and margin or KontrolHP.Margin
-        local gap = j
-        return { gap = gap, dariKanan = m + j + gap + p, dariBawah = KontrolHP.DariBawah }
+function KontrolHP.ukuranJump(vpX: number, vpY: number, jumpPx: number?): number
+	if type(jumpPx) == "number" and jumpPx > 0 then
+		return jumpPx
+	end
+	return KontrolHP.JumpSkala * math.min(vpX, vpY)
 end
 
-function KontrolHP.valid(dariKanan: number, jumpSize: number, punchSize: number, margin: number?): boolean
-        local m = type(margin) == "number" and margin or KontrolHP.Margin
-        local gap = dariKanan - m - jumpSize - punchSize
-        if gap < jumpSize then
-                return false
-        end
-        local batas = math.max(KontrolHP.BatasJempol, m + 2 * jumpSize + 2 * punchSize)
-        if dariKanan + punchSize > batas then
-                return false
-        end
-        return true
+function KontrolHP.posisiPunch(vpX: number, vpY: number, jumpPx: number?): { [string]: number }
+	local j = KontrolHP.ukuranJump(vpX, vpY, jumpPx)
+	local p = j * KontrolHP.RasioPunch
+	local dasar = math.min(vpX, vpY)
+	local inset = KontrolHP.InsetSkala * dasar
+	local anggaran = KontrolHP.Anggaran * vpX
+	local gap = KontrolHP.JarakKelipatan * j
+	local dariKanan = inset + j + gap + p
+	if dariKanan > anggaran then
+		gap = math.max(KontrolHP.JarakMinKelipatan * j, anggaran - inset - j - p)
+		dariKanan = inset + j + gap + p
+		if dariKanan > anggaran then
+			local pBaru = math.max(KontrolHP.BesarMin * j, anggaran - inset - j - gap)
+			dariKanan -= p - pBaru
+			p = pBaru
+		end
+	end
+	dariKanan = math.min(dariKanan, KontrolHP.AnggaranKeras * vpX)
+	return {
+		skalaX = 1 - dariKanan / vpX,
+		skalaY = 1 - inset / vpY,
+		skalaLebar = p / vpX,
+		skalaTinggi = p / vpY,
+		gapPx = gap,
+		jumpPx = j,
+		punchPx = p,
+		dariKananPx = dariKanan,
+		dariBawahPx = inset,
+	}
 end
 
-function KontrolHP.dariTombol(jumpKiriDariKanan: number, punchSize: number?, jumpSize: number?): number
-        local p = type(punchSize) == "number" and punchSize or KontrolHP.PunchBawaan
-        local j = type(jumpSize) == "number" and jumpSize or KontrolHP.JumpBawaan
-        local gap = math.max(j, KontrolHP.JumpBawaan)
-        local dariKanan = jumpKiriDariKanan + gap + p
-        if dariKanan + p > KontrolHP.BatasJempol then
-                dariKanan = KontrolHP.BatasJempol - p
-        end
-        return dariKanan
+function KontrolHP.rectJump(vpX: number, vpY: number, jumpPx: number?): { [string]: number }
+	local j = KontrolHP.ukuranJump(vpX, vpY, jumpPx)
+	local inset = KontrolHP.InsetSkala * math.min(vpX, vpY)
+	return { x = vpX - inset - j, y = vpY - inset - j, w = j, h = j }
+end
+
+function KontrolHP.rectPunch(vpX: number, vpY: number, jumpPx: number?): { [string]: number }
+	local pos = KontrolHP.posisiPunch(vpX, vpY, jumpPx)
+	return { x = vpX - pos.dariKananPx, y = vpY - pos.dariBawahPx - pos.punchPx, w = pos.punchPx, h = pos.punchPx }
+end
+
+function KontrolHP.zonaTanam(vpX: number, vpY: number): { [string]: number }
+	return {
+		x = KontrolHP.ZonaTanamX * vpX,
+		y = KontrolHP.ZonaTanamY * vpY,
+		w = KontrolHP.ZonaTanamLebar * vpX,
+		h = KontrolHP.ZonaTanamTinggi * vpY,
+	}
+end
+
+function KontrolHP.tumpangTindih(a: { [string]: number }, b: { [string]: number }): boolean
+	return a.x < b.x + b.w and b.x < a.x + a.w and a.y < b.y + b.h and b.y < a.y + a.h
+end
+
+function KontrolHP.valid(vpX: number, vpY: number, jumpPx: number?): (boolean, string)
+	local pos = KontrolHP.posisiPunch(vpX, vpY, jumpPx)
+	local pp = KontrolHP.rectPunch(vpX, vpY, jumpPx)
+	local pj = KontrolHP.rectJump(vpX, vpY, jumpPx)
+	if pp.x < 0 or pp.y < 0 or pp.x + pp.w > vpX + 0.5 or pp.y + pp.h > vpY + 0.5 then
+		return false, "keluar layar"
+	end
+	local rasio = pos.punchPx / pos.jumpPx
+	if rasio < KontrolHP.BesarMin or rasio > KontrolHP.BesarMaks then
+		return false, "rasio besar punch"
+	end
+	if pos.gapPx < KontrolHP.JarakMinKelipatan * pos.jumpPx - 0.01 then
+		return false, "terlalu dempet jump"
+	end
+	if pos.dariKananPx > KontrolHP.AnggaranKeras * vpX + 0.5 then
+		return false, "molor dari jempol"
+	end
+	if KontrolHP.tumpangTindih(pp, pj) then
+		return false, "menimpa jump"
+	end
+	if math.abs((pp.y + pp.h) - (pj.y + pj.h)) > 0.5 then
+		return false, "dasar tidak segaris"
+	end
+	local cx = pp.x + pp.w / 2
+	local cy = pp.y + pp.h / 2
+	if cx < KontrolHP.ZonaJempolX * vpX or cy < KontrolHP.ZonaJempolY * vpY then
+		return false, "di luar area jempol"
+	end
+	if KontrolHP.tumpangTindih(pp, KontrolHP.zonaTanam(vpX, vpY)) then
+		return false, "menutupi area tanam"
+	end
+	return true, "ok"
 end
 
 return KontrolHP
+
+end)()
+
+local MOD_HUDLayout = (function()
+local HUDLayout = {}
+
+HUDLayout.SaldoSkalaX = 0.012
+HUDLayout.SaldoSkalaY = 0.02
+HUDLayout.SaldoSkalaLebar = 0.26
+HUDLayout.SaldoSkalaTinggi = 0.085
+HUDLayout.SaldoLebarMin = 150
+HUDLayout.SaldoLebarMaks = 320
+HUDLayout.IkonSkalaX = 0.035
+HUDLayout.IkonSkalaY = 0.14
+HUDLayout.IkonSkalaLebar = 0.15
+HUDLayout.IkonSkalaTinggi = 0.72
+HUDLayout.AngkaSkalaX = 0.215
+HUDLayout.AngkaSkalaLebar = 0.53
+HUDLayout.SatuanSkalaX = 0.775
+HUDLayout.SatuanSkalaLebar = 0.21
+HUDLayout.NavSkalaY = 0.125
+HUDLayout.NavGapSkala = 0.02
+HUDLayout.NavSkalaLebarMin = 0.185
+HUDLayout.NavSkalaLebarMaks = 0.34
+HUDLayout.NavSkalaTinggi = 0.072
+HUDLayout.NavTinggiMin = 26
+HUDLayout.NavTinggiMaks = 52
+HUDLayout.NavIsiPx = 24
+HUDLayout.NavTambahanMaks = 40
+HUDLayout.TasSkalaLebar = 0.17
+HUDLayout.TasLebarMin = 90
+HUDLayout.TasLebarMaks = 200
+HUDLayout.TeksMaks = 22
+HUDLayout.TeksMin = 11
+
+function HUDLayout.areaAman(vpX: number, vpY: number, insetKiri: number, insetAtas: number): { [string]: number }
+        local kiri = math.clamp(insetKiri or 0, 0, vpX)
+        local atas = math.clamp(insetAtas or 0, 0, vpY)
+        return {
+                kiri = kiri,
+                atas = atas,
+                lebar = math.max(vpX - kiri, 0),
+                tinggi = math.max(vpY - atas, 0),
+        }
+end
+
+function HUDLayout.batasSaldo(aman: { [string]: number }): { [string]: number }
+        local lebar = math.clamp(aman.lebar * HUDLayout.SaldoSkalaLebar, HUDLayout.SaldoLebarMin, HUDLayout.SaldoLebarMaks)
+        local tinggi = aman.tinggi * HUDLayout.SaldoSkalaTinggi
+        return { lebar = lebar, tinggi = tinggi }
+end
+
+function HUDLayout.rectSaldo(vpX: number, vpY: number, insetKiri: number, insetAtas: number): { [string]: number }
+        local aman = HUDLayout.areaAman(vpX, vpY, insetKiri, insetAtas)
+        local b = HUDLayout.batasSaldo(aman)
+        return {
+                x = aman.kiri + aman.lebar * HUDLayout.SaldoSkalaX,
+                y = aman.atas + aman.tinggi * HUDLayout.SaldoSkalaY,
+                w = b.lebar,
+                h = b.tinggi,
+        }
+end
+
+function HUDLayout.rectIkon(saldo: { [string]: number }): { [string]: number }
+        return {
+                x = saldo.x + saldo.w * HUDLayout.IkonSkalaX,
+                y = saldo.y + saldo.h * HUDLayout.IkonSkalaY,
+                w = saldo.w * HUDLayout.IkonSkalaLebar,
+                h = saldo.h * HUDLayout.IkonSkalaTinggi,
+        }
+end
+
+function HUDLayout.rectAngka(saldo: { [string]: number }): { [string]: number }
+        return {
+                x = saldo.x + saldo.w * HUDLayout.AngkaSkalaX,
+                y = saldo.y,
+                w = saldo.w * HUDLayout.AngkaSkalaLebar,
+                h = saldo.h,
+        }
+end
+
+function HUDLayout.rectSatuan(saldo: { [string]: number }): { [string]: number }
+        return {
+                x = saldo.x + saldo.w * HUDLayout.SatuanSkalaX,
+                y = saldo.y,
+                w = saldo.w * HUDLayout.SatuanSkalaLebar,
+                h = saldo.h,
+        }
+end
+
+function HUDLayout.batasNav(aman: { [string]: number }): { [string]: number }
+        local minim = aman.lebar * HUDLayout.NavSkalaLebarMin
+        local maks = math.max(aman.lebar * HUDLayout.NavSkalaLebarMaks, minim + HUDLayout.NavTambahanMaks)
+        local tinggi = math.clamp(aman.tinggi * HUDLayout.NavSkalaTinggi, HUDLayout.NavTinggiMin, HUDLayout.NavTinggiMaks)
+        return { minim = minim, maks = maks, tinggi = tinggi }
+end
+
+function HUDLayout.batasTas(aman: { [string]: number }): { [string]: number }
+        local lebar = math.clamp(aman.lebar * HUDLayout.TasSkalaLebar, HUDLayout.TasLebarMin, HUDLayout.TasLebarMaks)
+        return { lebar = lebar, tinggi = aman.tinggi * HUDLayout.SaldoSkalaTinggi }
+end
+
+function HUDLayout.rectNav(vpX: number, vpY: number, insetKiri: number, insetAtas: number, teksLebarPx: number): { [string]: number }
+        local aman = HUDLayout.areaAman(vpX, vpY, insetKiri, insetAtas)
+        local b = HUDLayout.batasNav(aman)
+        local w = math.clamp((teksLebarPx or 0) + HUDLayout.NavIsiPx, b.minim, b.maks)
+        local terpotong = (teksLebarPx or 0) + HUDLayout.NavIsiPx > b.maks
+        return {
+                x = aman.kiri + aman.lebar * HUDLayout.SaldoSkalaX,
+                y = aman.atas + aman.tinggi * HUDLayout.NavSkalaY,
+                w = w,
+                h = b.tinggi,
+                terpotong = terpotong,
+                minim = b.minim,
+                maks = b.maks,
+        }
+end
+
+function HUDLayout.diDalam(dalam: { [string]: number }, luar: { [string]: number }): boolean
+        return dalam.x >= luar.x and dalam.y >= luar.y and dalam.x + dalam.w <= luar.x + luar.w and dalam.y + dalam.h <= luar.y + luar.h
+end
+
+function HUDLayout.tumpangTindih(a: { [string]: number }, b: { [string]: number }): boolean
+        return a.x < b.x + b.w and b.x < a.x + a.w and a.y < b.y + b.h and b.y < a.y + a.h
+end
+
+return HUDLayout
 
 end)()
 
@@ -5062,6 +5292,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
+local GuiService = game:GetService("GuiService")
 
 local CropData = MOD_CropData
 local Net = MOD_Remotes
@@ -5069,6 +5300,7 @@ local UIStyle = MOD_UIStyle
 local PukulAnim = MOD_PukulAnim
 local ArahPukul = MOD_ArahPukul
 local KontrolHP = MOD_KontrolHP
+local HUDLayout = MOD_HUDLayout
 local DropBentuk = MOD_DropBentuk
 
 local player = Players.LocalPlayer
@@ -5137,31 +5369,80 @@ local gui = mk("ScreenGui", {
         ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 }, playerGui)
 
-local hud = mk("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 52), Position = UDim2.new(0, 0, 0, 8) }, gui)
+local camera = Workspace.CurrentCamera
 
-local micdaFrame = mk("Frame", { Position = UDim2.new(0, 12, 0, 0), Size = UDim2.new(0, 190, 0, 44), BackgroundColor3 = warna(UIStyle.Latar), BackgroundTransparency = 0.12 }, hud)
-round(micdaFrame)
-mk("TextLabel", { Size = UDim2.new(0, 36, 1, 0), BackgroundTransparency = 1, Text = "M", TextSize = UIStyle.UkuranJudul, Font = FONTB, TextColor3 = warna(UIStyle.Aksen) }, micdaFrame)
-local micdaLabel = mk("TextLabel", { Position = UDim2.new(0, 42, 0, 0), Size = UDim2.new(1, -50, 1, 0), BackgroundTransparency = 1, Text = "0 Micda", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left }, micdaFrame)
+local aman = mk("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1) }, gui)
+local amanPad = mk("UIPadding", { PaddingTop = UDim.new(0, 0), PaddingLeft = UDim.new(0, 0), PaddingRight = UDim.new(0, 0), PaddingBottom = UDim.new(0, 0) }, aman)
 
-local travelBtn = mk("TextButton", { Position = UDim2.new(0, 12, 0, 52), Size = UDim2.new(0, 170, 0, 40), BackgroundColor3 = warna(UIStyle.Permukaan), Text = "Masuk Dunia-ku", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks) }, gui)
+local function teksSkala(props: { [string]: any }, parent: Instance): TextLabel
+        props.TextScaled = true
+        local l = mk("TextLabel", props, parent)
+        mk("UITextSizeConstraint", { MaxTextSize = HUDLayout.TeksMaks, MinTextSize = HUDLayout.TeksMin }, l)
+        return l :: TextLabel
+end
+
+local saldo = mk("Frame", { Position = UDim2.fromScale(HUDLayout.SaldoSkalaX, HUDLayout.SaldoSkalaY), Size = UDim2.fromScale(HUDLayout.SaldoSkalaLebar, HUDLayout.SaldoSkalaTinggi), BackgroundColor3 = warna(UIStyle.Latar), BackgroundTransparency = 0.12 }, aman)
+round(saldo)
+local saldoUkuran = mk("UISizeConstraint", { MinSize = Vector2.new(150, 30), MaxSize = Vector2.new(320, 64) }, saldo)
+
+local ikonSaldo = mk("Frame", { Position = UDim2.fromScale(HUDLayout.IkonSkalaX, HUDLayout.IkonSkalaY), Size = UDim2.fromScale(HUDLayout.IkonSkalaLebar, HUDLayout.IkonSkalaTinggi), BackgroundColor3 = warna(UIStyle.Aksen) }, saldo)
+mk("UICorner", { CornerRadius = UDim.new(0.5, 0) }, ikonSaldo)
+teksSkala({ Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Text = "M", Font = FONTB, TextColor3 = warna(UIStyle.Latar) }, ikonSaldo)
+local angkaLabel = teksSkala({ Position = UDim2.fromScale(HUDLayout.AngkaSkalaX, 0), Size = UDim2.fromScale(HUDLayout.AngkaSkalaLebar, 1), BackgroundTransparency = 1, Text = "0", Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left }, saldo)
+teksSkala({ Position = UDim2.fromScale(HUDLayout.SatuanSkalaX, 0), Size = UDim2.fromScale(HUDLayout.SatuanSkalaLebar, 1), BackgroundTransparency = 1, Text = "Micda", Font = FONTB, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left }, saldo)
+
+local travelBtn = mk("TextButton", { Position = UDim2.fromScale(HUDLayout.SaldoSkalaX, HUDLayout.NavSkalaY), Size = UDim2.fromScale(HUDLayout.NavSkalaLebarMin, HUDLayout.NavSkalaTinggi), AutomaticSize = Enum.AutomaticSize.X, BackgroundColor3 = warna(UIStyle.Permukaan), Text = "Masuk Dunia-ku", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextTruncate = Enum.TextTruncate.AtEnd, TextXAlignment = Enum.TextXAlignment.Center }, aman)
 round(travelBtn)
+mk("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12) }, travelBtn)
+local navUkuran = mk("UISizeConstraint", { MinSize = Vector2.new(120, 26), MaxSize = Vector2.new(220, 26) }, travelBtn)
 
-local tasBtn = mk("TextButton", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 0), Size = UDim2.new(0, 120, 0, 44), BackgroundColor3 = warna(UIStyle.PermukaanAktif), Text = "Tas", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks) }, hud)
+local tasBtn = mk("TextButton", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.fromScale(0.992, HUDLayout.SaldoSkalaY), Size = UDim2.fromScale(HUDLayout.TasSkalaLebar, HUDLayout.SaldoSkalaTinggi), BackgroundColor3 = warna(UIStyle.PermukaanAktif), Text = "Tas", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks) }, aman)
 round(tasBtn)
+local tasUkuran = mk("UISizeConstraint", { MinSize = Vector2.new(90, 30), MaxSize = Vector2.new(200, 64) }, tasBtn)
 
 local punchBtn = mk("TextButton", {
         AnchorPoint = Vector2.new(1, 1),
-        Position = UDim2.new(1, -(KontrolHP.Margin + KontrolHP.JumpBawaan * 2 + KontrolHP.PunchBawaan), 1, -KontrolHP.DariBawah),
-        Size = UDim2.new(0, KontrolHP.PunchBawaan, 0, KontrolHP.PunchBawaan),
+        Position = UDim2.fromScale(0.62, 0.968),
+        Size = UDim2.fromScale(0.132, 0.235),
         BackgroundColor3 = warna(UIStyle.Hijau),
         Text = "PUNCH",
-        TextSize = UIStyle.UkuranJudul,
+        TextScaled = true,
         Font = FONTB,
         TextColor3 = Color3.new(1, 1, 1),
         Visible = true,
 }, gui)
 round(punchBtn, 46)
+mk("UITextSizeConstraint", { MaxTextSize = 26, MinTextSize = 13 }, punchBtn)
+
+local jumpPxNyata: number? = nil
+local function aturPunch()
+        local vp = camera.ViewportSize
+        local pos = KontrolHP.posisiPunch(vp.X, vp.Y, jumpPxNyata)
+        punchBtn.Position = UDim2.fromScale(pos.skalaX, pos.skalaY)
+        punchBtn.Size = UDim2.fromScale(pos.skalaLebar, pos.skalaTinggi)
+end
+
+local function aturUkuranAman()
+        local inset = GuiService.TopbarInset
+        amanPad.PaddingTop = UDim.new(0, inset.Min.Y)
+        amanPad.PaddingLeft = UDim.new(0, inset.Min.X)
+        local vp = camera.ViewportSize
+        local a = HUDLayout.areaAman(vp.X, vp.Y, inset.Min.X, inset.Min.Y)
+        local bs = HUDLayout.batasSaldo(a)
+        saldoUkuran.MinSize = Vector2.new(bs.lebar, bs.tinggi)
+        saldoUkuran.MaxSize = Vector2.new(bs.lebar, bs.tinggi)
+        local bn = HUDLayout.batasNav(a)
+        navUkuran.MinSize = Vector2.new(bn.minim, bn.tinggi)
+        navUkuran.MaxSize = Vector2.new(bn.maks, bn.tinggi)
+        local bt = HUDLayout.batasTas(a)
+        tasUkuran.MinSize = Vector2.new(bt.lebar, bs.tinggi)
+        tasUkuran.MaxSize = Vector2.new(bt.lebar, bs.tinggi)
+        aturPunch()
+end
+
+GuiService:GetPropertyChangedSignal("TopbarInset"):Connect(aturUkuranAman)
+camera:GetPropertyChangedSignal("ViewportSize"):Connect(aturUkuranAman)
+aturUkuranAman()
 
 task.spawn(function()
         local ui = playerGui:WaitForChild("TouchGui", 8)
@@ -5174,23 +5455,14 @@ task.spawn(function()
         if not jump or not jump:IsA("GuiObject") then
                 return
         end
-        local camera = Workspace.CurrentCamera
-        local vp = camera.ViewportSize
-        local jumpKiri = vp.X - jump.AbsolutePosition.X
-        local jumpSize = math.max(40, jump.AbsoluteSize.X)
-        local jumpBawah = vp.Y - (jump.AbsolutePosition.Y + jump.AbsoluteSize.Y)
-        local dariKanan = KontrolHP.dariTombol(jumpKiri, KontrolHP.PunchBawaan, jumpSize)
-        local dariBawah = KontrolHP.DariBawah
-        if jumpBawah >= 0 and jumpBawah <= 80 then
-                dariBawah = jumpBawah
-        end
-        punchBtn.Position = UDim2.new(1, -dariKanan, 1, -dariBawah)
+        jumpPxNyata = jump.AbsoluteSize.X
+        aturPunch()
 end)
 
-local toastHolder = mk("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 66), Size = UDim2.new(0, 470, 0, 220), BackgroundTransparency = 1 }, gui)
+local toastHolder = mk("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromScale(0.5, 0.2), Size = UDim2.fromScale(0.7, 0.42), BackgroundTransparency = 1 }, aman)
 mk("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder, HorizontalAlignment = Enum.HorizontalAlignment.Center }, toastHolder)
 
-local zonaLabel = mk("TextLabel", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 8), Size = UDim2.new(0, 220, 0, 26), BackgroundColor3 = warna(UIStyle.Latar), BackgroundTransparency = 0.2, Text = "Pusat Kota", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks) }, gui)
+local zonaLabel = teksSkala({ AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromScale(0.5, HUDLayout.SaldoSkalaY), Size = UDim2.fromScale(0.24, HUDLayout.NavSkalaTinggi), BackgroundColor3 = warna(UIStyle.Latar), BackgroundTransparency = 0.2, Text = "Pusat Kota", Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextTruncate = Enum.TextTruncate.AtEnd }, aman)
 round(zonaLabel, UIStyle.SudutKecil)
 
 local toastOrder = 0
@@ -5341,7 +5613,7 @@ local function syncState()
                         state.zone = st.zone or "kota"
                         state.dunia = st.dunia
                         state.role = st.role or "hub"
-                        micdaLabel.Text = fmt(state.micda) .. " Micda"
+                        angkaLabel.Text = fmt(state.micda)
                         refreshTas()
                 end
         end)
@@ -5856,7 +6128,6 @@ tasBtn.Activated:Connect(function()
         refreshTas()
 end)
 
-local camera = Workspace.CurrentCamera
 local punchTarget: number? = nil
 local animT0: number? = nil
 local motorSaat: Motor6D? = nil
@@ -5996,7 +6267,7 @@ end)
 Net.get("Sync").OnClientEvent:Connect(function(payload)
         state.micda = payload.micda
         state.tas = payload.tas or {}
-        micdaLabel.Text = fmt(state.micda) .. " Micda"
+        angkaLabel.Text = fmt(state.micda)
         if payload.zone then
                 state.zone = payload.zone
                 state.dunia = payload.dunia
@@ -6086,7 +6357,7 @@ task.spawn(function()
                 state.zone = st.zone or "kota"
                 state.dunia = st.dunia
                 state.role = st.role or "hub"
-                micdaLabel.Text = fmt(state.micda) .. " Micda"
+                angkaLabel.Text = fmt(state.micda)
                 if state.zone == "dunia" then
                         zonaLabel.Text = "Dunia " .. tostring(state.dunia or "Petani")
                         travelBtn.Text = "Pulang ke Kota"

@@ -19,6 +19,50 @@ Skor per kriteria 0-10, dikali bobot. Total dihitung dari (skor x bobot) / 10.
 | 8 | Polish & UX (UI, suara, animasi, efek) | 10 | animasi kombat, BGM, partikel | UI rapi & responsif |
 | 9 | Originalitas 100% & aman hak cipta | 5 | - | - |
 
+## Skor v35 (versi LIVE #35, 6 Nov 2026) - REVISI HUD LAYAR GAME
+
+Laporan pemilik: saldo kiri atas tertutup ikon menu Roblox (angka terpotong,
+ikon & satuan hilang), tombol navigasi tidak menyesuaikan teks, dan PUNCH
+terlalu jauh dari jempol (hampir di tengah layar). v35 menjawab ketiganya:
+
+1. **SALDO** — dipindah ke bawah area ikon menu Roblox memakai safe area
+   GuiService.TopbarInset (ikut berubah bila inset berubah); kini tampil
+   utuh ikon M + ANGKA + SATUAN "Micda" sebagai tiga elemen terpisah dengan
+   teks menyesuaikan ukuran layar (TextScaled + batas 11-22 px).
+2. **TOMBOL NAVIGASI** — tepat di bawah saldo, rata kiri, jarak kecil
+   konsisten (2% tinggi aman); AutomaticSize X dengan UISizeConstraint
+   min/maks yang dihitung dari skala layar; nama panjang terpotong
+   (TextTruncate) dan tidak pernah keluar kotak; ANCHOR kiri membuat
+   POSISI TIDAK BERGESER saat teks berganti "Masuk Dunia-ku" <-> "Pulang
+   ke Kota".
+3. **PUNCH** — matematika posisi ditulis ulang dari piksel ke SKALA MURNI
+   (KontrolHP baru): di KIRI Jump, jarak tepat 1 ukuran jump, ukuran 1.24x
+   jump (sedikit lebih besar), dasar segaris Jump, dan zona tanam tengah
+   layar dijamin tidak tertutup; bila layar sempit, jarak menyusut
+   terkendali (min 0.4x jump) tanpa pernah menimpa Jump.
+4. **TEKNIS & UJI** — semua posisi/ukuran HUD (saldo, nav, tas, zona, punch)
+   berbasis skala + area aman; diuji otomatis di 6 ukuran layar
+   (640x360, 667x375, 844x390, 915x412, 1284x720, 375x667 potret) dengan
+   23 tes HUD baru: saldo tak tertutup inset, ikon+angka+satuan utuh,
+   nav pendek/panjang/raksasa, posisi stabil, punch vs jump di tiap layar.
+
+Validasi: tes offline 188 PASS / 0 FAIL, playtest 116 PASS / 0 FAIL,
+ujian massa panen 94 PASS / 0 FAIL, luau-lsp 0 temuan. Publish #35.
+
+| Kriteria | Skor | Catatan |
+|----------|------|---------|
+| 1 Kombat | 0/10 | Belum ada (sesuai urutan rencana). |
+| 2 Crafting | 3/10 | Combine Seed menu minimalis di papan: 2 slot, tanpa petunjuk, hanya tombol Gabung. |
+| 3 Stat & Progresi | 1/10 | Tanpa level (sesuai arah pemilik); soal matematika bertingkat tetap gerbang progres tanam. |
+| 4 Ekonomi | 5/10 | Micda 900.000, tas 50x250, pack Common/Rare, jual hasil, gudang 1000 tampungan. Belum: pasar dinamis, toko pemain. |
+| 5 Dunia & Peta | 6/10 | Kota hanya Toko Benih; tiap lahan: Papan Tanam 2 sisi + Gudang. Belum: rumah, air, dungeon. |
+| 6 Multiplayer | 6/10 | Kunjung instan/salinan, tamu read-only. Belum: trade, party. |
+| 7 Bertani | 10/10 | Alur FINAL pemilik utuh & teruji end-to-end (massa panen 94 tahap): papan, soal tiap 10 plot, punch siap -> drop disentuh, 5x pukul tumbuh hancur, combine 8 resep, gudang 250->999->998. |
+| 8 Polish & UX | 9/10 | Turun dari 10 ke 9 dengan jujur: v34 ternyata masih menyisakan 3 cacat HUD yang dilaporkan pemilik (saldo tertutup, nav kaku, punch molor). v35 memperbaiki semuanya + teruji 6 ukuran layar. Sisa: BGM/ambience, belum sentuh perangkat fisik. |
+| 9 Originalitas | 10/10 | 100% karya sendiri (model drop, ikon, animasi motor6d manual); suara hanya rbxasset bawaan engine; tanpa require ID, loadstring, getfenv, HttpService. |
+
+**TOTAL: 49/100** (bobot: 0+45+10+75+60+60+100+90+50 = 490/10 = 49)
+
 ## Skor v34 (versi LIVE #34, 6 Nov 2026) - REVISI TAMPILAN HP
 
 Permintaan pemilik "REVISI GAME (TAMPILAN HP)" dikerjakan dengan urutan
@@ -94,7 +138,10 @@ Riwayat: v10 = 56 -> v11 = 64 -> v20 = 79 -> v21 = 80 -> v25 = 83 -> v26 = 9
 44 -> v32 = 48 (revisi final tanam-panen pemilik) -> v33 = 49 (ujian massa
 panen + 3 perbaikan akar: penarget punch, state lahan, render tab combine)
 -> v34 = 50 (revisi tampilan HP: drop bentuk tanaman, animasi & presisi
-punch, tombol kontrol HP, papan tanam minimalis).
+punch, tombol kontrol HP, papan tanam minimalis) -> v35 = 49 (revisi HUD
+layar game: saldo utuh di bawah ikon menu, nav dinamis stabil, punch skala
+murni dekat Jump; skor Polish dikoreksi jujur 10 -> 9 karena v34 masih
+menyisakan 3 cacat HUD yang dilaporkan pemilik).
 Celah menuju 100: kombat (15), ekonomi pemain (10), dunia lebih kaya (4),
 BGM (0-1), multiplayer lanjut (4), crafting lanjut (12).
 

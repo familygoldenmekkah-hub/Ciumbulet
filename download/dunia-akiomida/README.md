@@ -1,7 +1,8 @@
 # DUNIA AKIOMIDA (Roblox)
 
-Status: LIVE di Roblox (**versionNumber 34**, 6 Nov 2026) — **REVISI TAMPILAN
-HP** sesuai permintaan pemilik (urutan kerja D,E,F -> G -> A,B,C -> H):
+Status: LIVE di Roblox (**versionNumber 35**, 6 Nov 2026) — **REVISI HUD
+LAYAR GAME** sesuai laporan pemilik (saldo tertutup ikon menu Roblox,
+tombol navigasi kaku, punch molor ke tengah layar). Isi v34 tetap:
 
 1. **D — DROP SESUAI TANAMAN** — drop panen kini model mini produce per
    arketipe (akar/pohon/tangkai/kacang/cendawan/dst, 8 pembentuk) memakai
@@ -15,9 +16,11 @@ HP** sesuai permintaan pemilik (urutan kerja D,E,F -> G -> A,B,C -> H):
    dengan fallback hitbox kerucut; tanaman yang akan kena diberi highlight;
    efek & drop lahir di titik pukul; server menghitung sasarannya sendiri
    (anti-curang), bukan percaya klien.
-4. **G — TOMBOL KONTROL HP** — PUNCH diposisikan relatif terhadap tombol
-   Jump asli Roblox dengan jarak minimal 1 ukuran tombol, di area jempol
-   kanan bawah, gaya flat tanpa border.
+4. **G — TOMBOL KONTROL HP (diperbaiki v35)** — PUNCH kini MURNI SKALA,
+   menempel di area jempol kanan bawah: di KIRI tombol Jump asli dengan
+   jarak tepat 1 ukuran jump, ukuran 1,24x jump (sedikit lebih besar), dasar
+   segaris dengan Jump, dan dijamin tidak menutupi area tanam di tengah
+   layar — teruji di 6 ukuran layar (360p-720p + potret).
 5. **A+B+C — PAPAN TANAM MINIMALIS** — panel berbasis skala + batas ukuran
    + safe area 56 px (judul & tab tak lagi tertutup tombol menu), tab teks
    dengan garis bawah aktif, daftar dibersihkan tiap pindah tab, nama benih
@@ -25,12 +28,20 @@ HP** sesuai permintaan pemilik (urutan kerja D,E,F -> G -> A,B,C -> H):
    Tanam = tombol angka 1/10/50/100/250/Maks + Mulai Tanam, tab Combine =
    hanya tombol Gabung (label Benih A/B di baris tersendiri, tidak lagi
    menimpa teks lain), hijau hanya untuk aksi utama, satu font tiga ukuran.
+6. **REVISI HUD (v35)** — seluruh HUD kini berbasis skala murni + area aman
+   GuiService.TopbarInset: SALDO pindah ke bawah ikon menu Roblox dan kini
+   utuh (ikon M + angka + satuan "Micda", teks menyesuaikan ukuran layar);
+   tombol "Masuk Dunia-ku / Pulang ke Kota" tepat di bawah saldo, rata kiri,
+   AutomaticSize dengan batas lebar min/maks, nama panjang terpotong, dan
+   POSISINYA TIDAK BERGESER saat teks berganti; tombol Tas & label zona ikut
+   diatur ulang ke skala. Diuji di 6 ukuran layar HP.
 
-Universe: 10774464946 · Place: 77626159664192 · Label era: 9.7.0 "Tampilan HP"
+Universe: 10774464946 · Place: 77626159664192 · Label era: 9.8.0 "HUD Rapi"
 Build: `tools/rojo build default.project.json -o build/DuniaAkiomida.rbxlx`
-(luau-lsp 0 temuan, tes offline 175 PASS / 0 FAIL, playtest 116 PASS / 0 FAIL)
+(luau-lsp 0 temuan, tes offline 188 PASS / 0 FAIL, playtest 116 PASS / 0 FAIL,
+ujian massa 94 PASS / 0 FAIL)
 
-Skor banding Toram/Growtopia: **50/100** — lihat `RUBRIC.md`.
+Skor banding Toram/Growtopia: **49/100** — lihat `RUBRIC.md`.
 
 ## Alur tanam-panen FINAL (revisi pemilik, teruji massa v33)
 
@@ -122,6 +133,8 @@ Skor banding Toram/Growtopia: **50/100** — lihat `RUBRIC.md`.
 | v31 | **Sistem tanam-panen baru sesuai blueprint pemilik**: (1) PAPAN TANAM fisik per lahan dengan label hidup "TERTANAM X/500" — pilih benih + jumlah, plot terisi otomatis 10 per 10, tanpa klik plot; (2) SOAL MATEMATIKA acak per pemain tiap 10 plot (500 plot = 50 soal), salah = tertahan sampai benar, kesulitan naik tambah/kurang -> kali -> bagi; (3) PANEN PUNCH: tombol layar muncul dekat tanaman siap, hasil memantul + bunyi + partikel, kombo x4/x8 memperbesar efek, ambil dengan menyentuh; (4) tas penuh = hasil MELAYANG tidak bisa diambil; (5) GUDANG hasil panen per lahan: setor 1-250 = 1 tampungan dari 1000 (250 -> 999 -> 998 persis contoh pemilik), ambil kembali, persisten di AKM_Dunia; (6) tombol perjalanan cepat HUD, teleport placeWait, beli longgar, rak toko penuh. Tes 132 PASS / 0 FAIL, luau-lsp 0 temuan, simulasi alur main hijau (#31). |
 | v32 | **REVISI FINAL tanam-panen (14 poin pemilik)**: (1) plot mati untuk klik/tap — popup "Plot Tanam" + semua teks instruksi dihapus dari dunia & UI (papan kota, papan tanam, papan gudang, papan toko, panel tas, sapaan spawn); (2) tanam hanya lewat Papan Tanam, label "TERTANAM X/500" hidup di dua sisi; (3) soal tiap 10 plot kini inline di papan; (4) Combine Seed jadi menu 2 slot di papan — tanpa resep/petunjuk, cocok = benih hibrida, tidak cocok = "Tidak bisa di-combine" di dalam papan & benih tidak terpakai; gabung di plot dihapus dari sistem; (5) 8 resep rahasia di server persis daftar pemilik; (6) PUNCH permanen di layar: pukul siap -> drop peluang (peluang disembunyikan) diambil dengan menyentuh, pukul tumbuh boleh kapan saja & 5x beruntun = hancur; (7) tab Status: Siap Panen / Masih Tumbuh per jenis; (8) 34 tanaman (termasuk 8 hibrida) punya bentuk model sendiri + warna siap berbeda; (9) dunia bebas teks melayang (label drop & "Tas Penuh" dihapus; melayang tetap sebagai sinyal visual). Tes 127 PASS / 0 FAIL, luau-lsp 0 temuan, playtest 72 PASS / 0 FAIL (#32). |
 | v33 | **UJIAN MASSA PANEN + 3 perbaikan akar**: ujian end-to-end baru 94 tahap — tanam 50 wortel lewat papan (5 soal), tunggu matang (warna berubah, status Siap 50), panen raya dengan tombol PUNCH asli (kick kamera + kombo tier 1->2->3: drop 1.8->2.1->2.4), 50 drop disentuh -> 288 buah persis, bayam tumbuh 5x pukul hancur tanpa drop, combine GUI Gandum+Rye -> Triticale + penolakan "Tidak bisa di-combine" (benih utuh) + 8 resep & urutan dibalik, Tangelo (bentuk pohon) ditanam & dipanen, gudang 999->998, tas penuh = drop melayang. Ditemukan & diperbaiki: (1) penarget PUNCH tak pernah menemukan PlotGrid (grid ada di dalam model seksi; kini FindFirstChild rekursif — tombol kini benar-benar memukul); (2) travel HUD tidak menyegarkan state lahan (kini syncState + payload Sync membawa lahan via provider baru); (3) tab Combine Seed terbuka kosong (kini refresh saat tab dibuka). Tes 127 + massa 94 + playtest 72, semua 0 FAIL; luau-lsp 0 temuan (#33). |
+| v34 | **REVISI TAMPILAN HP** (urutan D,E,F->G->A,B,C): drop panen mini produce per arketipe (8 pembentuk) + ikon tas ikut bentuk/warna; animasi ayunan tangan asli tiap tekan + momen kena 0.12 dtk + getar kamera bertingkat; presisi raycast 14 stud + fallback kerucut + highlight sasaran (server menghitung sendiri); tombol PUNCH relatif Jump; papan tanam minimalis (safe area, tab garis bawah, truncate, tombol per tab). Tes 175 PASS, playtest 116 PASS, 0 FAIL (#34). |
+| v35 | **REVISI HUD LAYAR GAME** (laporan pemilik): (1) SALDO — kini di bawah ikon menu Roblox memakai safe area GuiService.TopbarInset, tampil utuh ikon M + angka + satuan "Micda" dengan teks menyesuaikan layar; (2) TOMBOL NAVIGASI — tepat di bawah saldo, rata kiri, AutomaticSize X dengan batas lebar min/maks, nama panjang terpotong, posisi tidak bergeser saat teks "Masuk Dunia-ku" <-> "Pulang ke Kota"; (3) PUNCH — kini skala murni, di KIRI Jump dengan jarak tepat 1 ukuran jump, 1.24x lebih besar, dasar segaris, dijamin tidak menutupi area tanam; (4) semua HUD (saldo, nav, tas, zona) skala + area aman, teruji di 6 ukuran layar (640x360, 667x375, 844x390, 915x412, 1284x720, 375x667). Tes 188 PASS, playtest 116 PASS, massa 94 PASS, semua 0 FAIL; luau-lsp 0 temuan (#35). |
 
 ## Sesi update mandiri berikutnya (tanpa menunggu pemilik)
 

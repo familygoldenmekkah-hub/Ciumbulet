@@ -1,0 +1,617 @@
+     1→local CropData = require("./../src/Shared/CropData")
+     2→local Recipes = require("./../src/Shared/Recipes")
+     3→local TasLogic = require("./../src/Shared/TasLogic")
+     4→local Layout = require("./../src/Shared/Layout")
+     5→
+     6→local passed, failed = 0, 0
+     7→local function check(name: string, ok: boolean, detail: string?)
+     8→        if ok then
+     9→                passed += 1
+    10→                print("  PASS  " .. name)
+    11→        else
+    12→                failed += 1
+    13→                print("  FAIL  " .. name .. (detail and ("  -> " .. detail) or ""))
+    14→        end
+    15→end
+    16→
+    17→print("=== TES DUNIA AKIOMIDA - DUNIA SAMBUNG SATU SERVER ===")
+    18→
+    19→print("--- Data tanaman (34) ---")
+    20→do
+    21→        check("Jumlah tanaman = 34", #CropData.Crops == 34, tostring(#CropData.Crops))
+    22→        local counts = { common = 0, rare = 0, epic = 0 }
+    23→        local unique = true
+    24→        local ids = {}
+    25→        for _, c in ipairs(CropData.Crops) do
+    26→                if ids[c.id] then
+    27→                        unique = false
+    28→                end
+    29→                ids[c.id] = true
+    30→                counts[c.rarity] = (counts[c.rarity] or 0) + 1
+    31→        end
+    32→        check("ID tanaman unik", unique, "-")
+    33→        check("Common = 12", counts.common == 12, tostring(counts.common))
+    34→        check("Rare = 14", counts.rare == 14, tostring(counts.rare))
+    35→        check("Epic = 8", counts.epic == 8, tostring(counts.epic))
+    36→
+    37→        local harga = {
+    38→                wortel = 1, pisang = 1, bayam = 1, kentang = 1, ubi_jalar = 2, jambu_biji = 2,
+    39→                singkong = 2, tebu = 5, kedelai = 6, jamur = 6, brokoli = 7, sorgum = 17,
+    40→                jeruk_mandarin = 2, plum = 3, aprikot = 4, nektarin = 5, brassica_rapa = 7,
+    41→                brassica_oleracea = 7, grapefruit = 10, labu_moschata = 15, labu_maxima = 17,
+    42→                gandum = 19, arachis_duranensis = 20, arachis_ipaensis = 20, rye = 40, ceri = 87,
+    43→                tangelo = 17, plumcot = 22, nectaplum = 25, kacang_tanah = 30, pluerry = 35,
+    44→                canola = 60, triticale = 67, tetsukabuto = 75,
+    45→        }
+    46→        local salah = {}
+    47→        for id, h in pairs(harga) do
+    48→                local c = CropData.byId[id]
+    49→                if not c then
+    50→                        table.insert(salah, id .. " hilang")
+    51→                elseif c.jual ~= h then
+    52→                        table.insert(salah, id .. "=" .. tostring(c.jual))
+    53→                end
+    54→        end
+    55→        check("Harga jual 34 tanaman sesuai daftar", #salah == 0, table.concat(salah, ", "))
+    56→
+    57→        local byRarityOk = true
+    58→        for _, r in ipairs({ "common", "rare", "epic" }) do
+    59→                if #CropData.byRarity(r) ~= ({ common = 12, rare = 14, epic = 8 })[r] then
+    60→                        byRarityOk = false
+    61→                end
+    62→        end
+    63→        check("byRarity benar", byRarityOk, "-")
+    64→end
+    65→
+    66→print("--- Sistem inti ---")
+    67→do
+    68→        check("Waktu tumbuh 3 detik", CropData.GrowTime == 3, tostring(CropData.GrowTime))
+    69→        check("Dana awal 900.000", CropData.StartMoney == 900000, tostring(CropData.StartMoney))
+    70→        check("Tas 50 slot", CropData.TasSlots == 50 and TasLogic.MaxSlots == 50, "-")
+    71→        check("Stack 250", CropData.TasStack == 250 and TasLogic.MaxStack == 250, "-")
+    72→        check("Blok panen item", CropData.BlokId == "blok_panen", tostring(CropData.BlokId))
+    73→        check("Pack Common 2.400 isi 3", CropData.Packs.common.price == 2400 and CropData.Packs.common.count == 3, "-")
+    74→        check("Pack Rare 9.000 isi 3", CropData.Packs.rare.price == 9000 and CropData.Packs.rare.count == 3, "-")
+    75→        check("Tidak ada pack epic di toko", CropData.Packs.epic == nil, "-")
+    76→        local y = CropData.Yield
+    77→        check("Panen Common 1-10", y.common.min == 1 and y.common.max == 10, "-")
+    78→        check("Panen Rare 1-6", y.rare.min == 1 and y.rare.max == 6, "-")
+    79→        check("Panen Epic 1-4", y.epic.min == 1 and y.epic.max == 4, "-")
+    80→        local s = CropData.Smash
+    81→        check("Pukul Common 5x, benih 45%, blok 20%, Micda 1-5",
+    82→                s.common.hits == 5 and s.common.seed == 0.45 and s.common.blok == 0.20 and s.common.micdaMin == 1 and s.common.micdaMax == 5, "-")
+    83→        check("Pukul Rare 10x, benih 30%, blok 15%, Micda 3-9",
+    84→                s.rare.hits == 10 and s.rare.seed == 0.30 and s.rare.blok == 0.15 and s.rare.micdaMin == 3 and s.rare.micdaMax == 9, "-")
+    85→        check("Pukul Epic 15x, benih 10%, blok 15%, Micda 9-19",
+    86→                s.epic.hits == 15 and s.epic.seed == 0.10 and s.epic.blok == 0.15 and s.epic.micdaMin == 9 and s.epic.micdaMax == 19, "-")
+    87→end
+    88→
+    89→print("--- Resep gabung (8) ---")
+    90→do
+    91→        check("Jumlah resep = 8", #Recipes.List == 8, tostring(#Recipes.List))
+    92→        local pasangan = {
+    93→                { "jeruk_mandarin", "grapefruit", "tangelo" },
+    94→                { "plum", "aprikot", "plumcot" },
+    95→                { "nektarin", "plum", "nectaplum" },
+    96→                { "arachis_duranensis", "arachis_ipaensis", "kacang_tanah" },
+    97→                { "ceri", "plum", "pluerry" },
+    98→                { "brassica_rapa", "brassica_oleracea", "canola" },
+    99→                { "gandum", "rye", "triticale" },
+   100→                { "labu_maxima", "labu_moschata", "tetsukabuto" },
+   101→        }
+   102→        for _, p in ipairs(pasangan) do
+   103→                local out = Recipes.find(p[1], p[2])
+   104→                local out2 = Recipes.find(p[2], p[1])
+   105→                check("Resep " .. p[3] .. " urutan bebas", out == p[3] and out2 == p[3], tostring(out))
+   106→                check("Hasil " .. p[3] .. " epic", CropData.byId[p[3]] and CropData.byId[p[3]].rarity == "epic", "-")
+   107→        end
+   108→        check("Kombinasi liar ditolak", Recipes.find("wortel", "pisang") == nil, "-")
+   109→        check("Benih sama ditolak", Recipes.find("plum", "plum") == nil, "-")
+   110→        check("Semua bahan resep terdaftar", (function()
+   111→                for _, r in ipairs(Recipes.List) do
+   112→                        if not CropData.byId[r.a] or not CropData.byId[r.b] or not CropData.byId[r.out] then
+   113→                                return false
+   114→                        end
+   115→                end
+   116→                return true
+   117→        end)(), "-")
+   118→end
+   119→
+   120→print("--- Tas 50x250 ---")
+   121→do
+   122→        local tas = {}
+   123→        check("Tas kosong 0", TasLogic.usedSlots(tas) == 0, "-")
+   124→        check("Ruang item baru 100", TasLogic.roomFor(tas, "benih", "wortel", 100) == 100, "-")
+   125→        TasLogic.add(tas, "benih", "wortel", 100)
+   126→        check("Menambah 100 benih", TasLogic.countOf(tas, "benih", "wortel") == 100, tostring(TasLogic.countOf(tas, "benih", "wortel")))
+   127→        check("Sisa stack tepat 150", TasLogic.roomFor(tas, "benih", "wortel", 150) == 150, tostring(TasLogic.roomFor(tas, "benih", "wortel", 150)))
+   128→        check("Lebih dari stack pakai slot baru", TasLogic.roomFor(tas, "benih", "wortel", 151) == 151, "-")
+   129→        TasLogic.add(tas, "benih", "wortel", 150)
+   130→        check("Slot pertama penuh 250", TasLogic.countOf(tas, "benih", "wortel") == 250, tostring(TasLogic.countOf(tas, "benih", "wortel")))
+   131→        check("Jenis sama boleh buka slot kedua", TasLogic.roomFor(tas, "benih", "wortel", 1) == 1, "-")
+   132→        TasLogic.add(tas, "benih", "wortel", 1)
+   133→        check("Jenis lain dapat slot terpisah", TasLogic.roomFor(tas, "hasil", "wortel", 10) == 10, "-")
+   134→        TasLogic.add(tas, "hasil", "wortel", 5)
+   135→        check("Hasil dan benih di slot berbeda", TasLogic.countOf(tas, "hasil", "wortel") == 5 and TasLogic.countOf(tas, "benih", "wortel") == 251, "-")
+   136→        local removed = TasLogic.remove(tas, "benih", "wortel", 60)
+   137→        check("Mengurangi 60", removed == 60 and TasLogic.countOf(tas, "benih", "wortel") == 191, tostring(TasLogic.countOf(tas, "benih", "wortel")))
+   138→        local full = {}
+   139→        for i = 1, 50 do
+   140→                TasLogic.add(full, "blok", "b" .. i, 1)
+   141→        end
+   142→        check("50 slot penuh", TasLogic.usedSlots(full) == 50, tostring(TasLogic.usedSlots(full)))
+   143→        check("Item baru ditolak saat penuh", TasLogic.roomFor(full, "hasil", "wortel", 1) == 0, "-")
+   144→        check("Item lama masih bisa menumpuk", TasLogic.roomFor(full, "blok", "b1", 10) == 10, "-")
+   145→        local batch = { { kind = "benih", id = "plum", count = 1 }, { kind = "benih", id = "aprikot", count = 1 } }
+   146→        check("Batch muat di tas kosong", TasLogic.canFitBatch({}, batch), "-")
+   147→        check("Batch ditolak saat penuh", not TasLogic.canFitBatch(full, batch), "-")
+   148→        local over = TasLogic.add(full, "blok", "b1", 300)
+   149→        check("Tambah melebihi stack terpotong", TasLogic.countOf(full, "blok", "b1") == 250 and over >= 50, tostring(over))
+   150→end
+   151→
+   152→print("--- Denah lahan ---")
+   153→do
+   154→        check("24 lahan per server", Layout.LahanCount == 24, tostring(Layout.LahanCount))
+   155→        check("Grid 4 x 6", Layout.Rows == 4 and Layout.Cols == 6, "-")
+   156→        check("Ukuran lahan 240 x 220", Layout.SizeX == 240 and Layout.SizeZ == 220, "-")
+   157→        check("Jarak antar lahan 40", Layout.Gap == 40, "-")
+   158→        check("500 plot", Layout.plotCount() == 500, tostring(Layout.plotCount()))
+   159→        check("Grid plot 25 x 20", Layout.PlotCols == 25 and Layout.PlotRows == 20, "-")
+   160→        check("Blok plot 150 x 120", Layout.PlotBlockW == 150 and Layout.PlotBlockD == 120, "-")
+   161→        local semuaDalam = true
+   162→        for idx = 0, Layout.plotCount() - 1 do
+   163→                local x, z = Layout.plotLocal(idx)
+   164→                if x - 2 < Layout.PlotBlockX or x + 2 > Layout.PlotBlockX + Layout.PlotBlockW then
+   165→                        semuaDalam = false
+   166→                end
+   167→                if z - 2 < Layout.PlotBlockZ or z + 2 > Layout.PlotBlockZ + Layout.PlotBlockD then
+   168→                        semuaDalam = false
+   169→                end
+   170→        end
+   171→        check("Semua 500 plot di dalam blok", semuaDalam, "-")
+   172→        check("Pitch antar plot 6 stud", Layout.PlotPitch == 6, tostring(Layout.PlotPitch))
+   173→        local x0, z0 = Layout.plotLocal(0)
+   174→        local x1, _ = Layout.plotLocal(1)
+   175→        check("Jarak pusat antar plot 6", (x1 - x0) == 6, tostring(x1 - x0))
+   176→        local _, z20 = Layout.plotLocal(25)
+   177→        check("Baris kedua turun 6", (z20 - z0) == 6, tostring(z20 - z0))
+   178→        local inside = true
+   179→        for i = 1, 24 do
+   180→                local ox, oz = Layout.cellOrigin(i)
+   181→                local row = math.floor((i - 1) / Layout.Cols)
+   182→                local col = (i - 1) % Layout.Cols
+   183→                if ox ~= col * (Layout.SizeX + Layout.Gap) or oz ~= row * (Layout.SizeZ + Layout.Gap) then
+   184→                        inside = false
+   185→                end
+   186→        end
+   187→        check("Posisi sel 4x6 benar", inside, "-")
+   188→        local o1x = Layout.cellOrigin(1)
+   189→        local o2x = Layout.cellOrigin(2)
+   190→        check("Jarak sel 1 ke 2 = 280", (o2x - o1x) == 280, tostring(o2x - o1x))
+   191→        check("Dunia dipisah 5000 stud dari kota", Layout.duniaOffsetX() >= 5000, tostring(Layout.duniaOffsetX()))
+   192→end
+   193→
+   194→print("--- Batas laju ---")
+   195→do
+   196→        local RateLimit = require("./../src/Server/Modules/RateLimit")
+   197→        local now = 0
+   198→        RateLimit.clock = function()
+   199→                return now
+   200→        end
+   201→        RateLimit.clear(999)
+   202→        local ok1 = RateLimit.allow(999, "plot", 6, 3)
+   203→        local ok2 = RateLimit.allow(999, "plot", 6, 3)
+   204→        local ok3 = RateLimit.allow(999, "plot", 6, 3)
+   205→        local ok4 = RateLimit.allow(999, "plot", 6, 3)
+   206→        check("Burst 3 lalu ditolak", ok1 and ok2 and ok3 and not ok4, tostring(ok4))
+   207→        now = 1
+   208→        local ok5 = RateLimit.allow(999, "plot", 6, 3)
+   209→        check("Isi ulang setelah 1 detik", ok5, tostring(ok5))
+   210→        RateLimit.clear(999)
+   211→end
+   212→
+   213→print("--- Logika dunia tersimpan ---")
+   214→do
+   215→        local DuniaLogic = require("./../src/Shared/DuniaLogic")
+   216→        check("Key dunia dari userId", DuniaLogic.keyFor(42) == "d_42", tostring(DuniaLogic.keyFor(42)))
+   217→        check("Nama bersih diterima", DuniaLogic.cleanName("  akiomida ") == "akiomida", "-")
+   218→        check("Nama rusak ditolak", DuniaLogic.cleanName("") == nil and DuniaLogic.cleanName(5) == nil and DuniaLogic.cleanName(string.rep("x", 31)) == nil, "-")
+   219→        local pl = { [0] = { crop = "wortel", readyAt = 123.7, model = {} }, [499] = { crop = "ceri", readyAt = 99 }, rusak = { crop = "x", readyAt = 1 }, [-1] = { crop = "y", readyAt = 1 }, [3] = { crop = 9, readyAt = 1 } }
+   220→        local ser = DuniaLogic.serPlots(pl)
+   221→        check("Serialize plot menyaring data", ser[0] ~= nil and ser[0].c == "wortel" and ser[0].r == 123 and ser[499] ~= nil and ser[499].c == "ceri" and ser.rusak == nil and ser[-1] == nil and ser[3] == nil, "-")
+   222→        local des = DuniaLogic.desPlots(ser)
+   223→        check("Deserialize plot roundtrip", des[0] ~= nil and des[0].c == "wortel" and des[0].r == 123 and des[499] ~= nil and des[499].c == "ceri", "-")
+   224→        check("Deserialize plot tolak rusak", DuniaLogic.desPlots({ [5] = { c = 9, r = 1 } })[5] == nil and DuniaLogic.desPlots(nil)[5] == nil and DuniaLogic.desPlots({ [6] = { c = "wortel", r = "x" } })[6] == nil, "-")
+   225→        check("Batas plot 500 ditegakkan", DuniaLogic.serPlots({ [500] = { crop = "x", readyAt = 1 } })[500] == nil and DuniaLogic.desPlots({ [501] = { c = "x", r = 1 } })[501] == nil, "-")
+   226→        local mj = { { crop = "plum", hitsLeft = 3, model = {} }, { crop = "aprikot", hitsLeft = -2 }, { crop = 5, hitsLeft = 1 } }
+   227→        local ser2 = DuniaLogic.serMeja(mj)
+   228→        check("Serialize meja menyaring data", #ser2 == 2 and ser2[1].c == "plum" and ser2[1].h == 3 and ser2[2].c == "aprikot" and ser2[2].h == 1, tostring(#ser2))
+   229→        local des2 = DuniaLogic.desMeja(ser2)
+   230→        check("Deserialize meja roundtrip", des2[1] ~= nil and des2[1].c == "plum" and des2[1].h == 3, "-")
+   231→        local penuh = {}
+   232→        for _ = 1, 9 do
+   233→                table.insert(penuh, { crop = "plum", hitsLeft = 2 })
+   234→        end
+   235→        check("Meja maks 6 slot", #DuniaLogic.serMeja(penuh) == 6 and #DuniaLogic.desMeja(DuniaLogic.serMeja(penuh)) == 6, "-")
+   236→        check("Save tiap 60 dtk", DuniaLogic.SaveEvery == 60, tostring(DuniaLogic.SaveEvery))
+   237→end
+   238→
+   239→print("--- Bentuk model tiap tanaman ---")
+   240→do
+   241→        local JENIS = { akar = true, daun = true, bulat = true, tangkai = true, pohon = true, semak = true, kacang = true, cendawan = true }
+   242→        local kurang, rusak, sama = {}, {}, {}
+   243→        for _, c in ipairs(CropData.Crops) do
+   244→                local b = CropData.Bentuk[c.id]
+   245→                if not b then
+   246→                        table.insert(kurang, c.id)
+   247→                elseif not JENIS[b.jenis] then
+   248→                        table.insert(rusak, c.id .. ":jenis")
+   249→                elseif type(b.t) ~= "number" or b.t <= 0 or type(b.w) ~= "number" or b.w <= 0 then
+   250→                        table.insert(rusak, c.id .. ":ukuran")
+   251→                elseif b.warna[1] == b.siap[1] and b.warna[2] == b.siap[2] and b.warna[3] == b.siap[3] then
+   252→                        table.insert(sama, c.id)
+   253→                end
+   254→        end
+   255→        check("34 tanaman semua punya bentuk", #kurang == 0, table.concat(kurang, ", "))
+   256→        check("Jenis bentuk valid & ukuran masuk akal", #rusak == 0, table.concat(rusak, ", "))
+   257→        check("Warna tumbuh beda dari warna siap (34)", #sama == 0, table.concat(sama, ", "))
+   258→        check("Hybrid punya bentuk sendiri", (function()
+   259→                local ids = { tangelo = true, plumcot = true, nectaplum = true, kacang_tanah = true, pluerry = true, canola = true, triticale = true, tetsukabuto = true }
+   260→                for id in pairs(ids) do
+   261→                        if not CropData.Bentuk[id] then
+   262→                                return false
+   263→                        end
+   264→                end
+   265→                return true
+   266→        end)(), "-")
+   267→        check("Warna siap kacang tanah kekuningan", CropData.Bentuk.kacang_tanah.siap[1] > 200 and CropData.Bentuk.kacang_tanah.siap[2] > 150, "-")
+   268→end
+   269→
+   270→print("--- Pukul tanaman masih tumbuh ---")
+   271→do
+   272→        local PukulLogic = require("./../src/Shared/PukulLogic")
+   273→        check("Batas pukul 5", PukulLogic.MaksPukul == 5, tostring(PukulLogic.MaksPukul))
+   274→        local n1, h1 = PukulLogic.catat(0, 0, 100)
+   275→        check("Pukulan pertama hitungan 1", n1 == 1 and not h1, tostring(n1))
+   276→        local n2 = PukulLogic.catat(n1, 100, 101)
+   277→        local n3 = PukulLogic.catat(n2, 101, 102)
+   278→        local n4 = PukulLogic.catat(n3, 102, 103)
+   279→        local n5, h5 = PukulLogic.catat(n4, 103, 104)
+   280→        check("5x beruntun tanaman hancur", n5 == 5 and h5 == true, tostring(n5) .. "/" .. tostring(h5))
+   281→        local r1 = PukulLogic.catat(0, 0, 50)
+   282→        local r2 = PukulLogic.catat(r1, 50, 51)
+   283→        local r3 = PukulLogic.catat(r2, 51, 52)
+   284→        local r4 = PukulLogic.catat(r3, 52, 53)
+   285→        check("4x beruntun belum hancur", r4 == 4, tostring(r4))
+   286→        local s1 = PukulLogic.catat(4, 200, 500)
+   287→        check("Jeda lewat jendela reset hitungan", s1 == 1, tostring(s1))
+   288→        check("Masih tumbuh tidak membuka pukulan ke-6", PukulLogic.catat(PukulLogic.MaksPukul, 0, 10) == 1, "-")
+   289→end
+   290→
+   291→print("--- Status papan tanam ---")
+   292→do
+   293→        local PanenStatus = require("./../src/Shared/PanenStatus")
+   294→        check("Lahan kosong -> daftar kosong", #PanenStatus.hitung({}, 100) == 0, "-")
+   295→        check("Input rusak -> daftar kosong", #PanenStatus.hitung(nil, 100) == 0 and #PanenStatus.hitung("x", 100) == 0, "-")
+   296→        local recs = {
+   297→                [0] = { crop = "wortel", readyAt = 90 },
+   298→                [1] = { crop = "wortel", readyAt = 200 },
+   299→                [2] = { crop = "gandum", readyAt = 50 },
+   300→                [3] = { crop = "tangelo", readyAt = 150 },
+   301→                [4] = { crop = "tangelo", readyAt = 151 },
+   302→                [5] = { crop = "tangelo", readyAt = 90 },
+   303→                rusak = { crop = 9, readyAt = 1 },
+   304→        }
+   305→        local daftar = PanenStatus.hitung(recs, 100)
+   306→        local per = {}
+   307→        for _, row in ipairs(daftar) do
+   308→                per[row.id] = row
+   309→        end
+   310→        check("Wortel 1 siap 1 tumbuh", per.wortel and per.wortel.siap == 1 and per.wortel.tumbuh == 1, "-")
+   311→        check("Gandum 1 siap", per.gandum and per.gandum.siap == 1 and per.gandum.tumbuh == 0, "-")
+   312→        check("Tangelo 1 siap 2 tumbuh", per.tangelo and per.tangelo.siap == 1 and per.tangelo.tumbuh == 2, "-")
+   313→        check("Record rusak diabaikan", #daftar == 3, tostring(#daftar))
+   314→end
+   315→
+   316→print("--- Soal matematika tanam ---")
+   317→do
+   318→        local SoalLogic = require("./../src/Shared/SoalLogic")
+   319→        local function shimRng(seed: number)
+   320→                local s = seed % 2147483647
+   321→                if s == 0 then
+   322→                        s = 12345
+   323→                end
+   324→                return {
+   325→                        NextInteger = function(_, a: number, b: number)
+   326→                                s = (s * 48271) % 2147483647
+   327→                                return a + (s % (b - a + 1))
+   328→                        end,
+   329→                        NextNumber = function(_)
+   330→                                s = (s * 48271) % 2147483647
+   331→                                return s / 2147483647
+   332→                        end,
+   333→                }
+   334→        end
+   335→        local rng = shimRng(2026)
+   336→        local q1 = SoalLogic.buat(rng, 1, {})
+   337→        check("Soal punya teks dan jawab angka", type(q1.teks) == "string" and type(q1.jawab) == "number", tostring(q1.teks))
+   338→        local stageOk = true
+   339→        local u = {}
+   340→        for nomor = 1, 20 do
+   341→                local q = SoalLogic.buat(rng, nomor, u)
+   342→                if q.op ~= "tambah" and q.op ~= "kurang" then
+   343→                        stageOk = false
+   344→                end
+   345→        end
+   346→        for nomor = 21, 35 do
+   347→                local q = SoalLogic.buat(rng, nomor, u)
+   348→                if q.op ~= "kali" then
+   349→                        stageOk = false
+   350→                end
+   351→        end
+   352→        for nomor = 36, 60 do
+   353→                local q = SoalLogic.buat(rng, nomor, u)
+   354→                if q.op ~= "bagi" then
+   355→                        stageOk = false
+   356→                end
+   357→        end
+   358→        check("Kesulitan naik: tambah/kurang lalu kali lalu bagi", stageOk, "-")
+   359→        check("Jawaban tambah benar", (function()
+   360→                for _ = 1, 40 do
+   361→                        local q = SoalLogic.buat(rng, 1, {})
+   362→                        if q.op == "tambah" and q.jawab ~= q.a + q.b then
+   363→                                return false
+   364→                        end
+   365→                end
+   366→                return true
+   367→        end)(), "-")
+   368→        check("Kurang tidak pernah minus", (function()
+   369→                for _ = 1, 60 do
+   370→                        local q = SoalLogic.buat(rng, 2, {})
+   371→                        if q.op == "kurang" and (q.jawab < 0 or q.jawab ~= q.a - q.b) then
+   372→                                return false
+   373→                        end
+   374→                end
+   375→                return true
+   376→        end)(), "-")
+   377→        check("Jawaban kali benar", (function()
+   378→                for _ = 1, 40 do
+   379→                        local q = SoalLogic.buat(rng, 25, {})
+   380→                        if q.jawab ~= q.a * q.b then
+   381→                                return false
+   382→                        end
+   383→                end
+   384→                return true
+   385→        end)(), "-")
+   386→        check("Bagi selalu habis dibagi", (function()
+   387→                for _ = 1, 40 do
+   388→                        local q = SoalLogic.buat(rng, 40, {})
+   389→                        if q.b == 0 or q.a % q.b ~= 0 or q.jawab ~= q.a / q.b then
+   390→                                return false
+   391→                        end
+   392→                end
+   393→                return true
+   394→        end)(), "-")
+   395→        check("Soal tidak pernah sama dalam satu sesi", (function()
+   396→                local used2 = {}
+   397→                local tanda = {}
+   398→                local rng2 = shimRng(777)
+   399→                local nomor = 1
+   400→                for _ = 1, 220 do
+   401→                        local q = SoalLogic.buat(rng2, nomor, used2)
+   402→                        nomor = nomor % 60 + 1
+   403→                        local k = q.op .. q.a .. "_" .. q.b
+   404→                        if tanda[k] then
+   405→                                return false
+   406→                        end
+   407→                        tanda[k] = true
+   408→                end
+   409→                return true
+   410→        end)(), "-")
+   411→        check("Soal beda antar pemain", (function()
+   412→                local u1, u2 = {}, {}
+   413→                local r1, r2 = shimRng(11), shimRng(42)
+   414→                local beda = false
+   415→                for _ = 1, 12 do
+   416→                        local a = SoalLogic.buat(r1, 1, u1)
+   417→                        local b = SoalLogic.buat(r2, 1, u2)
+   418→                        if a.teks ~= b.teks then
+   419→                                beda = true
+   420→                        end
+   421→                end
+   422→                return beda
+   423→        end)(), "-")
+   424→end
+   425→
+   426→print("--- Gudang 1000 tampungan ---")
+   427→do
+   428→        local GudangLogic = require("./../src/Shared/GudangLogic")
+   429→        local gd = GudangLogic.baru()
+   430→        check("Gudang baru 0 terpakai", GudangLogic.terpakai(gd) == 0, "-")
+   431→        local ok1 = GudangLogic.simpan(gd, "wortel", 250)
+   432→        check("Setor 250 memakai 1 tampungan (sisa 999)", ok1 and GudangLogic.terpakai(gd) == 1, tostring(GudangLogic.terpakai(gd)))
+   433→        GudangLogic.simpan(gd, "wortel", 250)
+   434→        check("Setor 250 lagi (sisa 998)", GudangLogic.terpakai(gd) == 2, tostring(GudangLogic.terpakai(gd)))
+   435→        check("Setor 300 ditolak", not GudangLogic.simpan(gd, "wortel", 300), "-")
+   436→        check("Setor 0 ditolak", not GudangLogic.simpan(gd, "wortel", 0), "-")
+   437→        check("Setor 1 boleh", GudangLogic.simpan(gd, "pisang", 1), "-")
+   438→        local gdFull = GudangLogic.baru()
+   439→        for _ = 1, 1000 do
+   440→                GudangLogic.simpan(gdFull, "bayam", 1)
+   441→        end
+   442→        check("Tampungan maksimal 1000", GudangLogic.terpakai(gdFull) == 1000, tostring(GudangLogic.terpakai(gdFull)))
+   443→        check("Setor ke-1001 ditolak", not GudangLogic.simpan(gdFull, "bayam", 1), "-")
+   444→        local okA, _, nA = GudangLogic.ambil(gd, 1, nil)
+   445→        check("Ambil slot 1 berisi semua isi", okA and nA == 250, tostring(nA))
+   446→        GudangLogic.kurangi(gd, 1, nA)
+   447→        check("Slot bebas setelah diambil semua", GudangLogic.terpakai(gd) == 2, tostring(GudangLogic.terpakai(gd)))
+   448→        local _, _, nP = GudangLogic.ambil(gd, 1, 100)
+   449→        GudangLogic.kurangi(gd, 1, nP)
+   450→        check("Ambil sebagian menyisakan 150", gd.s[1].count == 150 and GudangLogic.terpakai(gd) == 2, tostring(gd.s[1].count))
+   451→        check("Ambil lebih dari isi dibatasi", (function()
+   452→                local _, _, n = GudangLogic.ambil(gd, 1, 999)
+   453→                return n == 150
+   454→        end)(), "-")
+   455→        check("Slot kosong ditolak", not GudangLogic.ambil(gd, 99, nil), "-")
+   456→        local ser = GudangLogic.ser(gd)
+   457→        local des = GudangLogic.des(ser)
+   458→        check("Serialize gudang roundtrip", des.s[1].id == "wortel" and des.s[1].count == 150 and GudangLogic.terpakai(des) == 2, "-")
+   459→        check("Deserialize tolak data rusak", GudangLogic.terpakai(GudangLogic.des({ { id = 9, count = 5 }, { id = "wortel", count = "x" }, { id = "pisang", count = 40 } })) == 1, tostring(GudangLogic.terpakai(GudangLogic.des({ { id = 9, count = 5 }, { id = "wortel", count = "x" }, { id = "pisang", count = 40 } }))))
+   460→        check("Deserialize batasi 1000 slot", (function()
+   461→                local banyak = {}
+   462→                for _ = 1, 1200 do
+   463→                        table.insert(banyak, { id = "bayam", count = 1 })
+   464→                end
+   465→                return GudangLogic.terpakai(GudangLogic.des(banyak)) == 1000
+   466→        end)(), "-")
+   467→        check("Deserialize data hilang tetap aman", GudangLogic.terpakai(GudangLogic.des(nil)) == 0, "-")
+   468→        check("Batas gudang 1000 x 250", GudangLogic.MaksSlot == 1000 and GudangLogic.MaksIsi == 250, "-")
+   469→end
+   470→
+   471→print("--- D: Drop panen sesuai bentuk tanaman ---")
+   472→do
+   473→        local DropBentuk = require("./../src/Shared/DropBentuk")
+   474→        local JENIS = { akar = true, daun = true, bulat = true, tangkai = true, pohon = true, semak = true, kacang = true, cendawan = true }
+   475→        local kurang, warnaSalah = {}, {}
+   476→        for _, c in ipairs(CropData.Crops) do
+   477→                local b = CropData.Bentuk[c.id]
+   478→                local spes = b and DropBentuk.spesifikasi(b)
+   479→                if not spes then
+   480→                        table.insert(kurang, c.id)
+   481→                elseif not JENIS[spes.jenis] then
+   482→                        table.insert(kurang, c.id .. ":jenis")
+   483→                elseif spes.buah[1] ~= b.siap[1] or spes.buah[2] ~= b.siap[2] or spes.buah[3] ~= b.siap[3] then
+   484→                        table.insert(warnaSalah, c.id)
+   485→                end
+   486→        end
+   487→        check("34 tanaman punya spesifikasi drop", #kurang == 0, table.concat(kurang, ", "))
+   488→        check("Warna drop = warna siap tanaman (34)", #warnaSalah == 0, table.concat(warnaSalah, ", "))
+   489→        check("8 hibrida punya drop sendiri", (function()
+   490→                for _, id in ipairs({ "tangelo", "plumcot", "nectaplum", "kacang_tanah", "pluerry", "canola", "triticale", "tetsukabuto" }) do
+   491→                        if not DropBentuk.spesifikasi(CropData.Bentuk[id]) then
+   492→                                return false
+   493→                        end
+   494→                end
+   495→                return true
+   496→        end)(), "-")
+   497→        local ikonOk = true
+   498→        for jenis in pairs(JENIS) do
+   499→                local bagian = DropBentuk.ikonBagian(jenis)
+   500→                if type(bagian) ~= "table" or #bagian < 2 then
+   501→                        ikonOk = false
+   502→                else
+   503→                        for _, g in ipairs(bagian) do
+   504→                                if type(g.dx) ~= "number" or type(g.dy) ~= "number" or type(g.dw) ~= "number" or type(g.dh) ~= "number" or g.dx < 0 or g.dx > 1 or g.dy < 0 or g.dy > 1 or g.dw <= 0 or g.dh <= 0 then
+   505→                                        ikonOk = false
+   506→                                end
+   507→                                if g.warna ~= "buah" and g.warna ~= "aksen" then
+   508→                                        ikonOk = false
+   509→                                end
+   510→                        end
+   511→                end
+   512→        end
+   513→        check("Ikon tas 8 arketipe lengkap & koordinat valid", ikonOk, "-")
+   514→        check("Warna ikon berbeda antara buah dan aksen", (function()
+   515→                local b = DropBentuk.ikonBagian("pohon")
+   516→                return b[2].warna ~= b[3].warna
+   517→        end)(), "-")
+   518→        check("Spesifikasi rusak ditolak", DropBentuk.spesifikasi(nil) == nil and DropBentuk.spesifikasi({ jenis = "alien" }) == nil and DropBentuk.spesifikasi({ jenis = "akar", siap = "x", aksen = {} }) == nil, "-")
+   519→        local spesW = DropBentuk.spesifikasi(CropData.Bentuk.wortel)
+   520→        check("Skala drop masuk akal", spesW ~= nil and spesW.skala >= 0.7 and spesW.skala <= 1.8, tostring(spesW and spesW.skala))
+   521→end
+   522→
+   523→print("--- E: Animasi & efek punch ---")
+   524→do
+   525→        local PukulAnim = require("./../src/Shared/PukulAnim")
+   526→        local f1 = PukulAnim.fase(0, 0.05)
+   527→        check("Animasi hidup segera setiap tombol ditekan", f1.memukul == true and f1.kena == false, tostring(f1.memukul))
+   528→        local f2 = PukulAnim.fase(0, PukulAnim.MomenKena)
+   529→        check("Momen kena sinkron di 0.12 dtk", f2.kena == true, tostring(f2.kena))
+   530→        local f3 = PukulAnim.fase(0, PukulAnim.Durasi + 0.01)
+   531→        check("Animasi selesai setelah 0.32 dtk", not f3.memukul and not f3.kena, tostring(f3.memukul))
+   532→        local f4 = PukulAnim.fase(0, 0.16)
+   533→        check("Sudut ayunan positif di tengah ayunan", f4.sudut > 0 and f4.p > 0, tostring(f4.sudut))
+   534→        check("Tekan lagi = ayunan baru dari nol", PukulAnim.mulaiUlang(0.2, 0.25) == 0.25 and PukulAnim.mulaiUlang(nil, 1.0) == 1.0, "-")
+   535→        local g1, g2, g3 = PukulAnim.getar(1), PukulAnim.getar(2), PukulAnim.getar(3)
+   536→        check("Getaran naik dengan tier kombo", g3 > g2 and g2 > g1 and g1 > 0, tostring(g1) .. "/" .. tostring(g3))
+   537→        check("Getaran aman untuk tier aneh", PukulAnim.getar(99) == PukulAnim.getar(3) and PukulAnim.getar(0) == PukulAnim.getar(1), "-")
+   538→end
+   539→
+   540→print("--- F: Presisi punch (hitbox depan karakter) ---")
+   541→do
+   542→        local ArahPukul = require("./../src/Shared/ArahPukul")
+   543→        local asal = { x = 0, y = 2, z = 0 }
+   544→        local arah = { x = 0, y = 0, z = -1 }
+   545→        local daftar = {
+   546→                { idx = 7, pos = { x = 0, y = 0, z = -6 } },
+   547→                { idx = 11, pos = { x = 0, y = 0, z = -11 } },
+   548→                { idx = 3, pos = { x = 8, y = 0, z = -6 } },
+   549→                { idx = 9, pos = { x = 0, y = 0, z = 5 } },
+   550→                { idx = 21, pos = { x = 0, y = 0, z = -30 } },
+   551→        }
+   552→        local p = ArahPukul.pilih(asal, arah, daftar)
+   553→        check("Raycast memilih tanaman terdekat di depan", p ~= nil and p.idx == 7, tostring(p and p.idx))
+   554→        check("Titik pukul tepat di titik kena", p ~= nil and p.titik.x == 0 and p.titik.z == -6, p and tostring(p.titik.x) .. "," .. tostring(p.titik.z))
+   555→        check("Sasaran menyamping ditolak", ArahPukul.pilih(asal, arah, { daftar[3] }) == nil, "-")
+   556→        check("Sasaran di belakang ditolak", ArahPukul.pilih(asal, arah, { daftar[4] }) == nil, "-")
+   557→        check("Sasaran di luar jangkauan ditolak", ArahPukul.pilih(asal, arah, { daftar[5] }) == nil, "-")
+   558→        check("Pukul titik lain = sasaran lain", (function()
+   559→                local q = ArahPukul.pilih({ x = 0, y = 2, z = -8 }, arah, daftar)
+   560→                return q ~= nil and q.idx == 11
+   561→        end)(), "-")
+   562→        check("Radius per kandidat dipakai", ArahPukul.pilih(asal, arah, { { idx = 5, pos = { x = 2.4, y = 2, z = -5 }, radius = 3.0 } }) ~= nil, "-")
+   563→        check("diDepan sesuai arah hadap", ArahPukul.diDepan(asal, arah, { x = 0, y = 0, z = -5 }) and not ArahPukul.diDepan(asal, arah, { x = 0, y = 0, z = 5 }), "-")
+   564→        check("titikPukul sepanjang sinar", (function()
+   565→                local t = ArahPukul.titikPukul(asal, arah, 6)
+   566→                return t.x == 0 and t.y == 2 and t.z == -6
+   567→        end)(), "-")
+   568→        check("Arah nol aman", ArahPukul.pilih(asal, { x = 0, y = 0, z = 0 }, daftar) == nil, "-")
+   569→        check("Jarak minimum ditolak", ArahPukul.pilih(asal, arah, { { idx = 1, pos = { x = 0, y = 0, z = -0.5 } } }) == nil, "-")
+   570→end
+   571→
+   572→print("--- G: Tombol kontrol HP (Punch vs Jump) ---")
+   573→do
+   574→        local KontrolHP = require("./../src/Shared/KontrolHP")
+   575→        local pos = KontrolHP.posisiPunch(70, 92, 24)
+   576→        check("Gap punch-jump minimal 1 ukuran tombol", pos.gap >= 70, tostring(pos.gap))
+   577→        check("Punch valid di area jempol kanan bawah", KontrolHP.valid(pos.dariKanan, 70, 92, 24), tostring(pos.dariKanan))
+   578→        check("Punch tidak molor ke tengah layar", pos.dariKanan + 92 <= KontrolHP.BatasJempol, tostring(pos.dariKanan + 92))
+   579→        check("Menempel tombol jump asli tetap valid", KontrolHP.valid(KontrolHP.dariTombol(94, 92, 70), 70, 92, 24), "-")
+   580→        local pos2 = KontrolHP.posisiPunch(56, 80, 12)
+   581→        check("Jump kecil tetap berjarak >= ukurannya", KontrolHP.valid(pos2.dariKanan, 56, 80, 12) and pos2.gap >= 56, tostring(pos2.gap))
+   582→        local pos3 = KontrolHP.posisiPunch(120, 110, 20)
+   583→        check("Jump besar tetap berjarak & dalam zona", pos3.gap >= 120 and KontrolHP.valid(pos3.dariKanan, 120, 110, 20), tostring(pos3.dariKanan))
+   584→        check("Posisi vertikal di dasar layar", pos.dariBawah == KontrolHP.DariBawah and KontrolHP.DariBawah <= 40, tostring(pos.dariBawah))
+   585→        check("Tata letak bertumpuk ditolak", not KontrolHP.valid(KontrolHP.Margin + KontrolHP.JumpBawaan, KontrolHP.JumpBawaan, KontrolHP.PunchBawaan), "-")
+   586→end
+   587→
+   588→print("--- A/C: Papan Tanam aman di layar HP ---")
+   589→do
+   590→        local UIStyle = require("./../src/Shared/UIStyle")
+   591→        check("Safe area atas >= 48 px (tak tertutup tombol menu)", UIStyle.AmanAtas >= 48, tostring(UIStyle.AmanAtas))
+   592→        check("Panel berbasis skala dengan batas ukuran", UIStyle.LebarPanelMaks >= 600 and UIStyle.TinggiPanelMaks >= 440, tostring(UIStyle.LebarPanelMaks) .. "x" .. tostring(UIStyle.TinggiPanelMaks))
+   593→        check("Satu font, tepat tiga ukuran", UIStyle.cekTigaUkuran() and UIStyle.UkuranJudul <= 20, tostring(UIStyle.UkuranJudul))
+   594→        check("Judul diperkecil & hierarki jelas", UIStyle.UkuranIsi < UIStyle.UkuranJudul and UIStyle.UkuranKecil < UIStyle.UkuranIsi, "-")
+   595→        check("Hijau hanya untuk aksi utama", UIStyle.Hijau[2] > UIStyle.Hijau[1] and UIStyle.Hijau[2] > UIStyle.Hijau[3], tostring(UIStyle.Hijau[2]))
+   596→        check("Aksen beda dari latar gelap", UIStyle.Aksen[1] ~= UIStyle.Latar[1] and UIStyle.Aksen[3] > UIStyle.Latar[3], "-")
+   597→        local t1, t2, t3 = UIStyle.tabTampak("tanam"), UIStyle.tabTampak("gabung"), UIStyle.tabTampak("status")
+   598→        check("Tab Tanam: angka + Mulai tampil, tombol lain sembunyi", t1.angka and t1.mulai and not t1.gabung and not t1.status, "-")
+   599→        check("Tab Combine: hanya tombol Gabung", t2.gabung and not t2.angka and not t2.mulai and not t2.status and not t2.daftarTanam, "-")
+   600→        check("Tab Status: hanya status", t3.status and not t3.gabung and not t3.mulai and not t3.angka, "-")
+   601→        check("Setiap tab tepat satu grup tombol", UIStyle.tabTunggal("tanam") and UIStyle.tabTunggal("gabung") and UIStyle.tabTunggal("status"), "-")
+   602→        check("Tab tak dikenal aman (semua sembunyi)", not UIStyle.tabTampak("salah").angka and not UIStyle.tabTampak("salah").status, "-")
+   603→        check("Nama benih panjang terpotong", #UIStyle.potong("Labu Cucurbita Moschata") <= UIStyle.NamaMaks + 3, UIStyle.potong("Labu Cucurbita Moschata"))
+   604→        check("Potongan berakhiran elipsis", (function()
+   605→                local s = UIStyle.potong(string.rep("a", 40))
+   606→                return #s == UIStyle.NamaMaks + 2 and string.sub(s, -3) == "…"
+   607→        end)(), "-")
+   608→        check("Nama pendek utuh", UIStyle.potong("Wortel") == "Wortel", "-")
+   609→        check("Input rusak aman", UIStyle.potong(nil) == "?" and UIStyle.potong(9) == "?", "-")
+   610→end
+   611→
+   612→print(("="):rep(28))
+   613→print(string.format("HASIL: %d PASS, %d FAIL", passed, failed))
+   614→if failed > 0 then
+   615→        error(string.format("%d tes gagal", failed))
+   616→end
+   617→

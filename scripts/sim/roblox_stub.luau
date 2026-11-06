@@ -573,6 +573,30 @@ function InstanceMethods:PivotTo(target)
         end
 end
 
+function InstanceMethods:GetPropertyChangedSignal(prop)
+        local cache = rawget(self, "__propSignals")
+        if not cache then
+                cache = {}
+                rawset(self, "__propSignals", cache)
+        end
+        if not cache[prop] then
+                cache[prop] = newSignal()
+        end
+        return cache[prop]
+end
+
+function InstanceMethods:GetPropertyChangedSignal(prop)
+        local cache = rawget(self, "__propSignals")
+        if not cache then
+                cache = {}
+                rawset(self, "__propSignals", cache)
+        end
+        if not cache[prop] then
+                cache[prop] = newSignal()
+        end
+        return cache[prop]
+end
+
 local function baseIndex(inst, k)
         if k == "Position" and inst:IsA("BasePart") then
                 local cf = rawget(inst, "__cf")
@@ -780,6 +804,9 @@ function Stub.install()
 
         local UserInputService = Instance.new("UserInputService")
 
+        local GuiService = Instance.new("GuiService")
+        GuiService.TopbarInset = { Min = { X = 0, Y = 58, x = 0, y = 58 }, Max = { X = 1024, Y = 658, x = 1024, y = 658 } }
+
         local TweenService = Instance.new("TweenService")
         function TweenService:Create(target, info, props)
                 local tween = {}
@@ -806,6 +833,7 @@ function Stub.install()
                 DataStoreService = DataStoreService,
                 RunService = RunService,
                 UserInputService = UserInputService,
+                GuiService = GuiService,
                 TweenService = TweenService,
                 Debris = Debris,
         }

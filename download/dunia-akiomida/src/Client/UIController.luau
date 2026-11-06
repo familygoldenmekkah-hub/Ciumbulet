@@ -2,6 +2,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
+local GuiService = game:GetService("GuiService")
 
 local CropData = require(ReplicatedStorage.Shared.CropData)
 local Net = require(ReplicatedStorage.Remotes)
@@ -9,6 +10,7 @@ local UIStyle = require(ReplicatedStorage.Shared.UIStyle)
 local PukulAnim = require(ReplicatedStorage.Shared.PukulAnim)
 local ArahPukul = require(ReplicatedStorage.Shared.ArahPukul)
 local KontrolHP = require(ReplicatedStorage.Shared.KontrolHP)
+local HUDLayout = require(ReplicatedStorage.Shared.HUDLayout)
 local DropBentuk = require(ReplicatedStorage.Shared.DropBentuk)
 
 local player = Players.LocalPlayer
@@ -77,31 +79,80 @@ local gui = mk("ScreenGui", {
         ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 }, playerGui)
 
-local hud = mk("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 52), Position = UDim2.new(0, 0, 0, 8) }, gui)
+local camera = Workspace.CurrentCamera
 
-local micdaFrame = mk("Frame", { Position = UDim2.new(0, 12, 0, 0), Size = UDim2.new(0, 190, 0, 44), BackgroundColor3 = warna(UIStyle.Latar), BackgroundTransparency = 0.12 }, hud)
-round(micdaFrame)
-mk("TextLabel", { Size = UDim2.new(0, 36, 1, 0), BackgroundTransparency = 1, Text = "M", TextSize = UIStyle.UkuranJudul, Font = FONTB, TextColor3 = warna(UIStyle.Aksen) }, micdaFrame)
-local micdaLabel = mk("TextLabel", { Position = UDim2.new(0, 42, 0, 0), Size = UDim2.new(1, -50, 1, 0), BackgroundTransparency = 1, Text = "0 Micda", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left }, micdaFrame)
+local aman = mk("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1) }, gui)
+local amanPad = mk("UIPadding", { PaddingTop = UDim.new(0, 0), PaddingLeft = UDim.new(0, 0), PaddingRight = UDim.new(0, 0), PaddingBottom = UDim.new(0, 0) }, aman)
 
-local travelBtn = mk("TextButton", { Position = UDim2.new(0, 12, 0, 52), Size = UDim2.new(0, 170, 0, 40), BackgroundColor3 = warna(UIStyle.Permukaan), Text = "Masuk Dunia-ku", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks) }, gui)
+local function teksSkala(props: { [string]: any }, parent: Instance): TextLabel
+        props.TextScaled = true
+        local l = mk("TextLabel", props, parent)
+        mk("UITextSizeConstraint", { MaxTextSize = HUDLayout.TeksMaks, MinTextSize = HUDLayout.TeksMin }, l)
+        return l :: TextLabel
+end
+
+local saldo = mk("Frame", { Position = UDim2.fromScale(HUDLayout.SaldoSkalaX, HUDLayout.SaldoSkalaY), Size = UDim2.fromScale(HUDLayout.SaldoSkalaLebar, HUDLayout.SaldoSkalaTinggi), BackgroundColor3 = warna(UIStyle.Latar), BackgroundTransparency = 0.12 }, aman)
+round(saldo)
+local saldoUkuran = mk("UISizeConstraint", { MinSize = Vector2.new(150, 30), MaxSize = Vector2.new(320, 64) }, saldo)
+
+local ikonSaldo = mk("Frame", { Position = UDim2.fromScale(HUDLayout.IkonSkalaX, HUDLayout.IkonSkalaY), Size = UDim2.fromScale(HUDLayout.IkonSkalaLebar, HUDLayout.IkonSkalaTinggi), BackgroundColor3 = warna(UIStyle.Aksen) }, saldo)
+mk("UICorner", { CornerRadius = UDim.new(0.5, 0) }, ikonSaldo)
+teksSkala({ Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Text = "M", Font = FONTB, TextColor3 = warna(UIStyle.Latar) }, ikonSaldo)
+local angkaLabel = teksSkala({ Position = UDim2.fromScale(HUDLayout.AngkaSkalaX, 0), Size = UDim2.fromScale(HUDLayout.AngkaSkalaLebar, 1), BackgroundTransparency = 1, Text = "0", Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left }, saldo)
+teksSkala({ Position = UDim2.fromScale(HUDLayout.SatuanSkalaX, 0), Size = UDim2.fromScale(HUDLayout.SatuanSkalaLebar, 1), BackgroundTransparency = 1, Text = "Micda", Font = FONTB, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left }, saldo)
+
+local travelBtn = mk("TextButton", { Position = UDim2.fromScale(HUDLayout.SaldoSkalaX, HUDLayout.NavSkalaY), Size = UDim2.fromScale(HUDLayout.NavSkalaLebarMin, HUDLayout.NavSkalaTinggi), AutomaticSize = Enum.AutomaticSize.X, BackgroundColor3 = warna(UIStyle.Permukaan), Text = "Masuk Dunia-ku", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextTruncate = Enum.TextTruncate.AtEnd, TextXAlignment = Enum.TextXAlignment.Center }, aman)
 round(travelBtn)
+mk("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12) }, travelBtn)
+local navUkuran = mk("UISizeConstraint", { MinSize = Vector2.new(120, 26), MaxSize = Vector2.new(220, 26) }, travelBtn)
 
-local tasBtn = mk("TextButton", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 0), Size = UDim2.new(0, 120, 0, 44), BackgroundColor3 = warna(UIStyle.PermukaanAktif), Text = "Tas", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks) }, hud)
+local tasBtn = mk("TextButton", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.fromScale(0.992, HUDLayout.SaldoSkalaY), Size = UDim2.fromScale(HUDLayout.TasSkalaLebar, HUDLayout.SaldoSkalaTinggi), BackgroundColor3 = warna(UIStyle.PermukaanAktif), Text = "Tas", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks) }, aman)
 round(tasBtn)
+local tasUkuran = mk("UISizeConstraint", { MinSize = Vector2.new(90, 30), MaxSize = Vector2.new(200, 64) }, tasBtn)
 
 local punchBtn = mk("TextButton", {
         AnchorPoint = Vector2.new(1, 1),
-        Position = UDim2.new(1, -(KontrolHP.Margin + KontrolHP.JumpBawaan * 2 + KontrolHP.PunchBawaan), 1, -KontrolHP.DariBawah),
-        Size = UDim2.new(0, KontrolHP.PunchBawaan, 0, KontrolHP.PunchBawaan),
+        Position = UDim2.fromScale(0.62, 0.968),
+        Size = UDim2.fromScale(0.132, 0.235),
         BackgroundColor3 = warna(UIStyle.Hijau),
         Text = "PUNCH",
-        TextSize = UIStyle.UkuranJudul,
+        TextScaled = true,
         Font = FONTB,
         TextColor3 = Color3.new(1, 1, 1),
         Visible = true,
 }, gui)
 round(punchBtn, 46)
+mk("UITextSizeConstraint", { MaxTextSize = 26, MinTextSize = 13 }, punchBtn)
+
+local jumpPxNyata: number? = nil
+local function aturPunch()
+        local vp = camera.ViewportSize
+        local pos = KontrolHP.posisiPunch(vp.X, vp.Y, jumpPxNyata)
+        punchBtn.Position = UDim2.fromScale(pos.skalaX, pos.skalaY)
+        punchBtn.Size = UDim2.fromScale(pos.skalaLebar, pos.skalaTinggi)
+end
+
+local function aturUkuranAman()
+        local inset = GuiService.TopbarInset
+        amanPad.PaddingTop = UDim.new(0, inset.Min.Y)
+        amanPad.PaddingLeft = UDim.new(0, inset.Min.X)
+        local vp = camera.ViewportSize
+        local a = HUDLayout.areaAman(vp.X, vp.Y, inset.Min.X, inset.Min.Y)
+        local bs = HUDLayout.batasSaldo(a)
+        saldoUkuran.MinSize = Vector2.new(bs.lebar, bs.tinggi)
+        saldoUkuran.MaxSize = Vector2.new(bs.lebar, bs.tinggi)
+        local bn = HUDLayout.batasNav(a)
+        navUkuran.MinSize = Vector2.new(bn.minim, bn.tinggi)
+        navUkuran.MaxSize = Vector2.new(bn.maks, bn.tinggi)
+        local bt = HUDLayout.batasTas(a)
+        tasUkuran.MinSize = Vector2.new(bt.lebar, bs.tinggi)
+        tasUkuran.MaxSize = Vector2.new(bt.lebar, bs.tinggi)
+        aturPunch()
+end
+
+GuiService:GetPropertyChangedSignal("TopbarInset"):Connect(aturUkuranAman)
+camera:GetPropertyChangedSignal("ViewportSize"):Connect(aturUkuranAman)
+aturUkuranAman()
 
 task.spawn(function()
         local ui = playerGui:WaitForChild("TouchGui", 8)
@@ -114,23 +165,14 @@ task.spawn(function()
         if not jump or not jump:IsA("GuiObject") then
                 return
         end
-        local camera = Workspace.CurrentCamera
-        local vp = camera.ViewportSize
-        local jumpKiri = vp.X - jump.AbsolutePosition.X
-        local jumpSize = math.max(40, jump.AbsoluteSize.X)
-        local jumpBawah = vp.Y - (jump.AbsolutePosition.Y + jump.AbsoluteSize.Y)
-        local dariKanan = KontrolHP.dariTombol(jumpKiri, KontrolHP.PunchBawaan, jumpSize)
-        local dariBawah = KontrolHP.DariBawah
-        if jumpBawah >= 0 and jumpBawah <= 80 then
-                dariBawah = jumpBawah
-        end
-        punchBtn.Position = UDim2.new(1, -dariKanan, 1, -dariBawah)
+        jumpPxNyata = jump.AbsoluteSize.X
+        aturPunch()
 end)
 
-local toastHolder = mk("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 66), Size = UDim2.new(0, 470, 0, 220), BackgroundTransparency = 1 }, gui)
+local toastHolder = mk("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromScale(0.5, 0.2), Size = UDim2.fromScale(0.7, 0.42), BackgroundTransparency = 1 }, aman)
 mk("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder, HorizontalAlignment = Enum.HorizontalAlignment.Center }, toastHolder)
 
-local zonaLabel = mk("TextLabel", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 8), Size = UDim2.new(0, 220, 0, 26), BackgroundColor3 = warna(UIStyle.Latar), BackgroundTransparency = 0.2, Text = "Pusat Kota", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks) }, gui)
+local zonaLabel = teksSkala({ AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromScale(0.5, HUDLayout.SaldoSkalaY), Size = UDim2.fromScale(0.24, HUDLayout.NavSkalaTinggi), BackgroundColor3 = warna(UIStyle.Latar), BackgroundTransparency = 0.2, Text = "Pusat Kota", Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextTruncate = Enum.TextTruncate.AtEnd }, aman)
 round(zonaLabel, UIStyle.SudutKecil)
 
 local toastOrder = 0
@@ -281,7 +323,7 @@ local function syncState()
                         state.zone = st.zone or "kota"
                         state.dunia = st.dunia
                         state.role = st.role or "hub"
-                        micdaLabel.Text = fmt(state.micda) .. " Micda"
+                        angkaLabel.Text = fmt(state.micda)
                         refreshTas()
                 end
         end)
@@ -796,7 +838,6 @@ tasBtn.Activated:Connect(function()
         refreshTas()
 end)
 
-local camera = Workspace.CurrentCamera
 local punchTarget: number? = nil
 local animT0: number? = nil
 local motorSaat: Motor6D? = nil
@@ -936,7 +977,7 @@ end)
 Net.get("Sync").OnClientEvent:Connect(function(payload)
         state.micda = payload.micda
         state.tas = payload.tas or {}
-        micdaLabel.Text = fmt(state.micda) .. " Micda"
+        angkaLabel.Text = fmt(state.micda)
         if payload.zone then
                 state.zone = payload.zone
                 state.dunia = payload.dunia
@@ -1026,7 +1067,7 @@ task.spawn(function()
                 state.zone = st.zone or "kota"
                 state.dunia = st.dunia
                 state.role = st.role or "hub"
-                micdaLabel.Text = fmt(state.micda) .. " Micda"
+                angkaLabel.Text = fmt(state.micda)
                 if state.zone == "dunia" then
                         zonaLabel.Text = "Dunia " .. tostring(state.dunia or "Petani")
                         travelBtn.Text = "Pulang ke Kota"
