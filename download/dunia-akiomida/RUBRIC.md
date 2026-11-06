@@ -19,60 +19,61 @@ Skor per kriteria 0-10, dikali bobot. Total dihitung dari (skor x bobot) / 10.
 | 8 | Polish & UX (UI, suara, animasi, efek) | 10 | animasi kombat, BGM, partikel | UI rapi & responsif |
 | 9 | Originalitas 100% & aman hak cipta | 5 | - | - |
 
-## Skor v30 (versi LIVE #30, 6 Nov 2026) - PLAYTEST OTOMATIS + PERBAIKAN AKAR MASALAH
+## Skor v31 (versi LIVE #31, 6 Nov 2026) - SISTEM TANAM-PANEN BARU: PAPAN TANAM + SOAL MATEMATIKA + PUNCH + GUDANG
 
-Permintaan pemilik dieksekusi: "tes dan mainkan agar tahu letak errornya."
-Dibangun mesin playtest yang menjalankan kode server ASLI + UI klien ASLI di
-simulator Roblox, lalu memainkan alur lengkap: join -> beli benih lewat UI ->
-masuk dunia lahan lewat gerbang -> tanam -> gabung benih di plot yang sama ->
-panen -> jual -> pukul meja semai -> pulang -> balik lagi -> kunjungan tamu ->
-keluar & cek simpanan. Playtest v30: 51 PASS / 0 FAIL.
+Permintaan pemilik dieksekusi penuh ("Sekarang fokus ke tempat tanam plot"):
+1. **Tanam lewat Papan** — tidak lagi klik plot satu per satu. Papan Tanam
+   berdiri di tepi blok plot tiap lahan dengan label fisik "TERTANAM X/500"
+   yang hidup. Dekati papan -> panel: pilih jenis benih + jumlah (preset
+   10/50/100/250/Maks atau angka bebas) -> plot terisi otomatis 10 per 10.
+2. **Soal matematika acak** — setiap 10 plot dibuka dengan 1 soal: 250 benih =
+   25 soal, 500 plot = 50 soal. Selalu acak per pemain per sesi (tidak pernah
+   sama, SoalLogic + test anti-duplikat 220 soal). Jawaban salah -> soal
+   TERTAHAN sampai benar (soal yang sama tetap tampil). Kesulitan naik:
+   soal 1-20 tambah/kurang, 21-35 kali, 36+ bagi.
+3. **Panen dengan PUNCH** — tidak lewat menu/klik plot. Tombol PUNCH besar
+   muncul di layar saat pemain dekat tanaman siap-panen miliknya; hasil
+   panen terpental fisik (memantul, bunyi, partikel); kombo pukulan beruntun
+   (x4, x8) memperbesar efek + suara. Hasil diambil dengan menyentuh drop.
+4. **Tas penuh = hasil melayang** — drop yang tidak muat melayang (anchor +
+   bob tween) dengan label "Tas Penuh! Ke Gudang" dan TIDAK bisa diambil
+   sampai tas ada ruang.
+5. **Gudang hasil panen** — bangunan baru di tiap lahan (rak penuh peti,
+   karung, pot). Setor 1-250 buah = memakai 1 tampungan dari 1000 (250 ->
+   sisa 999 -> 998, persis contoh pemilik, terverifikasi simulasi + test).
+   Ambil kembali per slot (semua / 100). Gudang persisten per dunia
+   (AKM_Dunia field gd, sanitasi GudangLogic).
+6. Perbaikan lanjutan laporan lama: tombol perjalanan cepat "Masuk/Pulang"
+   di HUD (balik lahan tidak lagi tergantung gerbang), teleport diperkuat
+   (placeWait + settle streaming 0,8 dtk + gagal-aman 8 dtk), beli benih
+   longgar (radius 45, batas laju 10), rak toko tambah buah + karung + pot,
+   gabung benih tetap HANYA di lahan: sesi benih pasangan mengubah plot
+   yang berisi pasangan resepnya; pusat kota tetap hanya Toko Benih.
 
-Akar masalah yang DIBUKTIKAN playtest (dan diperbaiki):
-1. UI klien MATI sejak v27-v29: init.client hanya print, UIController tidak
-   pernah di-require -> panel toko, tombol beli, tombol masuk dunia tidak ada
-   di lapangan. Ini penyebab laporan pemilik "beli benih gak bisa" dan "gak
-   bisa balik dunia lahan". (Faktanya juga: UIController tidak mengembalikan
-   nilai sehingga require-nya akan selalu gagal di Roblox asli.)
-2. 500 plot per lahan dibangun TANPA offset 5000 stud -> menumpuk di Pusat
-   Kota, lahan tidak punya tanah yang bisa diklik -> tanam/gabung mustahil
-   lewat klik, kota penuh kotak tanah liar. (Faktor lag juga.)
-3. PlotService.startLoop tidak pernah dipanggil -> status "siap panen" tidak
-   pernah dikirim -> tombol Panen tidak pernah muncul di UI.
-4. Pintu toko/semai cuma lubang (melompong) -> kini pintu sungguhan dua daun
-   berengsel dengan animasi buka/tutup via prompt.
-5. Rak toko masih terasa kosong -> ditambah barisan paket benih berwarna di
-   semua rak & rak dinding, peti kayu, etalase kaca di kasir, papan BUKA,
-   poster panduan, spanduk gantung, papan promo luar, alas pintu, tumpukan
-   karung, pot tanaman tambahan.
-6. Gabung benih kini persis aturan pemilik: tanam satu benih, lalu tanam
-   pasangan resepnya DI PLOT YANG SAMA (logika Recipes.sameSpot; tetangga
-   tidak lagi otomatis menggabung). Panel plot terisi menampilkan tombol
-   Gabung untuk benih resep yang ada di tas.
-7. Teleport diperkuat anti-jatuh: tunggu RequestStreamAroundAsync selesai
-   sebelum lepas anchor, gagal-aman 5 dtk, pengawas jurang 15 dtk.
+Simulasi alur main (modul asli): 250 benih -> 25 soal (1 salah tertahan) ->
+250 plot -> panen 500 -> setor 250 (sisa 999) -> setor 250 (sisa 998) ->
+ambil (sisa 999). Tes 132 PASS / 0 FAIL, luau-lsp 0 temuan.
 
 | Kriteria | Skor | Catatan |
 |----------|------|---------|
 | 1 Kombat | 0/10 | Belum ada (sesuai urutan rencana). |
-| 2 Crafting | 2/10 | Gabung benih 8 resep kini benar-benar bisa dimainkan ujung-ke-ujung (tombol Gabung di panel plot, aturan tanam ulang di plot yang sama) dan terbukti playtest. Belum: crafting bahan lain. |
-| 3 Stat & Progresi | 0/10 | Tanpa sistem level (sesuai arah pemilik). |
-| 4 Ekonomi | 5/10 | Micda 900.000 & tas 50x250 persisten (AKM_T1); pack Common 2.400 / Rare 9.000 isi 3; jual hasil di toko; pembelian terbukti jalan lewat UI sungguhan di playtest. Belum: pasar dinamis, toko pemain. |
-| 5 Dunia & Peta | 6/10 | Pusat Kota hanya Toko Benih (aturan pemilik) dengan interior padat pernak-pernik + pintu sungguhan; plot lahan kini benar-benar berada di dunia masing-masing (5000+ stud). Belum: rumah, air, dungeon. |
-| 6 Multiplayer | 6/10 | Kunjung antar dunia instan (seksi sama) atau salinan DataStore (offline); tamu read-only terverifikasi playtest; balik ke dunia sendiri terverifikasi lewat tombol UI asli. Belum: trade, party, daftar dunia publik. |
-| 7 Bertani | 8/10 | 500 plot per dunia di koordinat benar; tumbuh 3 dtk; panen 1-10/1-6/1-4; sinkron siap-panen kini hidup (startLoop); gabung di plot yang sama; tanaman & meja persisten. |
-| 8 Polish & UX | 7/10 | UI kini benar-benar tampil (dibuktikan playtest): HUD Micda, panel toko/tas/plot/gerbang, toast, hitung mundur, tombol panen & gabung; pintu berengsel beranimasi; anti-jatuh diperkuat. Belum: BGM, animasi karakter, partikel. |
-| 9 Originalitas | 10/10 | 100% karya sendiri; tanpa require ID, loadstring, getfenv, HttpService. |
+| 2 Crafting | 2/10 | Gabung benih 8 resep kini lewat Papan Tanam (sesi benih pasangan mengubah plot berisi A); tetap tanpa crafting lain. |
+| 3 Stat & Progresi | 1/10 | Tanpa level (sesuai arah pemilik), tapi soal matematika bertingkat kini jadi gerbang progres tanam (mini-edukasi). |
+| 4 Ekonomi | 5/10 | Micda 900.000 & tas 50x250 persisten; pack Common/Rare; jual hasil; GUDANG 1000 tampungan x 250 buah = kapasitas penyimpanan besar baru (persisten). Belum: pasar dinamis, toko pemain. |
+| 5 Dunia & Peta | 6/10 | Kota hanya Toko Benih (aturan pemilik, rak makin penuh); tiap lahan kini punya Papan Tanam fisik + bangunan Gudang berisi pernak-pernik. Belum: rumah, air, dungeon. |
+| 6 Multiplayer | 6/10 | Kunjung instan/salinan, tamu read-only; tombol perjalanan cepat; teleport placeWait. Belum: trade, party. |
+| 7 Bertani | 9/10 | Alur tanam BARU sesuai pemilik: papan pilih benih+jumlah, auto-isi 10 plot/soal, label TERTANAM X/500 fisik, soal acak bertingkat, panen PUNCH dengan drop fisik kombo, tas penuh = melayang, gudang 1000x250. |
+| 8 Polish & UX | 8/10 | Tombol PUNCH on-screen dekat tanaman siap; drop memantul + bunyi + partikel + kombo; FOV kick pukulan; label papan & gudang hidup; panel soal/gudang/tanam baru; perjalanan cepat 1 klik. Belum: BGM, animasi karakter. |
+| 9 Originalitas | 10/10 | 100% karya sendiri; suara hanya rbxasset bawaan engine; tanpa require ID, loadstring, getfenv, HttpService. |
 
-**TOTAL: 42/100** (bobot: 0+30+0+75+60+60+80+70+50 = 425/10 = 42,5, dibulatkan
-ke bawah agar jujur)
+**TOTAL: 44/100** (bobot: 0+30+10+75+60+60+90+80+50 = 455/10 = 45,5,
+dibulatkan ke bawah agar jujur)
 
 Riwayat: v10 = 56 -> v11 = 64 -> v20 = 79 -> v21 = 80 -> v25 = 83 -> v26 = 9
-(RESET) -> v27 = 33 (TAHAP 1) -> v28 = 40 -> v29 = 39 (klaim UI belum
-terverifikasi) -> v30 = 42 (playtest otomatis, akar masalah diperbaiki,
-semua laporan pemilik dieksekusi dan dibuktikan hijau).
+(RESET) -> v27 = 33 (TAHAP 1) -> v28 = 40 -> v29 = 39 -> v30 = 42 -> v31 =
+44 (sistem tanam-panen baru sesuai blueprint pemilik).
 Celah menuju 100: kombat (15), ekonomi pemain (10), dunia lebih kaya (4),
-polish (3), multiplayer lanjut (4), crafting lanjut (13).
+polish (2), multiplayer lanjut (4), crafting lanjut (13).
 
 ## Arsitektur dunia sambung (v29) - tanpa ID manual, tanpa teleport API, anti-lag
 

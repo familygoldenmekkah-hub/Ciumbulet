@@ -10,12 +10,16 @@ local DEFINITIONS = {
         Sync = "RemoteEvent",
         PlotSync = "RemoteEvent",
         SmashSync = "RemoteEvent",
+        TanamSync = "RemoteEvent",
+        GudangSync = "RemoteEvent",
         OpenPanel = "RemoteEvent",
         GetState = "RemoteFunction",
         DuniaAct = "RemoteFunction",
         PlotAct = "RemoteFunction",
         SmashAct = "RemoteFunction",
         ShopAct = "RemoteFunction",
+        TanamAct = "RemoteFunction",
+        GudangAct = "RemoteFunction",
         RedeemDevCode = "RemoteFunction",
 }
 

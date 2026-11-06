@@ -1,5 +1,4 @@
 local Workspace = game:GetService("Workspace")
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local CropData = require(ReplicatedStorage.Shared.CropData)
@@ -8,12 +7,14 @@ local Recipes = require(ReplicatedStorage.Shared.Recipes)
 
 local PlotService = {}
 
-local Land, Tas, Net, World
+local Land, Net, World, Drop
 local rng = Random.new()
 
 local folders: { [number]: Folder } = {}
 local planted: { [number]: { [number]: any } } = {}
 local running: { [number]: boolean } = {}
+local boards: { [number]: TextLabel } = {}
+local combo: { [number]: { t: number, n: number } } = {}
 
 local RARITY_COLOR = {
         common = Color3.fromRGB(76, 145, 65),
@@ -23,9 +24,9 @@ local RARITY_COLOR = {
 
 function PlotService.bind(deps)
         Land = deps.Land
-        Tas = deps.Tas
         Net = deps.Net
         World = deps.World
+        Drop = deps.Drop
 end
 
 local function plotPos(index: number, idx: number): Vector3
@@ -38,7 +39,7 @@ local function now(): number
         return Workspace:GetServerTimeNow()
 end
 
-local function sync(player: Player, index: number, idx: number)
+local function payloadOf(index: number, idx: number): any
         local rec = planted[index] and planted[index][idx]
         local st = "kosong"
         local crop, readyAt
@@ -47,13 +48,17 @@ local function sync(player: Player, index: number, idx: number)
                 readyAt = rec.readyAt
                 st = now() >= rec.readyAt and "siap" or "tumbuh"
         end
-        Net.get("PlotSync"):FireClient(player, {
+        return {
                 lahan = index,
                 idx = idx,
                 st = st,
                 crop = crop,
                 readyAt = readyAt,
-        })
+        }
+end
+
+local function syncAll(index: number, idx: number)
+        Net.get("PlotSync"):FireAllClients(payloadOf(index, idx))
 end
 
 local function makePlantModel(index: number, idx: number, cropId: string): Model
@@ -118,9 +123,13 @@ end
 function PlotService.clearGrid(index: number)
         running[index] = false
         planted[index] = nil
+        combo = {}
         if folders[index] then
                 folders[index]:Destroy()
                 folders[index] = nil
+        end
+        if boards[index] then
+                boards[index] = nil
         end
 end
 
@@ -133,6 +142,34 @@ function PlotService.stateOf(index: number, idx: number): string
                 return "siap"
         end
         return "tumbuh"
+end
+
+function PlotService.filledCount(index: number): number
+        local n = 0
+        local pl = planted[index]
+        if pl then
+                for _ in pairs(pl) do
+                        n += 1
+                end
+        end
+        return n
+end
+
+function PlotService.plotTotal(): number
+        return Layout.plotCount()
+end
+
+function PlotService.setBoard(index: number, label: TextLabel)
+        boards[index] = label
+        PlotService.updateBoard(index)
+end
+
+function PlotService.updateBoard(index: number)
+        local label = boards[index]
+        if not label then
+                return
+        end
+        label.Text = "TERTANAM " .. PlotService.filledCount(index) .. "/" .. Layout.plotCount()
 end
 
 function PlotService.startLoop(index: number)
@@ -153,9 +190,7 @@ function PlotService.startLoop(index: number)
                                                         head.Size = Vector3.new(3, 2, 3)
                                                         head.Position = plotPos(index, idx) + Vector3.new(0, 3, 0)
                                                 end
-                                                for _, p in ipairs(Players:GetPlayers()) do
-                                                        sync(p, index, idx)
-                                                end
+                                                syncAll(index, idx)
                                         end
                                 end
                         end
@@ -163,38 +198,46 @@ function PlotService.startLoop(index: number)
         end)
 end
 
-function PlotService.plant(player: Player, idx: number, cropId: string): (boolean, string)
-        local index = Land.landOf(player)
-        if not index then
-                return false, "Kamu tidak punya lahan."
-        end
-        if type(idx) ~= "number" or idx < 0 or idx >= Layout.plotCount() then
-                return false, "Plot tidak sah."
-        end
-        local info = CropData.byId[cropId]
-        if not info then
-                return false, "Tanaman tidak dikenal."
-        end
+function PlotService.scanTargets(index: number, cropId: string): { number }
         local pl = planted[index]
         if not pl then
-                return false, "Lahan belum siap."
+                return {}
         end
-        local char = player.Character
-        local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
-        if not root or (root.Position - plotPos(index, idx)).Magnitude > 48 then
-                return false, "Terlalu jauh dari plot."
+        local kosong, pasangan = {}, {}
+        for idx = 0, Layout.plotCount() - 1 do
+                local rec = pl[idx]
+                if not rec then
+                        table.insert(kosong, idx)
+                elseif now() < rec.readyAt then
+                        if Recipes.sameSpot(rec.crop, cropId) then
+                                table.insert(pasangan, idx)
+                        end
+                end
+        end
+        local out = {}
+        for _, i in ipairs(pasangan) do
+                table.insert(out, i)
+        end
+        for _, i in ipairs(kosong) do
+                table.insert(out, i)
+        end
+        return out
+end
+
+function PlotService.fillPlot(index: number, idx: number, cropId: string): boolean
+        local pl = planted[index]
+        if not pl then
+                return false
+        end
+        if type(idx) ~= "number" or idx < 0 or idx >= Layout.plotCount() or not CropData.byId[cropId] then
+                return false
         end
         local rec = pl[idx]
         if rec then
                 local pasangan = Recipes.sameSpot(rec.crop, cropId)
                 if not pasangan then
-                        return false, "Plot masih terisi. Untuk gabung benih, tanam benih pasangan resep di plot yang sama."
+                        return false
                 end
-                if Tas.count(player, "benih", cropId) < 1 then
-                        return false, "Benih tidak ada di tas."
-                end
-                Tas.remove(player, "benih", cropId, 1)
-                local namaLama = CropData.byId[rec.crop].nama
                 if rec.model then
                         rec.model:Destroy()
                 end
@@ -202,36 +245,28 @@ function PlotService.plant(player: Player, idx: number, cropId: string): (boolea
                 rec.readyAt = now() + CropData.GrowTime
                 rec.ready = false
                 rec.model = makePlantModel(index, idx, pasangan)
-                if World then
-                        World.touch(index)
-                end
-                sync(player, index, idx)
-                return true, "Gabung benih: " .. namaLama .. " + " .. info.nama .. " menjadi " .. CropData.byId[pasangan].nama .. "!"
+        else
+                pl[idx] = {
+                        crop = cropId,
+                        readyAt = now() + CropData.GrowTime,
+                        model = makePlantModel(index, idx, cropId),
+                        ready = false,
+                }
         end
-        if Tas.count(player, "benih", cropId) < 1 then
-                return false, "Benih tidak ada di tas."
-        end
-        Tas.remove(player, "benih", cropId, 1)
-        local model = makePlantModel(index, idx, cropId)
-        pl[idx] = {
-                crop = cropId,
-                readyAt = now() + CropData.GrowTime,
-                model = model,
-                ready = false,
-        }
         if World then
                 World.touch(index)
         end
-        sync(player, index, idx)
-        return true, "Ditanam."
+        syncAll(index, idx)
+        PlotService.updateBoard(index)
+        return true
 end
 
-function PlotService.harvest(player: Player, idx: number): (boolean, string)
+function PlotService.punch(player: Player, idx: any): (boolean, string)
         local index = Land.landOf(player)
         if not index then
                 return false, "Kamu tidak punya lahan."
         end
-        if type(idx) ~= "number" or idx < 0 or idx >= Layout.plotCount() then
+        if type(idx) ~= "number" or idx ~= idx or idx % 1 ~= 0 or idx < 0 or idx >= Layout.plotCount() then
                 return false, "Plot tidak sah."
         end
         local rec = planted[index] and planted[index][idx]
@@ -239,27 +274,46 @@ function PlotService.harvest(player: Player, idx: number): (boolean, string)
                 return false, "Plot kosong."
         end
         if now() < rec.readyAt then
-                return false, "Belum siap panen."
+                return false, "Belum siap panen. Pukul tanaman yang sudah siap."
         end
         local char = player.Character
         local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
-        if not root or (root.Position - plotPos(index, idx)).Magnitude > 48 then
-                return false, "Terlalu jauh dari plot."
+        if not root or (root.Position - plotPos(index, idx)).Magnitude > 26 then
+                return false, "Terlalu jauh. Dekati tanaman itu."
+        end
+        local t = now()
+        local c = combo[player.UserId]
+        if c and t - c.t <= 4 then
+                c.n += 1
+                c.t = t
+        else
+                c = { t = t, n = 1 }
+                combo[player.UserId] = c
+        end
+        local tier = 1
+        if c.n >= 8 then
+                tier = 3
+        elseif c.n >= 4 then
+                tier = 2
         end
         local info = CropData.byId[rec.crop]
         local y = CropData.Yield[info.rarity]
         local jumlah = rng:NextInteger(y.min, y.max)
-        if Tas.roomFor(player, "hasil", rec.crop, jumlah) < jumlah then
-                return false, "Tas penuh! Kosongkan slot dulu."
+        if Drop then
+                Drop.spawn(index, plotPos(index, idx) + Vector3.new(0, 2.6, 0), rec.crop, jumlah, c.n, tier)
         end
         rec.model:Destroy()
         planted[index][idx] = nil
-        Tas.add(player, "hasil", rec.crop, jumlah)
         if World then
                 World.touch(index)
         end
-        sync(player, index, idx)
-        return true, "Panen " .. jumlah .. " " .. info.nama .. "."
+        syncAll(index, idx)
+        PlotService.updateBoard(index)
+        local pesan = "Panen " .. jumlah .. " " .. info.nama .. "!"
+        if c.n >= 2 then
+                pesan ..= " Kombo x" .. c.n .. "!"
+        end
+        return true, pesan
 end
 
 function PlotService.serialize(index: number): { [number]: { c: string, r: number } }

@@ -268,6 +268,161 @@ do
         end)(), "-")
 end
 
+print("--- Soal matematika tanam ---")
+do
+        local SoalLogic = require("./../src/Shared/SoalLogic")
+        local function shimRng(seed: number)
+                local s = seed % 2147483647
+                if s == 0 then
+                        s = 12345
+                end
+                return {
+                        NextInteger = function(_, a: number, b: number)
+                                s = (s * 48271) % 2147483647
+                                return a + (s % (b - a + 1))
+                        end,
+                        NextNumber = function(_)
+                                s = (s * 48271) % 2147483647
+                                return s / 2147483647
+                        end,
+                }
+        end
+        local rng = shimRng(2026)
+        local q1 = SoalLogic.buat(rng, 1, {})
+        check("Soal punya teks dan jawab angka", type(q1.teks) == "string" and type(q1.jawab) == "number", tostring(q1.teks))
+        local stageOk = true
+        local u = {}
+        for nomor = 1, 20 do
+                local q = SoalLogic.buat(rng, nomor, u)
+                if q.op ~= "tambah" and q.op ~= "kurang" then
+                        stageOk = false
+                end
+        end
+        for nomor = 21, 35 do
+                local q = SoalLogic.buat(rng, nomor, u)
+                if q.op ~= "kali" then
+                        stageOk = false
+                end
+        end
+        for nomor = 36, 60 do
+                local q = SoalLogic.buat(rng, nomor, u)
+                if q.op ~= "bagi" then
+                        stageOk = false
+                end
+        end
+        check("Kesulitan naik: tambah/kurang lalu kali lalu bagi", stageOk, "-")
+        check("Jawaban tambah benar", (function()
+                for _ = 1, 40 do
+                        local q = SoalLogic.buat(rng, 1, {})
+                        if q.op == "tambah" and q.jawab ~= q.a + q.b then
+                                return false
+                        end
+                end
+                return true
+        end)(), "-")
+        check("Kurang tidak pernah minus", (function()
+                for _ = 1, 60 do
+                        local q = SoalLogic.buat(rng, 2, {})
+                        if q.op == "kurang" and (q.jawab < 0 or q.jawab ~= q.a - q.b) then
+                                return false
+                        end
+                end
+                return true
+        end)(), "-")
+        check("Jawaban kali benar", (function()
+                for _ = 1, 40 do
+                        local q = SoalLogic.buat(rng, 25, {})
+                        if q.jawab ~= q.a * q.b then
+                                return false
+                        end
+                end
+                return true
+        end)(), "-")
+        check("Bagi selalu habis dibagi", (function()
+                for _ = 1, 40 do
+                        local q = SoalLogic.buat(rng, 40, {})
+                        if q.b == 0 or q.a % q.b ~= 0 or q.jawab ~= q.a / q.b then
+                                return false
+                        end
+                end
+                return true
+        end)(), "-")
+        check("Soal tidak pernah sama dalam satu sesi", (function()
+                local used2 = {}
+                local tanda = {}
+                local rng2 = shimRng(777)
+                local nomor = 1
+                for _ = 1, 220 do
+                        local q = SoalLogic.buat(rng2, nomor, used2)
+                        nomor = nomor % 60 + 1
+                        local k = q.op .. q.a .. "_" .. q.b
+                        if tanda[k] then
+                                return false
+                        end
+                        tanda[k] = true
+                end
+                return true
+        end)(), "-")
+        check("Soal beda antar pemain", (function()
+                local u1, u2 = {}, {}
+                local r1, r2 = shimRng(11), shimRng(42)
+                local beda = false
+                for _ = 1, 12 do
+                        local a = SoalLogic.buat(r1, 1, u1)
+                        local b = SoalLogic.buat(r2, 1, u2)
+                        if a.teks ~= b.teks then
+                                beda = true
+                        end
+                end
+                return beda
+        end)(), "-")
+end
+
+print("--- Gudang 1000 tampungan ---")
+do
+        local GudangLogic = require("./../src/Shared/GudangLogic")
+        local gd = GudangLogic.baru()
+        check("Gudang baru 0 terpakai", GudangLogic.terpakai(gd) == 0, "-")
+        local ok1 = GudangLogic.simpan(gd, "wortel", 250)
+        check("Setor 250 memakai 1 tampungan (sisa 999)", ok1 and GudangLogic.terpakai(gd) == 1, tostring(GudangLogic.terpakai(gd)))
+        GudangLogic.simpan(gd, "wortel", 250)
+        check("Setor 250 lagi (sisa 998)", GudangLogic.terpakai(gd) == 2, tostring(GudangLogic.terpakai(gd)))
+        check("Setor 300 ditolak", not GudangLogic.simpan(gd, "wortel", 300), "-")
+        check("Setor 0 ditolak", not GudangLogic.simpan(gd, "wortel", 0), "-")
+        check("Setor 1 boleh", GudangLogic.simpan(gd, "pisang", 1), "-")
+        local gdFull = GudangLogic.baru()
+        for _ = 1, 1000 do
+                GudangLogic.simpan(gdFull, "bayam", 1)
+        end
+        check("Tampungan maksimal 1000", GudangLogic.terpakai(gdFull) == 1000, tostring(GudangLogic.terpakai(gdFull)))
+        check("Setor ke-1001 ditolak", not GudangLogic.simpan(gdFull, "bayam", 1), "-")
+        local okA, _, nA = GudangLogic.ambil(gd, 1, nil)
+        check("Ambil slot 1 berisi semua isi", okA and nA == 250, tostring(nA))
+        GudangLogic.kurangi(gd, 1, nA)
+        check("Slot bebas setelah diambil semua", GudangLogic.terpakai(gd) == 2, tostring(GudangLogic.terpakai(gd)))
+        local _, _, nP = GudangLogic.ambil(gd, 1, 100)
+        GudangLogic.kurangi(gd, 1, nP)
+        check("Ambil sebagian menyisakan 150", gd.s[1].count == 150 and GudangLogic.terpakai(gd) == 2, tostring(gd.s[1].count))
+        check("Ambil lebih dari isi dibatasi", (function()
+                local _, _, n = GudangLogic.ambil(gd, 1, 999)
+                return n == 150
+        end)(), "-")
+        check("Slot kosong ditolak", not GudangLogic.ambil(gd, 99, nil), "-")
+        local ser = GudangLogic.ser(gd)
+        local des = GudangLogic.des(ser)
+        check("Serialize gudang roundtrip", des.s[1].id == "wortel" and des.s[1].count == 150 and GudangLogic.terpakai(des) == 2, "-")
+        check("Deserialize tolak data rusak", GudangLogic.terpakai(GudangLogic.des({ { id = 9, count = 5 }, { id = "wortel", count = "x" }, { id = "pisang", count = 40 } })) == 1, tostring(GudangLogic.terpakai(GudangLogic.des({ { id = 9, count = 5 }, { id = "wortel", count = "x" }, { id = "pisang", count = 40 } }))))
+        check("Deserialize batasi 1000 slot", (function()
+                local banyak = {}
+                for _ = 1, 1200 do
+                        table.insert(banyak, { id = "bayam", count = 1 })
+                end
+                return GudangLogic.terpakai(GudangLogic.des(banyak)) == 1000
+        end)(), "-")
+        check("Deserialize data hilang tetap aman", GudangLogic.terpakai(GudangLogic.des(nil)) == 0, "-")
+        check("Batas gudang 1000 x 250", GudangLogic.MaksSlot == 1000 and GudangLogic.MaksIsi == 250, "-")
+end
+
 print(("="):rep(28))
 print(string.format("HASIL: %d PASS, %d FAIL", passed, failed))
 if failed > 0 then

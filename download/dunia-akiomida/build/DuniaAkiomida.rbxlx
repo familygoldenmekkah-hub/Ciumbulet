@@ -36,12 +36,16 @@ local DEFINITIONS = {
         Sync = "RemoteEvent",
         PlotSync = "RemoteEvent",
         SmashSync = "RemoteEvent",
+        TanamSync = "RemoteEvent",
+        GudangSync = "RemoteEvent",
         OpenPanel = "RemoteEvent",
         GetState = "RemoteFunction",
         DuniaAct = "RemoteFunction",
         PlotAct = "RemoteFunction",
         SmashAct = "RemoteFunction",
         ShopAct = "RemoteFunction",
+        TanamAct = "RemoteFunction",
+        GudangAct = "RemoteFunction",
         RedeemDevCode = "RemoteFunction",
 }
 
@@ -276,6 +280,98 @@ return DuniaLogic
       </Item>
       <Item class="ModuleScript" referent="6">
         <Properties>
+          <string name="Name">GudangLogic</string>
+          <string name="Source"><![CDATA[local GudangLogic = {}
+
+GudangLogic.MaksSlot = 1000
+GudangLogic.MaksIsi = 250
+
+function GudangLogic.baru(): { s: { { id: string, count: number } } }
+	return { s = {} }
+end
+
+function GudangLogic.terpakai(gd: any): number
+	if type(gd) ~= "table" or type(gd.s) ~= "table" then
+		return 0
+	end
+	return #gd.s
+end
+
+function GudangLogic.simpan(gd: any, id: any, n: any): (boolean, string)
+	if type(id) ~= "string" or #id == 0 or #id > 40 then
+		return false, "Barang tidak sah."
+	end
+	if type(n) ~= "number" or n ~= n or n % 1 ~= 0 or n < 1 or n > GudangLogic.MaksIsi then
+		return false, "Jumlah setor harus 1 sampai 250."
+	end
+	if GudangLogic.terpakai(gd) >= GudangLogic.MaksSlot then
+		return false, "Gudang penuh! Tampungan 1000 sudah habis."
+	end
+	table.insert(gd.s, { id = id, count = n })
+	return true, "Tampungan terpakai " .. GudangLogic.terpakai(gd) .. "/" .. GudangLogic.MaksSlot .. " (sisa " .. GudangLogic.MaksSlot - GudangLogic.terpakai(gd) .. ")."
+end
+
+function GudangLogic.ambil(gd: any, i: any, n: any): (boolean, string, number)
+	if type(i) ~= "number" or i ~= i or i % 1 ~= 0 or i < 1 or i > GudangLogic.terpakai(gd) then
+		return false, "Slot gudang tidak ada.", 0
+	end
+	local s = gd.s[i]
+	if type(n) ~= "number" or n ~= n or n % 1 ~= 0 or n < 1 then
+		n = s.count
+	end
+	n = math.max(1, math.min(math.floor(n), s.count, GudangLogic.MaksIsi))
+	return true, "OK", n
+end
+
+function GudangLogic.kurangi(gd: any, i: number, n: number)
+	local s = gd.s[i]
+	if not s then
+		return
+	end
+	s.count -= n
+	if s.count <= 0 then
+		table.remove(gd.s, i)
+	end
+end
+
+function GudangLogic.ser(gd: any): { { id: string, count: number } }
+	local out = {}
+	if type(gd) ~= "table" or type(gd.s) ~= "table" then
+		return out
+	end
+	for _, s in ipairs(gd.s) do
+		if #out >= GudangLogic.MaksSlot then
+			break
+		end
+		if type(s) == "table" and type(s.id) == "string" and #s.id <= 40 and type(s.count) == "number" and s.count == s.count and s.count >= 1 then
+			table.insert(out, { id = s.id, count = math.min(GudangLogic.MaksIsi, math.floor(s.count)) })
+		end
+	end
+	return out
+end
+
+function GudangLogic.des(x: any): { s: { { id: string, count: number } } }
+	local gd = GudangLogic.baru()
+	if type(x) ~= "table" then
+		return gd
+	end
+	for _, s in ipairs(x) do
+		if #gd.s >= GudangLogic.MaksSlot then
+			break
+		end
+		if type(s) == "table" and type(s.id) == "string" and #s.id <= 40 and type(s.count) == "number" and s.count == s.count and s.count >= 1 then
+			table.insert(gd.s, { id = s.id, count = math.min(GudangLogic.MaksIsi, math.floor(s.count)) })
+		end
+	end
+	return gd
+end
+
+return GudangLogic
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="7">
+        <Properties>
           <string name="Name">Layout</string>
           <string name="Source"><![CDATA[local Layout = {}
 
@@ -321,7 +417,7 @@ return Layout
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="7">
+      <Item class="ModuleScript" referent="8">
         <Properties>
           <string name="Name">Recipes</string>
           <string name="Source"><![CDATA[local Recipes = {}
@@ -375,7 +471,65 @@ return Recipes
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="8">
+      <Item class="ModuleScript" referent="9">
+        <Properties>
+          <string name="Name">SoalLogic</string>
+          <string name="Source"><![CDATA[local SoalLogic = {}
+
+local function sig(op: string, a: number, b: number): string
+	return op .. ":" .. a .. ":" .. b
+end
+
+function SoalLogic.buat(rng: Random, nomor: number, used: { [string]: boolean }): { teks: string, jawab: number, op: string, a: number, b: number }
+	local op: string
+	if nomor <= 20 then
+		op = rng:NextNumber() < 0.5 and "tambah" or "kurang"
+	elseif nomor <= 35 then
+		op = "kali"
+	else
+		op = "bagi"
+	end
+	local a, b, jawab = 2, 2, 4
+	for _ = 1, 80 do
+		if op == "tambah" then
+			a = rng:NextInteger(12, 99)
+			b = rng:NextInteger(7, 99)
+			jawab = a + b
+		elseif op == "kurang" then
+			a = rng:NextInteger(25, 99)
+			b = rng:NextInteger(6, a - 2)
+			jawab = a - b
+		elseif op == "kali" then
+			a = rng:NextInteger(3, 15)
+			b = rng:NextInteger(3, 12)
+			jawab = a * b
+		else
+			b = rng:NextInteger(3, 12)
+			local hasil = rng:NextInteger(3, 15)
+			a = b * hasil
+			jawab = hasil
+		end
+		if not used[sig(op, a, b)] then
+			used[sig(op, a, b)] = true
+			break
+		end
+	end
+	local tanda = "+"
+	if op == "kurang" then
+		tanda = "-"
+	elseif op == "kali" then
+		tanda = "×"
+	elseif op == "bagi" then
+		tanda = "÷"
+	end
+	return { teks = tostring(a) .. " " .. tanda .. " " .. tostring(b) .. " = ?", jawab = jawab, op = op, a = a, b = b }
+end
+
+return SoalLogic
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="10">
         <Properties>
           <string name="Name">TasLogic</string>
           <string name="Source"><![CDATA[export type Slot = { kind: string, id: string, count: number }
@@ -478,11 +632,11 @@ return TasLogic
       </Item>
     </Item>
   </Item>
-  <Item class="ServerScriptService" referent="9">
+  <Item class="ServerScriptService" referent="11">
     <Properties>
       <string name="Name">ServerScriptService</string>
     </Properties>
-    <Item class="Script" referent="10">
+    <Item class="Script" referent="12">
       <Properties>
         <string name="Name">Server</string>
         <token name="RunContext">0</token>
@@ -501,60 +655,94 @@ local PlotService = require(Modules.PlotService)
 local SmashService = require(Modules.SmashService)
 local ShopService = require(Modules.ShopService)
 local ZonaService = require(Modules.ZonaService)
+local TanamService = require(Modules.TanamService)
+local GudangService = require(Modules.GudangService)
+local DropService = require(Modules.DropService)
 local WorldBuilder = require(Modules.WorldBuilder)
 
 Net.init()
 
 local function notify(player: Player, title: string, msg: string)
-        Net.get("Notify"):FireClient(player, title, msg)
+	Net.get("Notify"):FireClient(player, title, msg)
 end
 
 local deps = {
-        Land = LandService,
-        Tas = TasService,
-        Data = DataService,
-        Net = Net,
-        Notify = notify,
-        Plot = PlotService,
-        Smash = SmashService,
-        World = ZonaService,
+	Land = LandService,
+	Tas = TasService,
+	Data = DataService,
+	Net = Net,
+	Notify = notify,
+	Plot = PlotService,
+	Smash = SmashService,
+	World = ZonaService,
+	Tanam = TanamService,
+	Gudang = GudangService,
+	Drop = DropService,
 }
 TasService.bind(DataService)
 PlotService.bind(deps)
 SmashService.bind(deps)
 ShopService.bind(deps)
 ZonaService.bind(deps)
+TanamService.bind(deps)
+GudangService.bind(deps)
+DropService.bind(deps)
 
 local function openSemai(player: Player, lahanIdx: number)
-        if LandService.ownerOf(lahanIdx) ~= player.UserId then
-                notify(player, "Semai Panen", "Hanya pemilik dunia yang bisa memakai meja ini.")
-                return
-        end
-        SmashService.syncTo(player, lahanIdx)
-        Net.get("OpenPanel"):FireClient(player, "semai", { lahan = lahanIdx })
+	if LandService.ownerOf(lahanIdx) ~= player.UserId then
+		notify(player, "Semai Panen", "Hanya pemilik dunia yang bisa memakai meja ini.")
+		return
+	end
+	SmashService.syncTo(player, lahanIdx)
+	Net.get("OpenPanel"):FireClient(player, "semai", { lahan = lahanIdx })
+end
+
+local function openTanam(player: Player, lahanIdx: number)
+	if LandService.ownerOf(lahanIdx) ~= player.UserId then
+		notify(player, "Papan Tanam", "Hanya pemilik dunia yang bisa menanam di sini.")
+		return
+	end
+	TanamService.syncTo(player)
+	Net.get("OpenPanel"):FireClient(player, "tanam", {})
+end
+
+local function openGudang(player: Player, lahanIdx: number)
+	if LandService.ownerOf(lahanIdx) ~= player.UserId then
+		notify(player, "Gudang", "Hanya pemilik dunia yang bisa memakai gudang ini.")
+		return
+	end
+	GudangService.syncTo(player, lahanIdx)
+	Net.get("OpenPanel"):FireClient(player, "gudang", {})
 end
 
 local function openShop(player: Player)
-        if not ShopService.near(player, 35) then
-                notify(player, "Toko Benih", "Dekati kasir atau rak benih dulu.")
-                return
-        end
-        Net.get("OpenPanel"):FireClient(player, "toko", {})
+	if not ShopService.near(player, 45) then
+		notify(player, "Toko Benih", "Dekati kasir atau rak benih dulu.")
+		return
+	end
+	Net.get("OpenPanel"):FireClient(player, "toko", {})
 end
 
 local hooks = {
-        onSemaiPrompt = openSemai,
-        onShopPrompt = openShop,
-        onGerbangDunia = function(player: Player)
-                Net.get("OpenPanel"):FireClient(player, "gerbang", {})
-        end,
-        onPulang = function(player: Player)
-                ZonaService.pulang(player)
-        end,
-        registerTable = SmashService.registerTable,
-        setShopPoint = ShopService.setShopPoint,
-        registerKota = LandService.registerKota,
-        registerUmum = LandService.registerUmum,
+	onSemaiPrompt = openSemai,
+	onShopPrompt = openShop,
+	onGerbangDunia = function(player: Player)
+		Net.get("OpenPanel"):FireClient(player, "gerbang", {})
+	end,
+	onPulang = function(player: Player)
+		ZonaService.pulang(player)
+	end,
+	onPapanPrompt = openTanam,
+	onGudangPrompt = openGudang,
+	registerTable = SmashService.registerTable,
+	setShopPoint = ShopService.setShopPoint,
+	registerBoard = function(index: number, label: TextLabel, pos: Vector3)
+		PlotService.setBoard(index, label)
+		TanamService.setPoint(index, pos)
+	end,
+	setGudangPoint = GudangService.setPoint,
+	registerKota = LandService.registerKota,
+	registerUmum = LandService.registerUmum,
 }
 ZonaService.setHooks(hooks)
 DataService.setZoneProvider(ZonaService.zoneOf)
@@ -562,167 +750,190 @@ DataService.setZoneProvider(ZonaService.zoneOf)
 WorldBuilder.buildHub(hooks)
 
 local function applySpawn(player: Player)
-        local target = LandService.kotaSpawn() or LandService.umumSpawn()
-        if target then
-                player.RespawnLocation = target
-        end
+	local target = LandService.kotaSpawn() or LandService.umumSpawn()
+	if target then
+		player.RespawnLocation = target
+	end
 end
 
 local function enterServer(player: Player)
-        local ok = DataService.load(player)
-        local leaderstats = Instance.new("Folder")
-        leaderstats.Name = "leaderstats"
-        local micda = Instance.new("IntValue")
-        micda.Name = "Micda"
-        local d = DataService.get(player)
-        micda.Value = d and math.floor(d.m) or 0
-        micda.Parent = leaderstats
-        leaderstats.Parent = player
-        applySpawn(player)
-        DataService.push(player)
-        task.delay(4, function()
-                if player.Parent then
-                        if ok then
-                                notify(player, "Pusat Kota", "Selamat datang! Lewati Gerbang Dunia untuk masuk ke duniamu sendiri.")
-                        else
-                                notify(player, "Mode Sesi", "Progres sementara hanya tersimpan di sesi ini.")
-                        end
-                end
-        end)
+	local ok = DataService.load(player)
+	local leaderstats = Instance.new("Folder")
+	leaderstats.Name = "leaderstats"
+	local micda = Instance.new("IntValue")
+	micda.Name = "Micda"
+	local d = DataService.get(player)
+	micda.Value = d and math.floor(d.m) or 0
+	micda.Parent = leaderstats
+	leaderstats.Parent = player
+	applySpawn(player)
+	DataService.push(player)
+	task.delay(4, function()
+		if player.Parent then
+			if ok then
+				notify(player, "Pusat Kota", "Selamat datang! Lewati Gerbang Dunia atau tombol Masuk untuk ke duniamu. Tanam lewat Papan Tanam, panen dengan Punch!")
+			else
+				notify(player, "Mode Sesi", "Progres sementara hanya tersimpan di sesi ini.")
+			end
+		end
+	end)
 end
 
 local function onPlayerAdded(player: Player)
-        enterServer(player)
+	enterServer(player)
 end
 
 Players.PlayerAdded:Connect(onPlayerAdded)
 for _, p in ipairs(Players:GetPlayers()) do
-        task.spawn(onPlayerAdded, p)
+	task.spawn(onPlayerAdded, p)
 end
 
 Players.PlayerRemoving:Connect(function(player)
-        ZonaService.leaveGame(player)
-        DataService.save(player)
-        RateLimit.clear(player.UserId)
-        DataService.drop(player)
+	TanamService.leave(player)
+	ZonaService.leaveGame(player)
+	DataService.save(player)
+	RateLimit.clear(player.UserId)
+	DataService.drop(player)
 end)
 
 game:BindToClose(function()
-        ZonaService.shutdown()
-        for _, p in ipairs(Players:GetPlayers()) do
-                DataService.save(p)
-        end
+	ZonaService.shutdown()
+	for _, p in ipairs(Players:GetPlayers()) do
+		DataService.save(p)
+	end
 end)
 
 Net.get("GetState").OnServerInvoke = function(player)
-        local d = DataService.get(player)
-        if not d then
-                return nil
-        end
-        local zone, dunia = ZonaService.zoneOf(player)
-        local lahan = LandService.landOf(player)
-        local role = "hub"
-        if zone == "dunia" then
-                role = lahan and "pemilik" or "tamu"
-        end
-        return {
-                micda = math.floor(d.m),
-                tas = d.t,
-                lahan = lahan,
-                zone = zone,
-                role = role,
-                dunia = dunia,
-        }
+	local d = DataService.get(player)
+	if not d then
+		return nil
+	end
+	local zone, dunia = ZonaService.zoneOf(player)
+	local lahan = LandService.landOf(player)
+	local role = "hub"
+	if zone == "dunia" then
+		role = lahan and "pemilik" or "tamu"
+	end
+	return {
+		micda = math.floor(d.m),
+		tas = d.t,
+		lahan = lahan,
+		zone = zone,
+		role = role,
+		dunia = dunia,
+	}
 end
 
 Net.get("DuniaAct").OnServerInvoke = function(player, action, arg)
-        if not RateLimit.allow(player.UserId, "dunia", 2, 3) then
-                return false, "Terlalu cepat."
-        end
-        if action == "masuk" then
-                return ZonaService.masuk(player)
-        elseif action == "kunjungi" then
-                return ZonaService.visit(player, arg)
-        elseif action == "pulang" then
-                return ZonaService.pulang(player)
-        end
-        return false, "Aksi tidak dikenal."
+	if not RateLimit.allow(player.UserId, "dunia", 2, 3) then
+		return false, "Terlalu cepat."
+	end
+	if action == "masuk" then
+		return ZonaService.masuk(player)
+	elseif action == "kunjungi" then
+		return ZonaService.visit(player, arg)
+	elseif action == "pulang" then
+		return ZonaService.pulang(player)
+	end
+	return false, "Aksi tidak dikenal."
 end
 
-Net.get("PlotAct").OnServerInvoke = function(player, idx, action, cropId)
-        if not RateLimit.allow(player.UserId, "plot", 6, 8) then
-                return false, "Terlalu cepat."
-        end
-        local deny = ZonaService.mutationDeny(player)
-        if deny then
-                return false, deny
-        end
-        if action == "plant" then
-                return PlotService.plant(player, idx, cropId)
-        elseif action == "harvest" then
-                return PlotService.harvest(player, idx)
-        end
-        return false, "Aksi tidak dikenal."
+Net.get("PlotAct").OnServerInvoke = function(player, idx, action)
+	if not RateLimit.allow(player.UserId, "punch", 6, 10) then
+		return false, "Terlalu cepat."
+	end
+	if action == "punch" then
+		return PlotService.punch(player, idx)
+	end
+	return false, "Aksi tidak dikenal."
+end
+
+Net.get("TanamAct").OnServerInvoke = function(player, action, a, b)
+	if not RateLimit.allow(player.UserId, "tanam", 3, 6) then
+		return false, "Terlalu cepat."
+	end
+	if action == "start" then
+		return TanamService.start(player, a, b)
+	elseif action == "jawab" then
+		return TanamService.jawab(player, a)
+	elseif action == "status" then
+		return true, TanamService.statusPayload(player)
+	elseif action == "batal" then
+		return TanamService.batal(player)
+	end
+	return false, "Aksi tidak dikenal."
+end
+
+Net.get("GudangAct").OnServerInvoke = function(player, action, a, b)
+	if not RateLimit.allow(player.UserId, "gudang", 3, 6) then
+		return false, "Terlalu cepat."
+	end
+	if action == "simpan" then
+		return GudangService.simpan(player, a, b)
+	elseif action == "ambil" then
+		return GudangService.ambil(player, a, b)
+	end
+	return false, "Aksi tidak dikenal."
 end
 
 Net.get("SmashAct").OnServerInvoke = function(player, action, arg)
-        if not RateLimit.allow(player.UserId, "smash", 5, 8) then
-                return false, "Terlalu cepat."
-        end
-        local deny = ZonaService.mutationDeny(player)
-        if deny then
-                return false, deny
-        end
-        if action == "place" then
-                return SmashService.place(player, arg)
-        elseif action == "hit" then
-                return SmashService.hit(player, arg)
-        elseif action == "take" then
-                return SmashService.take(player, arg)
-        end
-        return false, "Aksi tidak dikenal."
+	if not RateLimit.allow(player.UserId, "smash", 5, 8) then
+		return false, "Terlalu cepat."
+	end
+	local deny = ZonaService.mutationDeny(player)
+	if deny then
+		return false, deny
+	end
+	if action == "place" then
+		return SmashService.place(player, arg)
+	elseif action == "hit" then
+		return SmashService.hit(player, arg)
+	elseif action == "take" then
+		return SmashService.take(player, arg)
+	end
+	return false, "Aksi tidak dikenal."
 end
 
 Net.get("ShopAct").OnServerInvoke = function(player, action, a, b)
-        if not RateLimit.allow(player.UserId, "shop", 3, 5) then
-                return false, "Terlalu cepat."
-        end
-        if action == "buy" then
-                return ShopService.buy(player, a)
-        elseif action == "sell" then
-                return ShopService.sell(player, a, b)
-        end
-        return false, "Aksi tidak dikenal."
+	if not RateLimit.allow(player.UserId, "shop", 5, 10) then
+		return false, "Terlalu cepat."
+	end
+	if action == "buy" then
+		return ShopService.buy(player, a)
+	elseif action == "sell" then
+		return ShopService.sell(player, a, b)
+	end
+	return false, "Aksi tidak dikenal."
 end
 
 Net.get("RedeemDevCode").OnServerInvoke = function(player, code)
-        local d = DataService.get(player)
-        if not d then
-                return false, "Data belum siap."
-        end
-        if type(code) ~= "string" or code ~= DevCodeVault.CODE then
-                return false, "Kode salah."
-        end
-        if d.dev then
-                return false, "Kode sudah pernah dipakai."
-        end
-        d.dev = true
-        DataService.markDirty(player)
-        DataService.push(player)
-        return true, "Status dev aktif. Terima kasih, pemilik dunia!"
+	local d = DataService.get(player)
+	if not d then
+		return false, "Data belum siap."
+	end
+	if type(code) ~= "string" or code ~= DevCodeVault.CODE then
+		return false, "Kode salah."
+	end
+	if d.dev then
+		return false, "Kode sudah pernah dipakai."
+	end
+	d.dev = true
+	DataService.markDirty(player)
+	DataService.push(player)
+	return true, "Status dev aktif. Terima kasih, pemilik dunia!"
 end
 
 DataService.startLoops()
 ZonaService.startLoops()
 
-print("[AKIOMIDA] Pusat Kota dan dunia pribadi siap dalam satu server. Gerbang instan menunggu pemain.")
+print("[AKIOMIDA] Papan Tanam, soal matematika, panen Punch, dan Gudang siap dalam satu server.")
 ]]></string>
       </Properties>
-      <Item class="Folder" referent="11">
+      <Item class="Folder" referent="13">
         <Properties>
           <string name="Name">Modules</string>
         </Properties>
-        <Item class="ModuleScript" referent="12">
+        <Item class="ModuleScript" referent="14">
           <Properties>
             <string name="Name">BuildingKit</string>
             <string name="Source"><![CDATA[local BuildingKit = {}
@@ -1081,6 +1292,27 @@ function BuildingKit.buildToko(parent: Instance): Model
         BuildingKit.part(model, Vector3.new(2, 1.8, 2), CFrame.new(14.8, 3.2, 10.7), BAG_B, Enum.Material.Fabric)
         potPlant(model, CFrame.new(-15.5, 2.5, -12.5))
         potPlant(model, CFrame.new(15.5, 2.5, -12.5))
+        local BUAH_A = Color3.fromRGB(214, 92, 76)
+        local BUAH_B = Color3.fromRGB(226, 176, 64)
+        local BUAH_C = Color3.fromRGB(120, 168, 82)
+        local BUAH_L = { BUAH_A, BUAH_B, BUAH_C }
+        for i = 0, 5 do
+                BuildingKit.part(model, Vector3.new(0.9, 0.9, 0.9), CFrame.new(-13.4 + i * 0.95, 2.55, 12.2), BUAH_L[i % 3 + 1], Enum.Material.SmoothPlastic).CanCollide = false
+                BuildingKit.part(model, Vector3.new(0.9, 0.9, 0.9), CFrame.new(13.4 + i * 0.95, 2.55, 12.2), BUAH_L[(i + 1) % 3 + 1], Enum.Material.SmoothPlastic).CanCollide = false
+        end
+        for sx = -1, 1, 2 do
+                BuildingKit.part(model, Vector3.new(1.4, 2.6, 1.4), CFrame.new(sx * 15.5, 2.3, 14.8), Color3.fromRGB(122, 96, 58), Enum.Material.WoodPlanks)
+                BuildingKit.part(model, Vector3.new(1.5, 0.25, 1.5), CFrame.new(sx * 15.5, 3.7, 14.8), FLOORWOOD, Enum.Material.WoodPlanks).CanCollide = false
+                seedBag(model, CFrame.new(sx * 12.6, 1.7, 15), BAG_A)
+                seedBag(model, CFrame.new(sx * 12.6, 3.3, 15), BAG_C)
+        end
+        BuildingKit.part(model, Vector3.new(2.6, 3.2, 2.6), CFrame.new(16.8, 2.1, -12.5), Color3.fromRGB(122, 96, 58), Enum.Material.WoodPlanks)
+        BuildingKit.part(model, Vector3.new(2.7, 0.3, 2.7), CFrame.new(16.8, 3.8, -12.5), FLOORWOOD, Enum.Material.WoodPlanks).CanCollide = false
+        for i = 0, 2 do
+                seedBag(model, CFrame.new(-17 + i * 1.7, 1.5 + (i % 2) * 1.3, -17 + (i % 2) * 1.2), BUAH_L[i + 1])
+        end
+        potPlant(model, CFrame.new(19, 2.5, 2))
+        potPlant(model, CFrame.new(-19, 2.5, -6))
 
         BuildingKit.part(model, Vector3.new(6.4, 2, 1), CFrame.new(0, 11, fz), CREAM)
         hingedDoor(model, Vector3.new(3, 10, 0.5), CFrame.new(-1.5, 5, fz), Vector3.new(-1.55, 0, 0), -math.rad(105))
@@ -1133,7 +1365,7 @@ return BuildingKit
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="13">
+        <Item class="ModuleScript" referent="15">
           <Properties>
             <string name="Name">DataService</string>
             <string name="Source"><![CDATA[local Players = game:GetService("Players")
@@ -1269,7 +1501,7 @@ return DataService
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="14">
+        <Item class="ModuleScript" referent="16">
           <Properties>
             <string name="Name">DevCodeVault</string>
             <string name="Source"><![CDATA[local DevCodeVault = {}
@@ -1280,7 +1512,345 @@ return DevCodeVault
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="15">
+        <Item class="ModuleScript" referent="17">
+          <Properties>
+            <string name="Name">DropService</string>
+            <string name="Source"><![CDATA[local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+
+local CropData = require(ReplicatedStorage.Shared.CropData)
+
+local DropService = {}
+
+local Land, Tas, Notify
+
+local folders: { [number]: Folder } = {}
+local lastHint: { [number]: number } = {}
+
+local RARITY_COLOR = {
+	common = Color3.fromRGB(120, 200, 90),
+	rare = Color3.fromRGB(90, 150, 235),
+	epic = Color3.fromRGB(190, 110, 240),
+}
+
+function DropService.bind(deps)
+	Land = deps.Land
+	Tas = deps.Tas
+	Notify = deps.Notify
+end
+
+local function folderFor(index: number): Folder?
+	local root = Workspace:FindFirstChild("Dunia")
+	if not root then
+		return nil
+	end
+	local f = root:FindFirstChild("Drops_" .. index)
+	if not f then
+		f = Instance.new("Folder")
+		f.Name = "Drops_" .. index
+		f.Parent = root
+	end
+	folders[index] = f :: Folder
+	return f :: Folder
+end
+
+function DropService.clearLahan(index: number)
+	local f = folders[index]
+	if f then
+		f:Destroy()
+		folders[index] = nil
+	end
+end
+
+local function floatify(part: BasePart, basePos: Vector3)
+	part.Anchored = true
+	part.AssemblyLinearVelocity = Vector3.zero
+	part.AssemblyAngularVelocity = Vector3.zero
+	local naik = TweenService:Create(part, TweenInfo.new(1.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Position = basePos + Vector3.new(0, 2.8, 0) })
+	naik:Play()
+	local tag = part:FindFirstChild("TandaTas")
+	if tag and tag:IsA("BillboardGui") then
+		tag.Enabled = true
+	end
+end
+
+local function buatLabel(part: BasePart, teks: string, warna: Color3, offset: number, nama: string)
+	local bb = Instance.new("BillboardGui")
+	bb.Name = nama
+	bb.Size = UDim2.new(0, 150, 0, 34)
+	bb.StudsOffset = Vector3.new(0, offset, 0)
+	bb.MaxDistance = 90
+	bb.Parent = part
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Text = teks
+	label.TextColor3 = warna
+	label.TextScaled = true
+	label.Font = Enum.Font.GothamBold
+	label.TextStrokeTransparency = 0.35
+	label.Parent = bb
+	return bb
+end
+
+function DropService.spawn(index: number, pos: Vector3, cropId: string, count: number, comboN: number, tier: number)
+	local info = CropData.byId[cropId]
+	if not info then
+		return
+	end
+	local f = folderFor(index)
+	if not f then
+		return
+	end
+	local warna = RARITY_COLOR[info.rarity] or RARITY_COLOR.common
+	local part = Instance.new("Part")
+	part.Name = "Hasil_" .. cropId
+	part:SetAttribute("LahanIdx", index)
+	part:SetAttribute("CropId", cropId)
+	part:SetAttribute("Count", count)
+	local s = 1.5 + 0.3 * tier
+	part.Size = Vector3.new(s, s, s)
+	part.Color = warna
+	part.Material = Enum.Material.SmoothPlastic
+	part.CustomPhysicalProperties = PhysicalProperties.new(0.7, 0.25, 0.62, 1, 1)
+	part.Position = pos
+	part.Parent = f
+	buatLabel(part, info.nama .. " x" .. count, Color3.fromRGB(255, 226, 140), 2.6, "LabelHasil")
+	buatLabel(part, "Tas Penuh! Ke Gudang", Color3.fromRGB(255, 120, 100), 3.9, "TandaTas")
+	local tanda = part:FindFirstChild("TandaTas") :: BillboardGui
+	tanda.Enabled = false
+	local pem = Instance.new("ParticleEmitter")
+	pem.Color = ColorSequence.new(warna)
+	pem.Lifetime = NumberRange.new(0.45, 0.9)
+	pem.Speed = NumberRange.new(8, 16)
+	pem.SpreadAngle = Vector2.new(180, 180)
+	pem.Size = NumberSequence.new(0.55, 0)
+	pem.Transparency = NumberSequence.new(0.1, 1)
+	pem.Enabled = false
+	pem.Parent = part
+	pem:Emit(10 + 9 * tier)
+	local snd = Instance.new("Sound")
+	snd.SoundId = "rbxasset://sounds/electronicpingshort.wav"
+	snd.Volume = 0.3 + 0.12 * tier
+	snd.PlaybackSpeed = 1.25 - 0.14 * tier
+	snd.Parent = part
+	snd:Play()
+	if comboN >= 4 then
+		local whoosh = Instance.new("Sound")
+		whoosh.SoundId = "rbxasset://sounds/swoosh.wav"
+		whoosh.Volume = 0.35 + 0.1 * tier
+		whoosh.PlaybackSpeed = 1.1 - 0.1 * tier
+		whoosh.Parent = part
+		whoosh:Play()
+	end
+	part.AssemblyLinearVelocity = Vector3.new(math.random(-9, 9), 22 + 5 * tier, math.random(-9, 9))
+	part.AssemblyAngularVelocity = Vector3.new(math.random(-6, 6), math.random(-6, 6), math.random(-6, 6))
+	local basePos = pos + Vector3.new(0, 3.4, 0)
+	local kunci = 0
+	local selesai = false
+	part.Touched:Connect(function(hit)
+		if selesai or os.clock() - kunci < 0.4 then
+			return
+		end
+		local karakter = hit and hit.Parent
+		local p = karakter and Players:GetPlayerFromCharacter(karakter)
+		if not p then
+			return
+		end
+		if Land.ownerOf(index) ~= p.UserId then
+			return
+		end
+		kunci = os.clock()
+		local cid = part:GetAttribute("CropId") :: string
+		local n = part:GetAttribute("Count") :: number
+		if Tas.roomFor(p, "hasil", cid, n) < n then
+			floatify(part, basePos)
+			local t = Workspace:GetServerTimeNow()
+			if not lastHint[p.UserId] or t - lastHint[p.UserId] > 6 then
+				lastHint[p.UserId] = t
+				Notify(p, "Tas Penuh", "Hasil panen melayang dan tidak bisa diambil. Simpan hasil ke Gudang atau jual dulu, lalu ambil lagi di sini.")
+			end
+			return
+		end
+		selesai = true
+		Tas.add(p, "hasil", cid, n)
+		pem:Emit(8)
+		local ding = Instance.new("Sound")
+		ding.SoundId = "rbxasset://sounds/electronicpingshort.wav"
+		ding.Volume = 0.45
+		ding.PlaybackSpeed = 1.5
+		ding.Parent = part
+		ding:Play()
+		part.CanCollide = false
+		part.Anchored = true
+		local label = part:FindFirstChild("LabelHasil")
+		if label then
+			label:Destroy()
+		end
+		local tandaTas = part:FindFirstChild("TandaTas")
+		if tandaTas then
+			tandaTas:Destroy()
+		end
+		task.delay(0.9, function()
+			if part.Parent then
+				part:Destroy()
+			end
+		end)
+	end)
+	task.delay(900, function()
+		if part.Parent and not part.Anchored then
+			part:Destroy()
+		end
+	end)
+end
+
+return DropService
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="18">
+          <Properties>
+            <string name="Name">GudangService</string>
+            <string name="Source"><![CDATA[local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local CropData = require(ReplicatedStorage.Shared.CropData)
+local GudangLogic = require(ReplicatedStorage.Shared.GudangLogic)
+
+local GudangService = {}
+
+local Land, Tas, Net, World
+local points: { [number]: Vector3 } = {}
+local gudang: { [number]: any } = {}
+
+function GudangService.bind(deps)
+        Land = deps.Land
+        Tas = deps.Tas
+        Net = deps.Net
+        World = deps.World
+end
+
+function GudangService.setPoint(index: number, pos: Vector3)
+        points[index] = pos
+        if not gudang[index] then
+                gudang[index] = GudangLogic.baru()
+        end
+end
+
+local function near(player, index: number): boolean
+        local p = points[index]
+        if not p then
+                return false
+        end
+        local char = player.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+        if not root then
+                return false
+        end
+        return (root.Position - p).Magnitude <= 34
+end
+
+local function stateOf(index: number)
+        if not gudang[index] then
+                gudang[index] = GudangLogic.baru()
+        end
+        return gudang[index]
+end
+
+function GudangService.syncTo(player, index: number)
+        local gd = stateOf(index)
+        local slots = {}
+        for i, s in ipairs(gd.s) do
+                slots[i] = { i = i, id = s.id, count = s.count }
+        end
+        Net.get("GudangSync"):FireClient(player, { lahan = index, terpakai = #gd.s, maks = GudangLogic.MaksSlot, slots = slots })
+end
+
+function GudangService.simpan(player, cropId: any, nRaw: any): (boolean, string)
+        local index = Land.landOf(player)
+        if not index then
+                return false, "Masuk duniamu dulu lewat Gerbang Dunia."
+        end
+        if type(cropId) ~= "string" or not CropData.byId[cropId] then
+                return false, "Barang tidak dikenal."
+        end
+        if not near(player, index) then
+                return false, "Dekati gudang dulu."
+        end
+        local stock = Tas.count(player, "hasil", cropId)
+        if stock < 1 then
+                return false, "Tidak ada hasil panen itu di tas."
+        end
+        local n = math.floor(tonumber(nRaw) or 0)
+        if n < 1 then
+                n = stock
+        end
+        n = math.min(n, stock, GudangLogic.MaksIsi)
+        local gd = stateOf(index)
+        local ok, msg = GudangLogic.simpan(gd, cropId, n)
+        if not ok then
+                return false, msg
+        end
+        Tas.remove(player, "hasil", cropId, n)
+        if World then
+                World.touch(index)
+        end
+        GudangService.syncTo(player, index)
+        local info = CropData.byId[cropId]
+        return true, "Disimpan " .. n .. " " .. info.nama .. ". " .. msg
+end
+
+function GudangService.ambil(player, slotI: any, nRaw: any): (boolean, string)
+        local index = Land.landOf(player)
+        if not index then
+                return false, "Masuk duniamu dulu lewat Gerbang Dunia."
+        end
+        if not near(player, index) then
+                return false, "Dekati gudang dulu."
+        end
+        local gd = stateOf(index)
+        local i = math.floor(tonumber(slotI) or 0)
+        local ok, msg, n = GudangLogic.ambil(gd, i, tonumber(nRaw))
+        if not ok then
+                return false, msg
+        end
+        local s = gd.s[i]
+        local room = Tas.roomFor(player, "hasil", s.id, n)
+        if room < 1 then
+                return false, "Tas penuh! Kosongkan slot tas dulu."
+        end
+        if room < n then
+                n = room
+        end
+        Tas.add(player, "hasil", s.id, n)
+        GudangLogic.kurangi(gd, i, n)
+        if World then
+                World.touch(index)
+        end
+        GudangService.syncTo(player, index)
+        local info = CropData.byId[s.id]
+        return true, "Diambil " .. n .. " " .. (info and info.nama or s.id) .. ". " .. "Tampungan terpakai " .. #gd.s .. "/" .. GudangLogic.MaksSlot .. " (sisa " .. GudangLogic.MaksSlot - #gd.s .. ")."
+end
+
+function GudangService.serLahan(index: number)
+        return GudangLogic.ser(gudang[index])
+end
+
+function GudangService.restoreLahan(index: number, arr: any)
+        gudang[index] = GudangLogic.des(arr)
+end
+
+function GudangService.clearLahan(index: number)
+        gudang[index] = nil
+        points[index] = nil
+end
+
+return GudangService
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="19">
           <Properties>
             <string name="Name">LandService</string>
             <string name="Source"><![CDATA[local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -1379,11 +1949,10 @@ return LandService
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="16">
+        <Item class="ModuleScript" referent="20">
           <Properties>
             <string name="Name">PlotService</string>
             <string name="Source"><![CDATA[local Workspace = game:GetService("Workspace")
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local CropData = require(ReplicatedStorage.Shared.CropData)
@@ -1392,12 +1961,14 @@ local Recipes = require(ReplicatedStorage.Shared.Recipes)
 
 local PlotService = {}
 
-local Land, Tas, Net, World
+local Land, Net, World, Drop
 local rng = Random.new()
 
 local folders: { [number]: Folder } = {}
 local planted: { [number]: { [number]: any } } = {}
 local running: { [number]: boolean } = {}
+local boards: { [number]: TextLabel } = {}
+local combo: { [number]: { t: number, n: number } } = {}
 
 local RARITY_COLOR = {
         common = Color3.fromRGB(76, 145, 65),
@@ -1407,9 +1978,9 @@ local RARITY_COLOR = {
 
 function PlotService.bind(deps)
         Land = deps.Land
-        Tas = deps.Tas
         Net = deps.Net
         World = deps.World
+        Drop = deps.Drop
 end
 
 local function plotPos(index: number, idx: number): Vector3
@@ -1422,7 +1993,7 @@ local function now(): number
         return Workspace:GetServerTimeNow()
 end
 
-local function sync(player: Player, index: number, idx: number)
+local function payloadOf(index: number, idx: number): any
         local rec = planted[index] and planted[index][idx]
         local st = "kosong"
         local crop, readyAt
@@ -1431,13 +2002,17 @@ local function sync(player: Player, index: number, idx: number)
                 readyAt = rec.readyAt
                 st = now() >= rec.readyAt and "siap" or "tumbuh"
         end
-        Net.get("PlotSync"):FireClient(player, {
+        return {
                 lahan = index,
                 idx = idx,
                 st = st,
                 crop = crop,
                 readyAt = readyAt,
-        })
+        }
+end
+
+local function syncAll(index: number, idx: number)
+        Net.get("PlotSync"):FireAllClients(payloadOf(index, idx))
 end
 
 local function makePlantModel(index: number, idx: number, cropId: string): Model
@@ -1502,9 +2077,13 @@ end
 function PlotService.clearGrid(index: number)
         running[index] = false
         planted[index] = nil
+        combo = {}
         if folders[index] then
                 folders[index]:Destroy()
                 folders[index] = nil
+        end
+        if boards[index] then
+                boards[index] = nil
         end
 end
 
@@ -1517,6 +2096,34 @@ function PlotService.stateOf(index: number, idx: number): string
                 return "siap"
         end
         return "tumbuh"
+end
+
+function PlotService.filledCount(index: number): number
+        local n = 0
+        local pl = planted[index]
+        if pl then
+                for _ in pairs(pl) do
+                        n += 1
+                end
+        end
+        return n
+end
+
+function PlotService.plotTotal(): number
+        return Layout.plotCount()
+end
+
+function PlotService.setBoard(index: number, label: TextLabel)
+        boards[index] = label
+        PlotService.updateBoard(index)
+end
+
+function PlotService.updateBoard(index: number)
+        local label = boards[index]
+        if not label then
+                return
+        end
+        label.Text = "TERTANAM " .. PlotService.filledCount(index) .. "/" .. Layout.plotCount()
 end
 
 function PlotService.startLoop(index: number)
@@ -1537,9 +2144,7 @@ function PlotService.startLoop(index: number)
                                                         head.Size = Vector3.new(3, 2, 3)
                                                         head.Position = plotPos(index, idx) + Vector3.new(0, 3, 0)
                                                 end
-                                                for _, p in ipairs(Players:GetPlayers()) do
-                                                        sync(p, index, idx)
-                                                end
+                                                syncAll(index, idx)
                                         end
                                 end
                         end
@@ -1547,38 +2152,46 @@ function PlotService.startLoop(index: number)
         end)
 end
 
-function PlotService.plant(player: Player, idx: number, cropId: string): (boolean, string)
-        local index = Land.landOf(player)
-        if not index then
-                return false, "Kamu tidak punya lahan."
-        end
-        if type(idx) ~= "number" or idx < 0 or idx >= Layout.plotCount() then
-                return false, "Plot tidak sah."
-        end
-        local info = CropData.byId[cropId]
-        if not info then
-                return false, "Tanaman tidak dikenal."
-        end
+function PlotService.scanTargets(index: number, cropId: string): { number }
         local pl = planted[index]
         if not pl then
-                return false, "Lahan belum siap."
+                return {}
         end
-        local char = player.Character
-        local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
-        if not root or (root.Position - plotPos(index, idx)).Magnitude > 48 then
-                return false, "Terlalu jauh dari plot."
+        local kosong, pasangan = {}, {}
+        for idx = 0, Layout.plotCount() - 1 do
+                local rec = pl[idx]
+                if not rec then
+                        table.insert(kosong, idx)
+                elseif now() < rec.readyAt then
+                        if Recipes.sameSpot(rec.crop, cropId) then
+                                table.insert(pasangan, idx)
+                        end
+                end
+        end
+        local out = {}
+        for _, i in ipairs(pasangan) do
+                table.insert(out, i)
+        end
+        for _, i in ipairs(kosong) do
+                table.insert(out, i)
+        end
+        return out
+end
+
+function PlotService.fillPlot(index: number, idx: number, cropId: string): boolean
+        local pl = planted[index]
+        if not pl then
+                return false
+        end
+        if type(idx) ~= "number" or idx < 0 or idx >= Layout.plotCount() or not CropData.byId[cropId] then
+                return false
         end
         local rec = pl[idx]
         if rec then
                 local pasangan = Recipes.sameSpot(rec.crop, cropId)
                 if not pasangan then
-                        return false, "Plot masih terisi. Untuk gabung benih, tanam benih pasangan resep di plot yang sama."
+                        return false
                 end
-                if Tas.count(player, "benih", cropId) < 1 then
-                        return false, "Benih tidak ada di tas."
-                end
-                Tas.remove(player, "benih", cropId, 1)
-                local namaLama = CropData.byId[rec.crop].nama
                 if rec.model then
                         rec.model:Destroy()
                 end
@@ -1586,36 +2199,28 @@ function PlotService.plant(player: Player, idx: number, cropId: string): (boolea
                 rec.readyAt = now() + CropData.GrowTime
                 rec.ready = false
                 rec.model = makePlantModel(index, idx, pasangan)
-                if World then
-                        World.touch(index)
-                end
-                sync(player, index, idx)
-                return true, "Gabung benih: " .. namaLama .. " + " .. info.nama .. " menjadi " .. CropData.byId[pasangan].nama .. "!"
+        else
+                pl[idx] = {
+                        crop = cropId,
+                        readyAt = now() + CropData.GrowTime,
+                        model = makePlantModel(index, idx, cropId),
+                        ready = false,
+                }
         end
-        if Tas.count(player, "benih", cropId) < 1 then
-                return false, "Benih tidak ada di tas."
-        end
-        Tas.remove(player, "benih", cropId, 1)
-        local model = makePlantModel(index, idx, cropId)
-        pl[idx] = {
-                crop = cropId,
-                readyAt = now() + CropData.GrowTime,
-                model = model,
-                ready = false,
-        }
         if World then
                 World.touch(index)
         end
-        sync(player, index, idx)
-        return true, "Ditanam."
+        syncAll(index, idx)
+        PlotService.updateBoard(index)
+        return true
 end
 
-function PlotService.harvest(player: Player, idx: number): (boolean, string)
+function PlotService.punch(player: Player, idx: any): (boolean, string)
         local index = Land.landOf(player)
         if not index then
                 return false, "Kamu tidak punya lahan."
         end
-        if type(idx) ~= "number" or idx < 0 or idx >= Layout.plotCount() then
+        if type(idx) ~= "number" or idx ~= idx or idx % 1 ~= 0 or idx < 0 or idx >= Layout.plotCount() then
                 return false, "Plot tidak sah."
         end
         local rec = planted[index] and planted[index][idx]
@@ -1623,27 +2228,46 @@ function PlotService.harvest(player: Player, idx: number): (boolean, string)
                 return false, "Plot kosong."
         end
         if now() < rec.readyAt then
-                return false, "Belum siap panen."
+                return false, "Belum siap panen. Pukul tanaman yang sudah siap."
         end
         local char = player.Character
         local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
-        if not root or (root.Position - plotPos(index, idx)).Magnitude > 48 then
-                return false, "Terlalu jauh dari plot."
+        if not root or (root.Position - plotPos(index, idx)).Magnitude > 26 then
+                return false, "Terlalu jauh. Dekati tanaman itu."
+        end
+        local t = now()
+        local c = combo[player.UserId]
+        if c and t - c.t <= 4 then
+                c.n += 1
+                c.t = t
+        else
+                c = { t = t, n = 1 }
+                combo[player.UserId] = c
+        end
+        local tier = 1
+        if c.n >= 8 then
+                tier = 3
+        elseif c.n >= 4 then
+                tier = 2
         end
         local info = CropData.byId[rec.crop]
         local y = CropData.Yield[info.rarity]
         local jumlah = rng:NextInteger(y.min, y.max)
-        if Tas.roomFor(player, "hasil", rec.crop, jumlah) < jumlah then
-                return false, "Tas penuh! Kosongkan slot dulu."
+        if Drop then
+                Drop.spawn(index, plotPos(index, idx) + Vector3.new(0, 2.6, 0), rec.crop, jumlah, c.n, tier)
         end
         rec.model:Destroy()
         planted[index][idx] = nil
-        Tas.add(player, "hasil", rec.crop, jumlah)
         if World then
                 World.touch(index)
         end
-        sync(player, index, idx)
-        return true, "Panen " .. jumlah .. " " .. info.nama .. "."
+        syncAll(index, idx)
+        PlotService.updateBoard(index)
+        local pesan = "Panen " .. jumlah .. " " .. info.nama .. "!"
+        if c.n >= 2 then
+                pesan ..= " Kombo x" .. c.n .. "!"
+        end
+        return true, pesan
 end
 
 function PlotService.serialize(index: number): { [number]: { c: string, r: number } }
@@ -1683,7 +2307,7 @@ return PlotService
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="17">
+        <Item class="ModuleScript" referent="21">
           <Properties>
             <string name="Name">RateLimit</string>
             <string name="Source"><![CDATA[local RateLimit = {}
@@ -1721,7 +2345,7 @@ return RateLimit
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="18">
+        <Item class="ModuleScript" referent="22">
           <Properties>
             <string name="Name">ShopService</string>
             <string name="Source"><![CDATA[local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -1735,100 +2359,100 @@ local rng = Random.new()
 local shopPoint: Vector3? = nil
 
 function ShopService.bind(deps)
-	Data = deps.Data
-	Tas = deps.Tas
+        Data = deps.Data
+        Tas = deps.Tas
 end
 
 function ShopService.setShopPoint(pos: Vector3)
-	shopPoint = pos
+        shopPoint = pos
 end
 
 function ShopService.shopPoint(): Vector3?
-	return shopPoint
+        return shopPoint
 end
 
 function ShopService.near(player, maxDist: number): boolean
-	local char = player.Character
-	local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
-	if not root or not shopPoint then
-		return false
-	end
-	return (root.Position - shopPoint).Magnitude <= maxDist
+        local char = player.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+        if not root or not shopPoint then
+                return false
+        end
+        return (root.Position - shopPoint).Magnitude <= maxDist
 end
 
 function ShopService.buy(player, packId: any): (boolean, string)
-	if type(packId) ~= "string" then
-		return false, "Permintaan tidak sah."
-	end
-	local pack = CropData.Packs[packId]
-	if not pack then
-		return false, "Pack tidak dikenal."
-	end
-	if not ShopService.near(player, 30) then
-		return false, "Terlalu jauh dari kasir."
-	end
-	local d = Data.get(player)
-	if not d or d.m < pack.price then
-		return false, "Micda tidak cukup."
-	end
-	local pool = CropData.byRarity(packId)
-	local items = {}
-	for _ = 1, pack.count do
-		local pick = pool[rng:NextInteger(1, #pool)]
-		table.insert(items, { kind = "benih", id = pick.id, count = 1 })
-	end
-	if not Tas.canFitBatch(player, items) then
-		return false, "Tas penuh! Kosongkan slot dulu."
-	end
-	if not Data.trySpend(player, pack.price) then
-		return false, "Micda tidak cukup."
-	end
-	local nama = {}
-	for _, it in ipairs(items) do
-		Tas.add(player, it.kind, it.id, it.count)
-		table.insert(nama, CropData.byId[it.id].nama)
-	end
-	return true, "Pack " .. packId .. ": " .. table.concat(nama, ", ")
+        if type(packId) ~= "string" then
+                return false, "Permintaan tidak sah."
+        end
+        local pack = CropData.Packs[packId]
+        if not pack then
+                return false, "Pack tidak dikenal."
+        end
+        if not ShopService.near(player, 45) then
+                return false, "Dekati kasir Toko Benih dulu."
+        end
+        local d = Data.get(player)
+        if not d or d.m < pack.price then
+                return false, "Micda tidak cukup."
+        end
+        local pool = CropData.byRarity(packId)
+        local items = {}
+        for _ = 1, pack.count do
+                local pick = pool[rng:NextInteger(1, #pool)]
+                table.insert(items, { kind = "benih", id = pick.id, count = 1 })
+        end
+        if not Tas.canFitBatch(player, items) then
+                return false, "Tas penuh! Kosongkan slot dulu."
+        end
+        if not Data.trySpend(player, pack.price) then
+                return false, "Micda tidak cukup."
+        end
+        local nama = {}
+        for _, it in ipairs(items) do
+                Tas.add(player, it.kind, it.id, it.count)
+                table.insert(nama, CropData.byId[it.id].nama)
+        end
+        return true, "Pack " .. packId .. ": " .. table.concat(nama, ", ")
 end
 
 function ShopService.sell(player, cropId: any, count: any): (boolean, string)
-	if type(cropId) ~= "string" or not CropData.byId[cropId] then
-		return false, "Barang tidak dikenal."
-	end
-	if not ShopService.near(player, 30) then
-		return false, "Terlalu jauh dari kasir."
-	end
-	local ada = Tas.count(player, "hasil", cropId)
-	local n
-	if count == nil then
-		n = ada
-	else
-		if type(count) ~= "number" or count ~= count or count % 1 ~= 0 then
-			return false, "Jumlah tidak sah."
-		end
-		n = math.floor(count)
-	end
-	if n <= 0 then
-		return false, "Jumlah tidak sah."
-	end
-	if n > ada then
-		n = ada
-	end
-	if n <= 0 then
-		return false, "Tidak ada yang bisa dijual."
-	end
-	local info = CropData.byId[cropId]
-	local total = info.jual * n
-	Tas.remove(player, "hasil", cropId, n)
-	Data.addMicda(player, total)
-	return true, "Terjual " .. n .. " " .. info.nama .. " (+" .. total .. " Micda)."
+        if type(cropId) ~= "string" or not CropData.byId[cropId] then
+                return false, "Barang tidak dikenal."
+        end
+        if not ShopService.near(player, 45) then
+                return false, "Dekati kasir Toko Benih dulu."
+        end
+        local ada = Tas.count(player, "hasil", cropId)
+        local n
+        if count == nil then
+                n = ada
+        else
+                if type(count) ~= "number" or count ~= count or count % 1 ~= 0 then
+                        return false, "Jumlah tidak sah."
+                end
+                n = math.floor(count)
+        end
+        if n <= 0 then
+                return false, "Jumlah tidak sah."
+        end
+        if n > ada then
+                n = ada
+        end
+        if n <= 0 then
+                return false, "Tidak ada yang bisa dijual."
+        end
+        local info = CropData.byId[cropId]
+        local total = info.jual * n
+        Tas.remove(player, "hasil", cropId, n)
+        Data.addMicda(player, total)
+        return true, "Terjual " .. n .. " " .. info.nama .. " (+" .. total .. " Micda)."
 end
 
 return ShopService
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="19">
+        <Item class="ModuleScript" referent="23">
           <Properties>
             <string name="Name">SmashService</string>
             <string name="Source"><![CDATA[local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -2071,7 +2695,197 @@ return SmashService
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="20">
+        <Item class="ModuleScript" referent="24">
+          <Properties>
+            <string name="Name">TanamService</string>
+            <string name="Source"><![CDATA[local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local CropData = require(ReplicatedStorage.Shared.CropData)
+local SoalLogic = require(ReplicatedStorage.Shared.SoalLogic)
+
+local TanamService = {}
+
+local Land, Plot, Tas, Net, World
+local rng = Random.new()
+
+local points: { [number]: Vector3 } = {}
+local sesi: { [number]: any } = {}
+
+function TanamService.bind(deps)
+        Land = deps.Land
+        Plot = deps.Plot
+        Tas = deps.Tas
+        Net = deps.Net
+        World = deps.World
+end
+
+function TanamService.setPoint(index: number, pos: Vector3)
+        points[index] = pos
+end
+
+local function near(player, index: number): boolean
+        local p = points[index]
+        if not p then
+                return false
+        end
+        local char = player.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+        if not root then
+                return false
+        end
+        return (root.Position - p).Magnitude <= 30
+end
+
+local function payload(s: any, selesai: boolean?): any
+        local p: any = {
+                aktif = s ~= nil,
+                crop = s and s.cropId or nil,
+                nama = s and s.nama or nil,
+                jumlah = s and s.jumlah or 0,
+                tertanam = s and s.tertanam or 0,
+                totalSoal = s and math.ceil(s.jumlah / 10) or 0,
+                selesai = selesai == true,
+        }
+        if s and s.tertanam < s.jumlah and s.soal then
+                p.soal = { teks = s.soal.teks, nomor = math.floor(s.tertanam / 10) + 1 }
+        end
+        return p
+end
+
+local function sync(player, s: any, selesai: boolean?)
+        Net.get("TanamSync"):FireClient(player, payload(s, selesai))
+end
+
+function TanamService.syncTo(player)
+        sync(player, sesi[player.UserId])
+end
+
+function TanamService.start(player, cropId: any, jumlahRaw: any): (boolean, string)
+        local index = Land.landOf(player)
+        if not index then
+                return false, "Masuk duniamu dulu lewat Gerbang Dunia."
+        end
+        if sesi[player.UserId] then
+                return false, "Sesi tanam masih berjalan. Jawab soalnya atau batalkan dulu."
+        end
+        if not near(player, index) then
+                return false, "Dekati Papan Tanam dulu."
+        end
+        if type(cropId) ~= "string" or not CropData.byId[cropId] then
+                return false, "Benih tidak dikenal."
+        end
+        local seeds = Tas.count(player, "benih", cropId)
+        if seeds < 1 then
+                return false, "Benih itu tidak ada di tas."
+        end
+        local targets = Plot.scanTargets(index, cropId)
+        if #targets < 1 then
+                return false, "Tidak ada plot kosong (atau plot pasangan gabung) yang bisa ditanam."
+        end
+        local jumlah = math.floor(tonumber(jumlahRaw) or 0)
+        if jumlah < 1 then
+                jumlah = seeds
+        end
+        jumlah = math.min(jumlah, #targets, seeds)
+        if jumlah < 1 then
+                return false, "Jumlah tanam tidak sah."
+        end
+        local info = CropData.byId[cropId]
+        local s = {
+                index = index,
+                cropId = cropId,
+                nama = info.nama,
+                jumlah = jumlah,
+                tertanam = 0,
+                used = {},
+        }
+        s.soal = SoalLogic.buat(rng, 1, s.used)
+        sesi[player.UserId] = s
+        Plot.updateBoard(index)
+        sync(player, s)
+        return true, "Sesi tanam " .. info.nama .. " mulai: " .. jumlah .. " plot. Jawab soal untuk membuka 10 plot."
+end
+
+function TanamService.jawab(player, ans: any): (boolean, string)
+        local s = sesi[player.UserId]
+        if not s then
+                return false, "Tidak ada sesi tanam berjalan."
+        end
+        if s.tertanam >= s.jumlah then
+                sesi[player.UserId] = nil
+                sync(player, nil, true)
+                return true, "Sesi tanam sudah selesai."
+        end
+        local n = tonumber(ans)
+        if type(n) ~= "number" or n ~= n then
+                sync(player, s)
+                return false, "Masukkan angka dulu."
+        end
+        if n ~= s.soal.jawab then
+                sync(player, s)
+                return false, "Salah! Soal tertahan sampai jawabanmu benar."
+        end
+        local seeds = Tas.count(player, "benih", s.cropId)
+        local batch = math.min(10, s.jumlah - s.tertanam, seeds)
+        if batch <= 0 then
+                sesi[player.UserId] = nil
+                sync(player, s, true)
+                return true, "Benih habis. Sesi tanam dihentikan."
+        end
+        local targets = Plot.scanTargets(s.index, s.cropId)
+        local tanam = 0
+        for i = 1, math.min(batch, #targets) do
+                local idx = targets[i]
+                if Tas.count(player, "benih", s.cropId) < 1 then
+                        break
+                end
+                if Plot.fillPlot(s.index, idx, s.cropId) then
+                        Tas.remove(player, "benih", s.cropId, 1)
+                        tanam += 1
+                end
+        end
+        s.tertanam += tanam
+        if World then
+                World.touch(s.index)
+        end
+        Plot.updateBoard(s.index)
+        if tanam == 0 then
+                sesi[player.UserId] = nil
+                sync(player, s, true)
+                return true, "Plot tidak tersedia lagi. Sesi dihentikan."
+        end
+        if s.tertanam >= s.jumlah then
+                sesi[player.UserId] = nil
+                sync(player, nil, true)
+                return true, "Benar! Sesi selesai — tertanam " .. s.tertanam .. " " .. s.nama .. ". Panen dengan tombol Punch!"
+        end
+        s.soal = SoalLogic.buat(rng, math.floor(s.tertanam / 10) + 1, s.used)
+        sync(player, s)
+        return true, "Benar! " .. tanam .. " plot terisi. Soal berikutnya sudah menunggu."
+end
+
+function TanamService.batal(player): (boolean, string)
+        if not sesi[player.UserId] then
+                return false, "Tidak ada sesi tanam."
+        end
+        sesi[player.UserId] = nil
+        sync(player, nil, true)
+        return true, "Sesi tanam dibatalkan. Benih yang belum ditanam tetap di tas."
+end
+
+function TanamService.statusPayload(player)
+        return payload(sesi[player.UserId])
+end
+
+function TanamService.leave(player)
+        sesi[player.UserId] = nil
+end
+
+return TanamService
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="25">
           <Properties>
             <string name="Name">TasService</string>
             <string name="Source"><![CDATA[local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -2144,7 +2958,7 @@ return TasService
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="21">
+        <Item class="ModuleScript" referent="26">
           <Properties>
             <string name="Name">WorldBuilder</string>
             <string name="Source"><![CDATA[local Workspace = game:GetService("Workspace")
@@ -2161,210 +2975,376 @@ local MARKER_A = Color3.fromRGB(120, 180, 220)
 local MARKER_B = Color3.fromRGB(220, 170, 90)
 
 local function groundTop(): number
-	return 1
+        return 1
 end
 
 local function ensureRoot(): Folder
-	local f = Workspace:FindFirstChild("Dunia")
-	if not f then
-		f = Instance.new("Folder")
-		f.Name = "Dunia"
-		f.Parent = Workspace
-	end
-	return f :: Folder
+        local f = Workspace:FindFirstChild("Dunia")
+        if not f then
+                f = Instance.new("Folder")
+                f.Name = "Dunia"
+                f.Parent = Workspace
+        end
+        return f :: Folder
 end
 
 local function spawnPad(parent: Instance, pos: Vector3): SpawnLocation
-	local spawn = Instance.new("SpawnLocation")
-	spawn.Anchored = true
-	spawn.Size = Vector3.new(12, 1, 12)
-	spawn.Position = pos
-	spawn.Color = Color3.fromRGB(235, 200, 110)
-	spawn.Material = Enum.Material.SmoothPlastic
-	spawn.TopSurface = Enum.SurfaceType.Smooth
-	spawn.Duration = 0
-	spawn.Enabled = true
-	spawn.Parent = parent
-	return spawn
+        local spawn = Instance.new("SpawnLocation")
+        spawn.Anchored = true
+        spawn.Size = Vector3.new(12, 1, 12)
+        spawn.Position = pos
+        spawn.Color = Color3.fromRGB(235, 200, 110)
+        spawn.Material = Enum.Material.SmoothPlastic
+        spawn.TopSurface = Enum.SurfaceType.Smooth
+        spawn.Duration = 0
+        spawn.Enabled = true
+        spawn.Parent = parent
+        return spawn
 end
 
 local function archGate(parent: Instance, x: number, z: number, gt: number, action: string, object: string, onTrigger)
-	BuildingKit.part(parent, Vector3.new(2, 10, 2), CFrame.new(x - 12, gt + 5, z), BuildingKit.DARKWOOD, Enum.Material.Wood)
-	BuildingKit.part(parent, Vector3.new(2, 10, 2), CFrame.new(x + 12, gt + 5, z), BuildingKit.DARKWOOD, Enum.Material.Wood)
-	local beam = BuildingKit.part(parent, Vector3.new(26, 2, 2), CFrame.new(x, gt + 11, z), BuildingKit.DARKWOOD, Enum.Material.Wood)
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.ActionText = action
-	prompt.ObjectText = object
-	prompt.HoldDuration = 0.4
-	prompt.MaxActivationDistance = 14
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = beam
-	prompt.Triggered:Connect(function(player)
-		onTrigger(player)
-	end)
+        BuildingKit.part(parent, Vector3.new(2, 10, 2), CFrame.new(x - 12, gt + 5, z), BuildingKit.DARKWOOD, Enum.Material.Wood)
+        BuildingKit.part(parent, Vector3.new(2, 10, 2), CFrame.new(x + 12, gt + 5, z), BuildingKit.DARKWOOD, Enum.Material.Wood)
+        local beam = BuildingKit.part(parent, Vector3.new(26, 2, 2), CFrame.new(x, gt + 11, z), BuildingKit.DARKWOOD, Enum.Material.Wood)
+        local prompt = Instance.new("ProximityPrompt")
+        prompt.ActionText = action
+        prompt.ObjectText = object
+        prompt.HoldDuration = 0.4
+        prompt.MaxActivationDistance = 14
+        prompt.RequiresLineOfSight = false
+        prompt.Parent = beam
+        prompt.Triggered:Connect(function(player)
+                onTrigger(player)
+        end)
 end
 
 local function signBoard(parent: Instance, x: number, z: number, gt: number, text: string)
-	BuildingKit.part(parent, Vector3.new(1, 8, 1), CFrame.new(x, gt + 4, z), BuildingKit.DARKWOOD, Enum.Material.Wood)
-	local board = BuildingKit.part(parent, Vector3.new(8, 4, 0.5), CFrame.new(x, gt + 10, z), BuildingKit.DARKWOOD, Enum.Material.Wood)
-	local gui = Instance.new("SurfaceGui")
-	gui.Face = Enum.NormalId.Front
-	gui.CanvasSize = Vector2.new(400, 200)
-	local label = Instance.new("TextLabel")
-	label.Name = "NamaLahan"
-	label.Size = UDim2.fromScale(1, 1)
-	label.BackgroundTransparency = 1
-	label.Text = text
-	label.TextColor3 = Color3.fromRGB(255, 240, 200)
-	label.TextScaled = true
-	label.Font = Enum.Font.GothamBold
-	label.Parent = gui
-	gui.Parent = board
-	return board
+        BuildingKit.part(parent, Vector3.new(1, 8, 1), CFrame.new(x, gt + 4, z), BuildingKit.DARKWOOD, Enum.Material.Wood)
+        local board = BuildingKit.part(parent, Vector3.new(8, 4, 0.5), CFrame.new(x, gt + 10, z), BuildingKit.DARKWOOD, Enum.Material.Wood)
+        local gui = Instance.new("SurfaceGui")
+        gui.Face = Enum.NormalId.Front
+        gui.CanvasSize = Vector2.new(400, 200)
+        local label = Instance.new("TextLabel")
+        label.Name = "NamaLahan"
+        label.Size = UDim2.fromScale(1, 1)
+        label.BackgroundTransparency = 1
+        label.Text = text
+        label.TextColor3 = Color3.fromRGB(255, 240, 200)
+        label.TextScaled = true
+        label.Font = Enum.Font.GothamBold
+        label.Parent = gui
+        gui.Parent = board
+        return board
+end
+
+local function buildPapan(folder: Instance, x: number, z: number, gt: number, index: number, hooks)
+        local pad = BuildingKit.part(folder, Vector3.new(14, 0.2, 3), CFrame.new(x, gt + 0.12, z - 2.5), Color3.fromRGB(235, 200, 110), Enum.Material.SmoothPlastic, 0.25)
+        pad.CanCollide = false
+        for sx = -1, 1, 2 do
+                BuildingKit.part(folder, Vector3.new(1, 9, 1), CFrame.new(x + sx * 6, gt + 4.5, z), BuildingKit.DARKWOOD, Enum.Material.Wood)
+        end
+        local panel = BuildingKit.part(folder, Vector3.new(14, 5, 0.8), CFrame.new(x, gt + 9.5, z), BuildingKit.DARKWOOD, Enum.Material.Wood)
+        local label
+        for _, face in ipairs({ Enum.NormalId.Front, Enum.NormalId.Back }) do
+                local gui = Instance.new("SurfaceGui")
+                gui.Face = face
+                gui.CanvasSize = Vector2.new(560, 200)
+                local l = Instance.new("TextLabel")
+                l.Size = UDim2.new(1, -16, 0.66, 0)
+                l.Position = UDim2.new(0, 8, 0, 6)
+                l.BackgroundTransparency = 1
+                l.Text = "TERTANAM 0/500"
+                l.TextColor3 = Color3.fromRGB(255, 226, 140)
+                l.TextScaled = true
+                l.Font = Enum.Font.GothamBlack
+                l.Parent = gui
+                local h = Instance.new("TextLabel")
+                h.Size = UDim2.new(1, -16, 0.24, 0)
+                h.Position = UDim2.new(0, 8, 0.72, 0)
+                h.BackgroundTransparency = 1
+                h.Text = "DEKATI PAPAN UNTUK MENANAM"
+                h.TextColor3 = Color3.fromRGB(224, 224, 224)
+                h.TextScaled = true
+                h.Font = Enum.Font.GothamBold
+                h.Parent = gui
+                gui.Parent = panel
+                if face == Enum.NormalId.Front then
+                        label = l
+                end
+        end
+        local prompt = Instance.new("ProximityPrompt")
+        prompt.ActionText = "Mulai Tanam"
+        prompt.ObjectText = "Papan Tanam"
+        prompt.HoldDuration = 0.3
+        prompt.MaxActivationDistance = 13
+        prompt.RequiresLineOfSight = false
+        prompt.Parent = panel
+        prompt.Triggered:Connect(function(player: Player)
+                if hooks and hooks.onPapanPrompt then
+                        hooks.onPapanPrompt(player, index)
+                end
+        end)
+        return label
+end
+
+local function buildGudang(folder: Instance, x: number, z: number, gt: number, index: number, hooks)
+        local w, d = 22, 18
+        local h = 12
+        local model = Instance.new("Model")
+        model.Name = "GudangPanen_" .. index
+        BuildingKit.part(model, Vector3.new(w + 2, 1, d + 2), CFrame.new(0, 0.5, 0), BuildingKit.STONE, Enum.Material.Slate)
+        BuildingKit.part(model, Vector3.new(w - 2, 1, d - 2), CFrame.new(0, 1.5, 0), BuildingKit.FLOORWOOD, Enum.Material.WoodPlanks)
+        BuildingKit.part(model, Vector3.new(w, h, 1), CFrame.new(0, h / 2 + 1, d / 2 - 0.5), BuildingKit.CREAM)
+        BuildingKit.part(model, Vector3.new(1, h, d - 2), CFrame.new(-(w / 2 - 0.5), h / 2 + 1, 0), BuildingKit.CREAM)
+        BuildingKit.part(model, Vector3.new(1, h, d - 2), CFrame.new(w / 2 - 0.5, h / 2 + 1, 0), BuildingKit.CREAM)
+        local fz = -(d / 2 - 0.5)
+        BuildingKit.part(model, Vector3.new(6, h, 1), CFrame.new(-(w / 2 - 3.5), h / 2 + 1, fz), BuildingKit.CREAM)
+        BuildingKit.part(model, Vector3.new(6, h, 1), CFrame.new(w / 2 - 3.5, h / 2 + 1, fz), BuildingKit.CREAM)
+        BuildingKit.part(model, Vector3.new(10, 4, 1), CFrame.new(0, h - 1, fz), BuildingKit.CREAM)
+        for sx = -1, 1, 2 do
+                BuildingKit.part(model, Vector3.new(2, h, 2), CFrame.new(sx * (w / 2 - 1), h / 2 + 1, sx * (d / 2 - 1)), BuildingKit.DARKWOOD, Enum.Material.Wood)
+        end
+        for _, yy in ipairs({ 1.5, h + 0.5 }) do
+                BuildingKit.part(model, Vector3.new(w + 2, 1, 0.5), CFrame.new(0, yy, -(d / 2 + 0.75)), BuildingKit.DARKWOOD, Enum.Material.Wood)
+                BuildingKit.part(model, Vector3.new(w + 2, 1, 0.5), CFrame.new(0, yy, d / 2 + 0.75), BuildingKit.DARKWOOD, Enum.Material.Wood)
+                BuildingKit.part(model, Vector3.new(0.5, 1, d + 2), CFrame.new(-(w / 2 + 0.75), yy, 0), BuildingKit.DARKWOOD, Enum.Material.Wood)
+                BuildingKit.part(model, Vector3.new(0.5, 1, d + 2), CFrame.new(w / 2 + 0.75, yy, 0), BuildingKit.DARKWOOD, Enum.Material.Wood)
+        end
+        BuildingKit.gableRoof(model, w, d, 3, h + 1, BuildingKit.BRICKRED)
+        local counter = BuildingKit.part(model, Vector3.new(10, 4, 2), CFrame.new(0, 4, -(d / 2 - 5)), BuildingKit.DARKWOOD, Enum.Material.Wood)
+        counter:SetAttribute("MejaGudang", true)
+        for sx = -1, 1, 2 do
+                local rack = BuildingKit.part(model, Vector3.new(2, 8, 8), CFrame.new(sx * (w / 2 - 4), 6, 2), BuildingKit.DARKWOOD, Enum.Material.Wood)
+                rack:SetAttribute("GudangRak", true)
+                BuildingKit.part(model, Vector3.new(5.6, 0.3, 7), CFrame.new(sx * (w / 2 - 4), 4.2, 2), BuildingKit.FLOORWOOD, Enum.Material.WoodPlanks).CanCollide = false
+                BuildingKit.part(model, Vector3.new(5.6, 0.3, 7), CFrame.new(sx * (w / 2 - 4), 7, 2), BuildingKit.FLOORWOOD, Enum.Material.WoodPlanks).CanCollide = false
+                for i = 0, 3 do
+                        BuildingKit.part(model, Vector3.new(1.8, 1.5, 1.8), CFrame.new(sx * (w / 2 - 4) - 1.2 + i * 0.9, 5.05, 0.8 + (i % 2)), Color3.fromRGB(150, 116, 74), Enum.Material.WoodPlanks)
+                        BuildingKit.part(model, Vector3.new(1.6, 1.3, 1.6), CFrame.new(sx * (w / 2 - 4) - 1 + i * 0.85, 7.8, 1.4 + (i % 2)), Color3.fromRGB(196, 168, 120), Enum.Material.WoodPlanks)
+                end
+                BuildingKit.part(model, Vector3.new(2.4, 2.4, 2.4), CFrame.new(sx * (w / 2 - 4), 9.6, 2), Color3.fromRGB(150, 116, 74), Enum.Material.WoodPlanks)
+        end
+        BuildingKit.part(model, Vector3.new(2.4, 2.4, 2.4), CFrame.new(3.6, 3.1, -4.5), Color3.fromRGB(150, 116, 74), Enum.Material.WoodPlanks)
+        BuildingKit.part(model, Vector3.new(2.4, 2.4, 2.4), CFrame.new(5.9, 3.1, -4.2), Color3.fromRGB(170, 132, 84), Enum.Material.WoodPlanks)
+        BuildingKit.part(model, Vector3.new(2.2, 1.8, 2.2), CFrame.new(4.7, 5.3, -4.4), Color3.fromRGB(196, 168, 120), Enum.Material.WoodPlanks)
+        local sackRow = { Color3.fromRGB(150, 108, 62), Color3.fromRGB(96, 128, 72), Color3.fromRGB(196, 168, 120) }
+        for i = 0, 2 do
+                BuildingKit.part(model, Vector3.new(2.2, 2.4, 1.6), CFrame.new(-4.2 - i * 2.4, 3.2, -4.6), sackRow[i + 1], Enum.Material.Fabric)
+        end
+        BuildingKit.part(model, Vector3.new(2.4, 3.2, 2.4), CFrame.new(-w / 2 + 3.2, 2.6, -d / 2 + 2.6), Color3.fromRGB(122, 96, 58), Enum.Material.WoodPlanks)
+        BuildingKit.part(model, Vector3.new(2.5, 0.3, 2.5), CFrame.new(-w / 2 + 3.2, 4.3, -d / 2 + 2.6), BuildingKit.FLOORWOOD, Enum.Material.WoodPlanks).CanCollide = false
+        local papan = BuildingKit.part(model, Vector3.new(14, 3, 0.5), CFrame.new(0, h + 3, -(d / 2 + 0.4)), BuildingKit.DARKWOOD, Enum.Material.Wood)
+        local guiPapan = Instance.new("SurfaceGui")
+        guiPapan.Face = Enum.NormalId.Front
+        guiPapan.CanvasSize = Vector2.new(400, 90)
+        local labelPapan = Instance.new("TextLabel")
+        labelPapan.Size = UDim2.fromScale(1, 1)
+        labelPapan.BackgroundTransparency = 1
+        labelPapan.Text = "GUDANG HASIL PANEN"
+        labelPapan.TextColor3 = Color3.fromRGB(255, 232, 180)
+        labelPapan.TextScaled = true
+        labelPapan.Font = Enum.Font.GothamBold
+        labelPapan.Parent = guiPapan
+        guiPapan.Parent = papan
+        local infoPapan = BuildingKit.part(model, Vector3.new(6, 2.2, 0.4), CFrame.new(0, 8.2, -(d / 2 + 0.4)), BuildingKit.DARKWOOD, Enum.Material.Wood)
+        local guiInfo = Instance.new("SurfaceGui")
+        guiInfo.Face = Enum.NormalId.Front
+        guiInfo.CanvasSize = Vector2.new(360, 130)
+        local labelInfo = Instance.new("TextLabel")
+        labelInfo.Size = UDim2.fromScale(1, 1)
+        labelInfo.BackgroundTransparency = 1
+        labelInfo.Text = "SETOR 1-250 = 1 TAMPUNGAN\nMAKS 1000"
+        labelInfo.TextColor3 = Color3.fromRGB(255, 226, 140)
+        labelInfo.TextScaled = true
+        labelInfo.Font = Enum.Font.GothamBold
+        labelInfo.Parent = guiInfo
+        guiInfo.Parent = infoPapan
+        BuildingKit.lamp(model, 0, h + 1, 0)
+        BuildingKit.lamp(model, -6, h + 1, 4)
+        BuildingKit.lamp(model, 6, h + 1, 4)
+        model.WorldPivot = CFrame.new(0, 0, 0)
+        model:PivotTo(CFrame.new(x, gt, z))
+        model.Parent = folder
+        local prompt = Instance.new("ProximityPrompt")
+        prompt.ActionText = "Buka Gudang"
+        prompt.ObjectText = "Meja Gudang"
+        prompt.HoldDuration = 0.3
+        prompt.MaxActivationDistance = 12
+        prompt.RequiresLineOfSight = false
+        prompt.Parent = counter
+        prompt.Triggered:Connect(function(player: Player)
+                if hooks and hooks.onGudangPrompt then
+                        hooks.onGudangPrompt(player, index)
+                end
+        end)
+        if hooks and hooks.setGudangPoint then
+                hooks.setGudangPoint(index, (model:GetPivot() * CFrame.new(0, 0, -(d / 2 - 5))).Position + Vector3.new(0, 3, 0))
+        end
+        return model
 end
 
 function WorldBuilder.buildHub(hooks)
-	local root = ensureRoot()
-	local gt = 0
+        local root = ensureRoot()
+        local gt = 0
 
-	BuildingKit.part(root, Vector3.new(400, 1, 400), CFrame.new(0, -0.5, 0), GRASS, Enum.Material.Grass)
-	BuildingKit.part(root, Vector3.new(10, 0.2, 90), CFrame.new(0, gt + 0.1, 10), PATH, Enum.Material.Concrete)
+        BuildingKit.part(root, Vector3.new(400, 1, 400), CFrame.new(0, -0.5, 0), GRASS, Enum.Material.Grass)
+        BuildingKit.part(root, Vector3.new(10, 0.2, 90), CFrame.new(0, gt + 0.1, 10), PATH, Enum.Material.Concrete)
 
-	local spawn = spawnPad(root, Vector3.new(0, gt + 0.5, 44))
-	if hooks and hooks.registerKota then
-		hooks.registerKota(spawn)
-	end
-	if hooks and hooks.registerUmum then
-		hooks.registerUmum(spawn)
-	end
+        local spawn = spawnPad(root, Vector3.new(0, gt + 0.5, 44))
+        if hooks and hooks.registerKota then
+                hooks.registerKota(spawn)
+        end
+        if hooks and hooks.registerUmum then
+                hooks.registerUmum(spawn)
+        end
 
-	archGate(root, 0, 20, gt, "Dunia-ku", "Gerbang Dunia", function(player: Player)
-		if hooks and hooks.onGerbangDunia then
-			hooks.onGerbangDunia(player)
-		end
-	end)
+        archGate(root, 0, 20, gt, "Dunia-ku", "Gerbang Dunia", function(player: Player)
+                if hooks and hooks.onGerbangDunia then
+                        hooks.onGerbangDunia(player)
+                end
+        end)
 
-	signBoard(root, -30, 6, gt, "PUSAT KOTA")
+        signBoard(root, -30, 6, gt, "PUSAT KOTA")
 
-	local toko = BuildingKit.buildToko(root)
-	toko:PivotTo(CFrame.new(0, gt, -60) * CFrame.Angles(0, math.rad(180), 0))
-	for _, p in ipairs(toko:GetDescendants()) do
-		if p:IsA("BasePart") and p.Size == Vector3.new(12, 4, 3) then
-			if hooks and hooks.setShopPoint then
-				hooks.setShopPoint(p.Position)
-			end
-			if hooks and hooks.onShopPrompt then
-				local prompt = Instance.new("ProximityPrompt")
-				prompt.ActionText = "Toko Benih"
-				prompt.ObjectText = "Kasir"
-				prompt.HoldDuration = 0.3
-				prompt.MaxActivationDistance = 12
-				prompt.RequiresLineOfSight = false
-				prompt.Parent = p
-				prompt.Triggered:Connect(function(player: Player)
-					hooks.onShopPrompt(player)
-				end)
-			end
-		elseif p:IsA("BasePart") and p:GetAttribute("Rak") == true then
-			if hooks and hooks.onShopPrompt then
-				local prompt = Instance.new("ProximityPrompt")
-				prompt.ActionText = "Beli Benih"
-				prompt.ObjectText = "Rak Benih"
-				prompt.HoldDuration = 0.3
-				prompt.MaxActivationDistance = 10
-				prompt.RequiresLineOfSight = false
-				prompt.Parent = p
-				prompt.Triggered:Connect(function(player: Player)
-					hooks.onShopPrompt(player)
-				end)
-			end
-		end
-	end
+        local toko = BuildingKit.buildToko(root)
+        toko:PivotTo(CFrame.new(0, gt, -60) * CFrame.Angles(0, math.rad(180), 0))
+        for _, p in ipairs(toko:GetDescendants()) do
+                if p:IsA("BasePart") and p.Size == Vector3.new(12, 4, 3) then
+                        if hooks and hooks.setShopPoint then
+                                hooks.setShopPoint(p.Position)
+                        end
+                        if hooks and hooks.onShopPrompt then
+                                local prompt = Instance.new("ProximityPrompt")
+                                prompt.ActionText = "Toko Benih"
+                                prompt.ObjectText = "Kasir"
+                                prompt.HoldDuration = 0.3
+                                prompt.MaxActivationDistance = 12
+                                prompt.RequiresLineOfSight = false
+                                prompt.Parent = p
+                                prompt.Triggered:Connect(function(player: Player)
+                                        hooks.onShopPrompt(player)
+                                end)
+                        end
+                elseif p:IsA("BasePart") and p:GetAttribute("Rak") == true then
+                        if hooks and hooks.onShopPrompt then
+                                local prompt = Instance.new("ProximityPrompt")
+                                prompt.ActionText = "Beli Benih"
+                                prompt.ObjectText = "Rak Benih"
+                                prompt.HoldDuration = 0.3
+                                prompt.MaxActivationDistance = 10
+                                prompt.RequiresLineOfSight = false
+                                prompt.Parent = p
+                                prompt.Triggered:Connect(function(player: Player)
+                                        hooks.onShopPrompt(player)
+                                end)
+                        end
+                end
+        end
 
-	BuildingKit.streetLamp(root, 8, gt, 32)
-	BuildingKit.streetLamp(root, -8, gt, 32)
-	BuildingKit.streetLamp(root, 8, gt, -30)
-	BuildingKit.streetLamp(root, -8, gt, -30)
+        BuildingKit.streetLamp(root, 8, gt, 32)
+        BuildingKit.streetLamp(root, -8, gt, 32)
+        BuildingKit.streetLamp(root, 8, gt, -30)
+        BuildingKit.streetLamp(root, -8, gt, -30)
 
-	return root
+        local papanKota = BuildingKit.part(root, Vector3.new(8, 4, 0.5), CFrame.new(-30, gt + 8, 12), BuildingKit.DARKWOOD, Enum.Material.Wood)
+        local guiPapanKota = Instance.new("SurfaceGui")
+        guiPapanKota.Face = Enum.NormalId.Back
+        guiPapanKota.CanvasSize = Vector2.new(320, 160)
+        local labelKota = Instance.new("TextLabel")
+        labelKota.Size = UDim2.fromScale(1, 1)
+        labelKota.BackgroundTransparency = 1
+        labelKota.Text = "TANAM LEWAT PAPAN DI LAHANMU\nPUKUL HASIL PANEN DENGAN PUNCH"
+        labelKota.TextColor3 = Color3.fromRGB(255, 232, 180)
+        labelKota.TextScaled = true
+        labelKota.Font = Enum.Font.GothamBold
+        labelKota.Parent = guiPapanKota
+        guiPapanKota.Parent = papanKota
+
+        return root
 end
 
 function WorldBuilder.buildLahan(hooks, index: number, namaPemilik: string): Model
-	local root = ensureRoot()
-	local model = Instance.new("Model")
-	model.Name = "Zona_" .. index
-	local folder = Instance.new("Folder")
-	folder.Name = "Isi_" .. index
-	folder.Parent = model
-	local ox, oz = Layout.cellOrigin(index)
-	local dX = Layout.duniaOffsetX()
-	local gt = groundTop()
+        local root = ensureRoot()
+        local model = Instance.new("Model")
+        model.Name = "Zona_" .. index
+        local folder = Instance.new("Folder")
+        folder.Name = "Isi_" .. index
+        folder.Parent = model
+        local ox, oz = Layout.cellOrigin(index)
+        local dX = Layout.duniaOffsetX()
+        local gt = groundTop()
 
-	BuildingKit.part(folder, Vector3.new(Layout.SizeX, 1, Layout.SizeZ), CFrame.new(dX + ox + Layout.SizeX / 2, gt - 0.5, oz + Layout.SizeZ / 2), GRASS, Enum.Material.Grass)
+        BuildingKit.part(folder, Vector3.new(Layout.SizeX, 1, Layout.SizeZ), CFrame.new(dX + ox + Layout.SizeX / 2, gt - 0.5, oz + Layout.SizeZ / 2), GRASS, Enum.Material.Grass)
 
-	BuildingKit.part(folder, Vector3.new(Layout.SizeX, 0.2, 10), CFrame.new(dX + ox + Layout.SizeX / 2, gt + 0.1, oz + 25), PATH, Enum.Material.Concrete)
-	BuildingKit.part(folder, Vector3.new(Layout.SizeX, 0.2, 10), CFrame.new(dX + ox + Layout.SizeX / 2, gt + 0.1, oz + 155), PATH, Enum.Material.Concrete)
-	BuildingKit.part(folder, Vector3.new(10, 0.2, 120), CFrame.new(dX + ox + 165, gt + 0.1, oz + 90), PATH, Enum.Material.Concrete)
-	BuildingKit.part(folder, Vector3.new(10, 0.2, 20), CFrame.new(dX + ox + 120, gt + 0.1, oz + 10), PATH, Enum.Material.Concrete)
+        BuildingKit.part(folder, Vector3.new(Layout.SizeX, 0.2, 10), CFrame.new(dX + ox + Layout.SizeX / 2, gt + 0.1, oz + 25), PATH, Enum.Material.Concrete)
+        BuildingKit.part(folder, Vector3.new(Layout.SizeX, 0.2, 10), CFrame.new(dX + ox + Layout.SizeX / 2, gt + 0.1, oz + 155), PATH, Enum.Material.Concrete)
+        BuildingKit.part(folder, Vector3.new(10, 0.2, 120), CFrame.new(dX + ox + 165, gt + 0.1, oz + 90), PATH, Enum.Material.Concrete)
+        BuildingKit.part(folder, Vector3.new(10, 0.2, 20), CFrame.new(dX + ox + 120, gt + 0.1, oz + 10), PATH, Enum.Material.Concrete)
 
-	BuildingKit.fenceLine(folder, dX + ox, oz, dX + ox, oz + Layout.SizeZ, gt)
-	BuildingKit.fenceLine(folder, dX + ox + Layout.SizeX, oz, dX + ox + Layout.SizeX, oz + Layout.SizeZ, gt)
-	BuildingKit.fenceLine(folder, dX + ox, oz + Layout.SizeZ, dX + ox + Layout.SizeX, oz + Layout.SizeZ, gt)
-	BuildingKit.fenceLine(folder, dX + ox, oz, dX + ox + 108, oz, gt)
-	BuildingKit.fenceLine(folder, dX + ox + 132, oz, dX + ox + Layout.SizeX, oz, gt)
+        BuildingKit.fenceLine(folder, dX + ox, oz, dX + ox, oz + Layout.SizeZ, gt)
+        BuildingKit.fenceLine(folder, dX + ox + Layout.SizeX, oz, dX + ox + Layout.SizeX, oz + Layout.SizeZ, gt)
+        BuildingKit.fenceLine(folder, dX + ox, oz + Layout.SizeZ, dX + ox + Layout.SizeX, oz + Layout.SizeZ, gt)
+        BuildingKit.fenceLine(folder, dX + ox, oz, dX + ox + 108, oz, gt)
+        BuildingKit.fenceLine(folder, dX + ox + 132, oz, dX + ox + Layout.SizeX, oz, gt)
 
-	archGate(folder, dX + ox + 120, oz, gt, "Pulang ke Kota", "Gerbang Dunia", function(player: Player)
-		if hooks and hooks.onPulang then
-			hooks.onPulang(player)
-		end
-	end)
+        archGate(folder, dX + ox + 120, oz, gt, "Pulang ke Kota", "Gerbang Dunia", function(player: Player)
+                if hooks and hooks.onPulang then
+                        hooks.onPulang(player)
+                end
+        end)
 
-	signBoard(folder, dX + ox + 96, oz + 8, gt, "Dunia " .. (namaPemilik or "Petani"))
+        signBoard(folder, dX + ox + 96, oz + 8, gt, "Dunia " .. (namaPemilik or "Petani"))
 
-	BuildingKit.streetLamp(folder, dX + ox + 104, gt, oz + 24)
-	BuildingKit.streetLamp(folder, dX + ox + 166, gt, oz + 156)
-	BuildingKit.streetLamp(folder, dX + ox + 40, gt, oz + 210)
+        BuildingKit.streetLamp(folder, dX + ox + 104, gt, oz + 24)
+        BuildingKit.streetLamp(folder, dX + ox + 166, gt, oz + 156)
+        BuildingKit.streetLamp(folder, dX + ox + 40, gt, oz + 210)
 
-	local semai = BuildingKit.buildSemai(folder)
-	semai:PivotTo(CFrame.new(dX + ox + 185, gt, oz + 50))
-	for _, p in ipairs(semai:GetDescendants()) do
-		if p:IsA("BasePart") and p.Size == Vector3.new(12, 4, 4) then
-			if hooks and hooks.registerTable then
-				hooks.registerTable(index, p.Position + Vector3.new(0, 2, 0))
-			end
-			if hooks and hooks.onSemaiPrompt then
-				local prompt = Instance.new("ProximityPrompt")
-				prompt.ActionText = "Semai Panen"
-				prompt.ObjectText = "Meja Hasil"
-				prompt.HoldDuration = 0.3
-				prompt.MaxActivationDistance = 12
-				prompt.RequiresLineOfSight = false
-				prompt.Parent = p
-				p:SetAttribute("LahanIdx", index)
-				prompt.Triggered:Connect(function(player: Player)
-					hooks.onSemaiPrompt(player, index)
-				end)
-			end
-		end
-	end
+        local semai = BuildingKit.buildSemai(folder)
+        semai:PivotTo(CFrame.new(dX + ox + 185, gt, oz + 50))
+        for _, p in ipairs(semai:GetDescendants()) do
+                if p:IsA("BasePart") and p.Size == Vector3.new(12, 4, 4) then
+                        if hooks and hooks.registerTable then
+                                hooks.registerTable(index, p.Position + Vector3.new(0, 2, 0))
+                        end
+                        if hooks and hooks.onSemaiPrompt then
+                                local prompt = Instance.new("ProximityPrompt")
+                                prompt.ActionText = "Semai Panen"
+                                prompt.ObjectText = "Meja Hasil"
+                                prompt.HoldDuration = 0.3
+                                prompt.MaxActivationDistance = 12
+                                prompt.RequiresLineOfSight = false
+                                prompt.Parent = p
+                                p:SetAttribute("LahanIdx", index)
+                                prompt.Triggered:Connect(function(player: Player)
+                                        hooks.onSemaiPrompt(player, index)
+                                end)
+                        end
+                end
+        end
 
-	BuildingKit.marker(folder, dX + ox + 185, oz + 85, gt, 30, 30, MARKER_A)
-	BuildingKit.marker(folder, dX + ox + 195, oz + 125, gt, 50, 30, MARKER_A)
-	BuildingKit.marker(folder, dX + ox + 40, oz + 185, gt, 40, 40, MARKER_B)
-	BuildingKit.marker(folder, dX + ox + 82, oz + 177, gt, 24, 24, MARKER_B)
-	BuildingKit.marker(folder, dX + ox + 112, oz + 177, gt, 24, 24, MARKER_B)
-	BuildingKit.marker(folder, dX + ox + 142, oz + 177, gt, 24, 24, MARKER_B)
-	BuildingKit.marker(folder, dX + ox + 172, oz + 177, gt, 24, 24, MARKER_B)
+        BuildingKit.marker(folder, dX + ox + 185, oz + 85, gt, 30, 30, MARKER_A)
+        BuildingKit.marker(folder, dX + ox + 195, oz + 125, gt, 50, 30, MARKER_A)
+        BuildingKit.marker(folder, dX + ox + 40, oz + 185, gt, 40, 40, MARKER_B)
+        BuildingKit.marker(folder, dX + ox + 82, oz + 177, gt, 24, 24, MARKER_B)
+        BuildingKit.marker(folder, dX + ox + 112, oz + 177, gt, 24, 24, MARKER_B)
+        BuildingKit.marker(folder, dX + ox + 142, oz + 177, gt, 24, 24, MARKER_B)
+        BuildingKit.marker(folder, dX + ox + 172, oz + 177, gt, 24, 24, MARKER_B)
 
-	model.Parent = root
-	return model
+        local labelPapan = buildPapan(folder, dX + ox + 85, oz + 18, gt, index, hooks)
+        if hooks and hooks.registerBoard then
+                hooks.registerBoard(index, labelPapan, Vector3.new(dX + ox + 85, gt + 6, oz + 18))
+        end
+        buildGudang(folder, dX + ox + 205, oz + 185, gt, index, hooks)
+
+        model.Parent = root
+        return model
 end
 
 return WorldBuilder
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="22">
+        <Item class="ModuleScript" referent="27">
           <Properties>
             <string name="Name">ZonaService</string>
             <string name="Source"><![CDATA[local Players = game:GetService("Players")
@@ -2377,7 +3357,7 @@ local WorldBuilder = require(script.Parent.WorldBuilder)
 
 local ZonaService = {}
 
-local Land, Plot, Smash, Data, Notify, Hooks
+local Land, Plot, Smash, Data, Notify, Hooks, Gudang, Drop
 local store = DataStoreService:GetDataStore("AKM_Dunia")
 
 type Seksi = {
@@ -2402,6 +3382,8 @@ function ZonaService.bind(deps)
         Smash = deps.Smash
         Data = deps.Data
         Notify = deps.Notify
+        Gudang = deps.Gudang
+        Drop = deps.Drop
 end
 
 function ZonaService.setHooks(hooks)
@@ -2459,15 +3441,15 @@ local function placeAt(player: Player, pos: Vector3, zone: string, dunia: string
         root.CFrame = CFrame.new(pos + Vector3.new(0, 3, 0))
         task.spawn(function()
                 pcall(function()
-                        Workspace:RequestStreamAroundAsync(pos, 2)
+                        Workspace:RequestStreamAroundAsync(pos, 4)
                 end)
-                task.delay(0.25, function()
+                task.delay(0.8, function()
                         if root.Parent then
                                 root.Anchored = false
                         end
                 end)
         end)
-        task.delay(5, function()
+        task.delay(8, function()
                 if root.Parent and root.Anchored then
                         root.Anchored = false
                 end
@@ -2475,6 +3457,16 @@ local function placeAt(player: Player, pos: Vector3, zone: string, dunia: string
         watchVoid(player, pos)
         Data.push(player)
         return true
+end
+
+local function placeWait(player: Player, pos: Vector3, zone: string, dunia: string?): boolean
+        for _ = 1, 12 do
+                if placeAt(player, pos, zone, dunia) then
+                        return true
+                end
+                task.wait(0.5)
+        end
+        return false
 end
 
 function ZonaService.zoneOf(player: Player): (string, string?)
@@ -2497,6 +3489,7 @@ local function payloadOf(s: Seksi)
                 n = s.ownerName,
                 pl = DuniaLogic.serPlots(Plot.serialize(s.idx)),
                 mj = DuniaLogic.serMeja(Smash.serializeLahan(s.idx)),
+                gd = Gudang and Gudang.serLahan(s.idx) or {},
                 t = os.time(),
         }
 end
@@ -2513,25 +3506,28 @@ local function saveSeksi(s: Seksi, force: boolean)
         end
 end
 
-local function loadWorld(ownerId: number): (boolean, string?, any, any)
+local function loadWorld(ownerId: number): (boolean, string?, any, any, any)
         local ok, data = pcall(function()
                 return store:GetAsync(DuniaLogic.keyFor(ownerId))
         end)
         if not ok then
-                return false, nil, {}, {}
+                return false, nil, {}, {}, nil
         end
         if type(data) ~= "table" then
-                return true, nil, {}, {}
+                return true, nil, {}, {}, nil
         end
-        return true, DuniaLogic.cleanName(data.n), DuniaLogic.desPlots(data.pl), DuniaLogic.desMeja(data.mj)
+        return true, DuniaLogic.cleanName(data.n), DuniaLogic.desPlots(data.pl), DuniaLogic.desMeja(data.mj), data.gd
 end
 
-local function buildSection(idx: number, ownerId: number, nama: string, ghost: boolean, savedOk: boolean, plots: any, meja: any): Seksi
+local function buildSection(idx: number, ownerId: number, nama: string, ghost: boolean, savedOk: boolean, plots: any, meja: any, gd: any): Seksi
         local model = WorldBuilder.buildLahan(Hooks, idx, nama)
         Plot.buildGrid(idx, model)
         Plot.restore(idx, plots)
         Plot.startLoop(idx)
         Smash.restoreLahan(idx, meja)
+        if Gudang then
+                Gudang.restoreLahan(idx, gd)
+        end
         local s: Seksi = {
                 idx = idx,
                 ownerId = ownerId,
@@ -2554,6 +3550,12 @@ local function destroySection(idx: number)
         end
         Plot.clearGrid(idx)
         Smash.clearLahan(idx)
+        if Drop then
+                Drop.clearLahan(idx)
+        end
+        if Gudang then
+                Gudang.clearLahan(idx)
+        end
         s.model:Destroy()
         seksi[idx] = nil
         if byOwner[s.ownerId] == idx then
@@ -2565,8 +3567,10 @@ end
 function ZonaService.masuk(player: Player): (boolean, string)
         local s = ownerSection(player.UserId)
         if s and not s.ghost then
-                placeAt(player, arrivalPos(s.idx), "dunia", s.ownerName)
-                return true, "Kamu kembali ke duniamu."
+                if placeWait(player, arrivalPos(s.idx), "dunia", s.ownerName) then
+                        return true, "Kamu kembali ke duniamu."
+                end
+                return false, "Karakter belum siap. Coba lagi sebentar."
         end
         if s and s.ghost then
                 s.ghost = false
@@ -2574,19 +3578,23 @@ function ZonaService.masuk(player: Player): (boolean, string)
                 s.dirty = false
                 byOwner[player.UserId] = s.idx
                 Land.claim(s.idx, player.UserId)
-                placeAt(player, arrivalPos(s.idx), "dunia", s.ownerName)
-                return true, "Kamu kembali ke duniamu."
+                if placeWait(player, arrivalPos(s.idx), "dunia", s.ownerName) then
+                        return true, "Kamu kembali ke duniamu."
+                end
+                return false, "Karakter belum siap. Coba lagi sebentar."
         end
-        local loadOk, namaTersimpan, plots, meja = loadWorld(player.UserId)
+        local loadOk, namaTersimpan, plots, meja, gd = loadWorld(player.UserId)
         local nama = namaTersimpan or player.Name
         local idx = Land.claimFree(player.UserId, taken)
         if idx <= 0 then
                 return false, "Semua petak dunia di server ini sedang terpakai. Coba lagi sebentar."
         end
-        buildSection(idx, player.UserId, nama, false, loadOk, plots, meja)
+        buildSection(idx, player.UserId, nama, false, loadOk, plots, meja, gd)
         byOwner[player.UserId] = idx
-        placeAt(player, arrivalPos(idx), "dunia", nama)
-        return true, "Duniamu siap. Masuk dan pulang kini tanpa loading."
+        if placeWait(player, arrivalPos(idx), "dunia", nama) then
+                return true, "Duniamu siap. Masuk dan pulang kini tanpa loading."
+        end
+        return false, "Karakter belum siap. Duniamu sudah dibuat, coba masuk lagi."
 end
 
 function ZonaService.visit(player: Player, namaRaw: any): (boolean, string)
@@ -2601,9 +3609,11 @@ function ZonaService.visit(player: Player, namaRaw: any): (boolean, string)
                 if p.Name == nama then
                         local s = ownerSection(p.UserId)
                         if s then
-                                placeAt(player, arrivalPos(s.idx), "dunia", s.ownerName)
-                                Notify(p, "Tamu Datang", player.Name .. " sedang berkunjung ke duniamu.")
-                                return true, "Kamu berkunjung ke dunia " .. s.ownerName .. ". Semua aksi perubahan terkunci."
+                                if placeWait(player, arrivalPos(s.idx), "dunia", s.ownerName) then
+                                        Notify(p, "Tamu Datang", player.Name .. " sedang berkunjung ke duniamu.")
+                                        return true, "Kamu berkunjung ke dunia " .. s.ownerName .. ". Semua aksi perubahan terkunci."
+                                end
+                                return false, "Karakter belum siap. Coba lagi sebentar."
                         end
                         break
                 end
@@ -2616,10 +3626,12 @@ function ZonaService.visit(player: Player, namaRaw: any): (boolean, string)
         end
         local s = ownerSection(targetId)
         if s then
-                placeAt(player, arrivalPos(s.idx), "dunia", s.ownerName)
-                return true, "Kamu berkunjung ke dunia " .. s.ownerName .. "."
+                if placeWait(player, arrivalPos(s.idx), "dunia", s.ownerName) then
+                        return true, "Kamu berkunjung ke dunia " .. s.ownerName .. "."
+                end
+                return false, "Karakter belum siap. Coba lagi sebentar."
         end
-        local loadOk, namaTersimpan, plots, meja = loadWorld(targetId)
+        local loadOk, namaTersimpan, plots, meja, gd = loadWorld(targetId)
         if not loadOk then
                 return false, "Dunia " .. nama .. " tidak bisa dikunjungi sekarang."
         end
@@ -2634,16 +3646,18 @@ function ZonaService.visit(player: Player, namaRaw: any): (boolean, string)
                 return false, "Petak dunia habis. Coba lagi sebentar."
         end
         local namaDunia = namaTersimpan or nama
-        buildSection(idx, targetId, namaDunia, true, loadOk, plots, meja)
-        placeAt(player, arrivalPos(idx), "dunia", namaDunia)
-        return true, "Kamu berkunjung ke dunia " .. namaDunia .. " (salinan tersimpan)."
+        buildSection(idx, targetId, namaDunia, true, loadOk, plots, meja, gd)
+        if placeWait(player, arrivalPos(idx), "dunia", namaDunia) then
+                return true, "Kamu berkunjung ke dunia " .. namaDunia .. " (salinan tersimpan)."
+        end
+        return false, "Karakter belum siap. Coba lagi sebentar."
 end
 
 function ZonaService.pulang(player: Player): (boolean, string)
-        if placeAt(player, kotaPos(), "kota", nil) then
+        if placeWait(player, kotaPos(), "kota", nil) then
                 return true, "Kembali ke Pusat Kota."
         end
-        return false, "Titik kota belum siap."
+        return false, "Karakter belum siap. Coba lagi sebentar."
 end
 
 function ZonaService.mutationDeny(player: Player): string?
@@ -2729,21 +3743,21 @@ return ZonaService
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="23">
+  <Item class="StarterPlayer" referent="28">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="24">
+    <Item class="StarterPlayerScripts" referent="29">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="25">
+      <Item class="LocalScript" referent="30">
         <Properties>
           <string name="Name">Client</string>
           <string name="Source"><![CDATA[require(script:WaitForChild("UIController"))
 ]]></string>
         </Properties>
-        <Item class="ModuleScript" referent="26">
+        <Item class="ModuleScript" referent="31">
           <Properties>
             <string name="Name">UIController</string>
             <string name="Source"><![CDATA[local Players = game:GetService("Players")
@@ -2752,7 +3766,6 @@ local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
 local CropData = require(ReplicatedStorage.Shared.CropData)
-local Recipes = require(ReplicatedStorage.Shared.Recipes)
 local Net = require(ReplicatedStorage.Remotes)
 
 local player = Players.LocalPlayer
@@ -2767,6 +3780,8 @@ local state = {
         zone = "kota",
         dunia = nil,
         role = "hub",
+        gudang = nil,
+        tanam = nil,
 }
 
 local function fmt(n: number): string
@@ -2782,17 +3797,15 @@ local KIND_COLOR = {
         hasil = Color3.fromRGB(72, 130, 62),
         blok = Color3.fromRGB(96, 98, 104),
 }
-local RARITY_COLOR = {
-        common = Color3.fromRGB(150, 200, 130),
-        rare = Color3.fromRGB(120, 170, 235),
-        epic = Color3.fromRGB(200, 140, 240),
-}
 local PANEL_TITLES = {
         tas = "Tas (50 slot, maks 250 per slot)",
         plot = "Plot Tanam",
         semai = "Semai Panen",
         toko = "Toko Benih",
         gerbang = "Gerbang Dunia",
+        tanam = "Papan Tanam",
+        soal = "Soal Matematika",
+        gudang = "Gudang Hasil Panen",
 }
 
 local function mk(class: string, props: { [string]: any }, parent: Instance?): Instance
@@ -2822,8 +3835,15 @@ round(micdaFrame)
 mk("TextLabel", { Size = UDim2.new(0, 40, 1, 0), BackgroundTransparency = 1, Text = "M", TextScaled = true, Font = Enum.Font.GothamBlack, TextColor3 = Color3.fromRGB(255, 208, 96) }, micdaFrame)
 local micdaLabel = mk("TextLabel", { Position = UDim2.new(0, 46, 0, 0), Size = UDim2.new(1, -54, 1, 0), BackgroundTransparency = 1, Text = "0 Micda", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.fromRGB(240, 240, 240), TextXAlignment = Enum.TextXAlignment.Left }, micdaFrame)
 
+local travelBtn = mk("TextButton", { Position = UDim2.new(0, 12, 0, 52), Size = UDim2.new(0, 170, 0, 40), BackgroundColor3 = Color3.fromRGB(58, 84, 138), Text = "Masuk Dunia-ku", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1) }, gui)
+round(travelBtn)
+
 local tasBtn = mk("TextButton", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 0), Size = UDim2.new(0, 150, 0, 44), BackgroundColor3 = Color3.fromRGB(46, 110, 62), Text = "Tas", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1) }, hud)
 round(tasBtn)
+
+local punchBtn = mk("TextButton", { AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -26, 1, -30), Size = UDim2.new(0, 116, 0, 116), BackgroundColor3 = Color3.fromRGB(196, 96, 48), Text = "PUNCH", TextScaled = true, Font = Enum.Font.GothamBlack, TextColor3 = Color3.new(1, 1, 1), Visible = false }, gui)
+round(punchBtn, 58)
+mk("UIStroke", { Color = Color3.new(1, 1, 1), Thickness = 3, Transparency = 0.2 }, punchBtn)
 
 local toastHolder = mk("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 66), Size = UDim2.new(0, 470, 0, 220), BackgroundTransparency = 1 }, gui)
 mk("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder, HorizontalAlignment = Enum.HorizontalAlignment.Center }, toastHolder)
@@ -2887,7 +3907,7 @@ for i = 1, 50 do
         slotFrames[i] = { frame = cell, nama = nama, count = count }
 end
 local tasUsedLabel = mk("TextLabel", { AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 8, 1, -6), Size = UDim2.new(0.5, 0, 0, 28), BackgroundTransparency = 1, Text = "0/50 slot", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.fromRGB(200, 200, 205), TextXAlignment = Enum.TextXAlignment.Left }, tasPanel)
-mk("TextLabel", { AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -8, 1, -6), Size = UDim2.new(0.5, -12, 0, 28), BackgroundTransparency = 1, Text = "Mau gabung benih? Tanam satu benih di plot lahanku, lalu tanam benih pasangannya lagi di plot yang sama.", TextWrapped = true, TextScaled = true, Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(150, 200, 130), TextXAlignment = Enum.TextXAlignment.Right }, tasPanel)
+mk("TextLabel", { AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -8, 1, -6), Size = UDim2.new(0.5, -12, 0, 28), BackgroundTransparency = 1, Text = "Gabung benih terjadi di lahanmu: tanam benih A lewat Papan Tanam, lalu tanam benih pasangannya lewat Papan — plot berisi A berubah jadi hasil gabungan.", TextWrapped = true, TextScaled = true, Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(150, 200, 130), TextXAlignment = Enum.TextXAlignment.Right }, tasPanel)
 
 local function refreshTas()
         local used = #state.tas
@@ -2909,14 +3929,17 @@ local function refreshTas()
 end
 
 local gerbangPanel = makePanel("gerbang")
-mk("TextLabel", { Size = UDim2.new(1, -16, 0, 56), Position = UDim2.new(0, 8, 0, 4), BackgroundTransparency = 1, Text = "Duniamu terbuka seketika tanpa loading dan tanpa ID. Tamu bisa berkunjung dan tidak bisa mengubah apa pun.", TextWrapped = true, TextScaled = true, Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(200, 200, 205), TextXAlignment = Enum.TextXAlignment.Left }, gerbangPanel)
+mk("TextLabel", { Size = UDim2.new(1, -16, 0, 56), Position = UDim2.new(0, 8, 0, 4), BackgroundTransparency = 1, Text = "Duniamu terbuka seketika tanpa loading dan tanpa ID. Tamu bisa berkunjung dan tidak bisa mengubah apa pun. Tombol kiri atas juga bisa dipakai untuk pergi-pulang.", TextWrapped = true, TextScaled = true, Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(200, 200, 205), TextXAlignment = Enum.TextXAlignment.Left }, gerbangPanel)
 local masukBtn = mk("TextButton", { Size = UDim2.new(1, -16, 0, 52), Position = UDim2.new(0, 8, 0, 68), BackgroundColor3 = Color3.fromRGB(46, 110, 62), Text = "Masuk Dunia-ku", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1) }, gerbangPanel)
 round(masukBtn)
-mk("TextLabel", { Size = UDim2.new(1, -16, 0, 26), Position = UDim2.new(0, 8, 0, 130), BackgroundTransparency = 1, Text = "Kunjungi dunia pemain lain:", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.fromRGB(255, 214, 110), TextXAlignment = Enum.TextXAlignment.Left }, gerbangPanel)
-local kunjungiNama = mk("TextBox", { Size = UDim2.new(1, -16, 0, 44), Position = UDim2.new(0, 8, 0, 158), BackgroundColor3 = Color3.fromRGB(30, 33, 40), Text = "", PlaceholderText = "Ketik nama pemain...", TextScaled = true, Font = Enum.Font.Gotham, TextColor3 = Color3.new(1, 1, 1), ClearTextOnFocus = false }, gerbangPanel)
+local pulangBtn = mk("TextButton", { Size = UDim2.new(1, -16, 0, 44), Position = UDim2.new(0, 8, 0, 128), BackgroundColor3 = Color3.fromRGB(150, 116, 58), Text = "Pulang ke Pusat Kota", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1) }, gerbangPanel)
+round(pulangBtn)
+mk("TextLabel", { Size = UDim2.new(1, -16, 0, 26), Position = UDim2.new(0, 8, 0, 180), BackgroundTransparency = 1, Text = "Kunjungi dunia pemain lain:", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.fromRGB(255, 214, 110), TextXAlignment = Enum.TextXAlignment.Left }, gerbangPanel)
+local kunjungiNama = mk("TextBox", { Size = UDim2.new(1, -16, 0, 44), Position = UDim2.new(0, 8, 0, 208), BackgroundColor3 = Color3.fromRGB(30, 33, 40), Text = "", PlaceholderText = "Ketik nama pemain...", TextScaled = true, Font = Enum.Font.Gotham, TextColor3 = Color3.new(1, 1, 1), ClearTextOnFocus = false }, gerbangPanel)
 round(kunjungiNama, 6)
-local kunjungiBtn = mk("TextButton", { Size = UDim2.new(1, -16, 0, 44), Position = UDim2.new(0, 8, 0, 210), BackgroundColor3 = Color3.fromRGB(58, 84, 138), Text = "Kunjungi", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1) }, gerbangPanel)
+local kunjungiBtn = mk("TextButton", { Size = UDim2.new(1, -16, 0, 44), Position = UDim2.new(0, 8, 0, 260), BackgroundColor3 = Color3.fromRGB(58, 84, 138), Text = "Kunjungi", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1) }, gerbangPanel)
 round(kunjungiBtn)
+
 local function syncState()
         task.spawn(function()
                 local st = Net.get("GetState"):InvokeServer()
@@ -2928,11 +3951,6 @@ local function syncState()
                         state.dunia = st.dunia
                         state.role = st.role or "hub"
                         micdaLabel.Text = fmt(state.micda) .. " Micda"
-                        if state.zone == "dunia" then
-                                zonaLabel.Text = "Dunia " .. tostring(state.dunia or "Petani")
-                        else
-                                zonaLabel.Text = "Pusat Kota"
-                        end
                         refreshTas()
                 end
         end)
@@ -2945,6 +3963,13 @@ masukBtn.Activated:Connect(function()
                 syncState()
         end
 end)
+pulangBtn.Activated:Connect(function()
+        local ok, msg = Net.get("DuniaAct"):InvokeServer("pulang")
+        toast(ok and "Pulang" or "Gagal", msg)
+        if ok then
+                syncState()
+        end
+end)
 kunjungiBtn.Activated:Connect(function()
         local ok, msg = Net.get("DuniaAct"):InvokeServer("kunjungi", kunjungiNama.Text)
         toast(ok and "Kunjungan" or "Gagal", msg)
@@ -2953,55 +3978,27 @@ kunjungiBtn.Activated:Connect(function()
         end
 end)
 
-local function seedList(): { any }
-        local out = {}
-        for _, s in ipairs(state.tas) do
-                if s.kind == "benih" then
-                        table.insert(out, s)
-                end
+travelBtn.Activated:Connect(function()
+        if state.zone == "dunia" then
+                local ok, msg = Net.get("DuniaAct"):InvokeServer("pulang")
+                toast(ok and "Pulang" or "Gagal", msg)
+        else
+                local ok, msg = Net.get("DuniaAct"):InvokeServer("masuk")
+                toast(ok and "Gerbang Dunia" or "Gagal", msg)
         end
-        return out
-end
+end)
 
 local plotPanel = makePanel("plot")
 local plotInfo = mk("TextLabel", { Size = UDim2.new(1, -16, 0, 64), Position = UDim2.new(0, 8, 0, 6), BackgroundTransparency = 1, Text = "", TextWrapped = true, TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1), TextXAlignment = Enum.TextXAlignment.Left }, plotPanel)
-local plotActions = mk("ScrollingFrame", { Size = UDim2.new(1, -16, 1, -86), Position = UDim2.new(0, 8, 0, 76), BackgroundTransparency = 1, ScrollBarThickness = 6, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(0, 0, 0, 0) }, plotPanel)
-mk("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, plotActions)
+mk("TextLabel", { Size = UDim2.new(1, -16, 0, 60), Position = UDim2.new(0, 8, 0, 76), BackgroundTransparency = 1, Text = "Menanam sekarang lewat Papan Tanam di tepi blok plot: pilih benih + jumlah, jawab soal tiap 10 plot, dan plot terisi otomatis. Gabung benih tetap terjadi di plot: sesi benih pasangan mengubah plot yang berisi pasangan resepnya.", TextWrapped = true, TextScaled = true, Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(150, 200, 130), TextXAlignment = Enum.TextXAlignment.Left }, plotPanel)
+mk("TextLabel", { Size = UDim2.new(1, -16, 0, 60), Position = UDim2.new(0, 8, 0, 142), BackgroundTransparency = 1, Text = "Panen juga baru: saat tanaman sudah siap, dekati lalu tekan tombol PUNCH di layar untuk memukul hasilnya. Hasil terpental, berbunyi, lalu kamu bisa ambil dengan menyentuhnya.", TextWrapped = true, TextScaled = true, Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(230, 190, 120), TextXAlignment = Enum.TextXAlignment.Left }, plotPanel)
 
 local plotCtx = { lahan = nil, idx = nil }
 local countdownToken = 0
 
-local function tampilGabung(cropId: string)
-        local pasangan = {}
-        for _, s in ipairs(state.tas) do
-                if s.kind == "benih" and s.id ~= cropId and Recipes.sameSpot(cropId, s.id) then
-                        table.insert(pasangan, s)
-                end
-        end
-        if #pasangan == 0 then
-                return
-        end
-        mk("TextLabel", { Size = UDim2.new(1, -8, 0, 30), BackgroundTransparency = 1, Text = "Gabung benih di plot ini:", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.fromRGB(150, 200, 130), TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 50 }, plotActions)
-        for order, s in ipairs(pasangan) do
-                local sinfo = CropData.byId[s.id]
-                local hasil = CropData.byId[Recipes.sameSpot(cropId, s.id)]
-                local btn = mk("TextButton", { Size = UDim2.new(1, -8, 0, 40), BackgroundColor3 = Color3.fromRGB(122, 85, 52), Text = "Gabung " .. (sinfo and sinfo.nama or s.id) .. " -> " .. (hasil and hasil.nama or "?"), TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1), LayoutOrder = 50 + order }, plotActions)
-                round(btn, 6)
-                btn.Activated:Connect(function()
-                        local ok, msg = Net.get("PlotAct"):InvokeServer(plotCtx.idx, "plant", s.id)
-                        toast(ok and "Gabung Benih" or "Gagal Gabung", msg)
-                end)
-        end
-end
-
 local function refreshPlotPanel()
         countdownToken += 1
         local token = countdownToken
-        for _, c in ipairs(plotActions:GetChildren()) do
-                if c:IsA("TextButton") or c:IsA("TextLabel") then
-                        c:Destroy()
-                end
-        end
         local lahan, idx = plotCtx.lahan, plotCtx.idx
         if lahan == nil or idx == nil then
                 return
@@ -3016,27 +4013,10 @@ local function refreshPlotPanel()
                 return
         end
         if st == "kosong" then
-                plotInfo.Text = "Lahanmu, plot #" .. (idx + 1) .. " — kosong. Pilih benih untuk menanam:"
-                local seeds = seedList()
-                if #seeds == 0 then
-                        mk("TextLabel", { Size = UDim2.new(1, -8, 0, 40), BackgroundTransparency = 1, Text = "Tidak ada benih di tas. Beli pack benih di Toko Benih, Pusat Kota.", TextWrapped = true, TextScaled = true, Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(230, 170, 120), LayoutOrder = 1 }, plotActions)
-                        return
-                end
-                for order, s in ipairs(seeds) do
-                        local sinfo = CropData.byId[s.id]
-                        local btn = mk("TextButton", { Size = UDim2.new(1, -8, 0, 40), BackgroundColor3 = Color3.fromRGB(46, 110, 62), Text = "Tanam " .. (sinfo and sinfo.nama or s.id) .. " x" .. s.count, TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1), LayoutOrder = order }, plotActions)
-                        round(btn, 6)
-                        btn.Activated:Connect(function()
-                                local ok, msg = Net.get("PlotAct"):InvokeServer(idx, "plant", s.id)
-                                toast(ok and "Menanam" or "Gagal Tanam", msg)
-                                if ok then
-                                        closePanel()
-                                end
-                        end)
-                end
+                plotInfo.Text = "Lahanmu, plot #" .. (idx + 1) .. " — kosong. Pakai Papan Tanam di tepi blok plot untuk mengisi otomatis."
         elseif st == "tumbuh" then
                 plotInfo.Text = nama .. " sedang tumbuh (3 detik)."
-                local label = mk("TextLabel", { Size = UDim2.new(1, -8, 0, 40), BackgroundTransparency = 1, Text = "...", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.fromRGB(255, 214, 110), LayoutOrder = 1 }, plotActions)
+                local label = mk("TextLabel", { Size = UDim2.new(1, -8, 0, 40), Position = UDim2.new(0, 8, 0, 210), BackgroundTransparency = 1, Text = "...", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.fromRGB(255, 214, 110) }, plotPanel)
                 task.spawn(function()
                         while token == countdownToken and currentPanel == "plot" do
                                 local r = state.plot[key]
@@ -3044,23 +4024,12 @@ local function refreshPlotPanel()
                                         break
                                 end
                                 local left = math.max(0, (r.readyAt or 0) - Workspace:GetServerTimeNow())
-                                label.Text = string.format("Siap panen dalam %.1f detik", left)
+                                label.Text = string.format("Siap panen dalam %.1f detik — pukul dengan PUNCH", left)
                                 task.wait(0.2)
                         end
                 end)
-                tampilGabung(rec.crop)
         else
-                plotInfo.Text = nama .. " siap panen!"
-                local btn = mk("TextButton", { Size = UDim2.new(1, -8, 0, 46), BackgroundColor3 = Color3.fromRGB(196, 148, 48), Text = "Panen Sekarang", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1), LayoutOrder = 1 }, plotActions)
-                round(btn, 6)
-                btn.Activated:Connect(function()
-                        local ok, msg = Net.get("PlotAct"):InvokeServer(idx, "harvest")
-                        toast(ok and "Panen" or "Gagal Panen", msg)
-                        if ok then
-                                closePanel()
-                        end
-                end)
-                tampilGabung(rec.crop)
+                plotInfo.Text = nama .. " siap panen! Dekati plot ini lalu tekan tombol PUNCH untuk memukul hasilnya."
         end
 end
 
@@ -3071,7 +4040,7 @@ local semaiRight = mk("ScrollingFrame", { Size = UDim2.new(0.5, -14, 1, -80), Po
 mk("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, semaiLeft)
 mk("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, semaiRight)
 
-local function actionBtn(parent, text: string, color: Color3, order: number, onAct)
+local function actionBtn(parent, text: string, order: number)
         local holder = mk("Frame", { Size = UDim2.new(1, -8, 0, 64), BackgroundColor3 = Color3.fromRGB(38, 42, 52), LayoutOrder = order }, parent)
         round(holder, 6)
         mk("TextLabel", { Size = UDim2.new(1, -12, 0, 24), Position = UDim2.new(0, 6, 0, 3), BackgroundTransparency = 1, Text = text, TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1), TextXAlignment = Enum.TextXAlignment.Left }, holder)
@@ -3082,6 +4051,7 @@ local function subBtn(parent: Frame, text: string, posX: number, width: number, 
         local btn = mk("TextButton", { Position = UDim2.new(posX, 0, 1, -30), Size = UDim2.new(width, -6, 0, 26), BackgroundColor3 = color, Text = text, TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1) }, parent)
         round(btn, 6)
         btn.Activated:Connect(onAct)
+        return btn
 end
 
 local function refreshSemai()
@@ -3099,7 +4069,7 @@ local function refreshSemai()
                         adaHasil = true
                         order += 1
                         local info = CropData.byId[s.id]
-                        local holder = actionBtn(semaiLeft, (info and info.nama or s.id) .. " x" .. s.count, Color3.new(1, 1, 1), order, function() end)
+                        local holder = actionBtn(semaiLeft, (info and info.nama or s.id) .. " x" .. s.count, order)
                         subBtn(holder, "Letakkan 1", 0.5, 0.5, Color3.fromRGB(46, 110, 62), function()
                                 local ok, msg = Net.get("SmashAct"):InvokeServer("place", s.id)
                                 toast(ok and "Meja" or "Gagal", msg)
@@ -3115,7 +4085,7 @@ local function refreshSemai()
         for i, slot in ipairs(state.semai) do
                 local info = CropData.byId[slot.crop]
                 local cfg = info and CropData.Smash[info.rarity]
-                local holder = actionBtn(semaiRight, (info and info.nama or slot.crop) .. " — pukul " .. tostring(slot.hits) .. "/" .. tostring(cfg and cfg.hits or "?"), RARITY_COLOR[info and info.rarity] or Color3.new(1, 1, 1), i, function() end)
+                local holder = actionBtn(semaiRight, (info and info.nama or slot.crop) .. " — pukul " .. tostring(slot.hits) .. "/" .. tostring(cfg and cfg.hits or "?"), i)
                 subBtn(holder, "Pukul", 0, 0.5, Color3.fromRGB(196, 96, 48), function()
                         local ok, msg = Net.get("SmashAct"):InvokeServer("hit", i)
                         toast(ok and "Pukul" or "Gagal", msg)
@@ -3147,7 +4117,7 @@ local function refreshToko()
                         ada = true
                         order += 1
                         local info = CropData.byId[s.id]
-                        local holder = actionBtn(tokoSell, (info and info.nama or s.id) .. " x" .. s.count .. " — " .. (info and info.jual or 0) .. " Micda/unit", RARITY_COLOR[info and info.rarity] or Color3.new(1, 1, 1), order, function() end)
+                        local holder = actionBtn(tokoSell, (info and info.nama or s.id) .. " x" .. s.count .. " — " .. (info and info.jual or 0) .. " Micda/unit", order)
                         subBtn(holder, "Jual 1", 0, 0.34, Color3.fromRGB(46, 110, 62), function()
                                 local ok, msg = Net.get("ShopAct"):InvokeServer("sell", s.id, 1)
                                 toast(ok and "Terjual" or "Gagal", msg)
@@ -3174,6 +4144,183 @@ end
 
 buyBtn(tokoBuy, "Pack Common\n2.400 Micda\n3 benih acak", 0, "common")
 buyBtn(tokoBuy, "Pack Rare\n9.000 Micda\n3 benih acak", 0.5, "rare")
+
+local tanamPanel = makePanel("tanam")
+local tanamInfo = mk("TextLabel", { Size = UDim2.new(1, -16, 0, 44), Position = UDim2.new(0, 8, 0, 4), BackgroundTransparency = 1, Text = "", TextWrapped = true, TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.fromRGB(255, 214, 110), TextXAlignment = Enum.TextXAlignment.Left }, tanamPanel)
+local tanamList = mk("ScrollingFrame", { Size = UDim2.new(1, -16, 1, -196), Position = UDim2.new(0, 8, 0, 52), BackgroundTransparency = 1, ScrollBarThickness = 6, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(0, 0, 0, 0) }, tanamPanel)
+mk("UIListLayout", { Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder }, tanamList)
+local jumlahBox = mk("TextBox", { Size = UDim2.new(0, 118, 0, 40), Position = UDim2.new(0, 8, 1, -92), BackgroundColor3 = Color3.fromRGB(30, 33, 40), Text = "", PlaceholderText = "Jumlah", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1), ClearTextOnFocus = true }, tanamPanel)
+round(jumlahBox, 6)
+local selectedSeed: string? = nil
+
+local function presetBtn(posX: number, width: number, teks: string, nilai: number?)
+        local btn = mk("TextButton", { Position = UDim2.new(posX, 0, 1, -92), Size = UDim2.new(width, -4, 0, 40), BackgroundColor3 = Color3.fromRGB(58, 84, 138), Text = teks, TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1) }, tanamPanel)
+        round(btn, 6)
+        btn.Activated:Connect(function()
+                if nilai then
+                        jumlahBox.Text = tostring(nilai)
+                else
+                        for _, s in ipairs(state.tas) do
+                                if s.kind == "benih" and s.id == selectedSeed then
+                                        jumlahBox.Text = tostring(s.count)
+                                        break
+                                end
+                        end
+                end
+        end)
+        return btn
+end
+presetBtn(0.22, 0.1, "10", 10)
+presetBtn(0.32, 0.1, "50", 50)
+presetBtn(0.42, 0.1, "100", 100)
+presetBtn(0.52, 0.1, "250", 250)
+presetBtn(0.62, 0.1, "Maks", nil)
+
+local mulaiBtn = mk("TextButton", { Position = UDim2.new(0.72, 0, 1, -92), Size = UDim2.new(0.28, -8, 0, 40), BackgroundColor3 = Color3.fromRGB(46, 110, 62), Text = "Mulai Tanam", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1) }, tanamPanel)
+round(mulaiBtn, 6)
+local batalBtn = mk("TextButton", { Position = UDim2.new(0, 8, 1, -46), Size = UDim2.new(1, -16, 0, 40), BackgroundColor3 = Color3.fromRGB(140, 60, 56), Text = "Batalkan Sesi Tanam", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1), Visible = false }, tanamPanel)
+round(batalBtn, 6)
+
+local function refreshTanam()
+        local t = state.tanam or {}
+        if t.aktif then
+                tanamInfo.Text = "Sesi berjalan: " .. tostring(t.nama) .. " — tertanam " .. tostring(t.tertanam) .. "/" .. tostring(t.jumlah) .. ". Jawab soal untuk membuka 10 plot berikutnya."
+                batalBtn.Visible = true
+                mulaiBtn.Visible = false
+                jumlahBox.Visible = false
+        else
+                tanamInfo.Text = "Pilih benih, tentukan jumlah, lalu Mulai Tanam. Setiap 10 plot dibuka dengan 1 soal matematika acak — salah berarti tertahan sampai benar."
+                batalBtn.Visible = false
+                mulaiBtn.Visible = true
+                jumlahBox.Visible = true
+        end
+        for _, c in ipairs(tanamList:GetChildren()) do
+                if c:IsA("Frame") then
+                        c:Destroy()
+                end
+        end
+        local order = 0
+        for _, s in ipairs(state.tas) do
+                if s.kind == "benih" then
+                        order += 1
+                        local info = CropData.byId[s.id]
+                        local row = mk("Frame", { Size = UDim2.new(1, -8, 0, 46), BackgroundColor3 = s.id == selectedSeed and Color3.fromRGB(52, 78, 122) or Color3.fromRGB(34, 38, 46), LayoutOrder = order }, tanamList)
+                        round(row, 6)
+                        mk("TextLabel", { Size = UDim2.new(0.5, -8, 1, -8), Position = UDim2.new(0, 8, 0, 4), BackgroundTransparency = 1, Text = (info and info.nama or s.id) .. " x" .. s.count, TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1), TextXAlignment = Enum.TextXAlignment.Left }, row)
+                        local pilih = mk("TextButton", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -6, 0, 4), Size = UDim2.new(0.24, -6, 1, -8), BackgroundColor3 = Color3.fromRGB(58, 84, 138), Text = "Pilih", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1) }, row)
+                        round(pilih, 6)
+                        pilih.Activated:Connect(function()
+                                selectedSeed = s.id
+                                refreshTanam()
+                        end)
+                end
+        end
+        if order == 0 then
+                mk("TextLabel", { Size = UDim2.new(1, -8, 0, 40), BackgroundTransparency = 1, Text = "Tidak ada benih di tas. Beli pack benih di Toko Benih, Pusat Kota.", TextWrapped = true, TextScaled = true, Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(230, 170, 120), LayoutOrder = 1 }, tanamList)
+        end
+end
+
+mulaiBtn.Activated:Connect(function()
+        if not selectedSeed then
+                toast("Papan Tanam", "Pilih benih dulu di daftar.")
+                return
+        end
+        local jumlah = tonumber(jumlahBox.Text) or 0
+        local ok, msg = Net.get("TanamAct"):InvokeServer("start", selectedSeed, jumlah)
+        toast(ok and "Sesi Tanam" or "Gagal", msg)
+end)
+
+batalBtn.Activated:Connect(function()
+        local ok, msg = Net.get("TanamAct"):InvokeServer("batal")
+        toast(ok and "Sesi Tanam" or "Gagal", msg)
+        if ok then
+                closePanel()
+        end
+end)
+
+local soalPanel = makePanel("soal")
+local soalNomor = mk("TextLabel", { Size = UDim2.new(1, -16, 0, 30), Position = UDim2.new(0, 8, 0, 6), BackgroundTransparency = 1, Text = "", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.fromRGB(255, 214, 110), TextXAlignment = Enum.TextXAlignment.Left }, soalPanel)
+local soalTeks = mk("TextLabel", { Size = UDim2.new(1, -16, 0, 86), Position = UDim2.new(0, 8, 0, 44), BackgroundColor3 = Color3.fromRGB(30, 33, 40), Text = "?", TextScaled = true, Font = Enum.Font.GothamBlack, TextColor3 = Color3.new(1, 1, 1) }, soalPanel)
+round(soalTeks, 10)
+local soalJawab = mk("TextBox", { Size = UDim2.new(0, 220, 0, 54), Position = UDim2.new(0.5, -110, 0, 150), BackgroundColor3 = Color3.fromRGB(40, 44, 54), Text = "", PlaceholderText = "Tulis jawaban angka", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1), ClearTextOnFocus = true }, soalPanel)
+round(soalJawab, 8)
+local soalBtn = mk("TextButton", { Size = UDim2.new(0, 220, 0, 48), Position = UDim2.new(0.5, -110, 0, 216), BackgroundColor3 = Color3.fromRGB(46, 110, 62), Text = "Jawab", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1) }, soalPanel)
+round(soalBtn, 8)
+local soalFeedback = mk("TextLabel", { Size = UDim2.new(1, -16, 0, 40), Position = UDim2.new(0, 8, 0, 276), BackgroundTransparency = 1, Text = "", TextWrapped = true, TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1) }, soalPanel)
+mk("TextLabel", { Size = UDim2.new(1, -16, 0, 44), Position = UDim2.new(0, 8, 0, 320), BackgroundTransparency = 1, Text = "Jawaban benar membuka 10 plot berikutnya. Salah = soal tertahan sampai jawabanmu benar. Soal selalu acak dan berbeda tiap pemain.", TextWrapped = true, TextScaled = true, Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(170, 170, 178) }, soalPanel)
+
+local lastSoalTeks = ""
+
+soalBtn.Activated:Connect(function()
+        local n = tonumber(soalJawab.Text)
+        if not n then
+                soalFeedback.TextColor3 = Color3.fromRGB(240, 130, 110)
+                soalFeedback.Text = "Masukkan angka dulu."
+                return
+        end
+        local ok, msg = Net.get("TanamAct"):InvokeServer("jawab", n)
+        soalFeedback.TextColor3 = ok and Color3.fromRGB(150, 200, 130) or Color3.fromRGB(240, 130, 110)
+        soalFeedback.Text = msg
+end)
+
+local gudangPanel = makePanel("gudang")
+local gudangTampungan = mk("TextLabel", { Size = UDim2.new(1, -16, 0, 34), Position = UDim2.new(0, 8, 0, 4), BackgroundTransparency = 1, Text = "", TextScaled = true, Font = Enum.Font.GothamBold, TextColor3 = Color3.fromRGB(255, 214, 110), TextXAlignment = Enum.TextXAlignment.Left }, gudangPanel)
+mk("TextLabel", { Size = UDim2.new(1, -16, 0, 24), Position = UDim2.new(0, 8, 0, 40), BackgroundTransparency = 1, Text = "Kiri: hasil panen di tas — setor ke gudang. Kanan: isi gudang — ambil kembali ke tas.", TextScaled = true, Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(170, 170, 178), TextXAlignment = Enum.TextXAlignment.Left }, gudangPanel)
+local gudangLeft = mk("ScrollingFrame", { Size = UDim2.new(0.5, -14, 1, -102), Position = UDim2.new(0, 8, 0, 70), BackgroundColor3 = Color3.fromRGB(30, 33, 40), ScrollBarThickness = 6, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(0, 0, 0, 0) }, gudangPanel)
+local gudangRight = mk("ScrollingFrame", { Size = UDim2.new(0.5, -14, 1, -102), Position = UDim2.new(0.5, 6, 0, 70), BackgroundColor3 = Color3.fromRGB(30, 33, 40), ScrollBarThickness = 6, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(0, 0, 0, 0) }, gudangPanel)
+mk("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, gudangLeft)
+mk("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, gudangRight)
+
+local function refreshGudang()
+        local g = state.gudang
+        if not g then
+                return
+        end
+        gudangTampungan.Text = "Tampungan gudang: " .. tostring(g.terpakai) .. "/" .. tostring(g.maks) .. " (sisa " .. tostring(g.maks - g.terpakai) .. ") — satu setor 1-250 buah = 1 tampungan."
+        for _, col in ipairs({ gudangLeft, gudangRight }) do
+                for _, c in ipairs(col:GetChildren()) do
+                        if c:IsA("Frame") or c:IsA("TextLabel") then
+                                c:Destroy()
+                        end
+                end
+        end
+        local order = 0
+        for _, s in ipairs(state.tas) do
+                if s.kind == "hasil" then
+                        order += 1
+                        local info = CropData.byId[s.id]
+                        local holder = actionBtn(gudangLeft, (info and info.nama or s.id) .. " x" .. s.count, order)
+                        subBtn(holder, "Setor 250", 0, 0.5, Color3.fromRGB(46, 110, 62), function()
+                                local ok, msg = Net.get("GudangAct"):InvokeServer("simpan", s.id, 250)
+                                toast(ok and "Gudang" or "Gagal", msg)
+                        end)
+                        subBtn(holder, "Setor Semua", 0.5, 0.5, Color3.fromRGB(58, 84, 138), function()
+                                local ok, msg = Net.get("GudangAct"):InvokeServer("simpan", s.id)
+                                toast(ok and "Gudang" or "Gagal", msg)
+                        end)
+                end
+        end
+        if order == 0 then
+                mk("TextLabel", { Size = UDim2.new(1, -8, 0, 40), BackgroundTransparency = 1, Text = "Tidak ada hasil panen di tas untuk disimpan.", TextScaled = true, Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(150, 150, 155), LayoutOrder = 1 }, gudangLeft)
+        end
+        local order2 = 0
+        for _, slot in ipairs(g.slots or {}) do
+                order2 += 1
+                local info = CropData.byId[slot.id]
+                local holder = actionBtn(gudangRight, "Slot " .. slot.i .. ": " .. (info and info.nama or slot.id) .. " x" .. slot.count, order2)
+                subBtn(holder, "Ambil Semua", 0, 0.5, Color3.fromRGB(46, 110, 62), function()
+                        local ok, msg = Net.get("GudangAct"):InvokeServer("ambil", slot.i)
+                        toast(ok and "Gudang" or "Gagal", msg)
+                end)
+                subBtn(holder, "Ambil 100", 0.5, 0.5, Color3.fromRGB(58, 84, 138), function()
+                        local ok, msg = Net.get("GudangAct"):InvokeServer("ambil", slot.i, 100)
+                        toast(ok and "Gudang" or "Gagal", msg)
+                end)
+        end
+        if order2 == 0 then
+                mk("TextLabel", { Size = UDim2.new(1, -8, 0, 40), BackgroundTransparency = 1, Text = "Gudang masih kosong.", TextScaled = true, Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(150, 150, 155), LayoutOrder = 1 }, gudangRight)
+        end
+end
 
 tasBtn.Activated:Connect(function()
         if currentPanel == "tas" then
@@ -3215,6 +4362,61 @@ UserInputService.InputBegan:Connect(function(input, processed)
         end
 end)
 
+local punchTarget: number? = nil
+
+punchBtn.Activated:Connect(function()
+        if punchTarget == nil then
+                return
+        end
+        local ok, msg = Net.get("PlotAct"):InvokeServer(punchTarget, "punch")
+        toast(ok and "Panen" or "Gagal", msg)
+        if ok then
+                task.spawn(function()
+                        local awal = camera.FieldOfView
+                        camera.FieldOfView = awal + 6
+                        task.wait(0.09)
+                        camera.FieldOfView = awal
+                end)
+        end
+end)
+
+task.spawn(function()
+        while true do
+                task.wait(0.25)
+                local tampil, target = false, nil
+                if state.zone == "dunia" and state.lahan then
+                        local char = player.Character
+                        local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+                        if root then
+                                local grid = Workspace:FindFirstChild("Dunia")
+                                local folder = grid and grid:FindFirstChild("PlotGrid_" .. state.lahan)
+                                if folder then
+                                        local best = 24
+                                        for _, m in ipairs(folder:GetChildren()) do
+                                                if m:IsA("Model") and string.sub(m.Name, 1, 8) == "Tanaman_" then
+                                                        local key = tostring(state.lahan) .. "_" .. tostring(m:GetAttribute("PlotIdx"))
+                                                        local rec = state.plot[key]
+                                                        if rec and rec.st == "siap" then
+                                                                local kepala = m:FindFirstChild("Kepala") :: BasePart?
+                                                                if kepala then
+                                                                        local d = (kepala.Position - root.Position).Magnitude
+                                                                        if d < best then
+                                                                                best = d
+                                                                                target = m:GetAttribute("PlotIdx")
+                                                                                tampil = true
+                                                                        end
+                                                                end
+                                                        end
+                                                end
+                                        end
+                                end
+                        end
+                end
+                punchTarget = target
+                punchBtn.Visible = tampil
+        end
+end)
+
 Net.get("Sync").OnClientEvent:Connect(function(payload)
         state.micda = payload.micda
         state.tas = payload.tas or {}
@@ -3224,8 +4426,10 @@ Net.get("Sync").OnClientEvent:Connect(function(payload)
                 state.dunia = payload.dunia
                 if state.zone == "dunia" then
                         zonaLabel.Text = "Dunia " .. tostring(state.dunia or "Petani")
+                        travelBtn.Text = "Pulang ke Kota"
                 else
                         zonaLabel.Text = "Pusat Kota"
+                        travelBtn.Text = "Masuk Dunia-ku"
                 end
         end
         refreshTas()
@@ -3233,6 +4437,10 @@ Net.get("Sync").OnClientEvent:Connect(function(payload)
                 refreshSemai()
         elseif currentPanel == "toko" then
                 refreshToko()
+        elseif currentPanel == "tanam" then
+                refreshTanam()
+        elseif currentPanel == "gudang" then
+                refreshGudang()
         end
 end)
 
@@ -3256,6 +4464,37 @@ Net.get("SmashSync").OnClientEvent:Connect(function(p)
         end
 end)
 
+Net.get("TanamSync").OnClientEvent:Connect(function(p)
+        state.tanam = p
+        if currentPanel == "tanam" then
+                refreshTanam()
+        end
+        if p.aktif and p.soal then
+                soalNomor.Text = "Soal " .. tostring(p.soal.nomor) .. " dari " .. tostring(p.totalSoal) .. " — tertanam " .. tostring(p.tertanam) .. "/" .. tostring(p.jumlah)
+                soalTeks.Text = p.soal.teks
+                if p.soal.teks ~= lastSoalTeks then
+                        lastSoalTeks = p.soal.teks
+                        soalJawab.Text = ""
+                        soalFeedback.Text = ""
+                end
+                if currentPanel ~= "soal" then
+                        openPanel("soal")
+                end
+        elseif p.selesai then
+                lastSoalTeks = ""
+                if currentPanel == "soal" then
+                        closePanel()
+                end
+        end
+end)
+
+Net.get("GudangSync").OnClientEvent:Connect(function(p)
+        state.gudang = p
+        if currentPanel == "gudang" then
+                refreshGudang()
+        end
+end)
+
 Net.get("OpenPanel").OnClientEvent:Connect(function(name)
         if name == "semai" then
                 openPanel("semai")
@@ -3265,6 +4504,12 @@ Net.get("OpenPanel").OnClientEvent:Connect(function(name)
                 refreshToko()
         elseif name == "gerbang" then
                 openPanel("gerbang")
+        elseif name == "tanam" then
+                openPanel("tanam")
+                refreshTanam()
+        elseif name == "gudang" then
+                openPanel("gudang")
+                refreshGudang()
         end
 end)
 
@@ -3280,8 +4525,10 @@ task.spawn(function()
                 micdaLabel.Text = fmt(state.micda) .. " Micda"
                 if state.zone == "dunia" then
                         zonaLabel.Text = "Dunia " .. tostring(state.dunia or "Petani")
+                        travelBtn.Text = "Pulang ke Kota"
                 else
                         zonaLabel.Text = "Pusat Kota"
+                        travelBtn.Text = "Masuk Dunia-ku"
                 end
                 refreshTas()
         end
@@ -3296,13 +4543,13 @@ return true
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="27">
+  <Item class="Workspace" referent="32">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="NeedsPivotMigration">false</bool>
       <bool name="StreamingEnabled">true</bool>
     </Properties>
-    <Item class="Part" referent="28">
+    <Item class="Part" referent="33">
       <Properties>
         <string name="Name">SafeFloor</string>
         <bool name="Anchored">true</bool>

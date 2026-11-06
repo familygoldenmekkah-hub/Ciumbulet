@@ -1,20 +1,44 @@
 # DUNIA AKIOMIDA (Roblox)
 
-Status: LIVE di Roblox (**versionNumber 30**, 6 Nov 2026) — **PERBAIKAN
-AKAR MASALAH VIA PLAYTEST OTOMATIS**. Sesuai permintaan pemilik ("tes dan
-mainkan agar tahu letak errornya"), seluruh alur pemain kini disimulasikan
-end-to-end (server + UI klien) dalam mesin playtest 51 cek. Playtest
-membuktikan v29 punya cacat fatal yang tidak tertangkap tes lama: UI klien
-tidak pernah dimuat (beli benih & tombol masuk dunia mati di lapangan),
-grid plot dibangun di koordinat kota (bukan di lahan), dan status siap-panen
-tidak pernah tersinkron. Semua diperbaiki di v30 dan diverifikasi hijau.
-Universe: 10774464946 · Place: 77626159664192 · Label era: 9.3.0 "Playtest Fix"
+Status: LIVE di Roblox (**versionNumber 31**, 6 Nov 2026) — **SISTEM
+TANAM-PANEN BARU**: tanam lewat Papan Tanam (bukan klik plot), soal
+matematika acak tiap 10 plot, panen dengan tombol PUNCH (drop memantul +
+bunyi + partikel + kombo), dan Gudang hasil panen 1000 tampungan. Sesuai
+permintaan pemilik ("Sekarang fokus ke tempat tanam plot dulu jadi gini").
+Universe: 10774464946 · Place: 77626159664192 · Label era: 9.4.0 "Papan &
+Punch"
 Build: `tools/rojo build default.project.json -o build/DuniaAkiomida.rbxlx`
-(luau-lsp 0 TypeError, tes offline 106 PASS / 0 FAIL, playtest 51 PASS / 0 FAIL)
+(luau-lsp 0 temuan, tes offline 132 PASS / 0 FAIL, simulasi alur main hijau)
 
-Skor banding Toram/Growtopia: **42/100** — lihat `RUBRIC.md`.
+Skor banding Toram/Growtopia: **44/100** — lihat `RUBRIC.md`.
 
-## Arsitektur v29: satu place, satu server, dunia = seksi koordinat jauh
+## Alur tanam-panen baru (permintaan pemilik, v31)
+
+- **PAPAN TANAM** — papan kayu fisik di tepi blok plot tiap lahan dengan
+  label hidup "TERTANAM X/500". Tekan E -> pilih jenis benih dari tas +
+  jumlah (preset 10/50/100/250/Maks atau angka bebas). Plot terisi OTOMATIS
+  10 per 10; benih dipotong per batch, jadi sesi dibatalkan = benih tetap
+  aman di tas.
+- **SOAL MATEMATIKA** — setiap 10 plot dibuka dengan 1 soal (500 plot = 50
+  soal). Selalu acak per pemain per sesi, tidak pernah sama (anti-duplikat),
+  kesulitan naik bertahap: tambah/kurang -> kali -> bagi. Salah = soal
+  TERTAHAN sampai jawaban benar.
+- **PANEN DENGAN PUNCH** — tombol PUNCH besar muncul di layar saat dekat
+  tanaman siap milikmu. Hasil terpental: memantul fisik, berbunyi, partikel;
+  pukulan beruntun (kombo x4/x8) memperbesar efek. Ambil hasil dengan
+  menyentuh drop.
+- **TAS PENUH = MELAYANG** — jika tas penuh, hasil panen melayang dengan
+  label "Tas Penuh! Ke Gudang" dan tidak bisa diambil sampai ada ruang.
+- **GUDANG** — bangunan baru di tiap lahan (penuh peti, karung, pot): setor
+  hasil 1-250 buah = memakai 1 tampungan dari 1000 (setor 250 -> sisa 999 ->
+  setor lagi -> 998, persis contoh pemilik); ambil kembali kapan saja.
+  Isi gudang persisten per dunia.
+- **PERBAIKAN LANJUTAN** — tombol "Masuk Dunia-ku / Pulang ke Kota" 1 klik
+  di HUD; teleport diperkuat (placeWait + settle streaming); beli benih
+  lebih longgar; rak toko makin penuh; gabung benih tetap HANYA di lahan
+  (sesi benih pasangan mengubah plot yang berisi pasangan resepnya).
+
+## Arsitektur v29+: satu place, satu server, dunia = seksi koordinat jauh
 
 - **PUSAT KOTA** (koordinat 0) — spawn plaza, **Gerbang Dunia** (lengkung kayu
   10 stud, panel Masuk/Kunjungi), **satu-satunya bangunan: Toko Benih** —
@@ -68,6 +92,7 @@ Skor banding Toram/Growtopia: **42/100** — lihat `RUBRIC.md`.
 | v28 | TAHAP 2 dunia pribadi ter-instans (ReserveServer). Diganti di v29 karena teleport bisa gagal di lapangan. |
 | v29 | Dunia sambung satu-server (seksi koordinat jauh, CFrame instan) + gabung benih di plot + Pusat Kota hanya Toko Benih. CATATAN JUJUR: UI klien ternyata tidak pernah dimuat (bug ditemukan v30 lewat playtest), jadi beli benih & tombol masuk dunia mati di lapangan. |
 | v30 | **Playtest otomatis + perbaikan akar masalah**: (1) UI klien kini benar-benar dimuat (init.client me-require UIController — akar dari "beli gak bisa" & "gak bisa balik ke lahan"); (2) 500 plot per lahan dibangun di koordinat dunia yang benar (X+5000, sebelumnya nyasar ke kota); (3) status siap-panen tersinkron ke semua pemain (tombol Panen muncul); (4) gabung benih = tanam 2 benih resep di PLOT YANG SAMA + tombol Gabung di panel plot; (5) pintu Toko & Semai kini pintu sungguhan berengsel buka-tutup (bukan melompong); (6) interior toko makin penuh: barisan paket benih di rak, peti kayu, etalase kaca kasir, poster, spanduk gantung, papan promo, alas pintu, gunung karung, pot; (7) teleport diperkuat: tunggu streaming selesai sebelum lepas anchor, jangkar gagal-aman 5 dtk, pengawas jurang 15 dtk. Tes 106 PASS, playtest 51 PASS, 0 FAIL (#30). |
+| v31 | **Sistem tanam-panen baru sesuai blueprint pemilik**: (1) PAPAN TANAM fisik per lahan dengan label hidup "TERTANAM X/500" — pilih benih + jumlah, plot terisi otomatis 10 per 10, tanpa klik plot; (2) SOAL MATEMATIKA acak per pemain tiap 10 plot (500 plot = 50 soal), salah = tertahan sampai benar, kesulitan naik tambah/kurang -> kali -> bagi; (3) PANEN PUNCH: tombol layar muncul dekat tanaman siap, hasil memantul + bunyi + partikel, kombo x4/x8 memperbesar efek, ambil dengan menyentuh; (4) tas penuh = hasil MELAYANG tidak bisa diambil; (5) GUDANG hasil panen per lahan: setor 1-250 = 1 tampungan dari 1000 (250 -> 999 -> 998 persis contoh pemilik), ambil kembali, persisten di AKM_Dunia; (6) tombol perjalanan cepat HUD, teleport placeWait, beli longgar, rak toko penuh. Tes 132 PASS / 0 FAIL, luau-lsp 0 temuan, simulasi alur main hijau (#31). |
 
 ## Sesi update mandiri berikutnya (tanpa menunggu pemilik)
 

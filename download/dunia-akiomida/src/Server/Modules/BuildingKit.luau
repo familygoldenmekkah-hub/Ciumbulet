@@ -354,6 +354,27 @@ function BuildingKit.buildToko(parent: Instance): Model
         BuildingKit.part(model, Vector3.new(2, 1.8, 2), CFrame.new(14.8, 3.2, 10.7), BAG_B, Enum.Material.Fabric)
         potPlant(model, CFrame.new(-15.5, 2.5, -12.5))
         potPlant(model, CFrame.new(15.5, 2.5, -12.5))
+        local BUAH_A = Color3.fromRGB(214, 92, 76)
+        local BUAH_B = Color3.fromRGB(226, 176, 64)
+        local BUAH_C = Color3.fromRGB(120, 168, 82)
+        local BUAH_L = { BUAH_A, BUAH_B, BUAH_C }
+        for i = 0, 5 do
+                BuildingKit.part(model, Vector3.new(0.9, 0.9, 0.9), CFrame.new(-13.4 + i * 0.95, 2.55, 12.2), BUAH_L[i % 3 + 1], Enum.Material.SmoothPlastic).CanCollide = false
+                BuildingKit.part(model, Vector3.new(0.9, 0.9, 0.9), CFrame.new(13.4 + i * 0.95, 2.55, 12.2), BUAH_L[(i + 1) % 3 + 1], Enum.Material.SmoothPlastic).CanCollide = false
+        end
+        for sx = -1, 1, 2 do
+                BuildingKit.part(model, Vector3.new(1.4, 2.6, 1.4), CFrame.new(sx * 15.5, 2.3, 14.8), Color3.fromRGB(122, 96, 58), Enum.Material.WoodPlanks)
+                BuildingKit.part(model, Vector3.new(1.5, 0.25, 1.5), CFrame.new(sx * 15.5, 3.7, 14.8), FLOORWOOD, Enum.Material.WoodPlanks).CanCollide = false
+                seedBag(model, CFrame.new(sx * 12.6, 1.7, 15), BAG_A)
+                seedBag(model, CFrame.new(sx * 12.6, 3.3, 15), BAG_C)
+        end
+        BuildingKit.part(model, Vector3.new(2.6, 3.2, 2.6), CFrame.new(16.8, 2.1, -12.5), Color3.fromRGB(122, 96, 58), Enum.Material.WoodPlanks)
+        BuildingKit.part(model, Vector3.new(2.7, 0.3, 2.7), CFrame.new(16.8, 3.8, -12.5), FLOORWOOD, Enum.Material.WoodPlanks).CanCollide = false
+        for i = 0, 2 do
+                seedBag(model, CFrame.new(-17 + i * 1.7, 1.5 + (i % 2) * 1.3, -17 + (i % 2) * 1.2), BUAH_L[i + 1])
+        end
+        potPlant(model, CFrame.new(19, 2.5, 2))
+        potPlant(model, CFrame.new(-19, 2.5, -6))
 
         BuildingKit.part(model, Vector3.new(6.4, 2, 1), CFrame.new(0, 11, fz), CREAM)
         hingedDoor(model, Vector3.new(3, 10, 0.5), CFrame.new(-1.5, 5, fz), Vector3.new(-1.55, 0, 0), -math.rad(105))
