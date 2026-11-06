@@ -18,6 +18,7 @@ local planted: { [number]: { [number]: any } } = {}
 local running: { [number]: boolean } = {}
 local boards: { [number]: { TextLabel } } = {}
 local combo: { [number]: { t: number, n: number } } = {}
+local cooldown: { [number]: number } = {}
 
 function PlotService.bind(deps)
         Land = deps.Land
@@ -312,6 +313,12 @@ function PlotService.punch(player: Player, idx: any): (boolean, string)
         if not index then
                 return false, "Kamu tidak punya lahan."
         end
+        local t0 = now()
+        local cd = cooldown[player.UserId]
+        if cd and t0 - cd < 0.35 then
+                return false, "Terlalu cepat."
+        end
+        cooldown[player.UserId] = t0
         local sasaran, titik = sasaranRaycast(player, index)
         if sasaran == nil then
                 sasaran, titik = sasaranKerucut(player, index)
@@ -383,19 +390,19 @@ function PlotService.punch(player: Player, idx: any): (boolean, string)
         return true, "Panen " .. jumlah .. " " .. info.nama
 end
 
-function PlotService.serialize(index: number): { [number]: { c: string, r: number } }
+function PlotService.serialize(index: number): { [number]: any }
         local out = {}
         local pl = planted[index]
         if not pl then
                 return out
         end
         for idx, rec in pairs(pl) do
-                out[idx] = { c = rec.crop, r = rec.readyAt }
+                out[idx] = { crop = rec.crop, readyAt = rec.readyAt, hits = rec.hits, lastHit = rec.lastHit }
         end
         return out
 end
 
-function PlotService.restore(index: number, arr: { [number]: { c: string, r: number } })
+function PlotService.restore(index: number, arr: { [number]: any })
         local pl = planted[index]
         if not pl then
                 return
@@ -404,7 +411,14 @@ function PlotService.restore(index: number, arr: { [number]: { c: string, r: num
                 if not pl[idx] and CropData.byId[rec.c] then
                         local model = pasangModel(index, idx, rec.c)
                         local ready = now() >= rec.r
-                        pl[idx] = { crop = rec.c, readyAt = rec.r, model = model, ready = ready, hits = 0, lastHit = 0 }
+                        pl[idx] = {
+                                crop = rec.c,
+                                readyAt = rec.r,
+                                model = model,
+                                ready = ready,
+                                hits = rec.h or 0,
+                                lastHit = rec.l or 0,
+                        }
                         if ready then
                                 PlantModels.setSiap(model, CropData.byId[rec.c])
                         end

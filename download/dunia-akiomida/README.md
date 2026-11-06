@@ -109,16 +109,24 @@ Skor banding Toram/Growtopia: **49/100** — lihat `RUBRIC.md`.
   dtk saat tiba + RequestStreamAroundAsync + watchdog; seksi hantu auto-hancur
   120 dtk kosong; save hanya bila berubah.
 - **DATA** — Micda 900.000 & tas 50 slot x 250 (AKM_T1), dunia per userId
-  (AKM_Dunia, sanitasi ketat DuniaLogic). Tanpa sistem level. Bila DataStore
-  tidak tersedia, game tetap jalan mode sesi tanpa menimpa data lama.
+  (AKM_Dunia, sanitasi ketat DuniaLogic: plot + meja + gudang + drop). Pohon &
+  progres pukul + drop belum diambil tersimpan; drop hanya kedaluwarsa 900 dtk
+  sejak pemain keluar (HARVEST_EXPIRE_SECONDS, waktu server; online aman).
+  Kunci sesi mencegah satu akun aktif di dua server; save UpdateAsync + retry.
+  Tanpa sistem level. Bila DataStore tidak tersedia, game tetap jalan mode
+  sesi tanpa menimpa data lama.
 - **SKALA** — tinggi karakter acuan 5 stud: lengkung gerbang 10 stud, bangunan
   20 stud; modeling modular, maks 3 warna utama per bangunan (pernak-pernik
   toko adalah aksen barang).
 - **KEAMANAN** — semua logika uang/tas/beli/jual/pukul/gabung/perpindahan di
-  ServerScriptService; semua remote divalidasi server (pemilik per-seksi,
-  jarak, saldo, batas laju per detik); tanpa require ID angka, loadstring,
-  getfenv, HttpService; tanpa model/script luar; kode dev tetap server-only
-  (DevCodeVault).
+  ServerScriptService; uang hanya lewat CurrencyService (Get/Add/Spend +
+  alasan whitelist + ledger + batas laju + tolak lonjakan); semua remote
+  divalidasi server (tipe, rentang, pemilik per-seksi, jarak, cooldown,
+  batas laju per detik); klaim drop atomik satu ID satu kali; AuditService
+  mencatat insiden (laju, argumen, jarak, milik, klaim ganda, lonjakan) dan
+  kick otomatis pada 20 insiden/5 menit; kematangan & kedaluwarsa murni
+  waktu server; tanpa require ID angka, loadstring, getfenv, HttpService;
+  tanpa model/script luar; kode dev tetap server-only (DevCodeVault).
 
 ## Riwayat versi (ringkas)
 
@@ -135,6 +143,7 @@ Skor banding Toram/Growtopia: **49/100** — lihat `RUBRIC.md`.
 | v33 | **UJIAN MASSA PANEN + 3 perbaikan akar**: ujian end-to-end baru 94 tahap — tanam 50 wortel lewat papan (5 soal), tunggu matang (warna berubah, status Siap 50), panen raya dengan tombol PUNCH asli (kick kamera + kombo tier 1->2->3: drop 1.8->2.1->2.4), 50 drop disentuh -> 288 buah persis, bayam tumbuh 5x pukul hancur tanpa drop, combine GUI Gandum+Rye -> Triticale + penolakan "Tidak bisa di-combine" (benih utuh) + 8 resep & urutan dibalik, Tangelo (bentuk pohon) ditanam & dipanen, gudang 999->998, tas penuh = drop melayang. Ditemukan & diperbaiki: (1) penarget PUNCH tak pernah menemukan PlotGrid (grid ada di dalam model seksi; kini FindFirstChild rekursif — tombol kini benar-benar memukul); (2) travel HUD tidak menyegarkan state lahan (kini syncState + payload Sync membawa lahan via provider baru); (3) tab Combine Seed terbuka kosong (kini refresh saat tab dibuka). Tes 127 + massa 94 + playtest 72, semua 0 FAIL; luau-lsp 0 temuan (#33). |
 | v34 | **REVISI TAMPILAN HP** (urutan D,E,F->G->A,B,C): drop panen mini produce per arketipe (8 pembentuk) + ikon tas ikut bentuk/warna; animasi ayunan tangan asli tiap tekan + momen kena 0.12 dtk + getar kamera bertingkat; presisi raycast 14 stud + fallback kerucut + highlight sasaran (server menghitung sendiri); tombol PUNCH relatif Jump; papan tanam minimalis (safe area, tab garis bawah, truncate, tombol per tab). Tes 175 PASS, playtest 116 PASS, 0 FAIL (#34). |
 | v35 | **REVISI HUD LAYAR GAME** (laporan pemilik): (1) SALDO — kini di bawah ikon menu Roblox memakai safe area GuiService.TopbarInset, tampil utuh ikon M + angka + satuan "Micda" dengan teks menyesuaikan layar; (2) TOMBOL NAVIGASI — tepat di bawah saldo, rata kiri, AutomaticSize X dengan batas lebar min/maks, nama panjang terpotong, posisi tidak bergeser saat teks "Masuk Dunia-ku" <-> "Pulang ke Kota"; (3) PUNCH — kini skala murni, di KIRI Jump dengan jarak tepat 1 ukuran jump, 1.24x lebih besar, dasar segaris, dijamin tidak menutupi area tanam; (4) semua HUD (saldo, nav, tas, zona) skala + area aman, teruji di 6 ukuran layar (640x360, 667x375, 844x390, 915x412, 1284x720, 375x667). Tes 188 PASS, playtest 116 PASS, massa 94 PASS, semua 0 FAIL; luau-lsp 0 temuan (#35). |
+| v39 | **REVISI FINAL: UI, SISTEM PANEN, SERVER-AUTHORITATIVE & ANTI-EXPLOIT** (halaman "Lahanan"): (A) kolom kiri Micda + "Masuk Dunia-ku" vertikal rata kiri di bawah bar Roblox (TopbarInset + margin), jarak konsisten via UIListLayout; tombol PUNCH baru tanpa tulisan: ikon kepalan 9 bagian orisinal, UIStroke, UIGradient, bayangan, efek tekan mengecil 0.9, ukuran 0.92x Jump, 12-20 px di KIRI Jump, dasar segaris; (B) POHON vs HASIL PANEN dipisah: pohon + progres 5x pukul selalu tersimpan (tak pernah terhapus waktu), hasil panen tersimpan & hanya kedaluwarsa 900 dtk sejak pemain KELUAR (waktu server; online aman selamanya; rejoin < 15 menit = drop kembali di posisi semula; hitungan diulang dari keluar terbaru), label peringatan di Papan Tanam; (C) SERVER-AUTHORITATIVE: CurrencyService satu pintu (Get/Add/Spend + alasan whitelist + atomik + batas 24 mutasi/menit + tolak lonjakan 25.000 + ledger 24 transaksi tersimpan), AuditService log [AUDIT] + kick 20 insiden/5 menit, kunci sesi UpdateAsync anti-dua-server (data tamu tak menimpa asli), save UpdateAsync + retry 3x + autosave 75 dtk + BindToClose simpan & lepas kunci, drop ID unik + klaim atomik satu kali + jarak 14 stud + pemilik saja + maks 80 drop/lahan FIFO; (D) semua waktu dari server (GetServerTimeNow/os.time), cooldown pukul 0.35 dtk server, tidak ada remote menerima jumlah/waktu/harga/status klien; (E) tes exploit simulasi baru: Micda palsu/NaN/lonjakan/laju ditolak, kunci sesi, kedaluwarsa 899 vs 900 dtk, klaim ganda/jarak/milik, persistensi pohon+drop sanitasi. BUG DITEMUKAN & DIPERBAIKI: PlotService.serialize memetakan crop/readyAt lalu DuniaLogic.serPlots menyaring crop -> pohon SEBELUMNYA TIDAK PERNAH TERSIMPAN; kini serialize mentah + h/l tersimpan. Tes 243 PASS / 0 FAIL (7 seksi baru), luau-lsp 0 temuan; uji 7 layar termasuk tablet 2224x1668 (#39). |
 
 ## Sesi update mandiri berikutnya (tanpa menunggu pemilik)
 

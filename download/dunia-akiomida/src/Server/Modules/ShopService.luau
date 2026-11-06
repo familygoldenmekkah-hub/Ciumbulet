@@ -4,12 +4,12 @@ local CropData = require(ReplicatedStorage.Shared.CropData)
 
 local ShopService = {}
 
-local Data, Tas
+local Uang, Tas
 local rng = Random.new()
 local shopPoint: Vector3? = nil
 
 function ShopService.bind(deps)
-        Data = deps.Data
+        Uang = deps.Uang
         Tas = deps.Tas
 end
 
@@ -41,8 +41,7 @@ function ShopService.buy(player, packId: any): (boolean, string)
         if not ShopService.near(player, 45) then
                 return false, "Dekati kasir Toko Benih dulu."
         end
-        local d = Data.get(player)
-        if not d or d.m < pack.price then
+        if not Uang or Uang.GetMicda(player) < pack.price then
                 return false, "Micda tidak cukup."
         end
         local pool = CropData.byRarity(packId)
@@ -54,7 +53,8 @@ function ShopService.buy(player, packId: any): (boolean, string)
         if not Tas.canFitBatch(player, items) then
                 return false, "Tas penuh! Kosongkan slot dulu."
         end
-        if not Data.trySpend(player, pack.price) then
+        local okBayar = Uang.SpendMicda(player, pack.price, "beli_benih")
+        if not okBayar then
                 return false, "Micda tidak cukup."
         end
         local nama = {}
@@ -94,7 +94,7 @@ function ShopService.sell(player, cropId: any, count: any): (boolean, string)
         local info = CropData.byId[cropId]
         local total = info.jual * n
         Tas.remove(player, "hasil", cropId, n)
-        Data.addMicda(player, total)
+        Uang.AddMicda(player, total, "jual_hasil")
         return true, "Terjual " .. n .. " " .. info.nama .. " (+" .. total .. " Micda)."
 end
 

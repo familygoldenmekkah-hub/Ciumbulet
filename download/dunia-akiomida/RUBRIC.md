@@ -19,6 +19,66 @@ Skor per kriteria 0-10, dikali bobot. Total dihitung dari (skor x bobot) / 10.
 | 8 | Polish & UX (UI, suara, animasi, efek) | 10 | animasi kombat, BGM, partikel | UI rapi & responsif |
 | 9 | Originalitas 100% & aman hak cipta | 5 | - | - |
 
+## Skor v39 (versi LIVE #39, 6 Nov 2026) - REVISI FINAL: UI, SISTEM PANEN, SERVER-AUTHORITATIVE & ANTI-EXPLOIT
+
+Permintaan pemilik (halaman "Lahanan") diterapkan menyeluruh:
+
+A. **UI**: (1) Micda + "Masuk Dunia-ku" kini SATU KOLOM VERTIKAL rata kiri di
+   bawah bar Roblox (TopbarInset + margin 10 px), UIListLayout menjamin jarak
+   konsisten & posisi tidak bergeser saat teks berganti; (2) tombol PUNCH
+   baru: TANPA tulisan, ikon kepalan tangan (9 bagian frame orisinal),
+   UIStroke tipis, UIGradient halus, bayangan, efek tekan (mengecil ke 0.9
+   saat ditekan), ukuran 0.92x Jump, di KIRI Jump dengan jarak 12-20 px,
+   dasar segaris Jump.
+
+B. **Pohon vs Hasil Panen dipisah tegas**: pohon (tumbuh maupun matang) selalu
+   tersimpan + progres 5x pukul ikut tersimpan (h/l di payload) — tidak pernah
+   terhapus batas waktu; hasil panen yang belum diambil tersimpan ke DataStore
+   dan HANYA kedaluwarsa 15 menit sejak pemain KELUAR (HARVEST_EXPIRE_SECONDS
+   = 900, waktu server os.time()); selama online tidak ada penghapusan berbasis
+   usia; hitungan diulang dari keluar terbaru; rejoin < 15 menit = drop
+   muncul kembali di posisi semula.
+
+C. **Server-authoritative total**: CurrencyService satu pintu (Get/Add/Spend)
+   dengan alasan transaksi di-whitelist, cek saldo atomik, saldo tak pernah
+   minus, batas 24 mutasi/menit, tolak lonjakan > 25.000/aksi, LEDGER 24
+   transaksi (pemain, jumlah, alasan, waktu, status) tersimpan; semua
+   penolakan dicatat AuditService ([AUDIT] log + kick otomatis pada 20
+   insiden/5 menit); kunci sesi (session lock) UpdateAsync mencegah satu
+   akun diproses dua server sekaligus (data tamu tidak pernah menimpa data
+   asli); save kini UpdateAsync + retry 3x (DataService & ZonaService);
+   autosave 75 dtk; BindToClose menyimpan & melepas semua kunci; drop diberi
+   ID unik + klaim ATOMIK (ada -> proses -> ambil) satu kali per ID, cek
+   jarak <= 14 stud + kepemilikan di server, batas 80 drop/lahan (FIFO).
+
+D. **Anti-cheat waktu**: kematangan & kedaluwarsa murni waktu server
+   (GetServerTimeNow/os.time); tidak ada remote yang menerima waktu/jumlah/
+   harga/status dari klien; cooldown pukul 0.35 dtk dihitung server.
+
+E. **Pengujian (jujur)**: 6 seksi tes baru (H-M) mensimulasikan exploit di
+   level logika murni: Micda palsu/negatif/NaN/huge/tipe salah/lonjakan/
+   laju -> semua ditolak, saldo tetap; kunci sesi segar ditolak & basi
+   diterima; klaim ganda/milik orang/jarak jauh/NaN ditolak; rejoin 899 dtk
+   vs 900 dtk; persistensi pohon+drop dengan sanitasi ketat. Ini SIMULASI
+   LOGIKA di luau CLI, bukan eksploitasi nyata lintas perangkat; penguji UI
+   7 ukuran layar (tambah 2224x1668 tablet) tetap level matematika layout.
+
+Validasi: luau-lsp 0 temuan; tes offline 243 PASS / 0 FAIL. Publish #39.
+
+| Kriteria | Skor | Catatan |
+|----------|------|---------|
+| 1 Kombat | 0/10 | Belum ada (sesuai urutan rencana). |
+| 2 Crafting | 3/10 | Combine Seed menu minimalis di papan (2 slot, tanpa petunjuk). |
+| 3 Stat & Progresi | 1/10 | Tanpa level (sesuai arah pemilik); soal matematika tetap gerbang tanam. |
+| 4 Ekonomi | 6/10 | Naik dari 5: uang kini server-authoritative penuh (CurrencyService + ledger + batas laju + tolak lonjakan + kunci sesi anti-dupe + UpdateAsync retry). Belum: pasar dinamis, toko pemain. |
+| 5 Dunia & Peta | 6/10 | Kota hanya Toko Benih; tiap lahan: Papan Tanam + Gudang. Belum: rumah, air, dungeon. |
+| 6 Multiplayer | 6/10 | Kunjung instan/salinan, tamu read-only, kunci sesi mencegah dupe lintas server. Belum: trade, party. |
+| 7 Bertani | 10/10 | Kini sesuai "Lahanan": pohon tidak pernah hilang (progres pukul ikut tersimpan), hasil panen aman selama online, hanya terhapus 15 menit setelah keluar, label peringatan di Papan Tanam, klaim drop atomik satu ID satu kali. |
+| 8 Polish & UX | 9/10 | Punch tombol profesional (ikon kepalan orisinal, stroke, gradient, bayangan, efek tekan), posisi 12-20 px kiri Jump ukuran 0.92x, kolom kiri rapi konsisten di 7 ukuran layar. Sisa: BGM/ambience, uji perangkat fisik. |
+| 9 Originalitas | 10/10 | 100% karya sendiri; ikon punch dari frame orisinal; tanpa aset/require luar. |
+
+**TOTAL: 50.5/100** (bobot: 0+45+10+90+60+60+100+90+50 = 505/10 = 50.5)
+
 ## Skor v35 (versi LIVE #35, 6 Nov 2026) - REVISI HUD LAYAR GAME
 
 Laporan pemilik: saldo kiri atas tertutup ikon menu Roblox (angka terpotong,

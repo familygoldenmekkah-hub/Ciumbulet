@@ -1,12 +1,15 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local UangLogic = require(ReplicatedStorage.Shared.UangLogic)
 local Net = require(ReplicatedStorage.Remotes)
 
 local Modules = script.Modules
 local DevCodeVault = require(Modules.DevCodeVault)
 local RateLimit = require(Modules.RateLimit)
+local AuditService = require(Modules.AuditService)
 local DataService = require(Modules.DataService)
+local CurrencyService = require(Modules.CurrencyService)
 local TasService = require(Modules.TasService)
 local LandService = require(Modules.LandService)
 local PlotService = require(Modules.PlotService)
@@ -24,10 +27,14 @@ local function notify(player: Player, title: string, msg: string)
         Net.get("Notify"):FireClient(player, title, msg)
 end
 
+CurrencyService.bind({ Data = DataService, Audit = AuditService })
+
 local deps = {
         Land = LandService,
         Tas = TasService,
         Data = DataService,
+        Uang = CurrencyService,
+        Audit = AuditService,
         Net = Net,
         Notify = notify,
         Plot = PlotService,
@@ -116,13 +123,13 @@ local function applySpawn(player: Player)
 end
 
 local function enterServer(player: Player)
-        local ok = DataService.load(player)
+        local ok, alasan = DataService.load(player)
+        local d = DataService.get(player)
         local leaderstats = Instance.new("Folder")
         leaderstats.Name = "leaderstats"
         local micda = Instance.new("IntValue")
         micda.Name = "Micda"
-        local d = DataService.get(player)
-        micda.Value = d and math.floor(d.m) or 0
+        micda.Value = d and UangLogic.saldo(d.u) or 0
         micda.Parent = leaderstats
         leaderstats.Parent = player
         applySpawn(player)
@@ -131,6 +138,9 @@ local function enterServer(player: Player)
                 if player.Parent then
                         if ok then
                                 notify(player, "Pusat Kota", "Selamat datang! Lewati Gerbang Dunia atau tombol Masuk untuk ke duniamu.")
+                        elseif alasan == "kunci" then
+                                AuditService.catat(player, "sesi_ganda", "load")
+                                notify(player, "Mode Sesi", "Akunmu sedang aktif di server lain. Progres di sini tidak tersimpan.")
                         else
                                 notify(player, "Mode Sesi", "Progres sementara hanya tersimpan di sesi ini.")
                         end
@@ -147,20 +157,28 @@ for _, p in ipairs(Players:GetPlayers()) do
         task.spawn(onPlayerAdded, p)
 end
 
-Players.PlayerRemoving:Connect(function(player)
+local function tutupSesi(player: Player)
         TanamService.leave(player)
         ZonaService.leaveGame(player)
         DataService.save(player)
         RateLimit.clear(player.UserId)
+        AuditService.bersih(player.UserId)
         DataService.drop(player)
-end)
+end
+
+Players.PlayerRemoving:Connect(tutupSesi)
 
 game:BindToClose(function()
         ZonaService.shutdown()
         for _, p in ipairs(Players:GetPlayers()) do
-                DataService.save(p)
+                tutupSesi(p)
         end
 end)
+
+local function lajuDitolak(player: Player, kunci: string)
+        AuditService.catat(player, "laju", kunci)
+        return false, "Terlalu cepat."
+end
 
 Net.get("GetState").OnServerInvoke = function(player)
         local d = DataService.get(player)
@@ -174,7 +192,7 @@ Net.get("GetState").OnServerInvoke = function(player)
                 role = lahan and "pemilik" or "tamu"
         end
         return {
-                micda = math.floor(d.m),
+                micda = UangLogic.saldo(d.u),
                 tas = d.t,
                 lahan = lahan,
                 zone = zone,
@@ -185,31 +203,37 @@ end
 
 Net.get("DuniaAct").OnServerInvoke = function(player, action, arg)
         if not RateLimit.allow(player.UserId, "dunia", 2, 3) then
-                return false, "Terlalu cepat."
+                return lajuDitolak(player, "dunia")
         end
         if action == "masuk" then
                 return ZonaService.masuk(player)
         elseif action == "kunjungi" then
+                if type(arg) ~= "string" then
+                        AuditService.catat(player, "argumen", "kunjungi")
+                        return false, "Nama tidak sah."
+                end
                 return ZonaService.visit(player, arg)
         elseif action == "pulang" then
                 return ZonaService.pulang(player)
         end
+        AuditService.catat(player, "argumen", "dunia:" .. tostring(action))
         return false, "Aksi tidak dikenal."
 end
 
 Net.get("PlotAct").OnServerInvoke = function(player, idx, action)
         if not RateLimit.allow(player.UserId, "punch", 10, 14) then
-                return false, "Terlalu cepat."
+                return lajuDitolak(player, "punch")
         end
         if action == "punch" then
                 return PlotService.punch(player, idx)
         end
+        AuditService.catat(player, "argumen", "plot:" .. tostring(action))
         return false, "Aksi tidak dikenal."
 end
 
 Net.get("TanamAct").OnServerInvoke = function(player, action, a, b)
         if not RateLimit.allow(player.UserId, "tanam", 3, 6) then
-                return false, "Terlalu cepat."
+                return lajuDitolak(player, "tanam")
         end
         if action == "start" then
                 return TanamService.start(player, a, b)
@@ -222,24 +246,26 @@ Net.get("TanamAct").OnServerInvoke = function(player, action, a, b)
         elseif action == "batal" then
                 return TanamService.batal(player)
         end
+        AuditService.catat(player, "argumen", "tanam:" .. tostring(action))
         return false, "Aksi tidak dikenal."
 end
 
 Net.get("GudangAct").OnServerInvoke = function(player, action, a, b)
         if not RateLimit.allow(player.UserId, "gudang", 3, 6) then
-                return false, "Terlalu cepat."
+                return lajuDitolak(player, "gudang")
         end
         if action == "simpan" then
                 return GudangService.simpan(player, a, b)
         elseif action == "ambil" then
                 return GudangService.ambil(player, a, b)
         end
+        AuditService.catat(player, "argumen", "gudang:" .. tostring(action))
         return false, "Aksi tidak dikenal."
 end
 
 Net.get("SmashAct").OnServerInvoke = function(player, action, arg)
         if not RateLimit.allow(player.UserId, "smash", 5, 8) then
-                return false, "Terlalu cepat."
+                return lajuDitolak(player, "smash")
         end
         local deny = ZonaService.mutationDeny(player)
         if deny then
@@ -252,18 +278,20 @@ Net.get("SmashAct").OnServerInvoke = function(player, action, arg)
         elseif action == "take" then
                 return SmashService.take(player, arg)
         end
+        AuditService.catat(player, "argumen", "smash:" .. tostring(action))
         return false, "Aksi tidak dikenal."
 end
 
 Net.get("ShopAct").OnServerInvoke = function(player, action, a, b)
         if not RateLimit.allow(player.UserId, "shop", 5, 10) then
-                return false, "Terlalu cepat."
+                return lajuDitolak(player, "shop")
         end
         if action == "buy" then
                 return ShopService.buy(player, a)
         elseif action == "sell" then
                 return ShopService.sell(player, a, b)
         end
+        AuditService.catat(player, "argumen", "shop:" .. tostring(action))
         return false, "Aksi tidak dikenal."
 end
 
@@ -273,6 +301,7 @@ Net.get("RedeemDevCode").OnServerInvoke = function(player, code)
                 return false, "Data belum siap."
         end
         if type(code) ~= "string" or code ~= DevCodeVault.CODE then
+                AuditService.catat(player, "argumen", "kode_salah")
                 return false, "Kode salah."
         end
         if d.dev then
@@ -287,4 +316,4 @@ end
 DataService.startLoops()
 ZonaService.startLoops()
 
-print("[AKIOMIDA] Papan Tanam, Combine Seed, panen Punch, dan Gudang siap dalam satu server.")
+print("[AKIOMIDA] Server-authoritative: CurrencyService, klaim atomik, kunci sesi, ledger siap.")

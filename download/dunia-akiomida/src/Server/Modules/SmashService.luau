@@ -4,7 +4,7 @@ local CropData = require(ReplicatedStorage.Shared.CropData)
 
 local SmashService = {}
 
-local Land, Tas, Data, Net, Notify, World
+local Land, Tas, Uang, Net, Notify, World
 local rng = Random.new()
 
 local MAX_SLOTS = 6
@@ -26,7 +26,7 @@ local RARITY_SIZE = {
 function SmashService.bind(deps)
         Land = deps.Land
         Tas = deps.Tas
-        Data = deps.Data
+        Uang = deps.Uang
         Net = deps.Net
         Notify = deps.Notify
         World = deps.World
@@ -158,11 +158,14 @@ function SmashService.hit(player, slotIdx: any): (boolean, string)
                 s.model:Destroy()
                 table.remove(slots[index], slotIdx)
                 local micda = rng:NextInteger(cfg.micdaMin, cfg.micdaMax)
-                Data.addMicda(player, micda)
+                local okUang, msgUang = true, "ok"
+                if Uang then
+                        okUang, msgUang = Uang.AddMicda(player, micda, "smash_hasil")
+                end
                 if World then
                         World.touch(index)
                 end
-                local pesan = "+" .. micda .. " Micda"
+                local pesan = okUang and ("+" .. micda .. " Micda") or ("Micda ditunda: " .. tostring(msgUang))
                 if rng:NextNumber() < cfg.seed then
                         local put = Tas.add(player, "benih", s.crop, 1)
                         if put > 0 then

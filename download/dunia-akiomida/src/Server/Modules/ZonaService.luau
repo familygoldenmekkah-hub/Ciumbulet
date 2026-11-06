@@ -135,42 +135,59 @@ function ZonaService.touch(index: number)
         end
 end
 
-local function payloadOf(s: Seksi)
-        return {
+local function payloadOf(s: Seksi, leaving: boolean?)
+        local p = {
                 n = s.ownerName,
                 pl = DuniaLogic.serPlots(Plot.serialize(s.idx)),
                 mj = DuniaLogic.serMeja(Smash.serializeLahan(s.idx)),
                 gd = Gudang and Gudang.serLahan(s.idx) or {},
+                dr = Drop and DuniaLogic.serDrops(Drop.serLahan(s.idx)) or {},
                 t = os.time(),
         }
+        if leaving then
+                p.lt = os.time()
+        end
+        return p
 end
 
-local function saveSeksi(s: Seksi, force: boolean)
+local function simpanSekali(s: Seksi, leaving: boolean?): boolean
+        local hasil = false
+        local ok = pcall(function()
+                store:UpdateAsync(DuniaLogic.keyFor(s.ownerId), function()
+                        hasil = true
+                        return payloadOf(s, leaving)
+                end)
+        end)
+        return ok and hasil
+end
+
+local function saveSeksi(s: Seksi, force: boolean, leaving: boolean?)
         if s.ghost or not s.canSave or (not s.dirty and not force) then
                 return
         end
-        local ok = pcall(function()
-                store:SetAsync(DuniaLogic.keyFor(s.ownerId), payloadOf(s))
-        end)
-        if ok then
-                s.dirty = false
+        for i = 1, 3 do
+                if simpanSekali(s, leaving) then
+                        s.dirty = false
+                        return
+                end
+                task.wait(0.4 * i)
         end
 end
 
-local function loadWorld(ownerId: number): (boolean, string?, any, any, any)
+local function loadWorld(ownerId: number): (boolean, string?, any, any, any, any, any)
         local ok, data = pcall(function()
                 return store:GetAsync(DuniaLogic.keyFor(ownerId))
         end)
         if not ok then
-                return false, nil, {}, {}, nil
+                return false, nil, {}, {}, nil, {}, nil
         end
         if type(data) ~= "table" then
-                return true, nil, {}, {}, nil
+                return true, nil, {}, {}, nil, {}, nil
         end
-        return true, DuniaLogic.cleanName(data.n), DuniaLogic.desPlots(data.pl), DuniaLogic.desMeja(data.mj), data.gd
+        return true, DuniaLogic.cleanName(data.n), DuniaLogic.desPlots(data.pl), DuniaLogic.desMeja(data.mj), data.gd, data.dr, data.lt
 end
 
-local function buildSection(idx: number, ownerId: number, nama: string, ghost: boolean, savedOk: boolean, plots: any, meja: any, gd: any): Seksi
+local function buildSection(idx: number, ownerId: number, nama: string, ghost: boolean, savedOk: boolean, plots: any, meja: any, gd: any, dr: any, lt: any): Seksi
         local model = WorldBuilder.buildLahan(Hooks, idx, nama)
         Plot.buildGrid(idx, model)
         Plot.restore(idx, plots)
@@ -178,6 +195,9 @@ local function buildSection(idx: number, ownerId: number, nama: string, ghost: b
         Smash.restoreLahan(idx, meja)
         if Gudang then
                 Gudang.restoreLahan(idx, gd)
+        end
+        if Drop then
+                Drop.restoreLahan(idx, dr, lt)
         end
         local s: Seksi = {
                 idx = idx,
@@ -234,13 +254,13 @@ function ZonaService.masuk(player: Player): (boolean, string)
                 end
                 return false, "Karakter belum siap. Coba lagi sebentar."
         end
-        local loadOk, namaTersimpan, plots, meja, gd = loadWorld(player.UserId)
+        local loadOk, namaTersimpan, plots, meja, gd, dr, lt = loadWorld(player.UserId)
         local nama = namaTersimpan or player.Name
         local idx = Land.claimFree(player.UserId, taken)
         if idx <= 0 then
                 return false, "Semua petak dunia di server ini sedang terpakai. Coba lagi sebentar."
         end
-        buildSection(idx, player.UserId, nama, false, loadOk, plots, meja, gd)
+        buildSection(idx, player.UserId, nama, false, loadOk, plots, meja, gd, dr, lt)
         byOwner[player.UserId] = idx
         if placeWait(player, arrivalPos(idx), "dunia", nama) then
                 return true, "Duniamu siap. Masuk dan pulang kini tanpa loading."
@@ -282,7 +302,7 @@ function ZonaService.visit(player: Player, namaRaw: any): (boolean, string)
                 end
                 return false, "Karakter belum siap. Coba lagi sebentar."
         end
-        local loadOk, namaTersimpan, plots, meja, gd = loadWorld(targetId)
+        local loadOk, namaTersimpan, plots, meja, gd, dr, lt = loadWorld(targetId)
         if not loadOk then
                 return false, "Dunia " .. nama .. " tidak bisa dikunjungi sekarang."
         end
@@ -297,7 +317,7 @@ function ZonaService.visit(player: Player, namaRaw: any): (boolean, string)
                 return false, "Petak dunia habis. Coba lagi sebentar."
         end
         local namaDunia = namaTersimpan or nama
-        buildSection(idx, targetId, namaDunia, true, loadOk, plots, meja, gd)
+        buildSection(idx, targetId, namaDunia, true, loadOk, plots, meja, gd, dr, lt)
         if placeWait(player, arrivalPos(idx), "dunia", namaDunia) then
                 return true, "Kamu berkunjung ke dunia " .. namaDunia .. " (salinan tersimpan)."
         end
@@ -347,7 +367,7 @@ function ZonaService.leaveGame(player: Player)
         end
         local s = seksi[idx]
         if s then
-                saveSeksi(s, true)
+                saveSeksi(s, true, true)
         end
         destroySection(idx)
 end

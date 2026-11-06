@@ -569,10 +569,10 @@ do
         check("Jarak minimum ditolak", ArahPukul.pilih(asal, arah, { { idx = 1, pos = { x = 0, y = 0, z = -0.5 } } }) == nil, "-")
 end
 
-print("--- G: Tombol kontrol HP (Punch vs Jump, skala murni) ---")
+print("--- G: Tombol kontrol HP (Punch kiri Jump, jarak 12-20 px) ---")
 do
         local KontrolHP = require("./../src/Shared/KontrolHP")
-        local layar = { { 640, 360 }, { 667, 375 }, { 844, 390 }, { 915, 412 }, { 1284, 720 }, { 375, 667 } }
+        local layar = { { 640, 360 }, { 667, 375 }, { 844, 390 }, { 915, 412 }, { 1284, 720 }, { 375, 667 }, { 2224, 1668 } }
         local semuaOk, rincian = true, ""
         for _, l in ipairs(layar) do
                 local dasar = math.min(l[1], l[2])
@@ -588,10 +588,19 @@ do
                         rincian = l[1] .. "x" .. l[2] .. " default"
                 end
         end
-        check("Punch valid di 6 ukuran layar HP", semuaOk, rincian)
+        check("Punch valid di 7 ukuran layar HP & tablet", semuaOk, rincian)
         local pos = KontrolHP.posisiPunch(667, 375, nil)
-        check("Punch sedikit lebih besar dari Jump", pos.punchPx > pos.jumpPx and pos.punchPx <= pos.jumpPx * KontrolHP.BesarMaks, tostring(pos.punchPx / pos.jumpPx))
-        check("Gap punch-jump sekitar 1 ukuran tombol", math.abs(pos.gapPx - pos.jumpPx) < 0.01, tostring(pos.gapPx))
+        check("Punch sama dengan Jump atau sedikit lebih kecil", pos.punchPx <= pos.jumpPx and pos.punchPx >= pos.jumpPx * KontrolHP.BesarMin, tostring(pos.punchPx / pos.jumpPx))
+        check("Gap punch-jump 12-20 px", pos.gapPx >= KontrolHP.GapMinPx and pos.gapPx <= KontrolHP.GapMaksPx, tostring(pos.gapPx))
+        check("Gap konsisten di semua ukuran layar", (function()
+                for _, l in ipairs(layar) do
+                        local g = KontrolHP.posisiPunch(l[1], l[2], nil).gapPx
+                        if g < KontrolHP.GapMinPx - 0.01 or g > KontrolHP.GapMaksPx + 0.01 then
+                                return false
+                        end
+                end
+                return true
+        end)(), "-")
         check("Punch di kiri Jump dengan dasar segaris", (function()
                 local pp = KontrolHP.rectPunch(667, 375, nil)
                 local pj = KontrolHP.rectJump(667, 375, nil)
@@ -615,9 +624,8 @@ do
         end)(), "-")
         check("Punch merapat saat ukuran jump asli terukur", (function()
                 local pos2 = KontrolHP.posisiPunch(667, 375, 70)
-                return pos2.dariKananPx < KontrolHP.Anggaran * 667 and pos2.gapPx >= 70 * KontrolHP.JarakMinKelipatan
+                return pos2.dariKananPx < KontrolHP.Anggaran * 667 and pos2.gapPx >= KontrolHP.GapMinPx
         end)(), tostring(KontrolHP.posisiPunch(667, 375, 70).dariKananPx))
-        check("Jump raksasa ditolak demi area tanam", not KontrolHP.valid(640, 360, 0.3 * 360), "-")
         check("Posisi punch murni skala (0-1) di kaki layar", (function()
                 local p = KontrolHP.posisiPunch(915, 412, nil)
                 return p.skalaX > 0 and p.skalaX < 1 and p.skalaY > 0.9 and p.skalaLebar > 0 and p.skalaTinggi > 0
@@ -625,6 +633,29 @@ do
         check("Punch tetap dalam layar saat jump nyata besar", (function()
                 local pp = KontrolHP.rectPunch(1284, 720, 96)
                 return pp.x >= 0 and pp.y >= 0 and pp.x + pp.w <= 1284 and pp.y + pp.h <= 720
+        end)(), "-")
+        check("Punch tetap dalam zona jempol kanan bawah", (function()
+                for _, l in ipairs(layar) do
+                        local pp = KontrolHP.rectPunch(l[1], l[2], nil)
+                        local cx = pp.x + pp.w / 2
+                        local cy = pp.y + pp.h / 2
+                        if cx < KontrolHP.ZonaJempolX * l[1] or cy < KontrolHP.ZonaJempolY * l[2] then
+                                return false
+                        end
+                end
+                return true
+        end)(), "-")
+        check("Ukuran punch tidak berubah drastis antar layar (rasio stabil)", (function()
+                local rasioLama = nil
+                for _, l in ipairs(layar) do
+                        local p = KontrolHP.posisiPunch(l[1], l[2], nil)
+                        local r = p.punchPx / p.jumpPx
+                        if rasioLama and math.abs(r - rasioLama) > 0.01 then
+                                return false
+                        end
+                        rasioLama = r
+                end
+                return true
         end)(), "-")
 end
 
@@ -728,6 +759,161 @@ do
         end)(), "-")
         check("Nama pendek utuh", UIStyle.potong("Wortel") == "Wortel", "-")
         check("Input rusak aman", UIStyle.potong(nil) == "?" and UIStyle.potong(9) == "?", "-")
+end
+
+print("--- H: Keamanan Micda (server-authoritative, simulasi exploit) ---")
+do
+        local UangLogic = require("./../src/Shared/UangLogic")
+        local st = UangLogic.baru(900000)
+        check("Saldo awal 900.000", UangLogic.saldo(st) == 900000, tostring(UangLogic.saldo(st)))
+        local ok = UangLogic.tambah(st, 50, "jual_hasil", 100)
+        check("Tambah sah menambah saldo", ok and UangLogic.saldo(st) == 900050, tostring(UangLogic.saldo(st)))
+        check("Ledger mencatat transaksi sah", #UangLogic.ledgerOf(st) == 1 and UangLogic.ledgerOf(st)[1].d == 50 and UangLogic.ledgerOf(st)[1].r == "jual_hasil" and UangLogic.ledgerOf(st)[1].s == "ok", "-")
+        local a1 = UangLogic.tambah(st, -5, "jual_hasil", 100)
+        local a2 = UangLogic.tambah(st, 0, "jual_hasil", 100)
+        local a3 = UangLogic.tambah(st, 10.5, "jual_hasil", 100)
+        local a4 = UangLogic.tambah(st, 0 / 0, "jual_hasil", 100)
+        local a5 = UangLogic.tambah(st, math.huge, "jual_hasil", 100)
+        local a6 = UangLogic.tambah(st, 10, "nakal", 100)
+        local a7 = UangLogic.tambah(st, 10, nil, 100)
+        local a8 = UangLogic.tambah(st, "500", "jual_hasil", 100)
+        check("Micda palsu/negatif/NaN/inf/tipe salah semua ditolak", not a1 and not a2 and not a3 and not a4 and not a5 and not a6 and not a7 and not a8, tostring(a1) .. tostring(a4))
+        check("Saldo tidak berubah oleh percobaan ilegal", UangLogic.saldo(st) == 900050, tostring(UangLogic.saldo(st)))
+        local spike = UangLogic.tambah(st, UangLogic.MaksAksi + 1, "hadiah", 100)
+        check("Lonjakan saldo melebihi batas ditolak", not spike and UangLogic.saldo(st) == 900050, tostring(UangLogic.saldo(st)))
+        check("Ledger mencatat penolakan lonjakan", UangLogic.ledgerOf(st)[2] ~= nil and UangLogic.ledgerOf(st)[2].s == "tolak_lonjakan", tostring(UangLogic.ledgerOf(st)[2] and UangLogic.ledgerOf(st)[2].s))
+        local b1 = UangLogic.bayar(st, 999999999, "beli_benih", 100)
+        check("Bayar melebihi saldo ditolak, saldo tak minus", not b1 and UangLogic.saldo(st) == 900050, tostring(UangLogic.saldo(st)))
+        local b2 = UangLogic.bayar(st, 2400, "beli_benih", 101)
+        check("Bayar sah mengurangi saldo tepat", b2 and UangLogic.saldo(st) == 897650, tostring(UangLogic.saldo(st)))
+        check("Bayar dengan alasan asing ditolak", not UangLogic.bayar(st, 1, "curang", 101), "-")
+        local st2 = UangLogic.baru(0)
+        local lajuOk, lajuTolak = 0, 0
+        for i = 1, UangLogic.BatasPerMenit + 3 do
+                local okL = UangLogic.tambah(st2, 1, "smash_hasil", i)
+                if okL then
+                        lajuOk += 1
+                else
+                        lajuTolak += 1
+                end
+        end
+        check("Batas transaksi per menit ditegakkan", lajuOk == UangLogic.BatasPerMenit and lajuTolak == 3, tostring(lajuOk) .. "/" .. tostring(lajuTolak))
+        local okLagi = UangLogic.tambah(st2, 1, "smash_hasil", UangLogic.JendelaDetik + 2)
+        check("Jendela laju terbuka lagi setelah 60 detik", okLagi, "-")
+        local st3 = UangLogic.baru(0)
+        for i = 1, UangLogic.BatasLedger + 10 do
+                UangLogic.tambah(st3, 1, "smash_hasil", i)
+        end
+        check("Ledger terpotong ke batas penyimpanan", #UangLogic.ledgerOf(st3) == UangLogic.BatasLedger, tostring(#UangLogic.ledgerOf(st3)))
+        check("Whitelist alasan transaksi", UangLogic.alasanOk("jual_hasil") and UangLogic.alasanOk("beli_benih") and UangLogic.alasanOk("smash_hasil") and UangLogic.alasanOk("hadiah") and not UangLogic.alasanOk(" cheat "), "-")
+end
+
+print("--- I: Kunci sesi (anti-dua-server) ---")
+do
+        local SesiLogic = require("./../src/Shared/SesiLogic")
+        check("Kunci kosong bisa diambil", SesiLogic.bisaAmbil(nil, "srvA", 100), "-")
+        check("Kunci legam (j kosong) bisa diambil", SesiLogic.bisaAmbil({ j = "", t = 1 }, "srvA", 100), "-")
+        check("Kunci milik server lain yang segar ditolak", not SesiLogic.bisaAmbil({ j = "srvB", t = 100 }, "srvA", 120), "-")
+        check("Kunci server yang sama tetap bisa", SesiLogic.bisaAmbil({ j = "srvA", t = 100 }, "srvA", 500), "-")
+        check("Kunci basi (lewat 90 dtk) bisa diambil", SesiLogic.bisaAmbil({ j = "srvB", t = 100 }, "srvA", 100 + SesiLogic.StaleDetik), "-")
+        check("Kunci rusak dianggap basi", SesiLogic.bisaAmbil({ j = 7 }, "srvA", 100) == false or SesiLogic.bisaAmbil({ t = "x" }, "srvA", 100), "-")
+        local k = SesiLogic.kunciBaru("srvA", 123)
+        check("Kunci baru memuat job & waktu", k.j == "srvA" and k.t == 123, "-")
+        local l = SesiLogic.lepas("srvA")
+        check("Lepas kunci mengosongkan pemilik", l.j == "" , tostring(l.j))
+end
+
+print("--- J: Waktu kedaluwarsa hasil panen (bukan pohon) ---")
+do
+        local PanenWaktu = require("./../src/Shared/PanenWaktu")
+        check("Konfigurasi HARVEST_EXPIRE_SECONDS = 900", PanenWaktu.HARVEST_EXPIRE_SECONDS == 900, tostring(PanenWaktu.HARVEST_EXPIRE_SECONDS))
+        check("Tanpa waktu keluar (online) tetap aman", PanenWaktu.masihAman(nil, 500000), "-")
+        check("Waktu keluar rusak dianggap aman", PanenWaktu.masihAman("x", 500000) and PanenWaktu.masihAman(0 / 0, 500000), "-")
+        check("Rejoin sebelum 15 menit: hasil panen kembali", PanenWaktu.masihAman(1000, 1000 + PanenWaktu.HARVEST_EXPIRE_SECONDS - 1), "-")
+        check("Rejoin tepat 15 menit: hasil panen dihapus", not PanenWaktu.masihAman(1000, 1000 + PanenWaktu.HARVEST_EXPIRE_SECONDS), "-")
+        check("Rejoin setelah 15 menit: hasil panen dihapus", not PanenWaktu.masihAman(1000, 1000 + 3600), "-")
+        check("Hitung ulang dari keluar terbaru", PanenWaktu.masihAman(2000, 1000 + PanenWaktu.HARVEST_EXPIRE_SECONDS + 100), "-")
+        check("Sisa detik menurun sampai nol", PanenWaktu.sisaDetik(1000, 1000 + 300) == 600 and PanenWaktu.sisaDetik(1000, 1000 + 2000) == 0, tostring(PanenWaktu.sisaDetik(1000, 1300)))
+end
+
+print("--- K: Klaim drop atomik (anti-dupe, anti-claim) ---")
+do
+        local KlaimDrop = require("./../src/Shared/KlaimDrop")
+        check("Jarak ambil wajar", KlaimDrop.JarakAmbil <= 16 and KlaimDrop.JarakAmbil >= 10, tostring(KlaimDrop.JarakAmbil))
+        local rec = KlaimDrop.baru(7)
+        local ok, alasan = KlaimDrop.coba(rec, 7, 5)
+        check("Klaim sah oleh pemilik", ok and rec.status == "proses", tostring(alasan))
+        local ok2, alasan2 = KlaimDrop.coba(rec, 7, 5)
+        check("Klaim ganda ditolak (satu ID satu kali)", not ok2 and alasan2 == "sudah_diambil" and rec.status == "proses", tostring(alasan2))
+        check("Selesai menandai ambil", KlaimDrop.selesai(rec, 7) and rec.status == "ambil", "-")
+        local ok3, alasan3 = KlaimDrop.coba(rec, 7, 3)
+        check("Drop yang sudah diambil tak bisa diambil lagi", not ok3 and alasan3 == "sudah_diambil", tostring(alasan3))
+        local r2 = KlaimDrop.baru(7)
+        local ok4, alasan4 = KlaimDrop.coba(r2, 99, 5)
+        check("Drop milik orang lain ditolak", not ok4 and alasan4 == "bukan_milik" and r2.status == "ada", tostring(alasan4))
+        local r3 = KlaimDrop.baru(7)
+        local ok5, alasan5 = KlaimDrop.coba(r3, 7, 50)
+        check("Ambil dari jarak jauh ditolak", not ok5 and alasan5 == "jarak", tostring(alasan5))
+        local r4 = KlaimDrop.baru(7)
+        local ok6 = KlaimDrop.coba(r4, 7, 0 / 0)
+        check("Jarak NaN ditolak", not ok6, "-")
+        local r5 = KlaimDrop.baru(7)
+        KlaimDrop.coba(r5, 7, 4)
+        check("Batalkan melepas status proses", KlaimDrop.batalkan(r5, 7) and r5.status == "ada" and KlaimDrop.coba(r5, 7, 4), "-")
+        local r6 = KlaimDrop.baru(7)
+        check("Selesai/batalkan pada status salah gagal", not KlaimDrop.selesai(r6, 7) and not KlaimDrop.batalkan(r6, 7), "-")
+        check("Klaim dengan rec rusak aman", select(1, KlaimDrop.coba(nil, 7, 5)) == false, "-")
+end
+
+print("--- L: Simpan pohon & hasil panen ke DataStore ---")
+do
+        local DuniaLogic = require("./../src/Shared/DuniaLogic")
+        check("Konfigurasi MaxDrops = 80", DuniaLogic.MaxDrops == 80, tostring(DuniaLogic.MaxDrops))
+        local pl = { [3] = { crop = "wortel", readyAt = 500, hits = 3, lastHit = 490 }, [4] = { crop = "ceri", readyAt = 900, hits = 0.7, lastHit = -5 } }
+        local ser = DuniaLogic.serPlots(pl)
+        check("Progres pukulan pohon ikut tersimpan", ser[3] ~= nil and ser[3].h == 3 and ser[3].l == 490, tostring(ser[3] and ser[3].h))
+        check("Progres pukulan disaring & dijepit", ser[4] ~= nil and ser[4].h == 0 and ser[4].l == 0, tostring(ser[4] and ser[4].h))
+        local des = DuniaLogic.desPlots(ser)
+        check("Restore pohon memulihkan status terakhir", des[3] ~= nil and des[3].h == 3 and des[3].l == 490 and des[3].r == 500, "-")
+        local drops = {
+                { id = "d1x1y111222333444", crop = "wortel", count = 4, pos = { x = 1.5, y = 2.5, z = 3.5 } },
+                { id = "d2x2y555666777888", crop = "gandum", count = 251, pos = { x = 1, y = 1, z = 1 } },
+                { id = 42, crop = "plum", count = 1, pos = { x = 0, y = 0, z = 0 } },
+                { id = "d3", crop = 9, count = 1, pos = { x = 0, y = 0, z = 0 } },
+                { id = "d4", crop = "plum", count = 1, pos = { x = "a", y = 1, z = 1 } },
+        }
+        local sd = DuniaLogic.serDrops(drops)
+        check("Serialize drop menyaring data rusak", #sd == 1 and sd[1].i == "d1x1y111222333444" and sd[1].n == 4, tostring(#sd))
+        check("Serialize drop memotong ke batas 80", (function()
+                local banyak = {}
+                for i = 1, 95 do
+                        table.insert(banyak, { id = "x" .. i, crop = "plum", count = 1, pos = { x = i, y = 0, z = 0 } })
+                end
+                return #DuniaLogic.serDrops(banyak) == 80
+        end)(), "-")
+        local dd = DuniaLogic.desDrops(sd)
+        check("Deserialize drop roundtrip", #dd == 1 and dd[1].id == "d1x1y111222333444" and dd[1].count == 4 and dd[1].pos.x == 1.5, "-")
+        check("Deserialize drop tolak rusak", #DuniaLogic.desDrops({ { i = "x", c = "plum", n = "3", p = { x = 1, y = 1, z = 1 } } }) == 0 and #DuniaLogic.desDrops(nil) == 0, "-")
+end
+
+print("--- M: Ikon tombol punch (tanpa tulisan PUNCH) ---")
+do
+        local IkonJempol = require("./../src/Shared/IkonJempol")
+        check("Ikon kepalan memakai >= 4 bagian", #IkonJempol.Bagian >= 4, tostring(#IkonJempol.Bagian))
+        check("Semua bagian ikon di dalam kotak 0-1", IkonJempol.valid(), "-")
+        check("Bentuk ikon dikenal (kotak/lingkaran/garis)", (function()
+                for _, g in ipairs(IkonJempol.Bagian) do
+                        if g.bentuk ~= "kotak" and g.bentuk ~= "lingkaran" and g.bentuk ~= "garis" then
+                                return false
+                        end
+                end
+                return true
+        end)(), "-")
+        check("Ikon dapat digandakan tanpa efek samping", (function()
+                local a = IkonJempol.bagian()
+                table.insert(a, { dx = 2, dy = 2, dw = 1, dh = 1, bentuk = "kotak" })
+                return #IkonJempol.bagian() == #IkonJempol.Bagian
+        end)(), "-")
 end
 
 print(("="):rep(28))

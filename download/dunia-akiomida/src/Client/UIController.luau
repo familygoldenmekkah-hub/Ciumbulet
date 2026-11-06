@@ -3,6 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local GuiService = game:GetService("GuiService")
+local TweenService = game:GetService("TweenService")
 
 local CropData = require(ReplicatedStorage.Shared.CropData)
 local Net = require(ReplicatedStorage.Remotes)
@@ -12,6 +13,7 @@ local ArahPukul = require(ReplicatedStorage.Shared.ArahPukul)
 local KontrolHP = require(ReplicatedStorage.Shared.KontrolHP)
 local HUDLayout = require(ReplicatedStorage.Shared.HUDLayout)
 local DropBentuk = require(ReplicatedStorage.Shared.DropBentuk)
+local IkonJempol = require(ReplicatedStorage.Shared.IkonJempol)
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -91,7 +93,10 @@ local function teksSkala(props: { [string]: any }, parent: Instance): TextLabel
         return l :: TextLabel
 end
 
-local saldo = mk("Frame", { Position = UDim2.fromScale(HUDLayout.SaldoSkalaX, HUDLayout.SaldoSkalaY), Size = UDim2.fromScale(HUDLayout.SaldoSkalaLebar, HUDLayout.SaldoSkalaTinggi), BackgroundColor3 = warna(UIStyle.Latar), BackgroundTransparency = 0.12 }, aman)
+local kolomKiri = mk("Frame", { Name = "KolomKiri", Position = UDim2.fromScale(HUDLayout.SaldoSkalaX, 0), Size = UDim2.fromScale(HUDLayout.SaldoSkalaLebar, 1), BackgroundTransparency = 1 }, aman)
+mk("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder, HorizontalAlignment = Enum.HorizontalAlignment.Left, VerticalAlignment = Enum.VerticalAlignment.Top }, kolomKiri)
+
+local saldo = mk("Frame", { LayoutOrder = 1, Size = UDim2.fromScale(1, HUDLayout.SaldoSkalaTinggi), BackgroundColor3 = warna(UIStyle.Latar), BackgroundTransparency = 0.12 }, kolomKiri)
 round(saldo)
 local saldoUkuran = mk("UISizeConstraint", { MinSize = Vector2.new(150, 30), MaxSize = Vector2.new(320, 64) }, saldo)
 
@@ -101,7 +106,7 @@ teksSkala({ Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Text = "M"
 local angkaLabel = teksSkala({ Position = UDim2.fromScale(HUDLayout.AngkaSkalaX, 0), Size = UDim2.fromScale(HUDLayout.AngkaSkalaLebar, 1), BackgroundTransparency = 1, Text = "0", Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left }, saldo)
 teksSkala({ Position = UDim2.fromScale(HUDLayout.SatuanSkalaX, 0), Size = UDim2.fromScale(HUDLayout.SatuanSkalaLebar, 1), BackgroundTransparency = 1, Text = "Micda", Font = FONTB, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left }, saldo)
 
-local travelBtn = mk("TextButton", { Position = UDim2.fromScale(HUDLayout.SaldoSkalaX, HUDLayout.NavSkalaY), Size = UDim2.fromScale(HUDLayout.NavSkalaLebarMin, HUDLayout.NavSkalaTinggi), AutomaticSize = Enum.AutomaticSize.X, BackgroundColor3 = warna(UIStyle.Permukaan), Text = "Masuk Dunia-ku", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextTruncate = Enum.TextTruncate.AtEnd, TextXAlignment = Enum.TextXAlignment.Center }, aman)
+local travelBtn = mk("TextButton", { LayoutOrder = 2, Size = UDim2.fromScale(1, HUDLayout.NavSkalaTinggi), AutomaticSize = Enum.AutomaticSize.X, BackgroundColor3 = warna(UIStyle.Permukaan), Text = "Masuk Dunia-ku", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextTruncate = Enum.TextTruncate.AtEnd, TextXAlignment = Enum.TextXAlignment.Center }, kolomKiri)
 round(travelBtn)
 mk("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12) }, travelBtn)
 local navUkuran = mk("UISizeConstraint", { MinSize = Vector2.new(120, 26), MaxSize = Vector2.new(220, 26) }, travelBtn)
@@ -110,19 +115,41 @@ local tasBtn = mk("TextButton", { AnchorPoint = Vector2.new(1, 0), Position = UD
 round(tasBtn)
 local tasUkuran = mk("UISizeConstraint", { MinSize = Vector2.new(90, 30), MaxSize = Vector2.new(200, 64) }, tasBtn)
 
+local punchShadow = mk("Frame", { Name = "BayanganPunch", AnchorPoint = Vector2.new(1, 1), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.62, BorderSizePixel = 0, ZIndex = 0 }, gui)
+round(punchShadow, 46)
 local punchBtn = mk("TextButton", {
+        Name = "TombolPunch",
         AnchorPoint = Vector2.new(1, 1),
-        Position = UDim2.fromScale(0.62, 0.968),
-        Size = UDim2.fromScale(0.132, 0.235),
         BackgroundColor3 = warna(UIStyle.Hijau),
-        Text = "PUNCH",
-        TextScaled = true,
-        Font = FONTB,
-        TextColor3 = Color3.new(1, 1, 1),
-        Visible = true,
+        Text = "",
+        AutoButtonColor = false,
+        ZIndex = 2,
 }, gui)
 round(punchBtn, 46)
-mk("UITextSizeConstraint", { MaxTextSize = 26, MinTextSize = 13 }, punchBtn)
+mk("UIGradient", { Color = ColorSequence.new(Color3.fromRGB(88, 178, 114), Color3.fromRGB(46, 108, 72)), Rotation = 90 }, punchBtn)
+mk("UIStroke", { Color = Color3.fromRGB(214, 226, 218), Thickness = 1.5, Transparency = 0.55 }, punchBtn)
+local punchSkalaUI = mk("UIScale", { Scale = 1 }, punchBtn)
+local ikonPunch = mk("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0.62, 0.62), BackgroundTransparency = 1 }, punchBtn)
+for _, g in ipairs(IkonJempol.bagian()) do
+        local f = mk("Frame", { Position = UDim2.fromScale(g.dx, g.dy), Size = UDim2.fromScale(g.dw, g.dh), BackgroundColor3 = warna(UIStyle.Teks), BorderSizePixel = 0, ZIndex = 3 }, ikonPunch)
+        if g.bentuk == "lingkaran" then
+                mk("UICorner", { CornerRadius = UDim.new(1, 0) }, f)
+        end
+end
+
+local function efekTekan(turun: boolean)
+        TweenService:Create(punchSkalaUI, TweenInfo.new(0.07, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Scale = turun and 0.9 or 1 }):Play()
+end
+punchBtn.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+                efekTekan(true)
+        end
+end)
+punchBtn.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+                efekTekan(false)
+        end
+end)
 
 local jumpPxNyata: number? = nil
 local function aturPunch()
@@ -130,11 +157,13 @@ local function aturPunch()
         local pos = KontrolHP.posisiPunch(vp.X, vp.Y, jumpPxNyata)
         punchBtn.Position = UDim2.fromScale(pos.skalaX, pos.skalaY)
         punchBtn.Size = UDim2.fromScale(pos.skalaLebar, pos.skalaTinggi)
+        punchShadow.Position = UDim2.new(pos.skalaX, 0, pos.skalaY, 3)
+        punchShadow.Size = UDim2.fromScale(pos.skalaLebar, pos.skalaTinggi)
 end
 
 local function aturUkuranAman()
         local inset = GuiService.TopbarInset
-        amanPad.PaddingTop = UDim.new(0, inset.Min.Y)
+        amanPad.PaddingTop = UDim.new(0, inset.Min.Y + 10)
         amanPad.PaddingLeft = UDim.new(0, inset.Min.X)
         local vp = camera.ViewportSize
         local a = HUDLayout.areaAman(vp.X, vp.Y, inset.Min.X, inset.Min.Y)
@@ -551,7 +580,8 @@ local statusTab = mk("Frame", { Size = UDim2.new(1, 0, 1, 0), BackgroundTranspar
 local statusSummary = mk("TextLabel", { Size = UDim2.new(1, -100, 0, 26), Position = UDim2.new(0, 2, 0, 0), BackgroundTransparency = 1, Text = "", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, statusTab)
 local statusRefresh = mk("TextButton", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, 0), Size = UDim2.new(0, 92, 0, 26), BackgroundColor3 = warna(UIStyle.PermukaanAktif), Text = "Perbarui", TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Teks) }, statusTab)
 round(statusRefresh, UIStyle.SudutKecil)
-local statusList = mk("ScrollingFrame", { Size = UDim2.new(1, 0, 1, -34), Position = UDim2.new(0, 0, 0, 32), BackgroundTransparency = 1, ScrollBarThickness = 6, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(0, 0, 0, 0) }, statusTab)
+mk("TextLabel", { Size = UDim2.new(1, -8, 0, 30), Position = UDim2.new(0, 2, 0, 27), BackgroundTransparency = 1, Text = "Ambil hasil panen segera dan jangan biarkan tergeletak terlalu lama karena bisa hilang!", TextWrapped = true, TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Kuning), TextXAlignment = Enum.TextXAlignment.Left }, statusTab)
+local statusList = mk("ScrollingFrame", { Size = UDim2.new(1, 0, 1, -94), Position = UDim2.new(0, 0, 0, 60), BackgroundTransparency = 1, ScrollBarThickness = 6, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(0, 0, 0, 0) }, statusTab)
 mk("UIListLayout", { Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder }, statusList)
 
 local tabAktif = "tanam"
