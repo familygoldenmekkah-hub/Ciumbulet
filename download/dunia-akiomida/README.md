@@ -342,6 +342,10 @@ Skor banding Toram/Growtopia: **51/100** — lihat `RUBRIC.md`.
    python3 publish.py --universe-id 10774464946 --place-id 77626159664192 --file build/DuniaAkiomida.rbxlx
    ```
 4. Perbarui skor `RUBRIC.md` + README ini.
+5. **WAJIB cadangan GitHub**: `bash /home/z/my-project/scripts/backup_github.sh`
+   (commit + push seluruh proyek ke branch `dunia-akiomida` di
+   github.com/akiomida/Io — simpanan jaga-jaga & alat kerja tim; harness
+   uji ikut disalin; kredensial dari .secrets, tidak pernah ditampilkan).
 
 ## Pasca-publish (dashboard pemilik, sekali saja bila belum)
 
@@ -354,5 +358,20 @@ Skor banding Toram/Growtopia: **51/100** — lihat `RUBRIC.md`.
 
 ## Keamanan
 
-Kredensial (API key, kode dev) disimpan di /home/z/my-project/.secrets/akiomida.env
-(server-only DevCodeVault untuk kode). Jangan commit / bagikan. Rotate bila bocor.
+Kredensial (API key, kode dev, token GitHub) disimpan di
+/home/z/my-project/.secrets/akiomida.env (server-only DevCodeVault untuk kode).
+Jangan commit / bagikan. Rotate bila bocor.
+
+## Cadangan GitHub (jaga-jaga + tim)
+
+- Repo: **github.com/akiomida/Io**, branch khusus proyek ini:
+  **`dunia-akiomida`** (main dipakai kerja lain, jangan disentuh).
+- Isi: seluruh proyek (src, tests, build .rbxlx, dokumentasi) + `harness/`
+  (playtest & ujian massa siap jalan, lihat harness/README.md).
+- Dipush SETIAP selesai publish versi baru lewat
+  `scripts/backup_github.sh` (langkah 5 di sesi mandiri) — riwayat commit
+  per versi = riwayat pembaruan game.
+- Sesi pertama membangun branch ini dari snapshot **v53** (commit fbb92f9).
+- Token GitHub tersimpan di .secrets; bila repo khusus (DuniaAkiomida)
+  ingin dipakai, beri token akses Contents: Read and write untuk repo itu
+  di Settings > Developer settings > Fine-grained tokens.
