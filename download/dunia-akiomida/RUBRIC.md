@@ -19,6 +19,42 @@ Skor per kriteria 0-10, dikali bobot. Total dihitung dari (skor x bobot) / 10.
 | 8 | Polish & UX (UI, suara, animasi, efek) | 10 | animasi kombat, BGM, partikel | UI rapi & responsif |
 | 9 | Originalitas 100% & aman hak cipta | 5 | - | - |
 
+## Skor v52 (versi LIVE #52, 7 Nov 2026) - SALDO AWAL USER BARU: 1 TRILIUN MICDA
+
+Permintaan pemilik: "Untuk saldo user baru sebelumnya kan 900.000 micda kini
+kita ganti jadi 1 triliun micda ya."
+
+Diterapkan di #52:
+
+A. **CropData.StartMoney 900.000 -> 1.000.000.000.000** (1 Triliun Micda):
+   berlaku untuk user baru DAN data rusak/kunci gagal yang di-reset ke
+   default ( DataService.defaultData & jalur pemulihan load ).
+B. **Selaras ekonomi super besar**: saldo awal kini proporsional dengan
+   arah game ekonomi 1000 Triliun (0,1% dari atap rekening) — user baru
+   langsung bisa bermain ekonomi skala besar tanpa menunggu grinding
+   awal; atap 1000 T dari #51 tetap berlaku.
+C. **Tidak menyentuh data lama**: pemain lama tetap membawa saldo
+   tersimpannya; jepitan 1000 T saat load tetap berjalan.
+D. **Pengujian**: seksi inti "Dana awal 1 Triliun Micda" + seksi U
+   "Ujian dimulai dari dunia baru: 1 Triliun Micda & tas kosong" +
+   aritmetika siklus penuh kini relatif terhadap StartMoney (tidak ada
+   lagi angka hardcoded). Total tes offline 378 PASS / 0 FAIL,
+   luau-lsp 0 TypeError, rojo build sukses. Publish #52.
+
+| # | Kriteria | Skor | Alasan |
+|---|----------|------|--------|
+| 1 Kombat | 0/10 | Belum ada monster/AI/bos. |
+| 2 Crafting | 4.5/10 | Tetap dari #51. |
+| 3 Stat & Progresi | 1/10 | Tanpa level (sesuai arah pemilik). |
+| 4 Ekonomi | 8/10 | Saldo awal 1 Triliun proporsional ekonomi super besar; atap 1000 T + deteksi anomali + guard transaksi tetap utuh. |
+| 5 Dunia & Peta | 7/10 | Tetap dari #51. |
+| 6 Multiplayer | 7/10 | Tetap dari #51. |
+| 7 Bertani | 10/10 | Tetap dari #51. |
+| 8 Polish & UX | 10/10 | Tetap dari #51. |
+| 9 Originalitas | 10/10 | Tetap dari #51. |
+
+**TOTAL: 58.8/100** (bobot: 0+67.5+10+120+70+70+100+100+50 = 587.5/10 = 58.75)
+
 ## Skor v51 (versi LIVE #51, 7 Nov 2026) - ANTI-CHEAT EKONOMI: TANPA BATAS ANGKA TETAP, DETEKSI ANOMALI, KICK AMAN-DATA
 
 Permintaan pemilik (pesan langsung + screenshot kick 267 "Aktivitas tidak

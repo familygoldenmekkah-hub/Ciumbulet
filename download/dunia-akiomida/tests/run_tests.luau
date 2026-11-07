@@ -67,7 +67,7 @@ end
 print("--- Sistem inti ---")
 do
         check("Waktu tumbuh 3 detik", CropData.GrowTime == 3, tostring(CropData.GrowTime))
-        check("Dana awal 900.000", CropData.StartMoney == 900000, tostring(CropData.StartMoney))
+        check("Dana awal 1 Triliun Micda", CropData.StartMoney == 1000000000000, tostring(CropData.StartMoney))
         check("Tas 50 slot", CropData.TasSlots == 50 and TasLogic.MaxSlots == 50, "-")
         check("Stack 250", CropData.TasStack == 250 and TasLogic.MaxStack == 250, "-")
         check("Benih wajib bernama 'Benih X'", CropData.namaBenih("wortel") == "Benih Wortel" and CropData.namaBenih("jeruk_mandarin") == "Benih Jeruk Mandarin" and CropData.namaBenih("kacang_tanah") == "Benih Kacang Tanah", tostring(CropData.namaBenih("wortel")))
@@ -793,7 +793,7 @@ print("--- H: Ekonomi raksasa tanpa batas angka tetap (server-authoritative) ---
 do
         local UangLogic = require("./../src/Shared/UangLogic")
         local st = UangLogic.baru(900000)
-        check("Saldo awal 900.000", UangLogic.saldo(st) == 900000, tostring(UangLogic.saldo(st)))
+        check("Saldo awal terbaca benar", UangLogic.saldo(st) == 900000, tostring(UangLogic.saldo(st)))
         local ok = UangLogic.tambah(st, 50, "jual_hasil", 100)
         check("Tambah sah menambah saldo", ok and UangLogic.saldo(st) == 900050, tostring(UangLogic.saldo(st)))
         check("Ledger mencatat transaksi sah", #UangLogic.ledgerOf(st) == 1 and UangLogic.ledgerOf(st)[1].d == 50 and UangLogic.ledgerOf(st)[1].r == "jual_hasil" and UangLogic.ledgerOf(st)[1].s == "ok", "-")
@@ -809,7 +809,7 @@ do
         check("Saldo tidak berubah oleh percobaan ilegal", UangLogic.saldo(st) == 900050, tostring(UangLogic.saldo(st)))
         local mega = UangLogic.tambah(st, 500000000000, "jual_hasil", 101)
         check("Transaksi raksasa (500 M) DITERIMA - tidak ada lagi batas angka tetap", mega and UangLogic.saldo(st) == 900050 + 500000000000, tostring(UangLogic.saldo(st)))
-        check("Tidak ada lagi MaksAksi / BatasPerMenit di UangLogic", UangLogic.MaksAksi == nil and UangLogic.BatasPerMenit == nil and UangLogic.JendelaDetik == nil, "-")
+        check("Tidak ada lagi MaksAksi / BatasPerMenit di UangLogic", (UangLogic :: any).MaksAksi == nil and (UangLogic :: any).BatasPerMenit == nil and (UangLogic :: any).JendelaDetik == nil, "-")
         local st2 = UangLogic.baru(0)
         local lajuOk = 0
         for i = 1, 30 do
@@ -848,7 +848,7 @@ do
         local AuditService = require("./../src/Server/Modules/AuditService")
         local UangLogic = require("./../src/Shared/UangLogic")
         local dikick, alasanKick = 0, ""
-        local pemain = {
+        local pemain: any = {
                 UserId = 777,
                 Name = "PetaniHebat",
                 Kick = function(_, msg)
@@ -880,7 +880,7 @@ do
         check("Anomali bobot 60 di bawah ambang belum menendang", not kena and dikick == 0 and kickTerakhir == 0, tostring(kickTerakhir))
         kena = AuditService.anomali(pemain, "sumber_tak_dikenal", "tes bobot 60 kedua")
         check("Anomali berulang mencapai ambang 100 -> kick aman dipicu", kena and kickTerakhir == 1 and string.find(alasanKick, "sumber_tak_dikenal", 1, true) ~= nil, tostring(kickTerakhir) .. "/" .. tostring(alasanKick))
-        local pemain2 = { UserId = 888, Name = "PetaniRajin", Kick = function() dikick += 1 end }
+        local pemain2: any = { UserId = 888, Name = "PetaniRajin", Kick = function() dikick += 1 end }
         AuditService.anomali(pemain2, "uang_korup", "tes korup")
         check("Anomali uang_korup (bobot 100) langsung mencapai ambang", kickTerakhir == 2, tostring(kickTerakhir))
         AuditService.transaksiMulai(pemain2)
@@ -1161,13 +1161,13 @@ do
         end
         local micda = CropData.StartMoney
         local tas = {}
-        check("Ujian dimulai dari dunia baru: 900.000 Micda & tas kosong", micda == 900000 and TasLogic.usedSlots(tas) == 0, tostring(micda))
+        check("Ujian dimulai dari dunia baru: 1 Triliun Micda & tas kosong", micda == CropData.StartMoney and TasLogic.usedSlots(tas) == 0, tostring(micda))
         local pack = CropData.Packs.common
         micda -= pack.price
         for _ = 1, pack.count do
                 TasLogic.add(tas, "benih", "wortel", 1)
         end
-        check("1) Beli pack common: 3 benih masuk tas & Micda terpotong 2.400", TasLogic.countOf(tas, "benih", "wortel") == 3 and micda == 897600, tostring(TasLogic.countOf(tas, "benih", "wortel")) .. "/" .. tostring(micda))
+        check("1) Beli pack common: 3 benih masuk tas & Micda terpotong 2.400", TasLogic.countOf(tas, "benih", "wortel") == 3 and micda == CropData.StartMoney - 2400, tostring(TasLogic.countOf(tas, "benih", "wortel")) .. "/" .. tostring(micda))
         check("2) Benih di tas bernama 'Benih Wortel' (bukan 'Wortel')", CropData.namaBenih("wortel") == "Benih Wortel", "-")
         local ditanam = TasLogic.remove(tas, "benih", "wortel", 3)
         check("3) Tanam 3 Benih Wortel lewat papan: benih keluar dari tas", ditanam == 3 and TasLogic.countOf(tas, "benih", "wortel") == 0, tostring(ditanam))
@@ -1201,7 +1201,7 @@ do
         if hasil.benih > 0 then
                 TasLogic.add(tas, "benih", "wortel", hasil.benih)
         end
-        check("11) Klaim: Micda hasil gilingan masuk rekening", micda > 897600, tostring(micda))
+        check("11) Klaim: Micda hasil gilingan masuk rekening", micda > CropData.StartMoney - 2400, tostring(micda))
         check("12) Klaim: TIDAK ada item blok yang dihasilkan", (hasil :: any).blok == nil, "-")
         check("13) Klaim: benih kembali bernama 'Benih Wortel' & siap ditanam lagi", CropData.namaBenih("wortel") == "Benih Wortel" and TasLogic.countOf(tas, "benih", "wortel") == hasil.benih, tostring(hasil.benih))
         local adaBlok = false

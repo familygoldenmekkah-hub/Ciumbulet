@@ -1,7 +1,7 @@
 local CropData = {}
 
 CropData.GrowTime = 3
-CropData.StartMoney = 900000
+CropData.StartMoney = 1000000000000
 CropData.TasSlots = 50
 CropData.TasStack = 250
 CropData.MesinSemai = {

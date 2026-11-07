@@ -1,0 +1,1339 @@
+     1→local CropData = require("./../src/Shared/CropData")
+     2→local Recipes = require("./../src/Shared/Recipes")
+     3→local StrukBeli = require("./../src/Shared/StrukBeli")
+     4→local TasLogic = require("./../src/Shared/TasLogic")
+     5→local Layout = require("./../src/Shared/Layout")
+     6→
+     7→local passed, failed = 0, 0
+     8→local function check(name: string, ok: boolean, detail: string?)
+     9→        if ok then
+    10→                passed += 1
+    11→                print("  PASS  " .. name)
+    12→        else
+    13→                failed += 1
+    14→                print("  FAIL  " .. name .. (detail and ("  -> " .. detail) or ""))
+    15→        end
+    16→end
+    17→
+    18→print("=== TES DUNIA AKIOMIDA - DUNIA SAMBUNG SATU SERVER ===")
+    19→
+    20→print("--- Data tanaman (34) ---")
+    21→do
+    22→        check("Jumlah tanaman = 34", #CropData.Crops == 34, tostring(#CropData.Crops))
+    23→        local counts = { common = 0, rare = 0, epic = 0 }
+    24→        local unique = true
+    25→        local ids = {}
+    26→        for _, c in ipairs(CropData.Crops) do
+    27→                if ids[c.id] then
+    28→                        unique = false
+    29→                end
+    30→                ids[c.id] = true
+    31→                counts[c.rarity] = (counts[c.rarity] or 0) + 1
+    32→        end
+    33→        check("ID tanaman unik", unique, "-")
+    34→        check("Common = 12", counts.common == 12, tostring(counts.common))
+    35→        check("Rare = 14", counts.rare == 14, tostring(counts.rare))
+    36→        check("Epic = 8", counts.epic == 8, tostring(counts.epic))
+    37→
+    38→        local harga = {
+    39→                wortel = 1, pisang = 1, bayam = 1, kentang = 1, ubi_jalar = 2, jambu_biji = 2,
+    40→                singkong = 2, tebu = 5, kedelai = 6, jamur = 6, brokoli = 7, sorgum = 17,
+    41→                jeruk_mandarin = 2, plum = 3, aprikot = 4, nektarin = 5, brassica_rapa = 7,
+    42→                brassica_oleracea = 7, grapefruit = 10, labu_moschata = 15, labu_maxima = 17,
+    43→                gandum = 19, arachis_duranensis = 20, arachis_ipaensis = 20, rye = 40, ceri = 87,
+    44→                tangelo = 17, plumcot = 22, nectaplum = 25, kacang_tanah = 30, pluerry = 35,
+    45→                canola = 60, triticale = 67, tetsukabuto = 75,
+    46→        }
+    47→        local salah = {}
+    48→        for id, h in pairs(harga) do
+    49→                local c = CropData.byId[id]
+    50→                if not c then
+    51→                        table.insert(salah, id .. " hilang")
+    52→                elseif c.jual ~= h then
+    53→                        table.insert(salah, id .. "=" .. tostring(c.jual))
+    54→                end
+    55→        end
+    56→        check("Harga jual 34 tanaman sesuai daftar", #salah == 0, table.concat(salah, ", "))
+    57→
+    58→        local byRarityOk = true
+    59→        for _, r in ipairs({ "common", "rare", "epic" }) do
+    60→                if #CropData.byRarity(r) ~= ({ common = 12, rare = 14, epic = 8 })[r] then
+    61→                        byRarityOk = false
+    62→                end
+    63→        end
+    64→        check("byRarity benar", byRarityOk, "-")
+    65→end
+    66→
+    67→print("--- Sistem inti ---")
+    68→do
+    69→        check("Waktu tumbuh 3 detik", CropData.GrowTime == 3, tostring(CropData.GrowTime))
+    70→        check("Dana awal 900.000", CropData.StartMoney == 900000, tostring(CropData.StartMoney))
+    71→        check("Tas 50 slot", CropData.TasSlots == 50 and TasLogic.MaxSlots == 50, "-")
+    72→        check("Stack 250", CropData.TasStack == 250 and TasLogic.MaxStack == 250, "-")
+    73→        check("Benih wajib bernama 'Benih X'", CropData.namaBenih("wortel") == "Benih Wortel" and CropData.namaBenih("jeruk_mandarin") == "Benih Jeruk Mandarin" and CropData.namaBenih("kacang_tanah") == "Benih Kacang Tanah", tostring(CropData.namaBenih("wortel")))
+    74→        check("Item 'blok' dibuang total dari data tanaman", (CropData :: any).blokIdFor == nil and (CropData :: any).blokNamaFor == nil and (CropData :: any).blokCrop == nil and (CropData :: any).BlokId == nil, "-")
+    75→        check("Pack Common 2.400 isi 3", CropData.Packs.common.price == 2400 and CropData.Packs.common.count == 3, "-")
+    76→        check("Pack Rare 9.000 isi 3", CropData.Packs.rare.price == 9000 and CropData.Packs.rare.count == 3, "-")
+    77→        check("Tidak ada pack epic di toko", CropData.Packs.epic == nil, "-")
+    78→        local y = CropData.Yield
+    79→        check("Panen Common 1-10", y.common.min == 1 and y.common.max == 10, "-")
+    80→        check("Panen Rare 1-6", y.rare.min == 1 and y.rare.max == 6, "-")
+    81→        check("Panen Epic 1-4", y.epic.min == 1 and y.epic.max == 4, "-")
+    82→        local s = CropData.Giling
+    83→        check("Giling Common 5x, benih 45%, Micda 1-5",
+    84→                s.common.hits == 5 and s.common.seed == 0.45 and s.common.blok == nil and s.common.micdaMin == 1 and s.common.micdaMax == 5, "-")
+    85→        check("Giling Rare 10x, benih 30%, Micda 3-9",
+    86→                s.rare.hits == 10 and s.rare.seed == 0.30 and s.rare.blok == nil and s.rare.micdaMin == 3 and s.rare.micdaMax == 9, "-")
+    87→        check("Giling Epic 15x, benih 10%, Micda 9-19",
+    88→                s.epic.hits == 15 and s.epic.seed == 0.10 and s.epic.blok == nil and s.epic.micdaMin == 9 and s.epic.micdaMax == 19, "-")
+    89→        check("Kapasitas mesin semai 2000 & giling 3 dtk", CropData.MesinSemai.Kapasitas == 2000 and CropData.MesinSemai.WaktuGiling == 3, "-")
+    90→end
+    91→
+    92→print("--- Struk pembelian toko ---")
+    93→do
+    94→        check("Struk kosong bila tidak ada pick", #StrukBeli.rangkum({}, CropData.byId) == 0, "-")
+    95→        local rows = StrukBeli.rangkum({ "gandum", "rye", "gandum" }, CropData.byId)
+    96→        check("3 pick jadi 2 baris struk", #rows == 2, tostring(#rows))
+    97→        check("Urutan baris sesuai kemunculan pertama", rows[1].id == "gandum" and rows[2].id == "rye", "-")
+    98→        check("Jumlah baris teragregasi benar", rows[1].count == 2 and rows[2].count == 1, tostring(rows[1].count) .. "/" .. tostring(rows[2].count))
+    99→        check("Nama baris struk memakai nama benih (Benih X)", rows[1].nama == "Benih Gandum" and rows[2].nama == "Benih Rye", rows[1].nama .. "/" .. rows[2].nama)
+   100→        local pool = CropData.byRarity("common")
+   101→        local picks = {}
+   102→        for _ = 1, CropData.Packs.common.count do
+   103→                table.insert(picks, pool[math.random(1, #pool)].id)
+   104→        end
+   105→        local struk = StrukBeli.rangkum(picks, CropData.byId)
+   106→        check("Total isi struk pack selalu = isi pack", StrukBeli.totalBaris(struk) == CropData.Packs.common.count, tostring(StrukBeli.totalBaris(struk)))
+   107→        local kenal = true
+   108→        for _, r in ipairs(struk) do
+   109→                if not CropData.byId[r.id] or r.count < 1 then
+   110→                        kenal = false
+   111→                end
+   112→        end
+   113→        check("Semua baris struk benih dikenal & berjumlah positif", kenal, "-")
+   114→        local rareStruk = StrukBeli.rangkum({ "plum", "plum", "plum" }, CropData.byId)
+   115→        check("Struk pack rare konsisten", #rareStruk == 1 and rareStruk[1].id == "plum" and rareStruk[1].count == 3 and rareStruk[1].nama == "Benih Plum", "-")
+   116→end
+   117→
+   118→print("--- Resep gabung (8) ---")
+   119→do
+   120→        check("Jumlah resep = 8", #Recipes.List == 8, tostring(#Recipes.List))
+   121→        local pasangan = {
+   122→                { "jeruk_mandarin", "grapefruit", "tangelo" },
+   123→                { "plum", "aprikot", "plumcot" },
+   124→                { "nektarin", "plum", "nectaplum" },
+   125→                { "arachis_duranensis", "arachis_ipaensis", "kacang_tanah" },
+   126→                { "ceri", "plum", "pluerry" },
+   127→                { "brassica_rapa", "brassica_oleracea", "canola" },
+   128→                { "gandum", "rye", "triticale" },
+   129→                { "labu_maxima", "labu_moschata", "tetsukabuto" },
+   130→        }
+   131→        for _, p in ipairs(pasangan) do
+   132→                local out = Recipes.find(p[1], p[2])
+   133→                local out2 = Recipes.find(p[2], p[1])
+   134→                check("Resep " .. p[3] .. " urutan bebas", out == p[3] and out2 == p[3], tostring(out))
+   135→                check("Hasil " .. p[3] .. " epic", CropData.byId[p[3]] and CropData.byId[p[3]].rarity == "epic", "-")
+   136→        end
+   137→        check("Kombinasi liar ditolak", Recipes.find("wortel", "pisang") == nil, "-")
+   138→        check("Benih sama ditolak", Recipes.find("plum", "plum") == nil, "-")
+   139→        check("Semua bahan resep terdaftar", (function()
+   140→                for _, r in ipairs(Recipes.List) do
+   141→                        if not CropData.byId[r.a] or not CropData.byId[r.b] or not CropData.byId[r.out] then
+   142→                                return false
+   143→                        end
+   144→                end
+   145→                return true
+   146→        end)(), "-")
+   147→end
+   148→
+   149→print("--- Tas 50x250 ---")
+   150→do
+   151→        local tas = {}
+   152→        check("Tas kosong 0", TasLogic.usedSlots(tas) == 0, "-")
+   153→        check("Ruang item baru 100", TasLogic.roomFor(tas, "benih", "wortel", 100) == 100, "-")
+   154→        TasLogic.add(tas, "benih", "wortel", 100)
+   155→        check("Menambah 100 benih", TasLogic.countOf(tas, "benih", "wortel") == 100, tostring(TasLogic.countOf(tas, "benih", "wortel")))
+   156→        check("Sisa stack tepat 150", TasLogic.roomFor(tas, "benih", "wortel", 150) == 150, tostring(TasLogic.roomFor(tas, "benih", "wortel", 150)))
+   157→        check("Lebih dari stack pakai slot baru", TasLogic.roomFor(tas, "benih", "wortel", 151) == 151, "-")
+   158→        TasLogic.add(tas, "benih", "wortel", 150)
+   159→        check("Slot pertama penuh 250", TasLogic.countOf(tas, "benih", "wortel") == 250, tostring(TasLogic.countOf(tas, "benih", "wortel")))
+   160→        check("Jenis sama boleh buka slot kedua", TasLogic.roomFor(tas, "benih", "wortel", 1) == 1, "-")
+   161→        TasLogic.add(tas, "benih", "wortel", 1)
+   162→        check("Jenis lain dapat slot terpisah", TasLogic.roomFor(tas, "hasil", "wortel", 10) == 10, "-")
+   163→        TasLogic.add(tas, "hasil", "wortel", 5)
+   164→        check("Hasil dan benih di slot berbeda", TasLogic.countOf(tas, "hasil", "wortel") == 5 and TasLogic.countOf(tas, "benih", "wortel") == 251, "-")
+   165→        local removed = TasLogic.remove(tas, "benih", "wortel", 60)
+   166→        check("Mengurangi 60", removed == 60 and TasLogic.countOf(tas, "benih", "wortel") == 191, tostring(TasLogic.countOf(tas, "benih", "wortel")))
+   167→        local full = {}
+   168→        for i = 1, 50 do
+   169→                TasLogic.add(full, "hasil", "h" .. i, 1)
+   170→        end
+   171→        check("50 slot penuh", TasLogic.usedSlots(full) == 50, tostring(TasLogic.usedSlots(full)))
+   172→        check("Item baru ditolak saat penuh", TasLogic.roomFor(full, "hasil", "wortel", 1) == 0, "-")
+   173→        check("Item lama masih bisa menumpuk", TasLogic.roomFor(full, "hasil", "h1", 10) == 10, "-")
+   174→        local batch = { { kind = "benih", id = "plum", count = 1 }, { kind = "benih", id = "aprikot", count = 1 } }
+   175→        check("Batch muat di tas kosong", TasLogic.canFitBatch({}, batch), "-")
+   176→        check("Batch ditolak saat penuh", not TasLogic.canFitBatch(full, batch), "-")
+   177→        local over = TasLogic.add(full, "hasil", "h1", 300)
+   178→        check("Tambah melebihi stack terpotong", TasLogic.countOf(full, "hasil", "h1") == 250 and over >= 50, tostring(over))
+   179→end
+   180→
+   181→print("--- Denah lahan ---")
+   182→do
+   183→        check("24 lahan per server", Layout.LahanCount == 24, tostring(Layout.LahanCount))
+   184→        check("Grid 4 x 6", Layout.Rows == 4 and Layout.Cols == 6, "-")
+   185→        check("Ukuran lahan 240 x 220", Layout.SizeX == 240 and Layout.SizeZ == 220, "-")
+   186→        check("Jarak antar lahan 40", Layout.Gap == 40, "-")
+   187→        check("500 plot", Layout.plotCount() == 500, tostring(Layout.plotCount()))
+   188→        check("Grid plot 25 x 20", Layout.PlotCols == 25 and Layout.PlotRows == 20, "-")
+   189→        check("Blok plot 150 x 120", Layout.PlotBlockW == 150 and Layout.PlotBlockD == 120, "-")
+   190→        local semuaDalam = true
+   191→        for idx = 0, Layout.plotCount() - 1 do
+   192→                local x, z = Layout.plotLocal(idx)
+   193→                if x - 2 < Layout.PlotBlockX or x + 2 > Layout.PlotBlockX + Layout.PlotBlockW then
+   194→                        semuaDalam = false
+   195→                end
+   196→                if z - 2 < Layout.PlotBlockZ or z + 2 > Layout.PlotBlockZ + Layout.PlotBlockD then
+   197→                        semuaDalam = false
+   198→                end
+   199→        end
+   200→        check("Semua 500 plot di dalam blok", semuaDalam, "-")
+   201→        check("Pitch antar plot 6 stud", Layout.PlotPitch == 6, tostring(Layout.PlotPitch))
+   202→        local x0, z0 = Layout.plotLocal(0)
+   203→        local x1, _ = Layout.plotLocal(1)
+   204→        check("Jarak pusat antar plot 6", (x1 - x0) == 6, tostring(x1 - x0))
+   205→        local _, z20 = Layout.plotLocal(25)
+   206→        check("Baris kedua turun 6", (z20 - z0) == 6, tostring(z20 - z0))
+   207→        local inside = true
+   208→        for i = 1, 24 do
+   209→                local ox, oz = Layout.cellOrigin(i)
+   210→                local row = math.floor((i - 1) / Layout.Cols)
+   211→                local col = (i - 1) % Layout.Cols
+   212→                if ox ~= col * (Layout.SizeX + Layout.Gap) or oz ~= row * (Layout.SizeZ + Layout.Gap) then
+   213→                        inside = false
+   214→                end
+   215→        end
+   216→        check("Posisi sel 4x6 benar", inside, "-")
+   217→        local o1x = Layout.cellOrigin(1)
+   218→        local o2x = Layout.cellOrigin(2)
+   219→        check("Jarak sel 1 ke 2 = 280", (o2x - o1x) == 280, tostring(o2x - o1x))
+   220→        check("Dunia dipisah 5000 stud dari kota", Layout.duniaOffsetX() >= 5000, tostring(Layout.duniaOffsetX()))
+   221→end
+   222→
+   223→print("--- Batas laju ---")
+   224→do
+   225→        local RateLimit = require("./../src/Server/Modules/RateLimit")
+   226→        local now = 0
+   227→        RateLimit.clock = function()
+   228→                return now
+   229→        end
+   230→        RateLimit.clear(999)
+   231→        local ok1 = RateLimit.allow(999, "plot", 6, 3)
+   232→        local ok2 = RateLimit.allow(999, "plot", 6, 3)
+   233→        local ok3 = RateLimit.allow(999, "plot", 6, 3)
+   234→        local ok4 = RateLimit.allow(999, "plot", 6, 3)
+   235→        check("Burst 3 lalu ditolak", ok1 and ok2 and ok3 and not ok4, tostring(ok4))
+   236→        now = 1
+   237→        local ok5 = RateLimit.allow(999, "plot", 6, 3)
+   238→        check("Isi ulang setelah 1 detik", ok5, tostring(ok5))
+   239→        RateLimit.clear(999)
+   240→end
+   241→
+   242→print("--- Logika dunia tersimpan ---")
+   243→do
+   244→        local DuniaLogic = require("./../src/Shared/DuniaLogic")
+   245→        check("Key dunia dari userId", DuniaLogic.keyFor(42) == "d_42", tostring(DuniaLogic.keyFor(42)))
+   246→        check("Nama bersih diterima", DuniaLogic.cleanName("  akiomida ") == "akiomida", "-")
+   247→        check("Nama rusak ditolak", DuniaLogic.cleanName("") == nil and DuniaLogic.cleanName(5) == nil and DuniaLogic.cleanName(string.rep("x", 31)) == nil, "-")
+   248→        local pl = { [0] = { crop = "wortel", readyAt = 123.7, model = {} }, [499] = { crop = "ceri", readyAt = 99 }, rusak = { crop = "x", readyAt = 1 }, [-1] = { crop = "y", readyAt = 1 }, [3] = { crop = 9, readyAt = 1 } }
+   249→        local ser = DuniaLogic.serPlots(pl)
+   250→        check("Serialize plot menyaring data", ser[0] ~= nil and ser[0].c == "wortel" and ser[0].r == 123 and ser[499] ~= nil and ser[499].c == "ceri" and ser.rusak == nil and ser[-1] == nil and ser[3] == nil, "-")
+   251→        local des = DuniaLogic.desPlots(ser)
+   252→        check("Deserialize plot roundtrip", des[0] ~= nil and des[0].c == "wortel" and des[0].r == 123 and des[499] ~= nil and des[499].c == "ceri", "-")
+   253→        check("Deserialize plot tolak rusak", DuniaLogic.desPlots({ [5] = { c = 9, r = 1 } })[5] == nil and DuniaLogic.desPlots(nil)[5] == nil and DuniaLogic.desPlots({ [6] = { c = "wortel", r = "x" } })[6] == nil, "-")
+   254→        check("Batas plot 500 ditegakkan", DuniaLogic.serPlots({ [500] = { crop = "x", readyAt = 1 } })[500] == nil and DuniaLogic.desPlots({ [501] = { c = "x", r = 1 } })[501] == nil, "-")
+   255→        local ser2 = DuniaLogic.serMesin({ c = "plum", j = 20, m = 55, b = 3, k = 2 })
+   256→        check("Serialize mesin satu batch", #ser2 == 1 and ser2[1].c == "plum" and ser2[1].j == 20 and ser2[1].m == 55 and ser2[1].b == 3 and ser2[1].k == 2, tostring(#ser2))
+   257→        local des2 = DuniaLogic.desMesin(ser2)
+   258→        check("Deserialize mesin roundtrip", des2[1] ~= nil and des2[1].c == "plum" and des2[1].j == 20, "-")
+   259→        local legacy = DuniaLogic.desMesin({ { c = "aprikot", h = 2 } })
+   260→        check("Data meja lama dimigrasi ke mesin", #legacy == 1 and legacy[1].c == "aprikot" and legacy[1].j == 1, tostring(#legacy))
+   261→        check("Serialize mesin tolak rusak", #DuniaLogic.serMesin({ c = 9, j = 1 }) == 0 and #DuniaLogic.serMesin(nil) == 0, "-")
+   262→        check("Save tiap 60 dtk", DuniaLogic.SaveEvery == 60, tostring(DuniaLogic.SaveEvery))
+   263→end
+   264→
+   265→print("--- Bentuk model tiap tanaman ---")
+   266→do
+   267→        local JENIS = { akar = true, daun = true, bulat = true, tangkai = true, pohon = true, semak = true, kacang = true, cendawan = true }
+   268→        local kurang, rusak, sama = {}, {}, {}
+   269→        for _, c in ipairs(CropData.Crops) do
+   270→                local b = CropData.Bentuk[c.id]
+   271→                if not b then
+   272→                        table.insert(kurang, c.id)
+   273→                elseif not JENIS[b.jenis] then
+   274→                        table.insert(rusak, c.id .. ":jenis")
+   275→                elseif type(b.t) ~= "number" or b.t <= 0 or type(b.w) ~= "number" or b.w <= 0 then
+   276→                        table.insert(rusak, c.id .. ":ukuran")
+   277→                elseif b.warna[1] == b.siap[1] and b.warna[2] == b.siap[2] and b.warna[3] == b.siap[3] then
+   278→                        table.insert(sama, c.id)
+   279→                end
+   280→        end
+   281→        check("34 tanaman semua punya bentuk", #kurang == 0, table.concat(kurang, ", "))
+   282→        check("Jenis bentuk valid & ukuran masuk akal", #rusak == 0, table.concat(rusak, ", "))
+   283→        check("Warna tumbuh beda dari warna siap (34)", #sama == 0, table.concat(sama, ", "))
+   284→        check("Hybrid punya bentuk sendiri", (function()
+   285→                local ids = { tangelo = true, plumcot = true, nectaplum = true, kacang_tanah = true, pluerry = true, canola = true, triticale = true, tetsukabuto = true }
+   286→                for id in pairs(ids) do
+   287→                        if not CropData.Bentuk[id] then
+   288→                                return false
+   289→                        end
+   290→                end
+   291→                return true
+   292→        end)(), "-")
+   293→        check("Warna siap kacang tanah kekuningan", CropData.Bentuk.kacang_tanah.siap[1] > 200 and CropData.Bentuk.kacang_tanah.siap[2] > 150, "-")
+   294→end
+   295→
+   296→print("--- Pukul tanaman masih tumbuh ---")
+   297→do
+   298→        local PukulLogic = require("./../src/Shared/PukulLogic")
+   299→        check("Batas pukul 5", PukulLogic.MaksPukul == 5, tostring(PukulLogic.MaksPukul))
+   300→        local n1, h1 = PukulLogic.catat(0, 0, 100)
+   301→        check("Pukulan pertama hitungan 1", n1 == 1 and not h1, tostring(n1))
+   302→        local n2 = PukulLogic.catat(n1, 100, 101)
+   303→        local n3 = PukulLogic.catat(n2, 101, 102)
+   304→        local n4 = PukulLogic.catat(n3, 102, 103)
+   305→        local n5, h5 = PukulLogic.catat(n4, 103, 104)
+   306→        check("5x beruntun tanaman hancur", n5 == 5 and h5 == true, tostring(n5) .. "/" .. tostring(h5))
+   307→        local r1 = PukulLogic.catat(0, 0, 50)
+   308→        local r2 = PukulLogic.catat(r1, 50, 51)
+   309→        local r3 = PukulLogic.catat(r2, 51, 52)
+   310→        local r4 = PukulLogic.catat(r3, 52, 53)
+   311→        check("4x beruntun belum hancur", r4 == 4, tostring(r4))
+   312→        local s1 = PukulLogic.catat(4, 200, 500)
+   313→        check("Jeda lewat jendela reset hitungan", s1 == 1, tostring(s1))
+   314→        check("Masih tumbuh tidak membuka pukulan ke-6", PukulLogic.catat(PukulLogic.MaksPukul, 0, 10) == 1, "-")
+   315→end
+   316→
+   317→print("--- Status papan tanam ---")
+   318→do
+   319→        local PanenStatus = require("./../src/Shared/PanenStatus")
+   320→        check("Lahan kosong -> daftar kosong", #PanenStatus.hitung({}, 100) == 0, "-")
+   321→        check("Input rusak -> daftar kosong", #PanenStatus.hitung(nil, 100) == 0 and #PanenStatus.hitung("x", 100) == 0, "-")
+   322→        local recs = {
+   323→                [0] = { crop = "wortel", readyAt = 90 },
+   324→                [1] = { crop = "wortel", readyAt = 200 },
+   325→                [2] = { crop = "gandum", readyAt = 50 },
+   326→                [3] = { crop = "tangelo", readyAt = 150 },
+   327→                [4] = { crop = "tangelo", readyAt = 151 },
+   328→                [5] = { crop = "tangelo", readyAt = 90 },
+   329→                rusak = { crop = 9, readyAt = 1 },
+   330→        }
+   331→        local daftar = PanenStatus.hitung(recs, 100)
+   332→        local per = {}
+   333→        for _, row in ipairs(daftar) do
+   334→                per[row.id] = row
+   335→        end
+   336→        check("Wortel 1 siap 1 tumbuh", per.wortel and per.wortel.siap == 1 and per.wortel.tumbuh == 1, "-")
+   337→        check("Gandum 1 siap", per.gandum and per.gandum.siap == 1 and per.gandum.tumbuh == 0, "-")
+   338→        check("Tangelo 1 siap 2 tumbuh", per.tangelo and per.tangelo.siap == 1 and per.tangelo.tumbuh == 2, "-")
+   339→        check("Record rusak diabaikan", #daftar == 3, tostring(#daftar))
+   340→end
+   341→
+   342→print("--- Soal matematika tanam ---")
+   343→do
+   344→        local SoalLogic = require("./../src/Shared/SoalLogic")
+   345→        local function shimRng(seed: number)
+   346→                local s = seed % 2147483647
+   347→                if s == 0 then
+   348→                        s = 12345
+   349→                end
+   350→                return {
+   351→                        NextInteger = function(_, a: number, b: number)
+   352→                                s = (s * 48271) % 2147483647
+   353→                                return a + (s % (b - a + 1))
+   354→                        end,
+   355→                        NextNumber = function(_)
+   356→                                s = (s * 48271) % 2147483647
+   357→                                return s / 2147483647
+   358→                        end,
+   359→                }
+   360→        end
+   361→        local rng = shimRng(2026)
+   362→        local q1 = SoalLogic.buat(rng, 1, {})
+   363→        check("Soal punya teks dan jawab angka", type(q1.teks) == "string" and type(q1.jawab) == "number", tostring(q1.teks))
+   364→        local stageOk = true
+   365→        local u = {}
+   366→        for nomor = 1, 20 do
+   367→                local q = SoalLogic.buat(rng, nomor, u)
+   368→                if q.op ~= "tambah" and q.op ~= "kurang" then
+   369→                        stageOk = false
+   370→                end
+   371→        end
+   372→        for nomor = 21, 35 do
+   373→                local q = SoalLogic.buat(rng, nomor, u)
+   374→                if q.op ~= "kali" then
+   375→                        stageOk = false
+   376→                end
+   377→        end
+   378→        for nomor = 36, 60 do
+   379→                local q = SoalLogic.buat(rng, nomor, u)
+   380→                if q.op ~= "bagi" then
+   381→                        stageOk = false
+   382→                end
+   383→        end
+   384→        check("Kesulitan naik: tambah/kurang lalu kali lalu bagi", stageOk, "-")
+   385→        check("Jawaban tambah benar", (function()
+   386→                for _ = 1, 40 do
+   387→                        local q = SoalLogic.buat(rng, 1, {})
+   388→                        if q.op == "tambah" and q.jawab ~= q.a + q.b then
+   389→                                return false
+   390→                        end
+   391→                end
+   392→                return true
+   393→        end)(), "-")
+   394→        check("Kurang tidak pernah minus", (function()
+   395→                for _ = 1, 60 do
+   396→                        local q = SoalLogic.buat(rng, 2, {})
+   397→                        if q.op == "kurang" and (q.jawab < 0 or q.jawab ~= q.a - q.b) then
+   398→                                return false
+   399→                        end
+   400→                end
+   401→                return true
+   402→        end)(), "-")
+   403→        check("Jawaban kali benar", (function()
+   404→                for _ = 1, 40 do
+   405→                        local q = SoalLogic.buat(rng, 25, {})
+   406→                        if q.jawab ~= q.a * q.b then
+   407→                                return false
+   408→                        end
+   409→                end
+   410→                return true
+   411→        end)(), "-")
+   412→        check("Bagi selalu habis dibagi", (function()
+   413→                for _ = 1, 40 do
+   414→                        local q = SoalLogic.buat(rng, 40, {})
+   415→                        if q.b == 0 or q.a % q.b ~= 0 or q.jawab ~= q.a / q.b then
+   416→                                return false
+   417→                        end
+   418→                end
+   419→                return true
+   420→        end)(), "-")
+   421→        check("Soal tidak pernah sama dalam satu sesi", (function()
+   422→                local used2 = {}
+   423→                local tanda = {}
+   424→                local rng2 = shimRng(777)
+   425→                local nomor = 1
+   426→                for _ = 1, 220 do
+   427→                        local q = SoalLogic.buat(rng2, nomor, used2)
+   428→                        nomor = nomor % 60 + 1
+   429→                        local k = q.op .. q.a .. "_" .. q.b
+   430→                        if tanda[k] then
+   431→                                return false
+   432→                        end
+   433→                        tanda[k] = true
+   434→                end
+   435→                return true
+   436→        end)(), "-")
+   437→        check("Soal beda antar pemain", (function()
+   438→                local u1, u2 = {}, {}
+   439→                local r1, r2 = shimRng(11), shimRng(42)
+   440→                local beda = false
+   441→                for _ = 1, 12 do
+   442→                        local a = SoalLogic.buat(r1, 1, u1)
+   443→                        local b = SoalLogic.buat(r2, 1, u2)
+   444→                        if a.teks ~= b.teks then
+   445→                                beda = true
+   446→                        end
+   447→                end
+   448→                return beda
+   449→        end)(), "-")
+   450→end
+   451→
+   452→print("--- Gudang 1000 tampungan ---")
+   453→do
+   454→        local GudangLogic = require("./../src/Shared/GudangLogic")
+   455→        local gd = GudangLogic.baru()
+   456→        check("Gudang baru 0 terpakai", GudangLogic.terpakai(gd) == 0, "-")
+   457→        local ok1 = GudangLogic.simpan(gd, "wortel", 250)
+   458→        check("Setor 250 memakai 1 tampungan (sisa 999)", ok1 and GudangLogic.terpakai(gd) == 1, tostring(GudangLogic.terpakai(gd)))
+   459→        GudangLogic.simpan(gd, "wortel", 250)
+   460→        check("Setor 250 lagi (sisa 998)", GudangLogic.terpakai(gd) == 2, tostring(GudangLogic.terpakai(gd)))
+   461→        check("Setor 300 ditolak", not GudangLogic.simpan(gd, "wortel", 300), "-")
+   462→        check("Setor 0 ditolak", not GudangLogic.simpan(gd, "wortel", 0), "-")
+   463→        check("Setor 1 boleh", GudangLogic.simpan(gd, "pisang", 1), "-")
+   464→        local gdFull = GudangLogic.baru()
+   465→        for _ = 1, 1000 do
+   466→                GudangLogic.simpan(gdFull, "bayam", 1)
+   467→        end
+   468→        check("Tampungan maksimal 1000", GudangLogic.terpakai(gdFull) == 1000, tostring(GudangLogic.terpakai(gdFull)))
+   469→        check("Setor ke-1001 ditolak", not GudangLogic.simpan(gdFull, "bayam", 1), "-")
+   470→        local okA, _, nA = GudangLogic.ambil(gd, 1, nil)
+   471→        check("Ambil slot 1 berisi semua isi", okA and nA == 250, tostring(nA))
+   472→        GudangLogic.kurangi(gd, 1, nA)
+   473→        check("Slot bebas setelah diambil semua", GudangLogic.terpakai(gd) == 2, tostring(GudangLogic.terpakai(gd)))
+   474→        local _, _, nP = GudangLogic.ambil(gd, 1, 100)
+   475→        GudangLogic.kurangi(gd, 1, nP)
+   476→        check("Ambil sebagian menyisakan 150", gd.s[1].count == 150 and GudangLogic.terpakai(gd) == 2, tostring(gd.s[1].count))
+   477→        check("Ambil lebih dari isi dibatasi", (function()
+   478→                local _, _, n = GudangLogic.ambil(gd, 1, 999)
+   479→                return n == 150
+   480→        end)(), "-")
+   481→        check("Slot kosong ditolak", not GudangLogic.ambil(gd, 99, nil), "-")
+   482→        local ser = GudangLogic.ser(gd)
+   483→        local des = GudangLogic.des(ser)
+   484→        check("Serialize gudang roundtrip", des.s[1].id == "wortel" and des.s[1].count == 150 and GudangLogic.terpakai(des) == 2, "-")
+   485→        check("Deserialize tolak data rusak", GudangLogic.terpakai(GudangLogic.des({ { id = 9, count = 5 }, { id = "wortel", count = "x" }, { id = "pisang", count = 40 } })) == 1, tostring(GudangLogic.terpakai(GudangLogic.des({ { id = 9, count = 5 }, { id = "wortel", count = "x" }, { id = "pisang", count = 40 } }))))
+   486→        check("Deserialize tolak 'blok_panen' dari dunia lama", GudangLogic.terpakai(GudangLogic.des({ { id = "blok_panen", count = 12 }, { id = "pisang", count = 40 } }, CropData.byId)) == 1, tostring(GudangLogic.terpakai(GudangLogic.des({ { id = "blok_panen", count = 12 }, { id = "pisang", count = 40 } }, CropData.byId))))
+   487→        check("Setor 'blok_panen' ditolak", not GudangLogic.simpan(gd, "blok_panen", 5, CropData.byId), "-")
+   488→        check("Deserialize batasi 1000 slot", (function()
+   489→                local banyak = {}
+   490→                for _ = 1, 1200 do
+   491→                        table.insert(banyak, { id = "bayam", count = 1 })
+   492→                end
+   493→                return GudangLogic.terpakai(GudangLogic.des(banyak)) == 1000
+   494→        end)(), "-")
+   495→        check("Deserialize data hilang tetap aman", GudangLogic.terpakai(GudangLogic.des(nil)) == 0, "-")
+   496→        check("Batas gudang 1000 x 250", GudangLogic.MaksSlot == 1000 and GudangLogic.MaksIsi == 250, "-")
+   497→end
+   498→
+   499→print("--- D: Drop panen sesuai bentuk tanaman ---")
+   500→do
+   501→        local DropBentuk = require("./../src/Shared/DropBentuk")
+   502→        local JENIS = { akar = true, daun = true, bulat = true, tangkai = true, pohon = true, semak = true, kacang = true, cendawan = true }
+   503→        local kurang, warnaSalah = {}, {}
+   504→        for _, c in ipairs(CropData.Crops) do
+   505→                local b = CropData.Bentuk[c.id]
+   506→                local spes = b and DropBentuk.spesifikasi(b)
+   507→                if not spes then
+   508→                        table.insert(kurang, c.id)
+   509→                elseif not JENIS[spes.jenis] then
+   510→                        table.insert(kurang, c.id .. ":jenis")
+   511→                elseif spes.buah[1] ~= b.siap[1] or spes.buah[2] ~= b.siap[2] or spes.buah[3] ~= b.siap[3] then
+   512→                        table.insert(warnaSalah, c.id)
+   513→                end
+   514→        end
+   515→        check("34 tanaman punya spesifikasi drop", #kurang == 0, table.concat(kurang, ", "))
+   516→        check("Warna drop = warna siap tanaman (34)", #warnaSalah == 0, table.concat(warnaSalah, ", "))
+   517→        check("8 hibrida punya drop sendiri", (function()
+   518→                for _, id in ipairs({ "tangelo", "plumcot", "nectaplum", "kacang_tanah", "pluerry", "canola", "triticale", "tetsukabuto" }) do
+   519→                        if not DropBentuk.spesifikasi(CropData.Bentuk[id]) then
+   520→                                return false
+   521→                        end
+   522→                end
+   523→                return true
+   524→        end)(), "-")
+   525→        local ikonOk = true
+   526→        for jenis in pairs(JENIS) do
+   527→                local bagian = DropBentuk.ikonBagian(jenis)
+   528→                if type(bagian) ~= "table" or #bagian < 2 then
+   529→                        ikonOk = false
+   530→                else
+   531→                        for _, g in ipairs(bagian) do
+   532→                                if type(g.dx) ~= "number" or type(g.dy) ~= "number" or type(g.dw) ~= "number" or type(g.dh) ~= "number" or g.dx < 0 or g.dx > 1 or g.dy < 0 or g.dy > 1 or g.dw <= 0 or g.dh <= 0 then
+   533→                                        ikonOk = false
+   534→                                end
+   535→                                if g.warna ~= "buah" and g.warna ~= "aksen" then
+   536→                                        ikonOk = false
+   537→                                end
+   538→                        end
+   539→                end
+   540→        end
+   541→        check("Ikon tas 8 arketipe lengkap & koordinat valid", ikonOk, "-")
+   542→        check("Warna ikon berbeda antara buah dan aksen", (function()
+   543→                local b = DropBentuk.ikonBagian("pohon")
+   544→                return b[2].warna ~= b[3].warna
+   545→        end)(), "-")
+   546→        check("Spesifikasi rusak ditolak", DropBentuk.spesifikasi(nil) == nil and DropBentuk.spesifikasi({ jenis = "alien" }) == nil and DropBentuk.spesifikasi({ jenis = "akar", siap = "x", aksen = {} }) == nil, "-")
+   547→        local spesW = DropBentuk.spesifikasi(CropData.Bentuk.wortel)
+   548→        check("Skala drop masuk akal", spesW ~= nil and spesW.skala >= 0.7 and spesW.skala <= 1.8, tostring(spesW and spesW.skala))
+   549→end
+   550→
+   551→print("--- E: Animasi & efek punch ---")
+   552→do
+   553→        local PukulAnim = require("./../src/Shared/PukulAnim")
+   554→        local f1 = PukulAnim.fase(0, 0.05)
+   555→        check("Animasi hidup segera setiap tombol ditekan", f1.memukul == true and f1.kena == false, tostring(f1.memukul))
+   556→        local f2 = PukulAnim.fase(0, PukulAnim.MomenKena)
+   557→        check("Momen kena sinkron di 0.12 dtk", f2.kena == true, tostring(f2.kena))
+   558→        local f3 = PukulAnim.fase(0, PukulAnim.Durasi + 0.01)
+   559→        check("Animasi selesai setelah 0.32 dtk", not f3.memukul and not f3.kena, tostring(f3.memukul))
+   560→        local f4 = PukulAnim.fase(0, 0.16)
+   561→        check("Sudut ayunan positif di tengah ayunan", f4.sudut > 0 and f4.p > 0, tostring(f4.sudut))
+   562→        check("Tekan lagi = ayunan baru dari nol", PukulAnim.mulaiUlang(0.2, 0.25) == 0.25 and PukulAnim.mulaiUlang(nil, 1.0) == 1.0, "-")
+   563→        local g1, g2, g3 = PukulAnim.getar(1), PukulAnim.getar(2), PukulAnim.getar(3)
+   564→        check("Getaran naik dengan tier kombo", g3 > g2 and g2 > g1 and g1 > 0, tostring(g1) .. "/" .. tostring(g3))
+   565→        check("Getaran aman untuk tier aneh", PukulAnim.getar(99) == PukulAnim.getar(3) and PukulAnim.getar(0) == PukulAnim.getar(1), "-")
+   566→end
+   567→
+   568→print("--- F: Presisi punch (hitbox depan karakter) ---")
+   569→do
+   570→        local ArahPukul = require("./../src/Shared/ArahPukul")
+   571→        local asal = { x = 0, y = 2, z = 0 }
+   572→        local arah = { x = 0, y = 0, z = -1 }
+   573→        local daftar = {
+   574→                { idx = 7, pos = { x = 0, y = 0, z = -6 } },
+   575→                { idx = 11, pos = { x = 0, y = 0, z = -11 } },
+   576→                { idx = 3, pos = { x = 8, y = 0, z = -6 } },
+   577→                { idx = 9, pos = { x = 0, y = 0, z = 5 } },
+   578→                { idx = 21, pos = { x = 0, y = 0, z = -30 } },
+   579→        }
+   580→        local p = ArahPukul.pilih(asal, arah, daftar)
+   581→        check("Raycast memilih tanaman terdekat di depan", p ~= nil and p.idx == 7, tostring(p and p.idx))
+   582→        check("Titik pukul tepat di titik kena", p ~= nil and p.titik.x == 0 and p.titik.z == -6, p and tostring(p.titik.x) .. "," .. tostring(p.titik.z))
+   583→        check("Sasaran menyamping ditolak", ArahPukul.pilih(asal, arah, { daftar[3] }) == nil, "-")
+   584→        check("Sasaran di belakang ditolak", ArahPukul.pilih(asal, arah, { daftar[4] }) == nil, "-")
+   585→        check("Sasaran di luar jangkauan ditolak", ArahPukul.pilih(asal, arah, { daftar[5] }) == nil, "-")
+   586→        check("Pukul titik lain = sasaran lain", (function()
+   587→                local q = ArahPukul.pilih({ x = 0, y = 2, z = -8 }, arah, daftar)
+   588→                return q ~= nil and q.idx == 11
+   589→        end)(), "-")
+   590→        check("Radius per kandidat dipakai", ArahPukul.pilih(asal, arah, { { idx = 5, pos = { x = 2.4, y = 2, z = -5 }, radius = 3.0 } }) ~= nil, "-")
+   591→        check("diDepan sesuai arah hadap", ArahPukul.diDepan(asal, arah, { x = 0, y = 0, z = -5 }) and not ArahPukul.diDepan(asal, arah, { x = 0, y = 0, z = 5 }), "-")
+   592→        check("titikPukul sepanjang sinar", (function()
+   593→                local t = ArahPukul.titikPukul(asal, arah, 6)
+   594→                return t.x == 0 and t.y == 2 and t.z == -6
+   595→        end)(), "-")
+   596→        check("Arah nol aman", ArahPukul.pilih(asal, { x = 0, y = 0, z = 0 }, daftar) == nil, "-")
+   597→        check("Jarak minimum ditolak", ArahPukul.pilih(asal, arah, { { idx = 1, pos = { x = 0, y = 0, z = -0.5 } } }) == nil, "-")
+   598→end
+   599→
+   600→print("--- G: Tombol kontrol HP (Punch kiri Jump, jarak 12-20 px) ---")
+   601→do
+   602→        local KontrolHP = require("./../src/Shared/KontrolHP")
+   603→        local layar = { { 640, 360 }, { 667, 375 }, { 844, 390 }, { 915, 412 }, { 1284, 720 }, { 375, 667 }, { 2224, 1668 } }
+   604→        local semuaOk, rincian = true, ""
+   605→        for _, l in ipairs(layar) do
+   606→                local dasar = math.min(l[1], l[2])
+   607→                for _, fr in ipairs({ 0.16, 0.19, 0.22 }) do
+   608→                        local ok, alasan = KontrolHP.valid(l[1], l[2], fr * dasar)
+   609→                        if not ok then
+   610→                                semuaOk = false
+   611→                                rincian = l[1] .. "x" .. l[2] .. " jump " .. tostring(fr) .. " -> " .. alasan
+   612→                        end
+   613→                end
+   614→                if not KontrolHP.valid(l[1], l[2], nil) then
+   615→                        semuaOk = false
+   616→                        rincian = l[1] .. "x" .. l[2] .. " default"
+   617→                end
+   618→        end
+   619→        check("Punch valid di 7 ukuran layar HP & tablet", semuaOk, rincian)
+   620→        local pos = KontrolHP.posisiPunch(667, 375, nil)
+   621→        check("Punch sama dengan Jump atau sedikit lebih kecil", pos.punchPx <= pos.jumpPx and pos.punchPx >= pos.jumpPx * KontrolHP.BesarMin, tostring(pos.punchPx / pos.jumpPx))
+   622→        check("Gap punch-jump 12-20 px", pos.gapPx >= KontrolHP.GapMinPx and pos.gapPx <= KontrolHP.GapMaksPx, tostring(pos.gapPx))
+   623→        check("Gap konsisten di semua ukuran layar", (function()
+   624→                for _, l in ipairs(layar) do
+   625→                        local g = KontrolHP.posisiPunch(l[1], l[2], nil).gapPx
+   626→                        if g < KontrolHP.GapMinPx - 0.01 or g > KontrolHP.GapMaksPx + 0.01 then
+   627→                                return false
+   628→                        end
+   629→                end
+   630→                return true
+   631→        end)(), "-")
+   632→        check("Punch di kiri Jump dengan dasar segaris", (function()
+   633→                local pp = KontrolHP.rectPunch(667, 375, nil)
+   634→                local pj = KontrolHP.rectJump(667, 375, nil)
+   635→                return pp.x + pp.w <= pj.x and math.abs((pp.y + pp.h) - (pj.y + pj.h)) < 0.5
+   636→        end)(), "-")
+   637→        check("Punch tak pernah menimpa Jump di semua layar", (function()
+   638→                for _, l in ipairs(layar) do
+   639→                        if KontrolHP.tumpangTindih(KontrolHP.rectPunch(l[1], l[2], nil), KontrolHP.rectJump(l[1], l[2], nil)) then
+   640→                                return false
+   641→                        end
+   642→                end
+   643→                return true
+   644→        end)(), "-")
+   645→        check("Punch tidak menutupi area tanam tengah layar", (function()
+   646→                for _, l in ipairs(layar) do
+   647→                        if KontrolHP.tumpangTindih(KontrolHP.rectPunch(l[1], l[2], nil), KontrolHP.zonaTanam(l[1], l[2])) then
+   648→                                return false
+   649→                        end
+   650→                end
+   651→                return true
+   652→        end)(), "-")
+   653→        check("Punch merapat saat ukuran jump asli terukur", (function()
+   654→                local pos2 = KontrolHP.posisiPunch(667, 375, 70)
+   655→                return pos2.dariKananPx < KontrolHP.Anggaran * 667 and pos2.gapPx >= KontrolHP.GapMinPx
+   656→        end)(), tostring(KontrolHP.posisiPunch(667, 375, 70).dariKananPx))
+   657→        check("Posisi punch murni skala (0-1) di kaki layar", (function()
+   658→                local p = KontrolHP.posisiPunch(915, 412, nil)
+   659→                return p.skalaX > 0 and p.skalaX < 1 and p.skalaY > 0.9 and p.skalaLebar > 0 and p.skalaTinggi > 0
+   660→        end)(), "-")
+   661→        check("Punch tetap dalam layar saat jump nyata besar", (function()
+   662→                local pp = KontrolHP.rectPunch(1284, 720, 96)
+   663→                return pp.x >= 0 and pp.y >= 0 and pp.x + pp.w <= 1284 and pp.y + pp.h <= 720
+   664→        end)(), "-")
+   665→        check("Punch tetap dalam zona jempol kanan bawah", (function()
+   666→                for _, l in ipairs(layar) do
+   667→                        local pp = KontrolHP.rectPunch(l[1], l[2], nil)
+   668→                        local cx = pp.x + pp.w / 2
+   669→                        local cy = pp.y + pp.h / 2
+   670→                        if cx < KontrolHP.ZonaJempolX * l[1] or cy < KontrolHP.ZonaJempolY * l[2] then
+   671→                                return false
+   672→                        end
+   673→                end
+   674→                return true
+   675→        end)(), "-")
+   676→        check("Ukuran punch tidak berubah drastis antar layar (rasio stabil)", (function()
+   677→                local rasioLama = nil
+   678→                for _, l in ipairs(layar) do
+   679→                        local p = KontrolHP.posisiPunch(l[1], l[2], nil)
+   680→                        local r = p.punchPx / p.jumpPx
+   681→                        if rasioLama and math.abs(r - rasioLama) > 0.01 then
+   682→                                return false
+   683→                        end
+   684→                        rasioLama = r
+   685→                end
+   686→                return true
+   687→        end)(), "-")
+   688→end
+   689→
+   690→print("--- HUD: Saldo & tombol navigasi di semua layar HP ---")
+   691→do
+   692→        local HUDLayout = require("./../src/Shared/HUDLayout")
+   693→        local layar = { { 640, 360 }, { 667, 375 }, { 844, 390 }, { 915, 412 }, { 1284, 720 }, { 375, 667 } }
+   694→        check("Saldo selalu di bawah ikon menu Roblox (inset 58)", (function()
+   695→                for _, l in ipairs(layar) do
+   696→                        local s = HUDLayout.rectSaldo(l[1], l[2], 0, 58)
+   697→                        if s.y < 58 + 2 then
+   698→                                return false
+   699→                        end
+   700→                end
+   701→                return true
+   702→        end)(), "-")
+   703→        check("Saldo memuat ikon + angka + satuan utuh dalam kotak", (function()
+   704→                for _, l in ipairs(layar) do
+   705→                        local s = HUDLayout.rectSaldo(l[1], l[2], 0, 58)
+   706→                        if s.w < HUDLayout.SaldoLebarMin or s.h < 24 then
+   707→                                return false
+   708→                        end
+   709→                        for _, r in ipairs({ HUDLayout.rectIkon(s), HUDLayout.rectAngka(s), HUDLayout.rectSatuan(s) }) do
+   710→                                if r.w <= 0 or r.h <= 0 or not HUDLayout.diDalam(r, s) then
+   711→                                        return false
+   712→                                end
+   713→                        end
+   714→                        if HUDLayout.tumpangTindih(HUDLayout.rectAngka(s), HUDLayout.rectSatuan(s)) then
+   715→                                return false
+   716→                        end
+   717→                end
+   718→                return true
+   719→        end)(), "-")
+   720→        check("Inset kiri ikut menggeser saldo ke kanan", (function()
+   721→                local s1 = HUDLayout.rectSaldo(915, 412, 0, 58)
+   722→                local s2 = HUDLayout.rectSaldo(915, 412, 12, 58)
+   723→                return s2.x > s1.x and s2.y == s1.y
+   724→        end)(), "-")
+   725→        local s367 = HUDLayout.rectSaldo(667, 375, 0, 58)
+   726→        local navPendek = HUDLayout.rectNav(667, 375, 0, 58, 33)
+   727→        local navPanjang = HUDLayout.rectNav(667, 375, 0, 58, 213)
+   728→        local navRaksasa = HUDLayout.rectNav(667, 375, 0, 58, 400)
+   729→        check("Tombol nav tepat di bawah saldo & rata kiri", (function()
+   730→                return navPendek.x == s367.x and navPendek.y >= s367.y + s367.h and (navPendek.y - (s367.y + s367.h)) < s367.h * 0.5
+   731→        end)(), tostring(navPendek.y))
+   732→        check("Lebar nav dalam batas minimum & maksimum", navPendek.w >= navPendek.minim and navPendek.w <= navPendek.maks and navPanjang.w <= navPanjang.maks, tostring(navPanjang.w))
+   733→        check("Nama terpanjang terpotong, tidak keluar kotak", navRaksasa.terpotong and navRaksasa.w <= navRaksasa.maks, tostring(navRaksasa.w))
+   734→        check("Nama terpendek tidak terpotong", not navPendek.terpotong, "-")
+   735→        check("Posisi nav tidak bergeser saat teks berganti", navPendek.x == navPanjang.x and navPanjang.x == navRaksasa.x and navPendek.y == navPanjang.y and navPanjang.y == navRaksasa.y, "-")
+   736→        check("Nav tak pernah menimpa saldo di semua layar", (function()
+   737→                for _, l in ipairs(layar) do
+   738→                        local s = HUDLayout.rectSaldo(l[1], l[2], 0, 58)
+   739→                        local n = HUDLayout.rectNav(l[1], l[2], 0, 58, 999)
+   740→                        if HUDLayout.tumpangTindih(s, n) then
+   741→                                return false
+   742→                        end
+   743→                end
+   744→                return true
+   745→        end)(), "-")
+   746→        check("Nav nama terpanjang tetap berada di dalam layar", (function()
+   747→                for _, l in ipairs(layar) do
+   748→                        local n = HUDLayout.rectNav(l[1], l[2], 0, 58, 999)
+   749→                        if n.x < 0 or n.x + n.w > l[1] + 0.5 or n.y + n.h > l[2] + 0.5 then
+   750→                                return false
+   751→                        end
+   752→                end
+   753→                return true
+   754→        end)(), "-")
+   755→        check("Tas sebaris & setinggi saldo di kanan atas", (function()
+   756→                for _, l in ipairs(layar) do
+   757→                        local a = HUDLayout.areaAman(l[1], l[2], 0, 58)
+   758→                        local bt = HUDLayout.batasTas(a)
+   759→                        local bs = HUDLayout.batasSaldo(a)
+   760→                        if math.abs(bt.tinggi - bs.tinggi) > 0.01 or bt.lebar < HUDLayout.TasLebarMin then
+   761→                                return false
+   762→                        end
+   763→                end
+   764→                return true
+   765→        end)(), "-")
+   766→end
+   767→
+   768→print("--- A/C: Papan Tanam aman di layar HP ---")
+   769→do
+   770→        local UIStyle = require("./../src/Shared/UIStyle")
+   771→        check("Safe area atas >= 48 px (tak tertutup tombol menu)", UIStyle.AmanAtas >= 48, tostring(UIStyle.AmanAtas))
+   772→        check("Panel berbasis skala dengan batas ukuran", UIStyle.LebarPanelMaks >= 600 and UIStyle.TinggiPanelMaks >= 440, tostring(UIStyle.LebarPanelMaks) .. "x" .. tostring(UIStyle.TinggiPanelMaks))
+   773→        check("Satu font, tepat tiga ukuran", UIStyle.cekTigaUkuran() and UIStyle.UkuranJudul <= 20, tostring(UIStyle.UkuranJudul))
+   774→        check("Judul diperkecil & hierarki jelas", UIStyle.UkuranIsi < UIStyle.UkuranJudul and UIStyle.UkuranKecil < UIStyle.UkuranIsi, "-")
+   775→        check("Hijau hanya untuk aksi utama", UIStyle.Hijau[2] > UIStyle.Hijau[1] and UIStyle.Hijau[2] > UIStyle.Hijau[3], tostring(UIStyle.Hijau[2]))
+   776→        check("Aksen beda dari latar gelap", UIStyle.Aksen[1] ~= UIStyle.Latar[1] and UIStyle.Aksen[3] > UIStyle.Latar[3], "-")
+   777→        local t1, t2, t3 = UIStyle.tabTampak("tanam"), UIStyle.tabTampak("gabung"), UIStyle.tabTampak("status")
+   778→        check("Tab Tanam: angka + Mulai tampil, tombol lain sembunyi", t1.angka and t1.mulai and not t1.gabung and not t1.status, "-")
+   779→        check("Tab Combine: hanya tombol Gabung", t2.gabung and not t2.angka and not t2.mulai and not t2.status and not t2.daftarTanam, "-")
+   780→        check("Tab Status: hanya status", t3.status and not t3.gabung and not t3.mulai and not t3.angka, "-")
+   781→        check("Setiap tab tepat satu grup tombol", UIStyle.tabTunggal("tanam") and UIStyle.tabTunggal("gabung") and UIStyle.tabTunggal("status"), "-")
+   782→        check("Tab tak dikenal aman (semua sembunyi)", not UIStyle.tabTampak("salah").angka and not UIStyle.tabTampak("salah").status, "-")
+   783→        check("Nama benih panjang terpotong", #UIStyle.potong("Labu Cucurbita Moschata") <= UIStyle.NamaMaks + 3, UIStyle.potong("Labu Cucurbita Moschata"))
+   784→        check("Potongan berakhiran elipsis", (function()
+   785→                local s = UIStyle.potong(string.rep("a", 40))
+   786→                return #s == UIStyle.NamaMaks + 2 and string.sub(s, -3) == "…"
+   787→        end)(), "-")
+   788→        check("Nama pendek utuh", UIStyle.potong("Wortel") == "Wortel", "-")
+   789→        check("Input rusak aman", UIStyle.potong(nil) == "?" and UIStyle.potong(9) == "?", "-")
+   790→end
+   791→
+   792→print("--- H: Ekonomi raksasa tanpa batas angka tetap (server-authoritative) ---")
+   793→do
+   794→        local UangLogic = require("./../src/Shared/UangLogic")
+   795→        local st = UangLogic.baru(900000)
+   796→        check("Saldo awal 900.000", UangLogic.saldo(st) == 900000, tostring(UangLogic.saldo(st)))
+   797→        local ok = UangLogic.tambah(st, 50, "jual_hasil", 100)
+   798→        check("Tambah sah menambah saldo", ok and UangLogic.saldo(st) == 900050, tostring(UangLogic.saldo(st)))
+   799→        check("Ledger mencatat transaksi sah", #UangLogic.ledgerOf(st) == 1 and UangLogic.ledgerOf(st)[1].d == 50 and UangLogic.ledgerOf(st)[1].r == "jual_hasil" and UangLogic.ledgerOf(st)[1].s == "ok", "-")
+   800→        local a1 = UangLogic.tambah(st, -5, "jual_hasil", 100)
+   801→        local a2 = UangLogic.tambah(st, 0, "jual_hasil", 100)
+   802→        local a3 = UangLogic.tambah(st, 10.5, "jual_hasil", 100)
+   803→        local a4 = UangLogic.tambah(st, 0 / 0, "jual_hasil", 100)
+   804→        local a5 = UangLogic.tambah(st, math.huge, "jual_hasil", 100)
+   805→        local a6 = UangLogic.tambah(st, 10, "nakal", 100)
+   806→        local a7 = UangLogic.tambah(st, 10, nil, 100)
+   807→        local a8 = UangLogic.tambah(st, "500", "jual_hasil", 100)
+   808→        check("Micda palsu/negatif/NaN/inf/tipe salah semua ditolak", not a1 and not a2 and not a3 and not a4 and not a5 and not a6 and not a7 and not a8, tostring(a1) .. tostring(a4))
+   809→        check("Saldo tidak berubah oleh percobaan ilegal", UangLogic.saldo(st) == 900050, tostring(UangLogic.saldo(st)))
+   810→        local mega = UangLogic.tambah(st, 500000000000, "jual_hasil", 101)
+   811→        check("Transaksi raksasa (500 M) DITERIMA - tidak ada lagi batas angka tetap", mega and UangLogic.saldo(st) == 900050 + 500000000000, tostring(UangLogic.saldo(st)))
+   812→        check("Tidak ada lagi MaksAksi / BatasPerMenit di UangLogic", UangLogic.MaksAksi == nil and UangLogic.BatasPerMenit == nil and UangLogic.JendelaDetik == nil, "-")
+   813→        local st2 = UangLogic.baru(0)
+   814→        local lajuOk = 0
+   815→        for i = 1, 30 do
+   816→                if UangLogic.tambah(st2, 1000000, "semai_hasil", i) then
+   817→                        lajuOk += 1
+   818→                end
+   819→        end
+   820→        check("30 transaksi cepat berturut-turut semua lolos (aksi cepat bukan kecurangan)", lajuOk == 30, tostring(lajuOk))
+   821→        check("Saldo 30 juta utuh", UangLogic.saldo(st2) == 30000000, tostring(UangLogic.saldo(st2)))
+   822→        local tolakRuang = UangLogic.tambah(st2, UangLogic.MaksSaldo, "hadiah", 200)
+   823→        check("Tambah melebihi ruang rekening ditolak dengan aturan ruang (bukan tuduhan kecurangan)", not tolakRuang and UangLogic.saldo(st2) == 30000000, tostring(UangLogic.saldo(st2)))
+   824→        local penuh = UangLogic.baru(UangLogic.MaksSaldo)
+   825→        local tolakPenuh = UangLogic.tambah(penuh, 1, "hadiah", 300)
+   826→        check("Rekening 1000 T penuh: tambah 1 Micda lagi ditolak dengan pesan jelas", not tolakPenuh and UangLogic.saldo(penuh) == UangLogic.MaksSaldo, tostring(tolakPenuh))
+   827→        check("Batas rekening = 1000 Triliun", UangLogic.MaksSaldo == 1000000000000000, tostring(UangLogic.MaksSaldo))
+   828→        check("ruangSisa di rekening penuh = 0", UangLogic.ruangSisa(penuh) == 0, tostring(UangLogic.ruangSisa(penuh)))
+   829→        check("ruangSisa menghitung ruang tersisa", UangLogic.ruangSisa(st2) == UangLogic.MaksSaldo - 30000000, "-")
+   830→        check("Data lama melebihi batas dijepit saat dimuat", UangLogic.saldo(UangLogic.baru(2000000000000000)) == UangLogic.MaksSaldo, "-")
+   831→        check("Format angka besar pakai titik ribuan", UangLogic.format(1000000000000000) == "1.000.000.000.000.000" and UangLogic.format(50) == "50" and UangLogic.format(2500000) == "2.500.000", UangLogic.format(1000000000000000))
+   832→        check("Format aman untuk input rusak", UangLogic.format(0 / 0) ~= nil and UangLogic.format(-1250000) == "-1.250.000", UangLogic.format(-1250000))
+   833→        local b1 = UangLogic.bayar(st, 999999999999, "beli_benih", 100)
+   834→        check("Bayar melebihi saldo ditolak, saldo tak minus", not b1 and UangLogic.saldo(st) == 900050 + 500000000000, tostring(UangLogic.saldo(st)))
+   835→        local b2 = UangLogic.bayar(st, 2400, "beli_benih", 101)
+   836→        check("Bayar sah mengurangi saldo tepat", b2 and UangLogic.saldo(st) == 900050 + 500000000000 - 2400, tostring(UangLogic.saldo(st)))
+   837→        check("Bayar dengan alasan asing ditolak", not UangLogic.bayar(st, 1, "curang", 101), "-")
+   838→        local st3 = UangLogic.baru(0)
+   839→        for i = 1, UangLogic.BatasLedger + 10 do
+   840→                UangLogic.tambah(st3, 1, "semai_hasil", i)
+   841→        end
+   842→        check("Ledger terpotong ke batas penyimpanan", #UangLogic.ledgerOf(st3) == UangLogic.BatasLedger, tostring(#UangLogic.ledgerOf(st3)))
+   843→        check("Whitelist alasan transaksi", UangLogic.alasanOk("jual_hasil") and UangLogic.alasanOk("beli_benih") and UangLogic.alasanOk("semai_hasil") and UangLogic.alasanOk("hadiah") and not UangLogic.alasanOk(" cheat "), "-")
+   844→end
+   845→
+   846→print("--- H2: Audit baru - anomali dulu, bukan angka besar; kick aman-data ---")
+   847→do
+   848→        local AuditService = require("./../src/Server/Modules/AuditService")
+   849→        local UangLogic = require("./../src/Shared/UangLogic")
+   850→        local dikick, alasanKick = 0, ""
+   851→        local pemain = {
+   852→                UserId = 777,
+   853→                Name = "PetaniHebat",
+   854→                Kick = function(_, msg)
+   855→                        dikick += 1
+   856→                        alasanKick = msg
+   857→                end,
+   858→        }
+   859→        local ditolak = 0
+   860→        for i = 1, 40 do
+   861→                AuditService.catat(pemain, "micda_tolak", "jual_hasil|" .. i)
+   862→                AuditService.catat(pemain, "laju", "shop")
+   863→                AuditService.catat(pemain, "argumen", "plot:hax")
+   864→                AuditService.catat(pemain, "jarak", "drop 1")
+   865→                AuditService.catat(pemain, "milik", "drop 2")
+   866→                AuditService.catat(pemain, "klaim_ganda", "drop 3")
+   867→                AuditService.catat(pemain, "drop_tidak_sah", "drop 4")
+   868→                ditolak += 1
+   869→        end
+   870→        check("40x penolakan biasa (280 event) TIDAK pernah menendang siapa pun", dikick == 0, tostring(dikick))
+   871→        local kickTerakhir = 0
+   872→        AuditService.setEksekutor(function(p, a)
+   873→                kickTerakhir += 1
+   874→                alasanKick = a
+   875→        end)
+   876→        AuditService.setClock(function()
+   877→                return 1000
+   878→        end)
+   879→        local kena = AuditService.anomali(pemain, "sumber_tak_dikenal", "tes bobot 60")
+   880→        check("Anomali bobot 60 di bawah ambang belum menendang", not kena and dikick == 0 and kickTerakhir == 0, tostring(kickTerakhir))
+   881→        kena = AuditService.anomali(pemain, "sumber_tak_dikenal", "tes bobot 60 kedua")
+   882→        check("Anomali berulang mencapai ambang 100 -> kick aman dipicu", kena and kickTerakhir == 1 and string.find(alasanKick, "sumber_tak_dikenal", 1, true) ~= nil, tostring(kickTerakhir) .. "/" .. tostring(alasanKick))
+   883→        local pemain2 = { UserId = 888, Name = "PetaniRajin", Kick = function() dikick += 1 end }
+   884→        AuditService.anomali(pemain2, "uang_korup", "tes korup")
+   885→        check("Anomali uang_korup (bobot 100) langsung mencapai ambang", kickTerakhir == 2, tostring(kickTerakhir))
+   886→        AuditService.transaksiMulai(pemain2)
+   887→        check("Sedang transaksi terdeteksi saat guard terbuka", AuditService.sedangTransaksi(pemain2), "-")
+   888→        AuditService.transaksiMulai(pemain2)
+   889→        AuditService.transaksiSelesai(pemain2)
+   890→        check("Guard bertingkat: satu transaksi lagi masih jalan", AuditService.sedangTransaksi(pemain2), "-")
+   891→        AuditService.transaksiSelesai(pemain2)
+   892→        check("Guard tertutup rapih setelah semua transaksi selesai", not AuditService.sedangTransaksi(pemain2), "-")
+   893→        check("Jenis anomali tak dikenal diabaikan", not AuditService.anomali(pemain2, "jenis_aneh", "tes"), "-")
+   894→        AuditService.bersih(777)
+   895→        AuditService.setEksekutor(nil)
+   896→        AuditService.setClock(os.time)
+   897→        check("Ledger uang mencatat tanpa status tolak_laju/lonjakan (semua tolak hanya log)", UangLogic.ledgerOf(UangLogic.baru(0))[1] == nil, "-")
+   898→end
+   899→
+   900→
+   901→print("--- I: Kunci sesi (anti-dua-server) ---")
+   902→do
+   903→        local SesiLogic = require("./../src/Shared/SesiLogic")
+   904→        check("Kunci kosong bisa diambil", SesiLogic.bisaAmbil(nil, "srvA", 100), "-")
+   905→        check("Kunci legam (j kosong) bisa diambil", SesiLogic.bisaAmbil({ j = "", t = 1 }, "srvA", 100), "-")
+   906→        check("Kunci milik server lain yang segar ditolak", not SesiLogic.bisaAmbil({ j = "srvB", t = 100 }, "srvA", 120), "-")
+   907→        check("Kunci server yang sama tetap bisa", SesiLogic.bisaAmbil({ j = "srvA", t = 100 }, "srvA", 500), "-")
+   908→        check("Kunci basi (lewat 90 dtk) bisa diambil", SesiLogic.bisaAmbil({ j = "srvB", t = 100 }, "srvA", 100 + SesiLogic.StaleDetik), "-")
+   909→        check("Kunci rusak dianggap basi", SesiLogic.bisaAmbil({ j = 7 }, "srvA", 100) == false or SesiLogic.bisaAmbil({ t = "x" }, "srvA", 100), "-")
+   910→        local k = SesiLogic.kunciBaru("srvA", 123)
+   911→        check("Kunci baru memuat job & waktu", k.j == "srvA" and k.t == 123, "-")
+   912→        local l = SesiLogic.lepas("srvA")
+   913→        check("Lepas kunci mengosongkan pemilik", l.j == "" , tostring(l.j))
+   914→end
+   915→
+   916→print("--- J: Waktu kedaluwarsa hasil panen (bukan pohon) ---")
+   917→do
+   918→        local PanenWaktu = require("./../src/Shared/PanenWaktu")
+   919→        check("Konfigurasi HARVEST_EXPIRE_SECONDS = 900", PanenWaktu.HARVEST_EXPIRE_SECONDS == 900, tostring(PanenWaktu.HARVEST_EXPIRE_SECONDS))
+   920→        check("Tanpa waktu keluar (online) tetap aman", PanenWaktu.masihAman(nil, 500000), "-")
+   921→        check("Waktu keluar rusak dianggap aman", PanenWaktu.masihAman("x", 500000) and PanenWaktu.masihAman(0 / 0, 500000), "-")
+   922→        check("Rejoin sebelum 15 menit: hasil panen kembali", PanenWaktu.masihAman(1000, 1000 + PanenWaktu.HARVEST_EXPIRE_SECONDS - 1), "-")
+   923→        check("Rejoin tepat 15 menit: hasil panen dihapus", not PanenWaktu.masihAman(1000, 1000 + PanenWaktu.HARVEST_EXPIRE_SECONDS), "-")
+   924→        check("Rejoin setelah 15 menit: hasil panen dihapus", not PanenWaktu.masihAman(1000, 1000 + 3600), "-")
+   925→        check("Hitung ulang dari keluar terbaru", PanenWaktu.masihAman(2000, 1000 + PanenWaktu.HARVEST_EXPIRE_SECONDS + 100), "-")
+   926→        check("Sisa detik menurun sampai nol", PanenWaktu.sisaDetik(1000, 1000 + 300) == 600 and PanenWaktu.sisaDetik(1000, 1000 + 2000) == 0, tostring(PanenWaktu.sisaDetik(1000, 1300)))
+   927→end
+   928→
+   929→print("--- K: Klaim drop atomik (anti-dupe, anti-claim) ---")
+   930→do
+   931→        local KlaimDrop = require("./../src/Shared/KlaimDrop")
+   932→        check("Jarak ambil wajar", KlaimDrop.JarakAmbil <= 16 and KlaimDrop.JarakAmbil >= 10, tostring(KlaimDrop.JarakAmbil))
+   933→        local rec = KlaimDrop.baru(7)
+   934→        local ok, alasan = KlaimDrop.coba(rec, 7, 5)
+   935→        check("Klaim sah oleh pemilik", ok and rec.status == "proses", tostring(alasan))
+   936→        local ok2, alasan2 = KlaimDrop.coba(rec, 7, 5)
+   937→        check("Klaim ganda ditolak (satu ID satu kali)", not ok2 and alasan2 == "sudah_diambil" and rec.status == "proses", tostring(alasan2))
+   938→        check("Selesai menandai ambil", KlaimDrop.selesai(rec, 7) and rec.status == "ambil", "-")
+   939→        local ok3, alasan3 = KlaimDrop.coba(rec, 7, 3)
+   940→        check("Drop yang sudah diambil tak bisa diambil lagi", not ok3 and alasan3 == "sudah_diambil", tostring(alasan3))
+   941→        local r2 = KlaimDrop.baru(7)
+   942→        local ok4, alasan4 = KlaimDrop.coba(r2, 99, 5)
+   943→        check("Drop milik orang lain ditolak", not ok4 and alasan4 == "bukan_milik" and r2.status == "ada", tostring(alasan4))
+   944→        local r3 = KlaimDrop.baru(7)
+   945→        local ok5, alasan5 = KlaimDrop.coba(r3, 7, 50)
+   946→        check("Ambil dari jarak jauh ditolak", not ok5 and alasan5 == "jarak", tostring(alasan5))
+   947→        local r4 = KlaimDrop.baru(7)
+   948→        local ok6 = KlaimDrop.coba(r4, 7, 0 / 0)
+   949→        check("Jarak NaN ditolak", not ok6, "-")
+   950→        local r5 = KlaimDrop.baru(7)
+   951→        KlaimDrop.coba(r5, 7, 4)
+   952→        check("Batalkan melepas status proses", KlaimDrop.batalkan(r5, 7) and r5.status == "ada" and KlaimDrop.coba(r5, 7, 4), "-")
+   953→        local r6 = KlaimDrop.baru(7)
+   954→        check("Selesai/batalkan pada status salah gagal", not KlaimDrop.selesai(r6, 7) and not KlaimDrop.batalkan(r6, 7), "-")
+   955→        check("Klaim dengan rec rusak aman", select(1, KlaimDrop.coba(nil, 7, 5)) == false, "-")
+   956→end
+   957→
+   958→print("--- L: Simpan pohon & hasil panen ke DataStore ---")
+   959→do
+   960→        local DuniaLogic = require("./../src/Shared/DuniaLogic")
+   961→        check("Konfigurasi MaxDrops = 80", DuniaLogic.MaxDrops == 80, tostring(DuniaLogic.MaxDrops))
+   962→        local pl = { [3] = { crop = "wortel", readyAt = 500, hits = 3, lastHit = 490 }, [4] = { crop = "ceri", readyAt = 900, hits = 0.7, lastHit = -5 } }
+   963→        local ser = DuniaLogic.serPlots(pl)
+   964→        check("Progres pukulan pohon ikut tersimpan", ser[3] ~= nil and ser[3].h == 3 and ser[3].l == 490, tostring(ser[3] and ser[3].h))
+   965→        check("Progres pukulan disaring & dijepit", ser[4] ~= nil and ser[4].h == 0 and ser[4].l == 0, tostring(ser[4] and ser[4].h))
+   966→        local des = DuniaLogic.desPlots(ser)
+   967→        check("Restore pohon memulihkan status terakhir", des[3] ~= nil and des[3].h == 3 and des[3].l == 490 and des[3].r == 500, "-")
+   968→        local drops = {
+   969→                { id = "d1x1y111222333444", crop = "wortel", count = 4, pos = { x = 1.5, y = 2.5, z = 3.5 } },
+   970→                { id = "d2x2y555666777888", crop = "gandum", count = 251, pos = { x = 1, y = 1, z = 1 } },
+   971→                { id = 42, crop = "plum", count = 1, pos = { x = 0, y = 0, z = 0 } },
+   972→                { id = "d3", crop = 9, count = 1, pos = { x = 0, y = 0, z = 0 } },
+   973→                { id = "d4", crop = "plum", count = 1, pos = { x = "a", y = 1, z = 1 } },
+   974→        }
+   975→        local sd = DuniaLogic.serDrops(drops)
+   976→        check("Serialize drop menyaring data rusak", #sd == 1 and sd[1].i == "d1x1y111222333444" and sd[1].n == 4, tostring(#sd))
+   977→        check("Serialize drop memotong ke batas 80", (function()
+   978→                local banyak = {}
+   979→                for i = 1, 95 do
+   980→                        table.insert(banyak, { id = "x" .. i, crop = "plum", count = 1, pos = { x = i, y = 0, z = 0 } })
+   981→                end
+   982→                return #DuniaLogic.serDrops(banyak) == 80
+   983→        end)(), "-")
+   984→        local dd = DuniaLogic.desDrops(sd)
+   985→        check("Deserialize drop roundtrip", #dd == 1 and dd[1].id == "d1x1y111222333444" and dd[1].count == 4 and dd[1].pos.x == 1.5, "-")
+   986→        check("Deserialize drop tolak rusak", #DuniaLogic.desDrops({ { i = "x", c = "plum", n = "3", p = { x = 1, y = 1, z = 1 } } }) == 0 and #DuniaLogic.desDrops(nil) == 0, "-")
+   987→end
+   988→
+   989→print("--- M: Ikon tombol punch (tanpa tulisan PUNCH) ---")
+   990→do
+   991→        local IkonJempol = require("./../src/Shared/IkonJempol")
+   992→        check("Ikon kepalan memakai >= 4 bagian", #IkonJempol.Bagian >= 4, tostring(#IkonJempol.Bagian))
+   993→        check("Semua bagian ikon di dalam kotak 0-1", IkonJempol.valid(), "-")
+   994→        check("Bentuk ikon dikenal (kotak/lingkaran/garis)", (function()
+   995→                for _, g in ipairs(IkonJempol.Bagian) do
+   996→                        if g.bentuk ~= "kotak" and g.bentuk ~= "lingkaran" and g.bentuk ~= "garis" then
+   997→                                return false
+   998→                        end
+   999→                end
+  1000→                return true
+  1001→        end)(), "-")
+  1002→        check("Ikon dapat digandakan tanpa efek samping", (function()
+  1003→                local a = IkonJempol.bagian()
+  1004→                table.insert(a, { dx = 2, dy = 2, dw = 1, dh = 1, bentuk = "kotak" })
+  1005→                return #IkonJempol.bagian() == #IkonJempol.Bagian
+  1006→        end)(), "-")
+  1007→end
+  1008→
+  1009→print("--- N: Atur jual (jumlah sendiri + konfirmasi) ---")
+  1010→do
+  1011→        local JualLogic = require("./../src/Shared/JualLogic")
+  1012→        check("Jumlah sah diterima", JualLogic.saring("7", 50) == 7, "-")
+  1013→        check("Nol / negatif / pecahan ditolak", JualLogic.saring("0", 50) == nil and JualLogic.saring("-3", 50) == nil and JualLogic.saring("2.5", 50) == nil, "-")
+  1014→        check("Teks bukan angka ditolak", JualLogic.saring("abc", 50) == nil and JualLogic.saring("", 50) == nil, "-")
+  1015→        check("Jumlah dipotong ke stok maksimum", JualLogic.saring("99", 40) == 40, "-")
+  1016→        check("Stok kosong selalu ditolak", JualLogic.saring("1", 0) == nil and JualLogic.saring("1", nil :: any) ~= nil, "-")
+  1017→        check("Total harga = unit x jumlah", JualLogic.total(87, 3) == 261, "-")
+  1018→end
+  1019→
+  1020→print("--- O: Punch tahan tombol (auto ulang) ---")
+  1021→do
+  1022→        local PukulAnim = require("./../src/Shared/PukulAnim")
+  1023→        check("Interval auto punch ada dan masuk akal", PukulAnim.Ulang >= 0.36 and PukulAnim.Ulang <= 0.5, tostring(PukulAnim.Ulang))
+  1024→        check("Interval aman dari cooldown server 0.35 dtk", PukulAnim.Ulang > 0.35, tostring(PukulAnim.Ulang))
+  1025→        local fw = PukulAnim.fase(0, 0.04)
+  1026→        check("Ayunan tinju dimulai angkat tangan ke belakang", fw.sudut < 0, tostring(fw.sudut))
+  1027→        local ft = PukulAnim.fase(0, 0.16)
+  1028→        check("Tinju menghantam ke depan di tengah ayunan", ft.sudut > 1, tostring(ft.sudut))
+  1029→        local fe = PukulAnim.fase(0, PukulAnim.Durasi * 0.96)
+  1030→        check("Ayunan kembali nol di akhir", math.abs(fe.sudut) < 0.02, tostring(fe.sudut))
+  1031→end
+  1032→
+  1033→print("--- P: Mesin semai (atur jumlah, tuas, hasil) ---")
+  1034→do
+  1035→        local SemaiLogic = require("./../src/Shared/SemaiLogic")
+  1036→        check("Jumlah sah diterima", SemaiLogic.saringJumlah("20", 100, 2000) == 20, "-")
+  1037→        check("Nol / negatif / pecahan / teks ditolak", SemaiLogic.saringJumlah("0", 100, 2000) == nil and SemaiLogic.saringJumlah("-3", 100, 2000) == nil and SemaiLogic.saringJumlah("2.5", 100, 2000) == nil and SemaiLogic.saringJumlah("abc", 100, 2000) == nil, "-")
+  1038→        check("Jumlah dipotong ke stok", SemaiLogic.saringJumlah("99999", 40, 2000) == 40, "-")
+  1039→        check("Jumlah dipotong ke kapasitas mesin", SemaiLogic.saringJumlah("3000", 3000, 2000) == 2000, "-")
+  1040→        check("Stok kosong ditolak", SemaiLogic.saringJumlah("1", 0, 2000) == nil and SemaiLogic.saringJumlah("1", nil, 2000) == nil, "-")
+  1041→        check("Total pukulan = jumlah x per item", SemaiLogic.pukulanTotal(20, 10) == 200 and SemaiLogic.pukulanTotal(2000, 15) == 30000, "-")
+  1042→        local function shimSemai(seed: number)
+  1043→                local s0 = seed % 2147483647
+  1044→                if s0 == 0 then
+  1045→                        s0 = 12345
+  1046→                end
+  1047→                return {
+  1048→                        NextInteger = function(_, a: number, b: number)
+  1049→                                s0 = (s0 * 48271) % 2147483647
+  1050→                                return a + (s0 % (b - a + 1))
+  1051→                        end,
+  1052→                        NextNumber = function(_)
+  1053→                                s0 = (s0 * 48271) % 2147483647
+  1054→                                return s0 / 2147483647
+  1055→                        end,
+  1056→                }
+  1057→        end
+  1058→        local a = SemaiLogic.gulung(shimSemai(7), CropData.Giling.common, 500)
+  1059→        local b = SemaiLogic.gulung(shimSemai(7), CropData.Giling.common, 500)
+  1060→        check("Gulung hasil deterministik per benih acak", a.micda == b.micda and a.benih == b.benih, tostring(a.micda))
+  1061→        check("Gulung micda dalam rentang rarity", a.micda >= 500 and a.micda <= 2500, tostring(a.micda))
+  1062→        check("Gulung TIDAK menghasilkan item blok (dibuang total)", a.blok == nil and b.blok == nil and a.benih <= 500, "-")
+  1063→        local t = SemaiLogic.tuasBaru()
+  1064→        check("Tuas baru: kanan & kiri belum aktif", t.kanan == false and t.kiri == false, "-")
+  1065→        check("Sisi tidak dikenal ditolak", SemaiLogic.saringSisi("atas") == nil and SemaiLogic.saringSisi(1) == nil and SemaiLogic.saringSisi(nil) == nil, "-")
+  1066→        local okK, kodeK = SemaiLogic.prosesTekan(t, "kanan")
+  1067→        check("Tekan tuas KANAN dulu diterima", okK and t.kanan == true and t.kiri == false, tostring(kodeK))
+  1068→        local okKK, kodeKK = SemaiLogic.prosesTekan(t, "kanan")
+  1069→        check("Tekan tuas KANAN dua kali ditolak", not okKK and kodeKK == "sudah", tostring(kodeKK))
+  1070→        local okDur, kodeDur = SemaiLogic.prosesTekan(t, "hax")
+  1071→        check("Sisi asing ditolak saat menekan", not okDur and kodeDur == "sisi", tostring(kodeDur))
+  1072→        local okUrut, kodeUrut = SemaiLogic.prosesTekan({ kanan = false, kiri = false }, "kiri")
+  1073→        check("Urutan KIRI sebelum KANAN ditolak", not okUrut and kodeUrut == "urutan", tostring(kodeUrut))
+  1074→        local okLK, kodeLK = SemaiLogic.prosesTekan(t, "kiri")
+  1075→        check("Tekan tuas KIRI setelah KANAN diterima", okLK and kodeLK == "ok", tostring(kodeLK))
+  1076→        check("Kedua tuas aktif = selesai", SemaiLogic.tuasSelesai(t), "-")
+  1077→        check("tuasBerikut kosong saat selesai", SemaiLogic.tuasBerikut(t) == nil, "-")
+  1078→        check("tuasBerikut mulai dari kanan", SemaiLogic.tuasBerikut(SemaiLogic.tuasBaru()) == "kanan", "-")
+  1079→        check("tuasSelesai menolak input bukan tabel", not SemaiLogic.tuasSelesai(nil) and not SemaiLogic.tuasSelesai("kanan"), "-")
+  1080→        check("prosesTekan menolak tuas bukan tabel", select(1, SemaiLogic.prosesTekan(nil, "kanan")) == false, "-")
+  1081→end
+  1082→
+  1083→print("--- Q: Tuas server-authoritative (urutan kanan-kiri, saring sisi) ---")
+  1084→do
+  1085→        local SemaiLogic = require("./../src/Shared/SemaiLogic")
+  1086→        local alur = SemaiLogic.tuasBaru()
+  1087→        check("Alur penuh: kosong -> tuasBerikut kanan", SemaiLogic.tuasBerikut(alur) == "kanan", "-")
+  1088→        SemaiLogic.prosesTekan(alur, "kanan")
+  1089→        check("Alur penuh: setelah kanan -> tuasBerikut kiri", SemaiLogic.tuasBerikut(alur) == "kiri", "-")
+  1090→        SemaiLogic.prosesTekan(alur, "kiri")
+  1091→        check("Alur penuh: kanan lalu kiri = mesin siap giling", SemaiLogic.tuasSelesai(alur), "-")
+  1092→        local bolak = 0
+  1093→        for _ = 1, 40 do
+  1094→                local x = SemaiLogic.tuasBaru()
+  1095→                if SemaiLogic.prosesTekan(x, "kiri") then
+  1096→                        bolak += 1
+  1097→                end
+  1098→        end
+  1099→        check("40 percobaan loncat urutan semuanya ditolak", bolak == 0, tostring(bolak))
+  1100→        check("Saring sisi menolak nil", SemaiLogic.saringSisi(nil) == nil, "-")
+  1101→        local tidakSah = { "atas", 1, "KANAN", "kanan " }
+  1102→        local tolakSisi = 0
+  1103→        for _, v in ipairs(tidakSah) do
+  1104→                if not SemaiLogic.saringSisi(v) then
+  1105→                        tolakSisi += 1
+  1106→                end
+  1107→        end
+  1108→        check("Saring sisi menolak 4 bentuk tidak sah", tolakSisi == 4, tostring(tolakSisi))
+  1109→        check("Saring sisi menerima kanan & kiri", SemaiLogic.saringSisi("kanan") == "kanan" and SemaiLogic.saringSisi("kiri") == "kiri", "-")
+  1110→        local dua = SemaiLogic.tuasBaru()
+  1111→        SemaiLogic.prosesTekan(dua, "kanan")
+  1112→        local ok2, kode2 = SemaiLogic.prosesTekan(dua, "kiri")
+  1113→        check("Alur dua langkah berurutan sukses tanpa galat", ok2 and kode2 == "ok" and dua.kanan and dua.kiri, tostring(kode2))
+  1114→end
+  1115→
+  1116→print("--- T: TanahDrops (drop WAJIB tergeletak di atas tanah) ---")
+  1117→do
+  1118→        local TanahDrops = require("./../src/Shared/TanahDrops")
+  1119→        check("Bagian bawah drop = Y - setengah tinggi", TanahDrops.bagianBawah(2.0, 0.45) == 1.55, tostring(TanahDrops.bagianBawah(2.0, 0.45)))
+  1120→        check("Tenggelam terdeteksi saat bawah menembus tanah", TanahDrops.tenggelam(1.30, 1.40) and not TanahDrops.tenggelam(1.50, 1.40), "-")
+  1121→        check("Posisi istirahat selalu DI ATAS permukaan tanah", TanahDrops.istirahatY(1.4, 0.45) > 1.4, tostring(TanahDrops.istirahatY(1.4, 0.45)))
+  1122→        check("Perlu naik saat drop tenggelam", TanahDrops.perluNaik(1.2, 1.4, 0.45), "-")
+  1123→        check("Tidur (anchor) setelah 2 tick diam atau lewat 2,5 dtk", TanahDrops.harusTidur(2, 0.6) and TanahDrops.harusTidur(0, 3.0) and not TanahDrops.harusTidur(1, 0.5), "-")
+  1124→        check("Area plot terdeteksi deterministik", Layout.diAreaPlot(13, 33) and not Layout.diAreaPlot(5, 33) and not Layout.diAreaPlot(13, 5), "-")
+  1125→        check("Permukaan atas plot 1.4 stud", Layout.PlotTopY == 1.4, tostring(Layout.PlotTopY))
+  1126→        local groundY = 1.4
+  1127→        local half = 0.45
+  1128→        local y = 0.7
+  1129→        local settle = 0
+  1130→        local anchored = false
+  1131→        for tick = 1, 6 do
+  1132→                local bawah = TanahDrops.bagianBawah(y, half)
+  1133→                if TanahDrops.perluNaik(bawah, groundY, half) then
+  1134→                        y = TanahDrops.istirahatY(groundY, half)
+  1135→                        settle = 0
+  1136→                else
+  1137→                        settle += 1
+  1138→                        if TanahDrops.harusTidur(settle, tick * 0.25) then
+  1139→                                y = TanahDrops.istirahatY(groundY, half)
+  1140→                                anchored = true
+  1141→                                break
+  1142→                        end
+  1143→                end
+  1144→        end
+  1145→        check("Watchdog mengangkat drop yang tenggelam lalu menganchornya di atas tanah", anchored and y == TanahDrops.istirahatY(groundY, half), tostring(y))
+  1146→        local yAman = TanahDrops.istirahatY(groundY, half)
+  1147→        check("Setelah dianggap tidur, bawah drop tidak menembus tanah", not TanahDrops.tenggelam(TanahDrops.bagianBawah(yAman, half), groundY), "-")
+  1148→end
+  1149→
+  1150→print("--- U: UJIAN PEMILIK - beli benih -> tanam -> panen -> ambil -> semai panen ---")
+  1151→do
+  1152→        local SemaiLogic = require("./../src/Shared/SemaiLogic")
+  1153→        local s0 = 9137
+  1154→        local function dadu(a: number, b: number): number
+  1155→                s0 = (s0 * 48271) % 2147483647
+  1156→                return a + (s0 % (b - a + 1))
+  1157→        end
+  1158→        local function undi(): number
+  1159→                s0 = (s0 * 48271) % 2147483647
+  1160→                return s0 / 2147483647
+  1161→        end
+  1162→        local micda = CropData.StartMoney
+  1163→        local tas = {}
+  1164→        check("Ujian dimulai dari dunia baru: 900.000 Micda & tas kosong", micda == 900000 and TasLogic.usedSlots(tas) == 0, tostring(micda))
+  1165→        local pack = CropData.Packs.common
+  1166→        micda -= pack.price
+  1167→        for _ = 1, pack.count do
+  1168→                TasLogic.add(tas, "benih", "wortel", 1)
+  1169→        end
+  1170→        check("1) Beli pack common: 3 benih masuk tas & Micda terpotong 2.400", TasLogic.countOf(tas, "benih", "wortel") == 3 and micda == 897600, tostring(TasLogic.countOf(tas, "benih", "wortel")) .. "/" .. tostring(micda))
+  1171→        check("2) Benih di tas bernama 'Benih Wortel' (bukan 'Wortel')", CropData.namaBenih("wortel") == "Benih Wortel", "-")
+  1172→        local ditanam = TasLogic.remove(tas, "benih", "wortel", 3)
+  1173→        check("3) Tanam 3 Benih Wortel lewat papan: benih keluar dari tas", ditanam == 3 and TasLogic.countOf(tas, "benih", "wortel") == 0, tostring(ditanam))
+  1174→        local totalHasil = 0
+  1175→        for _ = 1, 3 do
+  1176→                totalHasil += dadu(CropData.Yield.common.min, CropData.Yield.common.max)
+  1177→        end
+  1178→        check("4) Panen punch: 3 plot menghasilkan buah dewasa bernama 'Wortel'", totalHasil >= 3 and totalHasil <= 30 and CropData.byId.wortel.nama == "Wortel", tostring(totalHasil))
+  1179→        TasLogic.add(tas, "hasil", "wortel", totalHasil)
+  1180→        check("5) Ambil drop dari tanah: masuk tas sebagai 'Wortel', BUKAN benih", TasLogic.countOf(tas, "hasil", "wortel") == totalHasil and TasLogic.countOf(tas, "benih", "wortel") == 0, "-")
+  1181→        local jumlah = SemaiLogic.saringJumlah(tostring(totalHasil), totalHasil, CropData.MesinSemai.Kapasitas)
+  1182→        check("6) Semai panen - atur jumlah = seluruh hasil panen", jumlah == totalHasil, tostring(jumlah))
+  1183→        local diambil = TasLogic.remove(tas, "hasil", "wortel", jumlah)
+  1184→        check("7) Hasil panen masuk mesin (tas kosong dari hasil)", diambil == totalHasil and TasLogic.countOf(tas, "hasil", "wortel") == 0, tostring(diambil))
+  1185→        local cfg = CropData.Giling[CropData.byId.wortel.rarity]
+  1186→        check("8) Total pukulan = jumlah x 5 (rarity common)", SemaiLogic.pukulanTotal(diambil, SemaiLogic.pukulanPerItem(cfg)) == diambil * 5, "-")
+  1187→        local tuas = SemaiLogic.tuasBaru()
+  1188→        local tolakKiri = SemaiLogic.prosesTekan(tuas, "kiri")
+  1189→        local okKanan = SemaiLogic.prosesTekan(tuas, "kanan")
+  1190→        local okKiri = SemaiLogic.prosesTekan(tuas, "kiri")
+  1191→        check("9) Mesin hanya aktif setelah tuas KANAN lalu KIRI", not tolakKiri and okKanan and okKiri and SemaiLogic.tuasSelesai(tuas), "-")
+  1192→        check("10) Giling 3 detik sesuai spesifikasi", CropData.MesinSemai.WaktuGiling == 3, tostring(CropData.MesinSemai.WaktuGiling))
+  1193→        local hasil = { micda = 0, benih = 0 }
+  1194→        for _ = 1, diambil do
+  1195→                hasil.micda += dadu(cfg.micdaMin, cfg.micdaMax)
+  1196→                if undi() < cfg.seed then
+  1197→                        hasil.benih += 1
+  1198→                end
+  1199→        end
+  1200→        micda += hasil.micda
+  1201→        if hasil.benih > 0 then
+  1202→                TasLogic.add(tas, "benih", "wortel", hasil.benih)
+  1203→        end
+  1204→        check("11) Klaim: Micda hasil gilingan masuk rekening", micda > 897600, tostring(micda))
+  1205→        check("12) Klaim: TIDAK ada item blok yang dihasilkan", (hasil :: any).blok == nil, "-")
+  1206→        check("13) Klaim: benih kembali bernama 'Benih Wortel' & siap ditanam lagi", CropData.namaBenih("wortel") == "Benih Wortel" and TasLogic.countOf(tas, "benih", "wortel") == hasil.benih, tostring(hasil.benih))
+  1207→        local adaBlok = false
+  1208→        for _, s in ipairs(tas) do
+  1209→                if string.find(tostring(s.id), "blok", 1, true) then
+  1210→                        adaBlok = true
+  1211→                end
+  1212→        end
+  1213→        check("14) Tidak ada satu pun item 'blok' di tas sepanjang ujian", not adaBlok, "-")
+  1214→        check("15) Siklus utuh server-side: beli -> tanam -> panen -> ambil -> semai -> klaim BERJALAN", TasLogic.countOf(tas, "benih", "wortel") == hasil.benih and micda == CropData.StartMoney - pack.price + hasil.micda, tostring(micda))
+  1215→end
+  1216→
+  1217→print("--- V: Sanitasi tas lama - blok_panen dibuang, semai panen terbaca lagi ---")
+  1218→do
+  1219→        local SanitasiTas = require("./../src/Shared/SanitasiTas")
+  1220→        local SemaiLogic = require("./../src/Shared/SemaiLogic")
+  1221→        local tasKotor = {
+  1222→                { kind = "hasil", id = "blok_panen", count = 12 },
+  1223→                { kind = "benih", id = "wortel", count = 3 },
+  1224→                { kind = "hasil", id = "wortel", count = 7 },
+  1225→                { kind = "hasil", id = "barang_palsu", count = 5 },
+  1226→                { kind = "pusat", id = "wortel", count = 4 },
+  1227→                { kind = "hasil", id = "wortel", count = 0 },
+  1228→                { kind = "hasil", id = "wortel", count = -3 },
+  1229→                { kind = "hasil", id = "wortel", count = "banyak" },
+  1230→                { kind = "benih", id = "wortel", count = 999 },
+  1231→        }
+  1232→        local bersih, dibuang = SanitasiTas.bersih(tasKotor, CropData.byId)
+  1233→        check("Slot 'blok_panen' dari data lama DIBUANG saat load", TasLogic.countOf(bersih, "hasil", "blok_panen") == 0, tostring(TasLogic.countOf(bersih, "hasil", "blok_panen")))
+  1234→        check("6 slot rusak/asing dibuang, 3 slot sah tersisa", dibuang == 6 and #bersih == 3, tostring(dibuang) .. "/" .. tostring(#bersih))
+  1235→        check("Benih & hasil panen yang sah tidak ikut terbuang", TasLogic.countOf(bersih, "benih", "wortel") == 253 and TasLogic.countOf(bersih, "hasil", "wortel") == 7, tostring(TasLogic.countOf(bersih, "benih", "wortel")))
+  1236→        check("Count 999 dijepit jadi 250 (stack maksimal)", bersih[#bersih].count == 250, tostring(bersih[#bersih].count))
+  1237→        check("Sanitasi aman untuk data hilang/bukan tabel", select(2, SanitasiTas.bersih(nil, CropData.byId)) == 0 and #SanitasiTas.bersih(nil, CropData.byId) == 0, "-")
+  1238→        check("slotValid menolak bentuk rusak", not SanitasiTas.slotValid(nil, CropData.byId) and not SanitasiTas.slotValid({ kind = "hasil", id = "blok_panen", count = 1 }, CropData.byId) and not SanitasiTas.slotValid({ kind = "benih", id = "wortel", count = 0 }, CropData.byId), "-")
+  1239→        check("slotValid menerima slot sah", SanitasiTas.slotValid({ kind = "hasil", id = "wortel", count = 7 }, CropData.byId), "-")
+  1240→        check("Tanpa daftar id, sanitasi gagal-aman (semua ditolak)", (function()
+  1241→                local k, d = SanitasiTas.bersih(tasKotor, nil)
+  1242→                return #k == 0 and d == 9
+  1243→        end)(), "-")
+  1244→        local penuh = {}
+  1245→        for _ = 1, 60 do
+  1246→                table.insert(penuh, { kind = "benih", id = "pisang", count = 1 })
+  1247→        end
+  1248→        local pBersih, pDibuang = SanitasiTas.bersih(penuh, CropData.byId)
+  1249→        check("Tas tidak pernah melebihi 50 slot saat sanitasi", #pBersih == 50 and pDibuang == 10, tostring(#pBersih) .. "/" .. tostring(pDibuang))
+  1250→        local namaSemuaSah = true
+  1251→        for _, s in ipairs(bersih) do
+  1252→                if not CropData.byId[s.id] then
+  1253→                        namaSemuaSah = false
+  1254→                end
+  1255→        end
+  1256→        check("Sisa tas hanya item tanaman resmi (benih X / X)", namaSemuaSah, "-")
+  1257→        local terbaca = TasLogic.countOf(bersih, "hasil", "wortel")
+  1258→        local jumlah = SemaiLogic.saringJumlah(tostring(terbaca), terbaca, CropData.MesinSemai.Kapasitas)
+  1259→        check("SEMAI PANEN TERBACA LAGI: hasil wortel dari tas bersih bisa diatur jumlahnya", terbaca == 7 and jumlah == 7, tostring(terbaca) .. "/" .. tostring(jumlah))
+  1260→        local diambilMesin = TasLogic.remove(bersih, "hasil", "wortel", jumlah)
+  1261→        check("Mesin mengambil 7 wortel dari tas bersih tanpa galat", diambilMesin == 7 and TasLogic.countOf(bersih, "hasil", "wortel") == 0, tostring(diambilMesin))
+  1262→        check("blok_panen tidak bisa masuk mesin", TasLogic.countOf(bersih, "hasil", "blok_panen") == 0 and CropData.byId["blok_panen"] == nil, "-")
+  1263→end
+  1264→
+  1265→print("--- W: Revisi mesin semai (pilih item -> atur jumlah -> isi) ---")
+  1266→do
+  1267→        local MesinLogika = require("./../src/Shared/MesinLogika")
+  1268→        local SemaiLogic = require("./../src/Shared/SemaiLogic")
+  1269→        local K = CropData.MesinSemai.Kapasitas
+  1270→        local ok0, pesan0 = MesinLogika.atur(nil, "wortel", 10, 0, K, "Wortel", "-")
+  1271→        check("1) Tas kosong: isi mesin ditolak & daftar kosong beralasan", not ok0 and string.find(pesan0, "di tas", 1, true) ~= nil, pesan0)
+  1272→        local ok1, pesan1 = MesinLogika.atur(nil, "wortel", 10, 10, K, "Wortel", "-")
+  1273→        check("2) 1 jenis item jumlah kecil (10) langsung bisa disemai", ok1, pesan1)
+  1274→        local batch = { pemilik = 1, crop = "wortel", jumlah = 10, pukulan = 50, hasil = { micda = 10, benih = 2 }, tahap = "tuas", tuas = { kanan = false, kiri = false } }
+  1275→        local ok2, pesan2 = MesinLogika.atur(batch, "pisang", 5, 100, K, "Pisang", "Wortel")
+  1276→        check("3) Mesin proses Wortel, masukkan Pisang DITOLAK dengan notifikasi nama item", not ok2 and string.find(pesan2, "Mesin sedang memproses Wortel", 1, true) ~= nil, pesan2)
+  1277→        local ok3, pesan3 = MesinLogika.atur(batch, "wortel", 240, 500, K, "Wortel", "Wortel")
+  1278→        check("4) Item SAMA boleh ditambah lagi saat mesin belum aktif (top-up)", ok3, pesan3)
+  1279→        check("5) Top-up menambah total pukulan linear", SemaiLogic.pukulanTotal(10 + 240, 5) == 50 + SemaiLogic.pukulanTotal(240, 5), "-")
+  1280→        local penuh = { crop = "wortel", jumlah = 2000, tahap = "tuas" }
+  1281→        local ok4, pesan4 = MesinLogika.atur(penuh, "wortel", 1, 100, K, "Wortel", "Wortel")
+  1282→        check("6) Isi tepat 2000 lalu tambah 1 lagi DITOLAK (penuh)", not ok4 and string.find(pesan4, "penuh", 1, true) ~= nil, pesan4)
+  1283→        local ok5, pesan5 = MesinLogika.atur(nil, "wortel", 99999, 40, K, "Wortel", "-")
+  1284→        check("7) Input melebihi stok tas DITOLAK", not ok5 and string.find(pesan5, "stok", 1, true) ~= nil, pesan5)
+  1285→        local sisa500 = { crop = "wortel", jumlah = 1500, tahap = "tuas" }
+  1286→        local ok6, pesan6 = MesinLogika.atur(sisa500, "wortel", 600, 9999, K, "Wortel", "Wortel")
+  1287→        check("8) Input melebihi sisa kapasitas (sisa 500) DITOLAK", not ok6 and string.find(pesan6, "kapasitas", 1, true) ~= nil, pesan6)
+  1288→        local ok7 = MesinLogika.atur(nil, "pisang", 5, 100, K, "Pisang", "-")
+  1289→        check("9) Setelah item A selesai & diklaim, item B bisa masuk", ok7, "-")
+  1290→        local ok8, pesan8 = MesinLogika.atur({ crop = "wortel", jumlah = 10, tahap = "giling" }, "wortel", 1, 10, K, "Wortel", "Wortel")
+  1291→        check("10) Saat mesin menggiling, isi apapun ditolak", not ok8, pesan8)
+  1292→        local ok9, pesan9 = MesinLogika.atur({ crop = "wortel", jumlah = 10, tahap = "tuntas" }, "wortel", 1, 10, K, "Wortel", "Wortel")
+  1293→        check("11) Saat tuntas belum diklaim, isi mesin ditolak (klaim dulu)", not ok9 and string.find(pesan9, "Klaim", 1, true) ~= nil, pesan9)
+  1294→        check("12) Jumlah 0 / negatif / bukan angka tidak bisa dikonfirmasi", not MesinLogika.atur(nil, "wortel", 0, 10, K, "Wortel", "-") and not MesinLogika.atur(nil, "wortel", -2, 10, K, "Wortel", "-") and not MesinLogika.atur(nil, "wortel", "banyak", 10, K, "Wortel", "-") and not MesinLogika.atur(nil, "wortel", 2.5, 10, K, "Wortel", "-"), "-")
+  1295→        check("13) Maks = stok saat mesin kosong", MesinLogika.maksIsi(750, nil, K) == 750, tostring(MesinLogika.maksIsi(750, nil, K)))
+  1296→        check("14) Maks = sisa kapasitas saat mesin berisi 1500", MesinLogika.maksIsi(9999, { jumlah = 1500, tahap = "tuas" }, K) == 500, tostring(MesinLogika.maksIsi(9999, { jumlah = 1500, tahap = "tuas" }, K)))
+  1297→        check("15) Maks 0 saat kapasitas penuh", MesinLogika.maksIsi(100, { jumlah = 2000, tahap = "tuas" }, K) == 0, "-")
+  1298→        check("16) Stok bertahap terhitung total (250+250+250 = 750)", (function()
+  1299→                local t = {}
+  1300→                for _ = 1, 3 do
+  1301→                        TasLogic.add(t, "hasil", "wortel", 250)
+  1302→                end
+  1303→                return #t == 3 and TasLogic.countOf(t, "hasil", "wortel") == 750
+  1304→        end)(), "-")
+  1305→        local rk = TasLogic.ringkas((function()
+  1306→                local t = {}
+  1307→                TasLogic.add(t, "hasil", "pisang", 10)
+  1308→                TasLogic.add(t, "hasil", "wortel", 5)
+  1309→                TasLogic.add(t, "benih", "wortel", 2)
+  1310→                TasLogic.add(t, "hasil", "pisang", 5)
+  1311→                return t
+  1312→        end)(), "hasil")
+  1313→        check("17) Daftar semai merangkum multi-slot jadi 1 baris per item", #rk == 2 and rk[1].id == "pisang" and rk[1].count == 15 and rk[2].id == "wortel" and rk[2].count == 5, tostring(#rk))
+  1314→        check("18) Semai sekaligus 750 dari stok bertahap diterima", MesinLogika.atur(nil, "wortel", 750, 750, K, "Wortel", "-"), "-")
+  1315→        check("19) batchAktif menolak tabel rusak", not MesinLogika.batchAktif(nil) and not MesinLogika.batchAktif({ tahap = "kosong" }) and MesinLogika.batchAktif({ tahap = "tuas" }), "-")
+  1316→        check("20) sisaKapasitas aman untuk isi rusak", MesinLogika.sisaKapasitas({ jumlah = "banyak" }, K) == K and MesinLogika.sisaKapasitas({ jumlah = -5 }, K) == K and MesinLogika.sisaKapasitas(nil, K) == K, "-")
+  1317→end
+  1318→
+  1319→print("--- X: Kunci kamera saat panel terbuka ---")
+  1320→do
+  1321→        local KameraKunci = require("./../src/Shared/KameraKunci")
+  1322→        check("Jarak dijepit ke rentang aman", KameraKunci.jepit(0.2) == 0.5 and KameraKunci.jepit(500) == 128 and KameraKunci.jepit(14) == 14, "-")
+  1323→        check("Jarak NaN atau bukan angka jatuh ke 0.5", KameraKunci.jepit(0 / 0) == 0.5 and KameraKunci.jepit(nil) == 0.5 and KameraKunci.jepit("jauh") == 0.5, "-")
+  1324→        local mn, mx, simpan = KameraKunci.kunci(0.5, 128, 14)
+  1325→        check("Kunci: min = max = jarak kamera saat ini (zoom terkunci)", mn == 14 and mx == 14, tostring(mn) .. "/" .. tostring(mx))
+  1326→        check("Kunci menyimpan batas lama", simpan.min == 0.5 and simpan.max == 128, "-")
+  1327→        local mn2, mx2 = KameraKunci.buka(simpan)
+  1328→        check("Buka kamera memulihkan batas lama", mn2 == 0.5 and mx2 == 128, tostring(mn2) .. "/" .. tostring(mx2))
+  1329→        check("Buka kamera aman untuk data rusak", KameraKunci.buka(nil) == 0.5 and select(2, KameraKunci.buka("rusak")) == 128, "-")
+  1330→        local _, _, simpan3 = KameraKunci.kunci(300, 2, 12)
+  1331→        check("Batas lama terbalik dibereskan saat menyimpan", simpan3.min == 128 and simpan3.max == 128, tostring(simpan3.min) .. "/" .. tostring(simpan3.max))
+  1332→end
+  1333→
+  1334→print(("="):rep(28))
+  1335→print(string.format("HASIL: %d PASS, %d FAIL", passed, failed))
+  1336→if failed > 0 then
+  1337→        error(string.format("%d tes gagal", failed))
+  1338→end
+  1339→
