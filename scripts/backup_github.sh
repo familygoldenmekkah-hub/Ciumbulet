@@ -5,6 +5,7 @@
 # Kredensial dibaca dari .secrets (tidak pernah dicetak/disimpan lain).
 set -uo pipefail
 set -a; source /home/z/my-project/.secrets/akiomida.env; set +a
+set -a; source /home/z/my-project/.secrets/ciumbulet.env; set +a
 REPO_DIR=/home/z/my-project/download/dunia-akiomida
 BRANCH=dunia-akiomida
 REMOTE=https://github.com/familygoldenmekkah-hub/Ciumbulet.git
@@ -14,13 +15,12 @@ mkdir -p harness/sim
 cp -f /home/z/my-project/scripts/playtest.luau /home/z/my-project/scripts/panen_massa.luau harness/ 2>/dev/null
 cp -f /home/z/my-project/scripts/sim/gen.py /home/z/my-project/scripts/sim/roblox_stub.luau /home/z/my-project/scripts/sim/gen_playtest.luau /home/z/my-project/scripts/sim/gen_massa.luau harness/sim/ 2>/dev/null
 git add -A
-if git diff --cached --quiet; then
-    echo "[CADANGAN] Tidak ada perubahan baru sejak push terakhir."
-    exit 0
+if ! git diff --cached --quiet; then
+    git commit -m "v${VER:-?} — snapshot otomatis sesi update (riwayat lengkap: README.md tabel versi + RUBRIC.md skor)" | tail -1
 fi
-git commit -m "v${VER:-?} — snapshot otomatis sesi update (riwayat lengkap: README.md tabel versi + RUBRIC.md skor)" | tail -1
-if git push "https://x-access-token:${GITHUB_TOKEN}@github.com/familygoldenmekkah-hub/Ciumbulet.git" main:${BRANCH} 2>&1 | tail -2; then
-    echo "[CADANGAN] Terpush: ${REMOTE} branch ${BRANCH} (v${VER:-?})"
+N=$(git rev-list --count origin/"${BRANCH}"..main 2>/dev/null || echo "?")
+if git push "https://x-access-token:${GITHUB_TOKEN_CIUM}@github.com/familygoldenmekkah-hub/Ciumbulet.git" main:${BRANCH} 2>&1 | tail -2; then
+    echo "[CADANGAN] Terpush: ${REMOTE} branch ${BRANCH} (v${VER:-?}, ${N} commit)"
 else
     echo "[CADANGAN][PERINGATAN] Push gagal (mungkin history berubah). Cek manual."
 fi
