@@ -83,7 +83,7 @@ LAZY_UI = "UIController"
 
 BANNED_NAMES = [
     "toram", "growtopia", "minecraft", "roblox studio", "adopt me",
-    "pet simulator", "brookhaven", "blox fruits", "robux",
+    "pet simulator", "brookhaven", "blox fruits", "robux", "mode sesi",
 ]
 
 

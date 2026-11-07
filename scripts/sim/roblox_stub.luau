@@ -859,6 +859,11 @@ function Stub.install()
                 if not stores[name] then
                         local ds = { __data = {} }
                         function ds:GetAsync(key)
+                                local fail = self.__failGet or 0
+                                if fail > 0 then
+                                        self.__failGet = fail - 1
+                                        error("DataStore galat (simulasi)")
+                                end
                                 return self.__data[key]
                         end
                         function ds:SetAsync(key, value)

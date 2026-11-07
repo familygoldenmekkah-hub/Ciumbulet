@@ -146,7 +146,9 @@ local function applySpawn(player: Player)
 end
 
 local function enterServer(player: Player)
+        print("DEBUG-enterServer", player.Name)
         local ok, alasan, dibuang = DataService.load(player)
+        print("DEBUG-load", player.Name, ok, alasan)
         local d = DataService.get(player)
         local leaderstats = Instance.new("Folder")
         leaderstats.Name = "leaderstats"
@@ -155,6 +157,7 @@ local function enterServer(player: Player)
         micda.Value = d and UangLogic.saldo(d.u) or 0
         micda.Parent = leaderstats
         leaderstats.Parent = player
+        print("DEBUG-leaderstats", player.Name)
         applySpawn(player)
         DataService.push(player)
         task.delay(4, function()
@@ -164,11 +167,19 @@ local function enterServer(player: Player)
                         end
                         if ok then
                                 notify(player, "Pusat Kota", "Selamat datang! Lewati Gerbang Dunia atau tombol Masuk untuk ke duniamu.")
-                        elseif alasan == "kunci" then
-                                AuditService.catat(player, "sesi_ganda", "load")
-                                notify(player, "Mode Sesi", "Akunmu sedang aktif di server lain. Progres di sini tidak tersimpan.")
                         else
-                                notify(player, "Mode Sesi", "Progres sementara hanya tersimpan di sesi ini.")
+                                if alasan == "kunci" then
+                                        AuditService.catat(player, "sesi_ganda", "load")
+                                end
+                                notify(player, "Sinkronisasi", "Data kamu sedang disinkronkan — progres kamu aman.")
+                                task.spawn(function()
+                                        while player.Parent and not DataService.bolehSimpan(player) do
+                                                task.wait(8)
+                                                if DataService.cobaSinkron(player) and player.Parent then
+                                                        notify(player, "Sinkronisasi", "Data kamu sudah tersinkron. Selamat bermain!")
+                                                end
+                                        end
+                                end)
                         end
                 end
         end)

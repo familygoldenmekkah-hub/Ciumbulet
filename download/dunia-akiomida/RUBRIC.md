@@ -19,6 +19,56 @@ Skor per kriteria 0-10, dikali bobot. Total dihitung dari (skor x bobot) / 10.
 | 8 | Polish & UX (UI, suara, animasi, efek) | 10 | animasi kombat, BGM, partikel | UI rapi & responsif |
 | 9 | Originalitas 100% & aman hak cipta | 5 | - | - |
 
+## Skor v55 (versi LIVE #59, 7 Nov 2026) - HAPUS "MODE SESI": SINKRONISASI DATA OTOMATIS (RETRY + ADOPSI LATAR)
+
+Keluhan pemilik (screenshot in-game): pemain kedapatan papan "Mode Sesi —
+Progres sementara hanya tersimpan di sesi ini", padahal game harusnya
+langsung terintegrasi. AKAR: DataService.load hanya mencoba GetAsync SATU
+kali — galat jaringan/throttle DataStore yang biasa terjadi saat pemain
+baru masuk langsung menjatuhkan pemain ke mode darurat TANPA SIMPAN
+seumur sesi; kunci sesi basi (server mati mendadak) juga mengunci sampai
+90 dtk tanpa jalan keluar. Banner "Mode Sesi" (dua kalimat) dihapus total
+dari kode dan kata itu masuk DAFTAR TERLARANG generator simulator
+(seperti nama game lain — tidak bisa muncul lagi).
+
+Diterapkan di #55:
+
+A. **Load DataStore kini diulang 3x** (jarak tunggu 0,4/0,8 dtk) — galat
+   semalam-hari/throttle tidak lagi langsung menjatuhkan pemain.
+B. **Sinkronisasi otomatis di latar (cobaSinkron)** — bila load tetap
+   gagal (galat atau kunci sesi basi), server menyapa netral sekali
+   ("Sinkronisasi — Data kamu sedang disinkronkan, progres kamu aman")
+   lalu tiap 8 dtk mencoba lagi: begitu DataStore pulih / kunci basi
+   lewat, data asli DIADOPSI (saldo & tas nyata muncul, leaderstats
+   melompat ke nilai asli) dan pemain otomatis kembali TERSIMPAN penuh.
+   Yang sudah bermain di sesi darurat tidak dihapus: progres sesinya
+   yang dipertahankan lalu disimpan saat pulih.
+C. **Tanpa banner menakutkan** — tidak ada lagi pesan "progres tidak
+   tersimpan"; pemain tidak perlu tahu istilah internal. Audit sesi
+   ganda tetap dicatat internal untuk pengawasan.
+D. **Pengujian baru di playtest (3 cek)**: DataStore disabotase 5x
+   (__failGet baru di stub) -> pemain baru dapat saldo darurat 10.000;
+   setelah DataStore pulih & 8-30 dtk -> data asli 5.000 diadopsi tanpa
+   intervensi; dua pemain hidup berdampingan. Offline 399 PASS / 0 FAIL,
+   playtest 155 PASS / 0 FAIL, massa 122 PASS / 0 FAIL, luau-lsp 0
+   temuan (2 variabel tak terpakai di cobaSinkron dibersihkan), rojo
+   build sukses. Publish #58 -> #59 (publish #58 sempat terbit sebelum
+   pembersihan lint, langsung digantikan #59).
+
+| # | Kriteria | Skor | Alasan |
+|---|----------|------|--------|
+| 1 Kombat | 0/10 | Belum ada monster/AI/bos. |
+| 2 Crafting | 4.5/10 | Tetap dari #51. |
+| 3 Stat & Progresi | 1/10 | Tanpa level (sesuai arah pemilik). |
+| 4 Ekonomi | 9/10 | Progres pemain kini hampir selalu tersimpan: retry DataStore + adopsi latar menutup celah "sesi tanpa simpan" yang lama. |
+| 5 Dunia & Peta | 7/10 | Tetap dari #51. |
+| 6 Multiplayer | 7/10 | Tetap dari #51. |
+| 7 Bertani | 10/10 | Tetap. |
+| 8 Polish & UX | 10/10 | Tanpa papan menakutkan; pemain nyaris tak pernah melihat proses sinkron. |
+| 9 Originalitas | 10/10 | Tetap. |
+
+**TOTAL: 60.3/100** (bobot: 0+67.5+10+135+70+70+100+100+50 = 602.5/10 = 60.25)
+
 ## Skor v54 (versi LIVE #57, 7 Nov 2026) - REVISI UI & EKONOMI SATU PAKET: PAPAN TANAM TANPA TEKS KUIS + KOIN EMAS MICDA + SALDO AWAL 10.000
 
 Permintaan pemilik (paket lengkap): (1) Panel Papan Tanam disusun layout

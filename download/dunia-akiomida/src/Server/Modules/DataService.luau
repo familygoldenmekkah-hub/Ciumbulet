@@ -105,11 +105,22 @@ local function lepasKunci(userId: number)
         end)
 end
 
+local RETRY_MUAT = 3
+
 function DataService.load(player: Player): (boolean, string?, number)
         local userId = player.UserId
-        local ok, data = pcall(function()
-                return store:GetAsync("u_" .. tostring(userId))
-        end)
+        local ok, data = false, nil
+        for i = 1, RETRY_MUAT do
+                ok, data = pcall(function()
+                        return store:GetAsync("u_" .. tostring(userId))
+                end)
+                if ok then
+                        break
+                end
+                if i < RETRY_MUAT then
+                        task.wait(0.4 * i)
+                end
+        end
         if not ok then
                 cache[userId] = defaultData()
                 loadedOk[userId] = false
@@ -181,6 +192,25 @@ function DataService.startLoops()
                         end
                 end
         end)
+end
+
+function DataService.cobaSinkron(player: Player): boolean
+        if loadedOk[player.UserId] then
+                return true
+        end
+        local userId = player.UserId
+        local lama = cache[userId]
+        local mainan = dirty[userId] == true
+        local ok = DataService.load(player)
+        if not ok then
+                return false
+        end
+        if mainan and lama then
+                cache[userId] = lama
+                dirty[userId] = true
+                push(player)
+        end
+        return true
 end
 
 function DataService.drop(player: Player)

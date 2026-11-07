@@ -246,6 +246,20 @@ local ls = P1:FindFirstChild("leaderstats")
 check("leaderstats Micda dibuat", ls ~= nil and ls:FindFirstChild("Micda") ~= nil)
 check("Micda awal pemain 10.000", ls and ls:FindFirstChild("Micda") and ls:FindFirstChild("Micda").Value == 10000, tostring(ls and ls:FindFirstChild("Micda").Value))
 
+section("Sinkronisasi otomatis: DataStore gagal lalu pulih")
+profStore.__data["u_1002"] = { m = 5000, t = {}, dev = false }
+profStore.__failGet = 5
+local P2 = Stub.addPlayer(1002, "petani2")
+Stub.giveCharacter(P2, 6, 6, 44)
+Players.PlayerAdded:Fire(P2)
+Stub.Scheduler.advance(2)
+local ls2 = P2:FindFirstChild("leaderstats")
+check("DataStore gagal: saldo darurat default 10.000", ls2 ~= nil and ls2:FindFirstChild("Micda") ~= nil and ls2:FindFirstChild("Micda").Value == 10000, ls2 and tostring(ls2:FindFirstChild("Micda").Value) or "hilang")
+Stub.Scheduler.advance(30)
+local ls2b = P2:FindFirstChild("leaderstats")
+check("Sinkron otomatis: data asli 5.000 diadopsi tanpa banner lama", ls2b ~= nil and ls2b:FindFirstChild("Micda") ~= nil and ls2b:FindFirstChild("Micda").Value == 5000, ls2b and tostring(ls2b:FindFirstChild("Micda").Value) or "hilang")
+check("Kedua pemain hidup berdampingan", P1.Parent ~= nil and P2.Parent ~= nil, "-")
+
 section("Booting UI klien")
 local pg = Instance.new("Folder")
 pg.Name = "PlayerGui"

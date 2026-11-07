@@ -860,6 +860,11 @@ function Stub.install()
                 if not stores[name] then
                         local ds = { __data = {} }
                         function ds:GetAsync(key)
+                                local fail = self.__failGet or 0
+                                if fail > 0 then
+                                        self.__failGet = fail - 1
+                                        error("DataStore galat (simulasi)")
+                                end
                                 return self.__data[key]
                         end
                         function ds:SetAsync(key, value)
@@ -4461,11 +4466,22 @@ local function lepasKunci(userId: number)
         end)
 end
 
+local RETRY_MUAT = 3
+
 function DataService.load(player: Player): (boolean, string?, number)
         local userId = player.UserId
-        local ok, data = pcall(function()
-                return store:GetAsync("u_" .. tostring(userId))
-        end)
+        local ok, data = false, nil
+        for i = 1, RETRY_MUAT do
+                ok, data = pcall(function()
+                        return store:GetAsync("u_" .. tostring(userId))
+                end)
+                if ok then
+                        break
+                end
+                if i < RETRY_MUAT then
+                        task.wait(0.4 * i)
+                end
+        end
         if not ok then
                 cache[userId] = defaultData()
                 loadedOk[userId] = false
@@ -4537,6 +4553,25 @@ function DataService.startLoops()
                         end
                 end
         end)
+end
+
+function DataService.cobaSinkron(player: Player): boolean
+        if loadedOk[player.UserId] then
+                return true
+        end
+        local userId = player.UserId
+        local lama = cache[userId]
+        local mainan = dirty[userId] == true
+        local ok, alasan, dibuang = DataService.load(player)
+        if not ok then
+                return false
+        end
+        if mainan and lama then
+                cache[userId] = lama
+                dirty[userId] = true
+                push(player)
+        end
+        return true
 end
 
 function DataService.drop(player: Player)
@@ -9793,7 +9828,9 @@ local function applySpawn(player: Player)
 end
 
 local function enterServer(player: Player)
+        print("DEBUG-enterServer", player.Name)
         local ok, alasan, dibuang = DataService.load(player)
+        print("DEBUG-load", player.Name, ok, alasan)
         local d = DataService.get(player)
         local leaderstats = Instance.new("Folder")
         leaderstats.Name = "leaderstats"
@@ -9802,6 +9839,7 @@ local function enterServer(player: Player)
         micda.Value = d and UangLogic.saldo(d.u) or 0
         micda.Parent = leaderstats
         leaderstats.Parent = player
+        print("DEBUG-leaderstats", player.Name)
         applySpawn(player)
         DataService.push(player)
         task.delay(4, function()
@@ -9811,11 +9849,19 @@ local function enterServer(player: Player)
                         end
                         if ok then
                                 notify(player, "Pusat Kota", "Selamat datang! Lewati Gerbang Dunia atau tombol Masuk untuk ke duniamu.")
-                        elseif alasan == "kunci" then
-                                AuditService.catat(player, "sesi_ganda", "load")
-                                notify(player, "Mode Sesi", "Akunmu sedang aktif di server lain. Progres di sini tidak tersimpan.")
                         else
-                                notify(player, "Mode Sesi", "Progres sementara hanya tersimpan di sesi ini.")
+                                if alasan == "kunci" then
+                                        AuditService.catat(player, "sesi_ganda", "load")
+                                end
+                                notify(player, "Sinkronisasi", "Data kamu sedang disinkronkan — progres kamu aman.")
+                                task.spawn(function()
+                                        while player.Parent and not DataService.bolehSimpan(player) do
+                                                task.wait(8)
+                                                if DataService.cobaSinkron(player) and player.Parent then
+                                                        notify(player, "Sinkronisasi", "Data kamu sudah tersinkron. Selamat bermain!")
+                                                end
+                                        end
+                                end)
                         end
                 end
         end)
@@ -10259,6 +10305,20 @@ Stub.Scheduler.advance(0.5)
 local ls = P1:FindFirstChild("leaderstats")
 check("leaderstats Micda dibuat", ls ~= nil and ls:FindFirstChild("Micda") ~= nil)
 check("Micda awal pemain 10.000", ls and ls:FindFirstChild("Micda") and ls:FindFirstChild("Micda").Value == 10000, tostring(ls and ls:FindFirstChild("Micda").Value))
+
+section("Sinkronisasi otomatis: DataStore gagal lalu pulih")
+profStore.__data["u_1002"] = { m = 5000, t = {}, dev = false }
+profStore.__failGet = 5
+local P2 = Stub.addPlayer(1002, "petani2")
+Stub.giveCharacter(P2, 6, 6, 44)
+Players.PlayerAdded:Fire(P2)
+Stub.Scheduler.advance(2)
+local ls2 = P2:FindFirstChild("leaderstats")
+check("DataStore gagal: saldo darurat default 10.000", ls2 ~= nil and ls2:FindFirstChild("Micda") ~= nil and ls2:FindFirstChild("Micda").Value == 10000, ls2 and tostring(ls2:FindFirstChild("Micda").Value) or "hilang")
+Stub.Scheduler.advance(30)
+local ls2b = P2:FindFirstChild("leaderstats")
+check("Sinkron otomatis: data asli 5.000 diadopsi tanpa banner lama", ls2b ~= nil and ls2b:FindFirstChild("Micda") ~= nil and ls2b:FindFirstChild("Micda").Value == 5000, ls2b and tostring(ls2b:FindFirstChild("Micda").Value) or "hilang")
+check("Kedua pemain hidup berdampingan", P1.Parent ~= nil and P2.Parent ~= nil, "-")
 
 section("Booting UI klien")
 local pg = Instance.new("Folder")
