@@ -192,12 +192,26 @@ for _, p in ipairs(Players:GetPlayers()) do
 end
 
 local function tutupSesi(player: Player)
-        TanamService.leave(player)
-        ZonaService.leaveGame(player)
-        DataService.save(player)
-        RateLimit.clear(player.UserId)
-        AuditService.bersih(player.UserId)
-        DataService.drop(player)
+        -- Tiap langkah dijaga pcall: satu langkah gagal tidak boleh melewatkan
+        -- simpanan data / pelepasan kunci (kunci menggantung = rejoin kena sesi darurat).
+        pcall(function()
+                TanamService.leave(player)
+        end)
+        pcall(function()
+                ZonaService.leaveGame(player)
+        end)
+        pcall(function()
+                DataService.save(player)
+        end)
+        pcall(function()
+                RateLimit.clear(player.UserId)
+        end)
+        pcall(function()
+                AuditService.bersih(player.UserId)
+        end)
+        pcall(function()
+                DataService.drop(player)
+        end)
 end
 
 Players.PlayerRemoving:Connect(tutupSesi)

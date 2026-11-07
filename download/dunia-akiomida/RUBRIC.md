@@ -19,6 +19,58 @@ Skor per kriteria 0-10, dikali bobot. Total dihitung dari (skor x bobot) / 10.
 | 8 | Polish & UX (UI, suara, animasi, efek) | 10 | animasi kombat, BGM, partikel | UI rapi & responsif |
 | 9 | Originalitas 100% & aman hak cipta | 5 | - | - |
 
+## Skor v61 (SIAP PUBLISH — tertunda kredensial, 7 Nov 2026) - AKAR TERAKHIR "REJOIN = POHON HILANG": FORMAT PLOT AMAN-JSON
+
+Lanjutan keluhan pemilik "keluar masuk lagi tetep diulang terus dari nol".
+Sesi ini menemukan AKAR TERSEMBUNYI yang lewat dari #60: `DuniaLogic.serPlots`
+menyimpan pohon sebagai KAMUS berkunci angka 0..499 (indeks plot mulai 0).
+Serialisasi JSON DataStore Roblox hanya menjaga tabel sebagai ARRAY bila
+kuncinya tepat 1..n berurutan; kunci 0..499 diubah jadi STRING ("0".."499"),
+sedangkan `desPlots` lama hanya menerima key ANGKA -> SEMUA pohon disaring
+diam-diam SETIAP dimuat. Akibatnya, meski GetAsync sukses dan data tersimpan,
+pohon tanam selalu hilang tepat setelah keluar-masuk (mesin/gudang/drop yang
+formatnya array tetap selamat). Ini penjelasan kenapa keluhan "dari nol"
+tetap muncul meski #60 sudah menutup jalur sesi darurat.
+
+Diterapkan di v61 (build 11:07, menunggu ROBLOX_API_KEY untuk publish #61):
+
+A. **serPlots -> ARRAY murni 1..n** — indeks plot dibawa DI DALAM item
+   (`{i=idx,c,r,h,l}`), diurutkan naik; array 1..n lolos JSON utuh tanpa
+   perubahan key, tahan penuh 500 plot.
+B. **desPlots tiga format sekaligus** — array baru v61; kamus key angka
+   (format pra-v61); kamus key STRING ("0".."499") hasil JSON lama. Pohon
+   yang sebelumnya "hilang" tapi sempat tersimpan DIBACA KEMBALI otomatis
+   (adopsi saat load, tanpa migrasi tulis). Item `i` rusak tidak pernah
+   menghasilkan plot hantu.
+C. **tutupSesi dijaga pcall per langkah** — PlayerRemoving/BindToClose:
+   satu langkah error tidak lagi bisa melewatkan simpanan akhir atau
+   pelepasan kunci sesi (kunci menggantung = rejoin kena jendela tunggu).
+D. **Seksi uji L2 baru (7 cek)** — emulasi round-trip JSON DataStore:
+   membuktikan key lama memang jadi string; format baru utuh 1..n setelah
+   round-trip; payload dunia penuh (nama+plot+mesin+gudang+drop) selamat;
+   data lama format-string terbaca kembali.
+E. **Kejujuran operasional** — `.secrets/` hilang saat sandbox daur ulang;
+   publish #61 tertunda (build siap di build/DuniaAkiomida.rbxlx), cadangan
+   GitHub menunggu token baru. Bukti screenshot pemilik (kick 267 teks
+   pra-v51 jam 10:15; papan "Mode Sesi" + "10 Rb" jam 16:04) menunjukkan
+   pemain masih masuk SERVER LAMA pra-v51/v55 yang masih hidup — server
+   baru sejak 16:51 WIB sudah #60; begitu #61 terbit, semua server baru
+   memakai format array. Saldo awal tetap 10.000 sejak #57.
+
+| # | Kriteria | Skor | Alasan |
+|---|----------|------|--------|
+| 1 Kombat | 0/10 | Belum ada monster/AI/bos. |
+| 2 Crafting | 4.5/10 | Tetap dari #51. |
+| 3 Stat & Progresi | 1/10 | Tanpa level (sesuai arah pemilik). |
+| 4 Ekonomi | 10/10 | Akar kehilangan data TERAKHIR (plot JSON) dibunuh dengan uji round-trip; simpan-muat dunia kini bebas kehilangan pada semua format (baru/lama). |
+| 5 Dunia & Peta | 7/10 | Tetap dari #51. |
+| 6 Multiplayer | 7/10 | Tetap dari #51. |
+| 7 Bertani | 10/10 | Format array menjamin 500 plot tersimpan-muat utuh; pohon lama ikut diadopsi kembali. |
+| 8 Polish & UX | 10/10 | Tetap. |
+| 9 Originalitas | 10/10 | Tetap. |
+
+**TOTAL: 61.8/100** (bobot: 0+67.5+10+150+70+70+100+100+50 = 617.5/10 = 61.75)
+
 ## Skor v56 (versi LIVE #60, 7 Nov 2026) - DATA TIDAK PERNAH NOL LAGI: PEMULIHAN KELUAR-MASUK (ANTI-HAPUS DATA)
 
 Keluhan pemilik: "Masalah besar tetap — waktu user keluar masuk lagi,

@@ -247,11 +247,11 @@ do
         check("Nama rusak ditolak", DuniaLogic.cleanName("") == nil and DuniaLogic.cleanName(5) == nil and DuniaLogic.cleanName(string.rep("x", 31)) == nil, "-")
         local pl = { [0] = { crop = "wortel", readyAt = 123.7, model = {} }, [499] = { crop = "ceri", readyAt = 99 }, rusak = { crop = "x", readyAt = 1 }, [-1] = { crop = "y", readyAt = 1 }, [3] = { crop = 9, readyAt = 1 } }
         local ser = DuniaLogic.serPlots(pl)
-        check("Serialize plot menyaring data", ser[0] ~= nil and ser[0].c == "wortel" and ser[0].r == 123 and ser[499] ~= nil and ser[499].c == "ceri" and ser.rusak == nil and ser[-1] == nil and ser[3] == nil, "-")
+        check("Serialize plot ARRAY ber-index dalam (i) & menyaring data", #ser == 2 and ser[1].i == 0 and ser[1].c == "wortel" and ser[1].r == 123 and ser[2].i == 499 and ser[2].c == "ceri", tostring(#ser))
         local des = DuniaLogic.desPlots(ser)
         check("Deserialize plot roundtrip", des[0] ~= nil and des[0].c == "wortel" and des[0].r == 123 and des[499] ~= nil and des[499].c == "ceri", "-")
         check("Deserialize plot tolak rusak", DuniaLogic.desPlots({ [5] = { c = 9, r = 1 } })[5] == nil and DuniaLogic.desPlots(nil)[5] == nil and DuniaLogic.desPlots({ [6] = { c = "wortel", r = "x" } })[6] == nil, "-")
-        check("Batas plot 500 ditegakkan", DuniaLogic.serPlots({ [500] = { crop = "x", readyAt = 1 } })[500] == nil and DuniaLogic.desPlots({ [501] = { c = "x", r = 1 } })[501] == nil, "-")
+        check("Batas plot 500 ditegakkan", #DuniaLogic.serPlots({ [500] = { crop = "x", readyAt = 1 } }) == 0 and DuniaLogic.desPlots({ [501] = { c = "x", r = 1 } })[501] == nil and DuniaLogic.desPlots({ { i = 501, c = "x", r = 1 } })[501] == nil, "-")
         local ser2 = DuniaLogic.serMesin({ c = "plum", j = 20, m = 55, b = 3, k = 2 })
         check("Serialize mesin satu batch", #ser2 == 1 and ser2[1].c == "plum" and ser2[1].j == 20 and ser2[1].m == 55 and ser2[1].b == 3 and ser2[1].k == 2, tostring(#ser2))
         local des2 = DuniaLogic.desMesin(ser2)
@@ -981,8 +981,8 @@ do
         check("Konfigurasi MaxDrops = 80", DuniaLogic.MaxDrops == 80, tostring(DuniaLogic.MaxDrops))
         local pl = { [3] = { crop = "wortel", readyAt = 500, hits = 3, lastHit = 490 }, [4] = { crop = "ceri", readyAt = 900, hits = 0.7, lastHit = -5 } }
         local ser = DuniaLogic.serPlots(pl)
-        check("Progres pukulan pohon ikut tersimpan", ser[3] ~= nil and ser[3].h == 3 and ser[3].l == 490, tostring(ser[3] and ser[3].h))
-        check("Progres pukulan disaring & dijepit", ser[4] ~= nil and ser[4].h == 0 and ser[4].l == 0, tostring(ser[4] and ser[4].h))
+        check("Progres pukulan pohon ikut tersimpan (array ber-index i)", #ser == 2 and ser[1].i == 3 and ser[1].h == 3 and ser[1].l == 490, tostring(#ser))
+        check("Progres pukulan disaring & dijepit", ser[2].i == 4 and ser[2].h == 0 and ser[2].l == 0, tostring(ser[2] and ser[2].h))
         local des = DuniaLogic.desPlots(ser)
         check("Restore pohon memulihkan status terakhir", des[3] ~= nil and des[3].h == 3 and des[3].l == 490 and des[3].r == 500, "-")
         local drops = {
@@ -1004,6 +1004,78 @@ do
         local dd = DuniaLogic.desDrops(sd)
         check("Deserialize drop roundtrip", #dd == 1 and dd[1].id == "d1x1y111222333444" and dd[1].count == 4 and dd[1].pos.x == 1.5, "-")
         check("Deserialize drop tolak rusak", #DuniaLogic.desDrops({ { i = "x", c = "plum", n = "3", p = { x = 1, y = 1, z = 1 } } }) == 0 and #DuniaLogic.desDrops(nil) == 0, "-")
+end
+
+print("--- L2: Round-trip JSON DataStore (akar bug 'rejoin = nol') ---")
+do
+        local DuniaLogic = require("./../src/Shared/DuniaLogic")
+        -- Emulasi serialisasi JSON DataStore Roblox: tabel hanya tetap array bila
+        -- kuncinya tepat 1..n berurutan; selain itu kunci angka di-STRING-kan.
+        local function jsonRoundtrip(v)
+                local function isArr(t)
+                        local n = 0
+                        for k, _ in pairs(t) do
+                                if type(k) ~= "number" or k ~= math.floor(k) or k < 1 then
+                                        return false
+                                end
+                                n += 1
+                        end
+                        for i = 1, n do
+                                if t[i] == nil then
+                                        return false
+                                end
+                        end
+                        return n > 0
+                end
+                if type(v) == "table" then
+                        if isArr(v) then
+                                local out = {}
+                                for i, x in ipairs(v) do
+                                        out[i] = jsonRoundtrip(x)
+                                end
+                                return out
+                        end
+                        local out = {}
+                        for k, x in pairs(v) do
+                                out[tostring(k)] = jsonRoundtrip(x)
+                        end
+                        return out
+                end
+                return v
+        end
+        local pl = { [0] = { crop = "wortel", readyAt = 500, hits = 2, lastHit = 480 }, [3] = { crop = "ceri", readyAt = 900 }, [499] = { crop = "gandum", readyAt = 1, hits = 5, lastHit = 1234567890 } }
+        -- BUKTI BUG LAMA: kamus 0..499 di-JSON-kan jadi key string lalu dibaca ->hilang
+        local kamusLama = {}
+        for idx, rec in pairs(pl) do
+                kamusLama[idx] = { c = rec.crop, r = rec.readyAt, h = rec.hits or 0, l = rec.lastHit or 0 }
+        end
+        local mangled = jsonRoundtrip(kamusLama)
+        check("DataStore memang mengubah key plot jadi string (reproduksi bug)", type((next(mangled))) == "string", tostring(type((next(mangled)))))
+        check("KEY BARU: desPlots lama-format-string KINI TERBACA (data lama tertanam kembali)", (function()
+                local des = DuniaLogic.desPlots(mangled)
+                return des[0] ~= nil and des[0].c == "wortel" and des[0].h == 2 and des[3] ~= nil and des[3].c == "ceri" and des[499] ~= nil and des[499].l == 1234567890
+        end)(), "-")
+        -- FORMAT BARU v61: array 1..n lolos JSON utuh -> semua plot selamat
+        local serBaru = DuniaLogic.serPlots(pl)
+        check("serPlots mengeluarkan array murni 1..n", #serBaru == 3 and serBaru[1].i == 0 and serBaru[2].i == 3 and serBaru[3].i == 499, tostring(#serBaru))
+        local serJson = jsonRoundtrip(serBaru)
+        check("Format baru utuh setelah JSON DataStore (kunci tetap angka 1..n)", type((next(serJson))) == "number" and #serJson == 3 and serJson[1].i == 0, tostring(type((next(serJson)))))
+        local desBaru = DuniaLogic.desPlots(serJson)
+        check("Roundtrip penuh v61: 3 plot + progres pukulan selamat semua", desBaru[0] ~= nil and desBaru[0].c == "wortel" and desBaru[0].h == 2 and desBaru[0].r == 500 and desBaru[3] ~= nil and desBaru[3].c == "ceri" and desBaru[499] ~= nil and desBaru[499].h == 5 and desBaru[499].l == 1234567890, "-")
+        -- Payload dunia utuh seperti payloadOf: pl + mj + gd + dr + nama
+        local payload = {
+                n = "akiomida",
+                pl = serBaru,
+                mj = DuniaLogic.serMesin({ c = "plum", j = 20, m = 55 }),
+                gd = { { id = "wortel", count = 250 } },
+                dr = DuniaLogic.serDrops({ { id = "dx1y1z1112223334", crop = "wortel", count = 3, pos = { x = 1, y = 2, z = 3 } } }),
+                t = 1730000000,
+        }
+        local pj = jsonRoundtrip(payload)
+        local plHasil = DuniaLogic.desPlots(pj.pl)
+        check("Payload dunia utuh: nama+mesin+gudang+drop+3 pohon selamat round-trip", pj.n == "akiomida" and pj.t == 1730000000 and #pj.mj == 1 and #pj.gd == 1 and #pj.dr == 1 and plHasil[0] ~= nil and plHasil[3] ~= nil and plHasil[499] ~= nil, "-")
+        -- Item array format baru dengan i rusak tidak menghasilkan plot hantu
+        check("Item format baru rusak ditolak", DuniaLogic.desPlots({ { i = "x", c = "wortel", r = 1 }, { i = -1, c = "wortel", r = 1 }, { i = 2, c = 9, r = 1 } })[2] == nil, "-")
 end
 
 print("--- M: Ikon tombol punch (tanpa tulisan PUNCH) ---")
