@@ -76,7 +76,7 @@ function ShopService.sell(player, cropId: any, count: any): (boolean, string)
         if not ShopService.near(player, 45) then
                 return false, "Dekati kasir Toko Benih dulu."
         end
-        local ada = Tas.count(player, "hasil", cropId)
+        local ada = Tas.tersedia(player, "hasil", cropId)
         local n
         if count == nil then
                 n = ada

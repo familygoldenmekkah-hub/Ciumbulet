@@ -19,6 +19,7 @@ local ZonaService = require(Modules.ZonaService)
 local TanamService = require(Modules.TanamService)
 local GudangService = require(Modules.GudangService)
 local DropService = require(Modules.DropService)
+local TradeService = require(Modules.TradeService)
 local WorldBuilder = require(Modules.WorldBuilder)
 
 Net.init()
@@ -27,7 +28,7 @@ local function notify(player: Player, title: string, msg: string)
         Net.get("Notify"):FireClient(player, title, msg)
 end
 
-CurrencyService.bind({ Data = DataService, Audit = AuditService })
+CurrencyService.bind({ Data = DataService, Audit = AuditService, Trade = TradeService })
 AuditService.bind({
         Data = DataService,
         Simpan = function(p: Player)
@@ -62,6 +63,8 @@ local deps = {
         Drop = DropService,
 }
 TasService.bind(DataService)
+TasService.bindTrade(TradeService)
+TradeService.bind({ Data = DataService, Audit = AuditService, Net = Net, Notify = notify })
 PlotService.bind(deps)
 MesinSemaiService.bind(deps)
 ShopService.bind(deps)
@@ -194,6 +197,9 @@ end
 local function tutupSesi(player: Player)
         -- Tiap langkah dijaga pcall: satu langkah gagal tidak boleh melewatkan
         -- simpanan data / pelepasan kunci (kunci menggantung = rejoin kena sesi darurat).
+        pcall(function()
+                TradeService.leave(player) -- batalkan sesi trade + undangan (kunci item lepas)
+        end)
         pcall(function()
                 TanamService.leave(player)
         end)
@@ -385,6 +391,7 @@ end
 
 DataService.startLoops()
 ZonaService.startLoops()
+TradeService.start()
 CurrencyService.startIntegritas()
 
 print("[AKIOMIDA] Server-authoritative: ekonomi 1000T, deteksi anomali tanpa batas angka tetap, transaksi terjaga, kick aman-data siap.")

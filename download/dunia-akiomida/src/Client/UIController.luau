@@ -36,6 +36,7 @@ local state = {
         role = "hub",
         gudang = nil,
         tanam = nil,
+        trade = nil,
 }
 
 local function fmt(n: number): string
@@ -125,6 +126,7 @@ local PANEL_TITLES = {
         gerbang = "Gerbang Dunia",
         tanam = "Papan Tanam",
         gudang = "Gudang Hasil Panen",
+        trade = "Trade",
 }
 
 local function mk(class: string, props: { [string]: any }, parent: Instance?): Instance
@@ -386,24 +388,41 @@ local function makePanel(name: string): Frame
 end
 
 local function openPanel(name: string)
+        if state.trade and name ~= "trade" then
+                task.spawn(function()
+                        pcall(function()
+                                Net.get("TradeAct"):InvokeServer("batal")
+                        end)
+                end)
+        end
         for n, f in pairs(panels) do
                 f.Visible = n == name
         end
         panelTitle.Text = PANEL_TITLES[name] or ""
-        if name == "semai" or name == "tanam" then
-                panelBatas.MaxSize = Vector2.new(760, 620)
+        if name == "semai" or name == "tanam" or name == "trade" then
+                panelBatas.MaxSize = Vector2.new(820, 660)
         else
                 panelBatas.MaxSize = Vector2.new(UIStyle.LebarPanelMaks, UIStyle.TinggiPanelMaks)
         end
         kunciKamera()
         dim.Visible = true
         currentPanel = name
-        if name == "tanam" then
+        if name == "tanam" or name == "trade" then
                 sembunyikanKontrol()
         end
 end
 
-closeBtn.Activated:Connect(closePanel)
+closeBtn.Activated:Connect(function()
+        local tradeTerbuka = currentPanel == "trade" and state.trade ~= nil
+        closePanel()
+        if tradeTerbuka then
+                task.spawn(function()
+                        pcall(function()
+                                Net.get("TradeAct"):InvokeServer("batal")
+                        end)
+                end)
+        end
+end)
 
 local function bersihkan(parent: Instance)
         for _, c in ipairs(parent:GetChildren()) do
@@ -1869,6 +1888,35 @@ task.spawn(function()
                 refreshTas()
         end
 end)
+
+do
+-- ================== TRADE ANTAR PEMAIN ==================
+-- UI trade dipisah ke TradeUI (modul sendiri) supaya anggaran register
+-- lokal UIController tetap aman.
+        local TradeUI = require(script.Parent.TradeUI)
+        TradeUI({
+                mk = mk,
+                round = round,
+                gui = gui,
+                dim = dim,
+                modalDim = modalDim,
+                toast = toast,
+                fmt = fmt,
+                warna = warna,
+                FON = FON,
+                FONTB = FONTB,
+                state = state,
+                ikonSlot = ikonSlot,
+                syncState = syncState,
+                openPanel = openPanel,
+                closePanel = closePanel,
+                makePanel = makePanel,
+                panelTitle = panelTitle,
+                panelSaatIni = function()
+                        return currentPanel
+                end,
+        })
+end
 
 print("[AKIOMIDA] UI siap.")
 

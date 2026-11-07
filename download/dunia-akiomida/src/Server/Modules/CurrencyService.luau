@@ -5,107 +5,137 @@ local UangLogic = require(ReplicatedStorage.Shared.UangLogic)
 
 local CurrencyService = {}
 
-local Data, Audit
+local Data, Audit, Trade
 local clock = os.time
 
 function CurrencyService.bind(deps)
-	Data = deps.Data
-	Audit = deps.Audit
+        Data = deps.Data
+        Audit = deps.Audit
+        Trade = deps.Trade
 end
 
 function CurrencyService.setClock(fn)
-	clock = fn
+        clock = fn
 end
 
 local function st(player)
-	return Data.uangState(player)
+        return Data.uangState(player)
 end
 
 function CurrencyService.GetMicda(player: Player): number
-	local s = st(player)
-	if not s then
-		return 0
-	end
-	return UangLogic.saldo(s)
+        local s = st(player)
+        if not s then
+                return 0
+        end
+        return UangLogic.saldo(s)
 end
 
 function CurrencyService.RuangMicda(player: Player): number
-	local s = st(player)
-	if not s then
-		return 0
-	end
-	return UangLogic.ruangSisa(s)
+        local s = st(player)
+        if not s then
+                return 0
+        end
+        return UangLogic.ruangSisa(s)
+end
+
+-- Micda yang bebas dibelanjakan: saldo MINUS Micda yang sedang ditawarkan
+-- dalam sesi trade aktif (supaya dagangan trade tidak bisa dibelanjakan
+-- di toko di tengah jalan).
+function CurrencyService.micdaTersedia(player: Player): number
+        local s = st(player)
+        if not s then
+                return 0
+        end
+        local terkunci = 0
+        if Trade and Trade.micdaTerkan then
+                terkunci = Trade.micdaTerkan(player.UserId) or 0
+        end
+        local bebas = UangLogic.saldo(s) - terkunci
+        if bebas < 0 then
+                return 0
+        end
+        return bebas
 end
 
 function CurrencyService.AddMicda(player: Player, amountRaw: any, reason: any): (boolean, string)
-	local s = st(player)
-	if not s then
-		return false, "Data belum siap."
-	end
-	local ok, msg = UangLogic.tambah(s, amountRaw, reason, clock())
-	if not ok then
-		if Audit then
-			Audit.catat(player, "micda_tolak", tostring(reason) .. "|" .. tostring(amountRaw))
-		end
-		return false, msg
-	end
-	Data.markDirty(player)
-	Data.push(player)
-	return true, "ok"
+        local s = st(player)
+        if not s then
+                return false, "Data belum siap."
+        end
+        local ok, msg = UangLogic.tambah(s, amountRaw, reason, clock())
+        if not ok then
+                if Audit then
+                        Audit.catat(player, "micda_tolak", tostring(reason) .. "|" .. tostring(amountRaw))
+                end
+                return false, msg
+        end
+        Data.markDirty(player)
+        Data.push(player)
+        return true, "ok"
 end
 
 function CurrencyService.SpendMicda(player: Player, amountRaw: any, reason: any): (boolean, string)
-	local s = st(player)
-	if not s then
-		return false, "Data belum siap."
-	end
-	local ok, msg = UangLogic.bayar(s, amountRaw, reason, clock())
-	if not ok then
-		if Audit then
-			Audit.catat(player, "micda_tolak", tostring(reason) .. "|" .. tostring(amountRaw))
-		end
-		return false, msg
-	end
-	Data.markDirty(player)
-	Data.push(player)
-	return true, "ok"
+        local s = st(player)
+        if not s then
+                return false, "Data belum siap."
+        end
+        local n = tonumber(amountRaw)
+        if n and n > 0 then
+                local bebas = CurrencyService.micdaTersedia(player)
+                if n > bebas then
+                        if Audit then
+                                Audit.catat(player, "micda_tolak", "trade_lock|" .. tostring(amountRaw))
+                        end
+                        return false, "Micda kamu sedang dikunci untuk trade."
+                end
+        end
+        local ok, msg = UangLogic.bayar(s, amountRaw, reason, clock())
+        if not ok then
+                if Audit then
+                        Audit.catat(player, "micda_tolak", tostring(reason) .. "|" .. tostring(amountRaw))
+                end
+                return false, msg
+        end
+        Data.markDirty(player)
+        Data.push(player)
+        return true, "ok"
 end
 
 function CurrencyService.ledgerOf(player: Player): { any }
-	local s = st(player)
-	if not s then
-		return {}
-	end
-	return UangLogic.ledgerOf(s)
+        local s = st(player)
+        if not s then
+                return {}
+        end
+        return UangLogic.ledgerOf(s)
 end
 
 function CurrencyService.startIntegritas()
-	task.spawn(function()
-		while true do
-			task.wait(45)
-			for _, p in ipairs(Players:GetPlayers()) do
-				local s = st(p)
-				if s then
-					local m = UangLogic.saldo(s)
-					if m ~= m or m < 0 then
-						s.m = 0
-						Data.markDirty(p)
-						Data.push(p)
-						if Audit then
-							Audit.anomali(p, "uang_korup", "saldo " .. tostring(m))
-						end
-					elseif m > UangLogic.MaksSaldo then
-						s.m = UangLogic.MaksSaldo
-						Data.markDirty(p)
-						Data.push(p)
-						if Audit then
-							Audit.anomali(p, "uang_lebih", "saldo " .. UangLogic.format(m))
-						end
-					end
-				end
-			end
-		end
-	end)
+        task.spawn(function()
+                while true do
+                        task.wait(45)
+                        for _, p in ipairs(Players:GetPlayers()) do
+                                local s = st(p)
+                                if s then
+                                        local m = UangLogic.saldo(s)
+                                        if m ~= m or m < 0 then
+                                                s.m = 0
+                                                Data.markDirty(p)
+                                                Data.push(p)
+                                                if Audit then
+                                                        Audit.anomali(p, "uang_korup", "saldo " .. tostring(m))
+                                                end
+                                        elseif m > UangLogic.MaksSaldo then
+                                                s.m = UangLogic.MaksSaldo
+                                                Data.markDirty(p)
+                                                Data.push(p)
+                                                if Audit then
+                                                        Audit.anomali(p, "uang_lebih", "saldo " .. UangLogic.format(m))
+                                                end
+                                        end
+                                end
+                        end
+                end
+        end)
 end
 
 return CurrencyService

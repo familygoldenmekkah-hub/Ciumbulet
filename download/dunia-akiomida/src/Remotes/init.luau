@@ -12,6 +12,7 @@ local DEFINITIONS = {
         SemaiSync = "RemoteEvent",
         TanamSync = "RemoteEvent",
         GudangSync = "RemoteEvent",
+        TradeSync = "RemoteEvent",
         OpenPanel = "RemoteEvent",
         GetState = "RemoteFunction",
         DuniaAct = "RemoteFunction",
@@ -20,6 +21,7 @@ local DEFINITIONS = {
         ShopAct = "RemoteFunction",
         TanamAct = "RemoteFunction",
         GudangAct = "RemoteFunction",
+        TradeAct = "RemoteFunction",
         RedeemDevCode = "RemoteFunction",
 }
 

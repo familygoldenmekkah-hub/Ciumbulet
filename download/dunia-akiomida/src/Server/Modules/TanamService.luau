@@ -80,7 +80,7 @@ function TanamService.start(player, cropId: any, jumlahRaw: any): (boolean, stri
         if type(cropId) ~= "string" or not CropData.byId[cropId] then
                 return false, "Benih tidak dikenal."
         end
-        local seeds = Tas.count(player, "benih", cropId)
+        local seeds = Tas.tersedia(player, "benih", cropId)
         if seeds < 1 then
                 return false, "Benih itu tidak ada di tas."
         end
@@ -131,7 +131,7 @@ function TanamService.jawab(player, ans: any): (boolean, string)
                 sync(player, s)
                 return false, "salah"
         end
-        local seeds = Tas.count(player, "benih", s.cropId)
+        local seeds = Tas.tersedia(player, "benih", s.cropId)
         local batch = math.min(10, s.jumlah - s.tertanam, seeds)
         if batch <= 0 then
                 sesi[player.UserId] = nil
@@ -142,7 +142,7 @@ function TanamService.jawab(player, ans: any): (boolean, string)
         local tanam = 0
         for i = 1, math.min(batch, #targets) do
                 local idx = targets[i]
-                if Tas.count(player, "benih", s.cropId) < 1 then
+                if Tas.tersedia(player, "benih", s.cropId) < 1 then
                         break
                 end
                 if Plot.fillPlot(s.index, idx, s.cropId) then
@@ -197,7 +197,7 @@ function TanamService.gabung(player, a: any, b: any): (boolean, string)
         if not hasil then
                 return false, "Tidak bisa di-combine"
         end
-        if Tas.count(player, "benih", a) < 1 or Tas.count(player, "benih", b) < 1 then
+        if Tas.tersedia(player, "benih", a) < 1 or Tas.tersedia(player, "benih", b) < 1 then
                 return false, "Benih tidak cukup di tas."
         end
         if Tas.roomFor(player, "benih", hasil, 1) < 1 then

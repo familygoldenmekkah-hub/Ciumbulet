@@ -53,6 +53,9 @@ local SignalNames = {
         RenderStepped = true,
         Heartbeat = true,
         InputChanged = true,
+        FocusLost = true,
+        FocusGained = true,
+        TouchTapInWorld = true,
 }
 
 Vector3 = {}

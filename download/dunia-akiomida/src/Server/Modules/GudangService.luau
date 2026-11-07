@@ -63,7 +63,7 @@ function GudangService.simpan(player, cropId: any, nRaw: any): (boolean, string)
         if not near(player, index) then
                 return false, "Dekati gudang dulu."
         end
-        local stock = Tas.count(player, "hasil", cropId)
+        local stock = Tas.tersedia(player, "hasil", cropId)
         if stock < 1 then
                 return false, "Tidak ada hasil panen itu di tas."
         end

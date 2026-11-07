@@ -362,7 +362,7 @@ function MesinSemaiService.atur(player, cropId: any, jumlah: any): (boolean, str
                 local infoB = CropData.byId[b.crop]
                 namaB = infoB and infoB.nama or tostring(b.crop)
         end
-        local dimiliki = Tas.count(player, "hasil", cropId)
+        local dimiliki = Tas.tersedia(player, "hasil", cropId)
         local ok, pesan = MesinLogika.atur(b, cropId, jumlah, dimiliki, CropData.MesinSemai.Kapasitas, info.nama, namaB)
         if not ok then
                 return false, pesan

@@ -1431,6 +1431,91 @@ do
         check("Ukuran koin tahan input rusak", IkonKoin.ukuran("x") == 12 and IkonKoin.ukuran(0 / 0) == 12, "-")
 end
 
+print("--- Z: Trade antar pemain ---")
+do
+        local TradeLogic = require("./../src/Shared/TradeLogic")
+        local CropData = require("./../src/Shared/CropData")
+        local TasLogic = require("./../src/Shared/TasLogic")
+        local UangLogic = require("./../src/Shared/UangLogic")
+
+        check("Maks 4 slot item per tawaran", TradeLogic.SLOT_MAKS == 4, tostring(TradeLogic.SLOT_MAKS))
+        check("Fase tawar 180 detik", TradeLogic.TAWAR_UMUR == 180, tostring(TradeLogic.TAWAR_UMUR))
+        check("Fase konfirmasi 25 detik (keras)", TradeLogic.KONFIRM_UMUR == 25, tostring(TradeLogic.KONFIRM_UMUR))
+
+        check("jumlahSah: 5 sah", TradeLogic.jumlahSah(5) == true, "-")
+        check("jumlahSah: NaN/inf/negatif/desimal ditolak", not TradeLogic.jumlahSah(0 / 0) and not TradeLogic.jumlahSah(math.huge) and not TradeLogic.jumlahSah(-3) and not TradeLogic.jumlahSah(2.5), "-")
+        check("jumlahSah: 0 sah bila minimal 0, ditolak bila minimal 1", TradeLogic.jumlahSah(0, 0) == true and TradeLogic.jumlahSah(0) == false, "-")
+
+        local offer = TradeLogic.offerBaru()
+        check("offer baru kosong", #offer.items == 0 and offer.micda == 0, tostring(#offer.items))
+        local ok1 = TradeLogic.sisip(offer, "benih", "wortel", 10, 20, CropData.byId)
+        check("sisip benih wortel x10 (tersedia 20)", ok1 == true and #offer.items == 1 and offer.items[1].count == 10, "-")
+        local ok2 = TradeLogic.sisip(offer, "hasil", "wortel", 5, 5, CropData.byId)
+        check("sisip jenis lain masuk slot sendiri", ok2 == true and #offer.items == 2, "-")
+        local ok3 = TradeLogic.sisip(offer, "benih", "wortel", 7, 7, CropData.byId)
+        check("sisip ulang mengganti jumlah slot sama", ok3 == true and #offer.items == 2 and offer.items[1].count == 7, "-")
+        local ok4, msg4 = TradeLogic.sisip(offer, "benih", "wortel", 8, 6, CropData.byId)
+        check("sisip melebihi tersedia ditolak", ok4 == false and offer.items[1].count == 7, tostring(msg4))
+        local ok5 = TradeLogic.sisip(offer, "benih", "pisang", 1, 1, CropData.byId)
+        local ok6 = TradeLogic.sisip(offer, "benih", "bayam", 1, 1, CropData.byId)
+        check("slot ke-4 bisa diisi", ok5 == true and ok6 == true and #offer.items == 4, tostring(#offer.items))
+        local ok7 = TradeLogic.sisip(offer, "benih", "kentang", 1, 1, CropData.byId)
+        check("slot ke-5 ditolak", ok7 == false and #offer.items == 4, tostring(#offer.items))
+        check("jenis tak dikenal ditolak", TradeLogic.sisip(offer, "batu", "wortel", 1, 1, CropData.byId) == false, "-")
+        check("ID tak dikenal ditolak", TradeLogic.sisip(offer, "benih", "tanaman_hantu", 1, 1, CropData.byId) == false, "-")
+        check("jumlah NaN ditolak", TradeLogic.sisip(offer, "benih", "pisang", 0 / 0, 5, CropData.byId) == false, "-")
+        check("jumlah negatif ditolak", TradeLogic.sisip(offer, "benih", "pisang", -2, 5, CropData.byId) == false, "-")
+
+        check("hapus mengeluarkan item", TradeLogic.hapus(offer, "benih", "pisang") == true and TradeLogic.cariIdx(offer, "benih", "pisang") == nil and #offer.items == 3, tostring(#offer.items))
+        check("hapus item yang tidak ada gagal", TradeLogic.hapus(offer, "benih", "tetsukabuto") == false, "-")
+
+        local okM1 = TradeLogic.aturMicda(offer, 500, 1000)
+        check("atur micda 500 (saldo 1000)", okM1 == true and offer.micda == 500, tostring(offer.micda))
+        local okM2 = TradeLogic.aturMicda(offer, 1500, 1000)
+        check("micda melebihi saldo ditolak", okM2 == false and offer.micda == 500, tostring(offer.micda))
+        local okM3 = TradeLogic.aturMicda(offer, 0, 1000)
+        check("micda 0 mengosongkan slot", okM3 == true and offer.micda == 0, "-")
+        check("micda desimal ditolak", TradeLogic.aturMicda(offer, 2.5, 1000) == false, "-")
+        TradeLogic.aturMicda(offer, 200, 1000)
+
+        local kunci = TradeLogic.terkan(offer)
+        check("peta kunci terisi per jenis+ID", kunci["benih\1wortel"] == 7 and kunci["hasil\1wortel"] == 5 and kunci["benih\1bayam"] == 1, tostring(kunci["benih\1wortel"]))
+        check("ringkas memakai nama tanaman", string.find(TradeLogic.ringkas(offer, CropData.byId), "Wortel") ~= nil and string.find(TradeLogic.ringkas(offer, CropData.byId), "200 Micda") ~= nil, TradeLogic.ringkas(offer, CropData.byId))
+
+        local offerA = TradeLogic.offerBaru()
+        TradeLogic.sisip(offerA, "benih", "wortel", 10, 99, CropData.byId)
+        TradeLogic.aturMicda(offerA, 100, 99999)
+        local offerB = TradeLogic.offerBaru()
+        TradeLogic.sisip(offerB, "hasil", "pisang", 4, 99, CropData.byId)
+        local tasA = { { kind = "benih", id = "wortel", count = 12 } }
+        local tasB = { { kind = "hasil", id = "pisang", count = 6 } }
+        local okE, alasanE, ka, kb = TradeLogic.validasiEksekusi(offerA, offerB, tasA, tasB, 500, 700)
+        check("eksekusi valid pada kasus sehat", okE == true, tostring(alasanE))
+        check("tas akhir A: wortel sisa 2 + pisang masuk 4", ka and TasLogic.countOf(ka, "benih", "wortel") == 2 and TasLogic.countOf(ka, "hasil", "pisang") == 4 and #ka == 2, tostring(ka and #ka))
+        check("tas akhir B: benih wortel 10 + pisang sisa 2", kb and TasLogic.countOf(kb, "hasil", "pisang") == 2 and TasLogic.countOf(kb, "benih", "wortel") == 10 and #kb == 2, tostring(kb and #kb))
+        check("data asli tidak tersentuh simulasi", tasA[1].count == 12 and tasB[1].count == 6, tostring(tasA[1].count) .. "/" .. tostring(tasB[1].count))
+
+        local penuhB = {}
+        for i = 1, 50 do
+                penuhB[i] = { kind = "hasil", id = "wortel", count = 250 }
+        end
+        local okP = TradeLogic.validasiEksekusi(offerA, TradeLogic.offerBaru(), tasA, penuhB, 500, 700)
+        check("tas lawan penuh: seluruh trade batal", okP == false, "-")
+
+        local offerMic = TradeLogic.offerBaru()
+        TradeLogic.aturMicda(offerMic, 500, 99999)
+        check("rekening lawan penuh: trade batal", TradeLogic.validasiEksekusi(offerMic, TradeLogic.offerBaru(), {}, {}, 1000, UangLogic.MaksSaldo) == false, "-")
+        check("saldo pengirim kurang: trade batal", TradeLogic.validasiEksekusi(offerMic, TradeLogic.offerBaru(), {}, {}, 100, 0) == false, "-")
+
+        local offerC = TradeLogic.offerBaru()
+        TradeLogic.sisip(offerC, "benih", "wortel", 10, 99, CropData.byId)
+        check("barang kurang: trade batal tanpa eksekusi", TradeLogic.validasiEksekusi(offerC, TradeLogic.offerBaru(), { { kind = "benih", id = "wortel", count = 5 } }, {}, 0, 0) == false, "-")
+
+        check("sisaDetik tidak pernah negatif", TradeLogic.sisaDetik(100, 150) == 0 and TradeLogic.sisaDetik(160, 150) == 10, "-")
+
+        check("alasan ledger 'trade' diterima UangLogic", UangLogic.alasanOk("trade") == true, "-")
+end
+
 print(("="):rep(28))
 print(string.format("HASIL: %d PASS, %d FAIL", passed, failed))
 if failed > 0 then
