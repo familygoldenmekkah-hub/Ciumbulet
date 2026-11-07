@@ -344,8 +344,29 @@ Skor banding Toram/Growtopia: **51/100** — lihat `RUBRIC.md`.
 4. Perbarui skor `RUBRIC.md` + README ini.
 5. **WAJIB cadangan GitHub**: `bash /home/z/my-project/scripts/backup_github.sh`
    (commit + push seluruh proyek ke branch `dunia-akiomida` di
-   github.com/akiomida/Io — simpanan jaga-jaga & alat kerja tim; harness
-   uji ikut disalin; kredensial dari .secrets, tidak pernah ditampilkan).
+   github.com/familygoldenmekkah-hub/Ciumbulet — lokasi yang dipilih
+   pemilik; harness uji ikut disalin; kredensial dari .secrets, tidak
+   pernah ditampilkan).
+6. **STATUS CADANGAN (7 Nov 2026, v53)**: target cadangan resmi kini
+   github.com/familygoldenmekkah-hub/Ciumbulet (branch `dunia-akiomida`,
+   main tidak disentuh), namun push masih DITOLAK GitHub: "Permission to
+   familygoldenmekkah-hub/Ciumbulet.git denied to akiomida" (403) —
+   repo milik akun `familygoldenmekkah-hub`, sedangkan token & akun
+   GitHub yang tersimpan milik `akiomida` dan hanya punya izin tulis di
+   `akiomida/Io`. CARA AKTIFKAN (pilih salah satu):
+   (a) PALING MUDAH — login GitHub sebagai `familygoldenmekkah-hub`,
+       buat fine-grained token baru (Settings → Developer settings →
+       Personal access tokens → Fine-grained tokens): Repository access
+       pilih Ciumbulet, Permissions → Contents = Read and write, lalu
+       kirimkan token baru itu;
+   (b) ATAU di repo Ciumbulet: Settings → Collaborators → Add people →
+       `akiomida` (role Write), kemudian buat CLASSIC token akun
+       akiomida ber-scope `repo` (fine-grained akun akiomida tidak bisa
+       memilih repo milik akun lain).
+   Sementara izin belum aktif, snapshot terkini tetap tersimpan di
+   branch `dunia-akiomida` github.com/akiomida/Io sebagai penampungan
+   darurat; begitu token baru diterima, seluruh riwayat langsung
+   dipindah ke Ciumbulet dan penampungan Io dibersihkan.
 
 ## Pasca-publish (dashboard pemilik, sekali saja bila belum)
 
