@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# CADANGAN GITHUB DUNIA AKIOMIDA
+# CADANGAN GITHUB DUNIA AKIOMIDA — SATU TARGET LANGSUNG
 # Dipanggil di akhir SETIAP sesi update (wajib). Commit semua perubahan
-# proyek dan push ke branch "dunia-akiomida" di github.com/familygoldenmekkah-hub/Ciumbulet (lokasi yang dipilih pemilik).
+# proyek dan push langsung ke branch "dunia-akiomida" di
+# github.com/familygoldenmekkah-hub/Ciumbulet. Tidak ada repo lain.
 # Kredensial dibaca dari .secrets (tidak pernah dicetak/disimpan lain).
 set -uo pipefail
-set -a; source /home/z/my-project/.secrets/akiomida.env; set +a
 set -a; source /home/z/my-project/.secrets/ciumbulet.env; set +a
 REPO_DIR=/home/z/my-project/download/dunia-akiomida
 BRANCH=dunia-akiomida

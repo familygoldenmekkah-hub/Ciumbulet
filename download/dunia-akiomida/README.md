@@ -347,14 +347,11 @@ Skor banding Toram/Growtopia: **51/100** — lihat `RUBRIC.md`.
    github.com/familygoldenmekkah-hub/Ciumbulet — lokasi yang dipilih
    pemilik; harness uji ikut disalin; kredensial dari .secrets, tidak
    pernah ditampilkan).
-6. **STATUS CADANGAN (AKTIF sejak 7 Nov 2026, v53)**: target cadangan resmi
-   adalah github.com/familygoldenmekkah-hub/Ciumbulet branch
-   `dunia-akiomida` (main repo tidak disentuh). Token fine-grained
-   milik akun `familygoldenmekkah-hub` tersimpan di
-   .secrets/ciumbulet.env (tidak pernah dicetak); token lama milik
-   `akiomida` hanya dipakai untuk Roblox Open Cloud. Penampungan
-   darurat di github.com/akiomida/Io sudah dibersihkan — semua
-   riwayat kini hanya di Ciumbulet. Jalankan
+6. **CADANGAN (SATU TARGET LANGSUNG)**: semua tulis langsung ke
+   github.com/familygoldenmekkah-hub/Ciumbulet branch `dunia-akiomida`
+   (main repo tidak disentuh) — tidak ada GitHub lain. Token
+   `familygoldenmekkah-hub` tersimpan di .secrets/ciumbulet.env,
+   tidak pernah dicetak. Jalankan
    `bash /home/z/my-project/scripts/backup_github.sh` di akhir setiap
    sesi update.
 
