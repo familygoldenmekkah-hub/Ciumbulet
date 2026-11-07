@@ -30,7 +30,7 @@ def output_path() -> pathlib.Path:
 SCENARIO = scenario_text()
 OUTFILE = output_path()
 
-MODULES_SHARED = ["CropData", "Recipes", "StrukBeli", "TasLogic", "SanitasiTas", "Layout", "DuniaLogic", "SoalLogic", "GudangLogic", "PukulLogic", "PanenStatus", "UIStyle", "PukulAnim", "ArahPukul", "KontrolHP", "HUDLayout", "DropBentuk", "IkonJempol", "UangLogic", "SesiLogic", "KlaimDrop", "PanenWaktu", "SemaiLogic", "JualLogic", "TanahDrops"]
+MODULES_SHARED = ["CropData", "Recipes", "StrukBeli", "TasLogic", "SanitasiTas", "Layout", "DuniaLogic", "SoalLogic", "GudangLogic", "PukulLogic", "PanenStatus", "UIStyle", "PukulAnim", "ArahPukul", "KontrolHP", "HUDLayout", "DropBentuk", "IkonJempol", "UangLogic", "UangSingkat", "SesiLogic", "KlaimDrop", "PanenWaktu", "SemaiLogic", "JualLogic", "TanahDrops"]
 MODULES_SERVER = [
     "RateLimit",
     "DevCodeVault",
@@ -51,6 +51,34 @@ MODULES_SERVER = [
     "GudangService",
     "DropService",
 ]
+
+
+def shared_modules() -> list:
+    files = {p.stem: p for p in (SRC / "Shared").glob("*.luau")}
+    pat = re.compile(r"ReplicatedStorage\.Shared\.(\w+)|script\.Parent\.(\w+)")
+    deps = {}
+    for name, path in files.items():
+        ds = set()
+        for m in pat.finditer(path.read_text()):
+            cand = m.group(1) or m.group(2)
+            if cand in files and cand != name:
+                ds.add(cand)
+        deps[name] = ds
+    order, done = [], set()
+
+    def visit(n: str, stack: frozenset) -> None:
+        if n in done:
+            return
+        if n in stack:
+            raise SystemExit("require melingkar di Shared: " + n)
+        for d in sorted(deps[n]):
+            visit(d, stack | {n})
+        done.add(n)
+        order.append(n)
+
+    for n in sorted(deps):
+        visit(n, frozenset())
+    return order
 LAZY_UI = "UIController"
 
 BANNED_NAMES = [
@@ -140,7 +168,7 @@ def main() -> None:
     parts.append(stub_src)
     parts.append('Stub.install()')
 
-    for name in MODULES_SHARED:
+    for name in shared_modules():
         parts.append(wrap_module(name, read(SRC / "Shared" / f"{name}.luau")))
     parts.append(wrap_module("Remotes", read(SRC / "Remotes" / "init.luau")))
     for name in MODULES_SERVER:

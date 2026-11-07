@@ -67,7 +67,7 @@ end
 print("--- Sistem inti ---")
 do
         check("Waktu tumbuh 3 detik", CropData.GrowTime == 3, tostring(CropData.GrowTime))
-        check("Dana awal 1 Triliun Micda", CropData.StartMoney == 1000000000000, tostring(CropData.StartMoney))
+        check("Dana awal 999.999.999.999.000 (999,99 T)", CropData.StartMoney == 999999999999000, tostring(CropData.StartMoney))
         check("Tas 50 slot", CropData.TasSlots == 50 and TasLogic.MaxSlots == 50, "-")
         check("Stack 250", CropData.TasStack == 250 and TasLogic.MaxStack == 250, "-")
         check("Benih wajib bernama 'Benih X'", CropData.namaBenih("wortel") == "Benih Wortel" and CropData.namaBenih("jeruk_mandarin") == "Benih Jeruk Mandarin" and CropData.namaBenih("kacang_tanah") == "Benih Kacang Tanah", tostring(CropData.namaBenih("wortel")))
@@ -700,19 +700,16 @@ do
                 end
                 return true
         end)(), "-")
-        check("Saldo memuat ikon + angka + satuan utuh dalam kotak", (function()
-                for _, l in ipairs(layar) do
-                        local s = HUDLayout.rectSaldo(l[1], l[2], 0, 58)
-                        if s.w < HUDLayout.SaldoLebarMin or s.h < 24 then
-                                return false
-                        end
-                        for _, r in ipairs({ HUDLayout.rectIkon(s), HUDLayout.rectAngka(s), HUDLayout.rectSatuan(s) }) do
-                                if r.w <= 0 or r.h <= 0 or not HUDLayout.diDalam(r, s) then
+        check("Kotak saldo melebar otomatis: angka penuh lebih lebar dari singkat", HUDLayout.lebarSaldoPx("999.999.999.999.000", false) > HUDLayout.lebarSaldoPx("999,99 T", true), tostring(HUDLayout.lebarSaldoPx("999.999.999.999.000", false)))
+        check("Lebar kotak dijepit maks SaldoLebarMaks", HUDLayout.lebarSaldoPx(string.rep("9", 40), true) == HUDLayout.SaldoLebarMaks, tostring(HUDLayout.lebarSaldoPx(string.rep("9", 40), true)))
+        check("Singkatan & angka penuh muat di layar HP kecil 640 & 375 dan besar 2224", (function()
+                local layarCek = { { 640, 360 }, { 667, 375 }, { 844, 390 }, { 915, 412 }, { 1284, 720 }, { 2224, 1668 }, { 375, 667 } }
+                local kasus = { { "1 T", true }, { "250,5 M", true }, { "999,99 T", true }, { "1.000 T", true }, { "999.999.999.999.000", false } }
+                for _, l in ipairs(layarCek) do
+                        for _, k in ipairs(kasus) do
+                                if not HUDLayout.muatLayar(l[1], k[1], k[2], 0) or not HUDLayout.muatLayar(l[1], k[1], k[2], 12) then
                                         return false
                                 end
-                        end
-                        if HUDLayout.tumpangTindih(HUDLayout.rectAngka(s), HUDLayout.rectSatuan(s)) then
-                                return false
                         end
                 end
                 return true
@@ -897,6 +894,29 @@ do
         check("Ledger uang mencatat tanpa status tolak_laju/lonjakan (semua tolak hanya log)", UangLogic.ledgerOf(UangLogic.baru(0))[1] == nil, "-")
 end
 
+
+print("--- H3: Singkatan Indonesia saldo HUD (Rb/Jt/M/T, maks 2 desimal) ---")
+do
+        local UangSingkat = require("./../src/Shared/UangSingkat")
+        local UangLogic = require("./../src/Shared/UangLogic")
+        check("0 tampil polos", UangSingkat.singkat(0) == "0", UangSingkat.singkat(0))
+        check("999 tampil polos", UangSingkat.singkat(999) == "999", UangSingkat.singkat(999))
+        check("1.500 = 1,5 Rb", UangSingkat.singkat(1500) == "1,5 Rb", UangSingkat.singkat(1500))
+        check("50.000 = 50 Rb (tanpa ,00)", UangSingkat.singkat(50000) == "50 Rb", UangSingkat.singkat(50000))
+        check("1.234.567 = 1,23 Jt (maks 2 desimal, floor)", UangSingkat.singkat(1234567) == "1,23 Jt", UangSingkat.singkat(1234567))
+        check("Formatter tahan nilai di atas rentang saldo: 1.234,5 T (utuh bertitik)", UangSingkat.singkat(1234500000000000) == "1.234,5 T", UangSingkat.singkat(1234500000000000))
+        check("250,5 M persis contoh pemilik", UangSingkat.singkat(250500000000) == "250,5 M", UangSingkat.singkat(250500000000))
+        check("1 T persis contoh pemilik", UangSingkat.singkat(1000000000000) == "1 T", UangSingkat.singkat(1000000000000))
+        check("999.999.999.999.999 = 999,99 T (floor, bukan 1.000 T)", UangSingkat.singkat(999999999999999) == "999,99 T", UangSingkat.singkat(999999999999999))
+        check("Atap 1000 Triliun = 1.000 T dan tetap muat HUD", UangSingkat.singkat(1000000000000000) == "1.000 T", UangSingkat.singkat(1000000000000000))
+        check("Saldo awal baru tampil 999,99 T", UangSingkat.singkat(CropData.StartMoney) == "999,99 T", UangSingkat.singkat(CropData.StartMoney))
+        check("Ketuk saldo: angka lengkap 999.999.999.999.000 bertitik", UangSingkat.penuh(CropData.StartMoney) == "999.999.999.999.000", UangSingkat.penuh(CropData.StartMoney))
+        check("Input rusak aman (NaN/negatif/teks/nil = 0)", UangSingkat.singkat(0 / 0) == "0" and UangSingkat.singkat(-5) == "0" and UangSingkat.singkat("x") == "0" and UangSingkat.penuh(nil) == "0", "-")
+        check("Floor tidak pernah melebihi saldo (1,239 T = 1,23 T)", UangSingkat.singkat(1239000000000) == "1,23 T", UangSingkat.singkat(1239000000000))
+        local stAwal = UangLogic.baru(CropData.StartMoney)
+        check("Saldo awal baru tidak dijepit saat dimuat", UangLogic.saldo(stAwal) == CropData.StartMoney, tostring(UangLogic.saldo(stAwal)))
+        check("Ruang rekening tinggal 1.000 Micda ke atap 1000 T (jujur: hampir penuh)", UangLogic.ruangSisa(stAwal) == 1000, tostring(UangLogic.ruangSisa(stAwal)))
+end
 
 print("--- I: Kunci sesi (anti-dua-server) ---")
 do
@@ -1161,7 +1181,7 @@ do
         end
         local micda = CropData.StartMoney
         local tas = {}
-        check("Ujian dimulai dari dunia baru: 1 Triliun Micda & tas kosong", micda == CropData.StartMoney and TasLogic.usedSlots(tas) == 0, tostring(micda))
+        check("Ujian dimulai dari dunia baru: 999.999.999.999.000 Micda & tas kosong", micda == CropData.StartMoney and TasLogic.usedSlots(tas) == 0, tostring(micda))
         local pack = CropData.Packs.common
         micda -= pack.price
         for _ = 1, pack.count do

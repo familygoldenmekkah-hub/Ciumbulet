@@ -19,6 +19,65 @@ Skor per kriteria 0-10, dikali bobot. Total dihitung dari (skor x bobot) / 10.
 | 8 | Polish & UX (UI, suara, animasi, efek) | 10 | animasi kombat, BGM, partikel | UI rapi & responsif |
 | 9 | Originalitas 100% & aman hak cipta | 5 | - | - |
 
+## Skor v53 (versi LIVE #53, 7 Nov 2026) - SALDO AWAL 999,99 T + HUD SINGKATAN INDONESIA (Rb/Jt/M/T) + KETUK ANGKA PENUH
+
+Permintaan pemilik: user baru kini dapat 999 Triliun 999 Miliar 999 Juta 999
+Ribu Micda (999.999.999.999.000, hanya berjarak 1.000 dari atap 1000 T) dan
+tampilan saldo HUD dibereskan: angka tidak boleh terpotong dua baris, pakai
+singkatan Indonesia maksimal 2 desimal, kotak melebar otomatis, ketuk untuk
+melihat angka lengkap bertitik, muat sampai 1.000 T, teruji layar kecil & besar.
+
+Diterapkan di #53:
+
+A. **CropData.StartMoney 1.000.000.000.000 -> 999.999.999.999.000** — user
+   baru (dan reset data rusak) mulai hampir di atap rekening; ruang sisa
+   1.000 Micda terdokumentasi jujur di tes.
+B. **Modul baru Shared/UangSingkat** — singkatan Indonesia: Rb (ribu),
+   Jt (juta), M (miliar), T (triliun); maks 2 desimal pakai KOMA Indonesia;
+   FLOOR (tidak pernah melebihi saldo nyata; 999,99 T tetap 999,99 T,
+   tidak membulat jadi 1.000 T); contoh pemilik terverifikasi tes:
+   1 T dan 250,5 M persis; atap 1.000.000.000.000.000 tampil 1.000 T.
+C. **HUD saldo dibangun ulang** — kotak kini TextButton "SaldoHUD" dengan
+   AutomaticSize X (melebar mengikuti teks, UIListLayout horizontal,
+   UISizeConstraint 150-560 px); angka "SaldoAngka" TextWrapped=false +
+   TextTruncate aman (TIDAK PERNAH dua baris), TextSize tetap 22 di semua
+   layar; satuan "Micda" ikut list; clamp lama yang menyempitkan kotak
+   dihapus dari aturUkuranAman.
+D. **Ketuk saldo = angka lengkap** — ketukan menoggle mode: singkat
+   "999,99 T" <-> penuh "999.999.999.999.000" bertitik; mode penuh
+   menyembunyikan satuan supaya muat di layar 375 px; semua jalur sync
+   (GetState awal, Sync, syncState) kini lewat renderSaldo tunggal.
+E. **Model lebar HUDLayout baru** — lebarTeksPx (estimasi em 0,62),
+   lebarSaldoPx (dijepit 150-560), muatLayar: tes otomatis memastikan
+   singkatan & angka penuh MUAT di 7 layar (640x360, 667x375, 844x390,
+   915x412, 1284x720, 2224x1668, 375x667) dengan inset 0 & 12.
+F. **Simulator playtest diperbaiki akarnya** (3 bug stub lama menumpuk
+   sejak v50: MODULES_SHARED kehilangan KameraKunci & MesinLogika,
+   stub kamera tanpa Focus, stub Enum tanpa CameraType) + gen.py kini
+   AUTO-DETEKSI seluruh modul Shared dengan urutan topologis — tidak
+   bisa lagi ada modul yang tertinggal di harness; skenario massa
+   disesuaikan alur semai v50 (pop-up Atur Jumlah, Maks, Masukkan ke
+   Mesin) dan playtest menambah 11 cek HUD saldo.
+G. **Pengujian**: offline 396 PASS / 0 FAIL (+18: 14 singkatan, 3 muat
+   layar, saldo awal & ruang 1.000), playtest 141 PASS / 0 FAIL (+11
+   HUD: AutomaticSize, satu baris, ketuk 1 penuh, ketuk 2 singkat,
+   satuan hilang/muncul, 1.000 T, 250,5 M), massa 118 PASS / 0 FAIL,
+   luau-lsp 0 TypeError, rojo build sukses. Publish #53.
+
+| # | Kriteria | Skor | Alasan |
+|---|----------|------|--------|
+| 1 Kombat | 0/10 | Belum ada monster/AI/bos. |
+| 2 Crafting | 4.5/10 | Tetap dari #51. |
+| 3 Stat & Progresi | 1/10 | Tanpa level (sesuai arah pemilik). |
+| 4 Ekonomi | 8/10 | Saldo awal 999,99 T hampir di atap; HUD kini sanggup menampilkan sampai 1.000 T rapi tanpa terpotong. |
+| 5 Dunia & Peta | 7/10 | Tetap dari #51. |
+| 6 Multiplayer | 7/10 | Tetap dari #51. |
+| 7 Bertani | 10/10 | Tetap; massa 118 lari ulang hijau dengan alur v50. |
+| 8 Polish & UX | 10/10 | HUD saldo singkatan Indonesia + ketuk penuh + auto-lebar teruji 7 layar. |
+| 9 Originalitas | 10/10 | UangSingkat & model lebar HUDLayout karya sendiri. |
+
+**TOTAL: 58.8/100** (bobot: 0+67.5+10+120+70+70+100+100+50 = 587.5/10 = 58.75)
+
 ## Skor v52 (versi LIVE #52, 7 Nov 2026) - SALDO AWAL USER BARU: 1 TRILIUN MICDA
 
 Permintaan pemilik: "Untuk saldo user baru sebelumnya kan 900.000 micda kini

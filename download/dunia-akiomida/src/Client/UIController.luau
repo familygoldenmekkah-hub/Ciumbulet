@@ -20,6 +20,7 @@ local MesinLogika = require(ReplicatedStorage.Shared.MesinLogika)
 local KameraKunci = require(ReplicatedStorage.Shared.KameraKunci)
 local TasLogic = require(ReplicatedStorage.Shared.TasLogic)
 local SanitasiTas = require(ReplicatedStorage.Shared.SanitasiTas)
+local UangSingkat = require(ReplicatedStorage.Shared.UangSingkat)
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -103,15 +104,29 @@ end
 local kolomKiri = mk("Frame", { Name = "KolomKiri", Position = UDim2.fromScale(HUDLayout.SaldoSkalaX, 0), Size = UDim2.fromScale(HUDLayout.SaldoSkalaLebar, 1), BackgroundTransparency = 1 }, aman)
 mk("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder, HorizontalAlignment = Enum.HorizontalAlignment.Left, VerticalAlignment = Enum.VerticalAlignment.Top }, kolomKiri)
 
-local saldo = mk("Frame", { LayoutOrder = 1, Size = UDim2.fromScale(1, HUDLayout.SaldoSkalaTinggi), BackgroundColor3 = warna(UIStyle.Latar), BackgroundTransparency = 0.12 }, kolomKiri)
+local saldo = mk("TextButton", { Name = "SaldoHUD", LayoutOrder = 1, Size = UDim2.new(0, 0, HUDLayout.SaldoSkalaTinggi, 0), AutomaticSize = Enum.AutomaticSize.X, BackgroundColor3 = warna(UIStyle.Latar), BackgroundTransparency = 0.12, Text = "", AutoButtonColor = false }, kolomKiri)
 round(saldo)
-local saldoUkuran = mk("UISizeConstraint", { MinSize = Vector2.new(150, 30), MaxSize = Vector2.new(320, 64) }, saldo)
+mk("UISizeConstraint", { MinSize = Vector2.new(HUDLayout.SaldoLebarMin, 30), MaxSize = Vector2.new(HUDLayout.SaldoLebarMaks, 64) }, saldo)
+mk("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, HUDLayout.SaldoGapX), HorizontalAlignment = Enum.HorizontalAlignment.Left, VerticalAlignment = Enum.VerticalAlignment.Center, SortOrder = Enum.SortOrder.LayoutOrder }, saldo)
+mk("UIPadding", { PaddingLeft = UDim.new(0, HUDLayout.SaldoPadX), PaddingRight = UDim.new(0, HUDLayout.SaldoPadX) }, saldo)
 
-local ikonSaldo = mk("Frame", { Position = UDim2.fromScale(HUDLayout.IkonSkalaX, HUDLayout.IkonSkalaY), Size = UDim2.fromScale(HUDLayout.IkonSkalaLebar, HUDLayout.IkonSkalaTinggi), BackgroundColor3 = warna(UIStyle.Aksen) }, saldo)
+local ikonSaldo = mk("Frame", { LayoutOrder = 1, Size = UDim2.fromOffset(HUDLayout.SaldoIkonPx, HUDLayout.SaldoIkonPx), BackgroundColor3 = warna(UIStyle.Aksen) }, saldo)
 mk("UICorner", { CornerRadius = UDim.new(0.5, 0) }, ikonSaldo)
 teksSkala({ Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Text = "M", Font = FONTB, TextColor3 = warna(UIStyle.Latar) }, ikonSaldo)
-local angkaLabel = teksSkala({ Position = UDim2.fromScale(HUDLayout.AngkaSkalaX, 0), Size = UDim2.fromScale(HUDLayout.AngkaSkalaLebar, 1), BackgroundTransparency = 1, Text = "0", Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left }, saldo)
-teksSkala({ Position = UDim2.fromScale(HUDLayout.SatuanSkalaX, 0), Size = UDim2.fromScale(HUDLayout.SatuanSkalaLebar, 1), BackgroundTransparency = 1, Text = "Micda", Font = FONTB, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left }, saldo)
+local angkaLabel = mk("TextLabel", { Name = "SaldoAngka", LayoutOrder = 2, AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.new(0, 0, 1, 0), BackgroundTransparency = 1, Text = "0", TextSize = HUDLayout.SaldoTeksPx, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = false, TextTruncate = Enum.TextTruncate.AtEnd }, saldo)
+local satuanLabel = mk("TextLabel", { Name = "SaldoSatuan", LayoutOrder = 3, AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.new(0, 0, 1, 0), BackgroundTransparency = 1, Text = "Micda", TextSize = HUDLayout.SaldoSatuanPx, Font = FONTB, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = false }, saldo)
+
+local saldoPenuh = false
+local function renderSaldo()
+        local n = state.micda or 0
+        angkaLabel.Text = saldoPenuh and UangSingkat.penuh(n) or UangSingkat.singkat(n)
+        satuanLabel.Visible = not saldoPenuh
+end
+saldo.Activated:Connect(function()
+        saldoPenuh = not saldoPenuh
+        renderSaldo()
+end)
+renderSaldo()
 
 local travelBtn = mk("TextButton", { LayoutOrder = 2, Size = UDim2.fromScale(1, HUDLayout.NavSkalaTinggi), AutomaticSize = Enum.AutomaticSize.X, BackgroundColor3 = warna(UIStyle.Permukaan), Text = "Masuk Dunia-ku", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextTruncate = Enum.TextTruncate.AtEnd, TextXAlignment = Enum.TextXAlignment.Center }, kolomKiri)
 round(travelBtn)
@@ -175,8 +190,6 @@ local function aturUkuranAman()
         local vp = camera.ViewportSize
         local a = HUDLayout.areaAman(vp.X, vp.Y, inset.Min.X, inset.Min.Y)
         local bs = HUDLayout.batasSaldo(a)
-        saldoUkuran.MinSize = Vector2.new(bs.lebar, bs.tinggi)
-        saldoUkuran.MaxSize = Vector2.new(bs.lebar, bs.tinggi)
         local bn = HUDLayout.batasNav(a)
         navUkuran.MinSize = Vector2.new(bn.minim, bn.tinggi)
         navUkuran.MaxSize = Vector2.new(bn.maks, bn.tinggi)
@@ -400,7 +413,7 @@ local function syncState()
                         state.zone = st.zone or "kota"
                         state.dunia = st.dunia
                         state.role = st.role or "hub"
-                        angkaLabel.Text = fmt(state.micda)
+                        renderSaldo()
                         refreshTas()
                 end
         end)
@@ -477,11 +490,11 @@ local semaiPopItem = mk("TextLabel", { Size = UDim2.new(1, -24, 0, 24), Position
 local semaiPopMesin = mk("TextLabel", { Size = UDim2.new(1, -24, 0, 20), Position = UDim2.new(0, 12, 0, 66), BackgroundTransparency = 1, Text = "", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, semaiBox)
 local semaiPopKurang = mk("TextButton", { Size = UDim2.new(0, 48, 0, 44), Position = UDim2.new(0, 12, 0, 92), BackgroundColor3 = warna(UIStyle.Latar), Text = "-", TextSize = UIStyle.UkuranJudul, Font = FONTB, TextColor3 = warna(UIStyle.Teks) }, semaiBox)
 round(semaiPopKurang, UIStyle.SudutKecil)
-local semaiPopQty = mk("TextBox", { Size = UDim2.new(0, 92, 0, 44), Position = UDim2.new(0, 64, 0, 92), BackgroundColor3 = warna(UIStyle.PermukaanAktif), Text = "1", PlaceholderText = "1", TextSize = UIStyle.UkuranJudul, Font = FONTB, TextColor3 = warna(UIStyle.Teks), ClearTextOnFocus = false }, semaiBox)
+local semaiPopQty = mk("TextBox", { Name = "SemaiQty", Size = UDim2.new(0, 92, 0, 44), Position = UDim2.new(0, 64, 0, 92), BackgroundColor3 = warna(UIStyle.PermukaanAktif), Text = "1", PlaceholderText = "1", TextSize = UIStyle.UkuranJudul, Font = FONTB, TextColor3 = warna(UIStyle.Teks), ClearTextOnFocus = false }, semaiBox)
 round(semaiPopQty, UIStyle.SudutKecil)
 local semaiPopTambah = mk("TextButton", { Size = UDim2.new(0, 48, 0, 44), Position = UDim2.new(0, 160, 0, 92), BackgroundColor3 = warna(UIStyle.Latar), Text = "+", TextSize = UIStyle.UkuranJudul, Font = FONTB, TextColor3 = warna(UIStyle.Teks) }, semaiBox)
 round(semaiPopTambah, UIStyle.SudutKecil)
-local semaiPopMaks = mk("TextButton", { Size = UDim2.new(0, 76, 0, 44), Position = UDim2.new(0, 212, 0, 92), BackgroundColor3 = warna(UIStyle.Aksen), Text = "Maks", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Latar) }, semaiBox)
+local semaiPopMaks = mk("TextButton", { Name = "SemaiMaks", Size = UDim2.new(0, 76, 0, 44), Position = UDim2.new(0, 212, 0, 92), BackgroundColor3 = warna(UIStyle.Aksen), Text = "Maks", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Latar) }, semaiBox)
 round(semaiPopMaks, UIStyle.SudutKecil)
 mk("TextLabel", { Size = UDim2.new(1, -296, 0, 44), Position = UDim2.new(0, 296, 0, 92), BackgroundTransparency = 1, Text = "Maks = stok tas\natau sisa kapasitas", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true, TextYAlignment = Enum.TextYAlignment.Center }, semaiBox)
 local semaiPopPrev = mk("TextLabel", { Size = UDim2.new(1, -24, 0, 52), Position = UDim2.new(0, 12, 0, 144), BackgroundTransparency = 1, Text = "", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true }, semaiBox)
@@ -1614,7 +1627,7 @@ end)
 Net.get("Sync").OnClientEvent:Connect(function(payload)
         state.micda = payload.micda
         state.tas = bersihkanTasClient(payload.tas)
-        angkaLabel.Text = fmt(state.micda)
+        renderSaldo()
         if payload.zone then
                 state.zone = payload.zone
                 state.dunia = payload.dunia
@@ -1701,7 +1714,7 @@ task.spawn(function()
                 state.zone = st.zone or "kota"
                 state.dunia = st.dunia
                 state.role = st.role or "hub"
-                angkaLabel.Text = fmt(state.micda)
+                renderSaldo()
                 if state.zone == "dunia" then
                         zonaLabel.Text = "Dunia " .. tostring(state.dunia or "Petani")
                         travelBtn.Text = "Pulang ke Kota"

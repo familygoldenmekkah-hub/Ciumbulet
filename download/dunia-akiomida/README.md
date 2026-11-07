@@ -1,7 +1,7 @@
 # DUNIA AKIOMIDA (Roblox)
 
-Status: LIVE di Roblox (**versionNumber 52**, 7 Nov 2026) — **SALDO AWAL
-USER BARU 1 TRILIUN MICDA + ANTI-CHEAT
+Status: LIVE di Roblox (**versionNumber 53**, 7 Nov 2026) — **SALDO AWAL USER
+BARU 999,99 T + HUD SINGKATAN INDONESIA + ANTI-CHEAT
 EKONOMI: TANPA BATAS ANGKA TETAP, DETEKSI ANOMALI, KICK AMAN-DATA**:
 
 1. **AKAR KICK 267 DITEMUKAN & DIBUNUH** — AuditService lama menghitung
@@ -50,6 +50,19 @@ EKONOMI: TANPA BATAS ANGKA TETAP, DETEKSI ANOMALI, KICK AMAN-DATA**:
    main ekonomi super besar (0,1% dari atap rekening 1000 Triliun);
    data pemain lama tidak disentuh; aritmetika tes kini relatif
    StartMoney tanpa angka hardcoded.
+10. **SALDO 999,99 T + HUD SINGKATAN INDONESIA (#53)** — StartMoney naik
+   ke 999.999.999.999.000 (999 Triliun 999 Miliar 999 Juta 999 Ribu;
+   hanya 1.000 di bawah atap). HUD saldo dibangun ulang: kotak
+   AutomaticSize X melebar mengikuti teks; angka SATU BARIS selamanya
+   (TextWrapped=false); singkatan Indonesia Rb/Jt/M/T maks 2 desimal
+   koma via modul baru Shared/UangSingkat (floor, tak pernah
+   melebihi saldo; 1 T & 250,5 M persis contoh pemilik; atap tampil
+   1.000 T); KETUK kotak saldo = angka lengkap bertitik
+   999.999.999.999.000 (satuan disembunyikan agar muat layar 375 px);
+   teruji 7 ukuran layar kecil-besar. Simulator playtest juga
+   diperbaiki akarnya (stub kamera Focus, Enum.CameraType, modul
+   KameraKunci/MesinLogika yang hilang; gen.py kini auto-deteksi
+   modul) — playtest 141, massa 118, offline 396, semua 0 FAIL.
 
 Isi v50 tetap (semai panen alur baru + kamera panel):
 
@@ -265,8 +278,8 @@ Skor banding Toram/Growtopia: **51/100** — lihat `RUBRIC.md`.
   SafeFloor 8000 stud anti-jatuh (tak pernah ter-stream keluar); anchor 1,1
   dtk saat tiba + RequestStreamAroundAsync + watchdog; seksi hantu auto-hancur
   120 dtk kosong; save hanya bila berubah.
-- **DATA** — Micda awal user baru **1.000.000.000.000 (1 Triliun)**, atap
-  rekening 1000 Triliun per user & tas 50 slot x 250 (AKM_T1), dunia per userId
+- **DATA** — Micda awal user baru **999.999.999.999.000 (999,99 T)**, atap
+  rekening 1000 Triliun per user (sisa ruang awal 1.000) & tas 50 slot x 250 (AKM_T1), dunia per userId
   (AKM_Dunia, sanitasi ketat DuniaLogic: plot + meja + gudang + drop). Pohon &
   progres pukul + drop belum diambil tersimpan; drop hanya kedaluwarsa 900 dtk
   sejak pemain keluar (HARVEST_EXPIRE_SECONDS, waktu server; online aman).
@@ -313,6 +326,7 @@ Skor banding Toram/Growtopia: **51/100** — lihat `RUBRIC.md`.
 | v49 | **PEMBERSIHAN OTOMATIS DATA LAMA: BLOK_PANEN DIHAPUS DARI TAS & SEMAI PANEN TERBACA LAGI** (laporan pemilik: "masih ada item blok_panen, wajib dihapus; di semai panen hasil panen gak terbaca"): akar masalahnya BUKAN kode — data tas lama di DataStore (sebelum #47) masih menyimpan slot "blok_panen" dan dimuat mentah. Solusi: modul baru Shared/SanitasiTas menyaring tas saat load (id bukan tanaman resmi dibuang, kind/count rusak dibuang, 999->250, maks 50 slot, gagal-aman), data bersih langsung ditandai simpan ulang + toast "Tas Dibersihkan"; gudang dunia lama ikut divalidasi (setor/ambil/restore menolak blok_panen); UI klien memfilter item tak dikenal di 3 titik masuk tas + guard daftar semai. Seksi test V baru 13 cek: blok_panen dibuang saat load, tas bersih bikin SEMAI PANEN TERBACA LAGI (wortel bisa diatur jumlah & masuk mesin), blok_panen tak bisa masuk mesin. Tes offline 334 PASS / 0 FAIL, playtest 130 PASS / 0 FAIL, massa 116 PASS / 0 FAIL, luau-lsp 0 (#49). |
 | v50 | **SEMAI PANEN: PILIH ITEM -> ATUR JUMLAH + KAMERA PANEL DIKUNCI** (permintaan pemilik, revisi UI & Logic mesin): (1) buka mesin = daftar hasil panen di tas dirangkum per jenis (250+250+250 = satu baris "Wortel x750"), klik item -> pop-up "Atur Jumlah Semai" (-, +, Maks — preset dihapus sesuai revisi pemilik) -> konfirmasi masuk mesin; tas kosong = pesan sesuai; (2) aturan satu jenis: item berbeda saat mesin berisi DITOLAK dgn notifikasi "Mesin sedang memproses [nama item]" (toast klien + server), item SAMA boleh di-top-up sampai 2000 (pukulan & hasil linear, status tuas dipertahankan), stok tas dihitung total lintas slot, 10 pun bisa langsung disemai, Maks = min(stok, sisa kapasitas); (3) validasi penuh: melebihi stok/sisa kapasitas ditolak, 0/negatif/pecahan tak bisa dikonfirmasi, penuh 2000/2000 ditolak, giling/tuntas-belum-klaim ditolak; (4) keluhan papan tanam: geser di luar pop-up tak lagi memutar kamera (dim/modal Active) + zoom dikunci selama panel terbuka via modul baru Shared/KameraKunci (min=max=jarak saat buka, pulih saat tutup); (5) TasLogic.ringkas mengagregasi daftar di semai/toko/gudang/tanam/combine. Seksi W 20 cek (7 skenario wajib pemilik semuanya lolos) + seksi X 7 cek kamera. Tes offline 361 PASS / 0 FAIL, luau-lsp 0, rojo build sukses (#50). |
 | v51 | **ANTI-CHEAT EKONOMI TANPA BATAS ANGKA TETAP** (permintaan pemilik; detail penuh di RUBRIC.md Skor v51): batas transaksi 25.000 & 24/menit DIHAPUS (nominal besar & aksi cepat adalah hal normal game ekonomi); server menghitung semuanya (client hanya kirim aksi); AuditService v2 deteksi anomali berbobot (uang korup/lewat atap 100, sumber tak dikenal 60, sesi 20 — ambang 100/jam; penolakan biasa hanya LOG, 280 tolak pun tidak menendang); kick aman-data (simpan dulu, tunggu transaksi selesai, simpan lagi, baru kick); sapuan integritas saldo tiap 45 dtk; 2 bug kehilangan data (jual & klaim) dibunuh dengan rollback; kamera modal diperkuat Scriptable. Tes 378 PASS / 0 FAIL, luau-lsp 0 (#51). |
+| v53 | **SALDO AWAL 999,99 T + HUD SINGKATAN INDONESIA + KETUK ANGKA PENUH** (permintaan pemilik): StartMoney -> 999.999.999.999.000; modul baru Shared/UangSingkat (Rb/Jt/M/T, koma, maks 2 desimal, floor); kotak saldo TextButton AutomaticSize X + angka satu baris; ketuk -> 999.999.999.999.000 bertitik (satuan disembunyikan); HUDLayout dapat lebarTeksPx/lebarSaldoPx/muatLayar + tes 7 layar; simulator playtest diperbaiki akar (3 bug stub sejak v50) + gen.py auto-deteksi modul topologis; skenario massa disesuaikan alur semai v50. Offline 396 / playtest 141 / massa 118, semua 0 FAIL; luau-lsp 0 (#53). |
 | v52 | **SALDO AWAL USER BARU 1 TRILIUN MICDA** (permintaan pemilik): CropData.StartMoney 900.000 -> 1.000.000.000.000 — user baru (dan reset data rusak) kini mulai dengan 1.000.000.000.000 Micda, proporsional dengan ekonomi super besar & atap rekening 1000 Triliun dari #51; data pemain lama tidak disentuh. Aritmetika tes siklus penuh kini relatif terhadap StartMoney (tanpa angka hardcoded). Tes offline 378 PASS / 0 FAIL, luau-lsp 0 TypeError, rojo build sukses (#52). |
 
 ## Sesi update mandiri berikutnya (tanpa menunggu pemilik)

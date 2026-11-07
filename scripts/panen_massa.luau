@@ -752,9 +752,21 @@ end
 check("Item bug blok_panen tidak ada di tas", not adaBlokPanen, "-")
 check("Ada hasil wortel untuk mesin", hasilWortel0 >= 10, tostring(hasilWortel0))
 check("Baris hasil wortel bisa dipilih", pilihBenih(gui, "Wortel"), "-")
-check("Preset jumlah 10 diklik", tombolJumlah(gui, "10"), "-")
-local isiBtn = findGui(gui, "TextButton", "Isi Mesin Semai")
-check("Tombol Isi Mesin Semai ada", isiBtn ~= nil, "-")
+check("Pop-up Atur Jumlah Semai terbuka setelah pilih Wortel", findGui(gui, "TextLabel", "Atur Jumlah Semai") ~= nil, "-")
+local modalSemai = gui:FindFirstChild("ModalSemai", true)
+local qtySemai = modalSemai and modalSemai:FindFirstChild("SemaiQty", true)
+local maksBtn = modalSemai and modalSemai:FindFirstChild("SemaiMaks", true)
+check("Kotak jumlah & tombol Maks di pop-up ada", qtySemai ~= nil and maksBtn ~= nil, "-")
+if maksBtn then
+        maksBtn.Activated:Fire()
+        Stub.Scheduler.advance(0.05)
+end
+check("Tombol Maks mengisi min(stok, sisa kapasitas)", qtySemai ~= nil and tonumber(qtySemai.Text) ~= nil and tonumber(qtySemai.Text) >= 1, qtySemai and qtySemai.Text or "-")
+if qtySemai then
+        qtySemai.Text = "10"
+end
+local isiBtn = findGui(gui, "TextButton", "Masukkan ke Mesin")
+check("Tombol Masukkan ke Mesin ada", isiBtn ~= nil, "-")
 if isiBtn then
         isiBtn.Activated:Fire()
         Stub.Scheduler.advance(0.3)

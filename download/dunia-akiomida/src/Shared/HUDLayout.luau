@@ -5,7 +5,13 @@ HUDLayout.SaldoSkalaY = 0.02
 HUDLayout.SaldoSkalaLebar = 0.26
 HUDLayout.SaldoSkalaTinggi = 0.085
 HUDLayout.SaldoLebarMin = 150
-HUDLayout.SaldoLebarMaks = 320
+HUDLayout.SaldoLebarMaks = 560
+HUDLayout.SaldoPadX = 8
+HUDLayout.SaldoGapX = 8
+HUDLayout.SaldoIkonPx = 26
+HUDLayout.SaldoTeksPx = 22
+HUDLayout.SaldoSatuanPx = 15
+HUDLayout.SaldoEm = 0.62
 HUDLayout.IkonSkalaX = 0.035
 HUDLayout.IkonSkalaY = 0.14
 HUDLayout.IkonSkalaLebar = 0.15
@@ -57,31 +63,26 @@ function HUDLayout.rectSaldo(vpX: number, vpY: number, insetKiri: number, insetA
         }
 end
 
-function HUDLayout.rectIkon(saldo: { [string]: number }): { [string]: number }
-        return {
-                x = saldo.x + saldo.w * HUDLayout.IkonSkalaX,
-                y = saldo.y + saldo.h * HUDLayout.IkonSkalaY,
-                w = saldo.w * HUDLayout.IkonSkalaLebar,
-                h = saldo.h * HUDLayout.IkonSkalaTinggi,
-        }
+function HUDLayout.lebarTeksPx(teks: any, ukuran: number): number
+        if type(teks) ~= "string" then
+                return 0
+        end
+        return math.max(1, math.floor(#teks * ukuran * HUDLayout.SaldoEm + 0.5))
 end
 
-function HUDLayout.rectAngka(saldo: { [string]: number }): { [string]: number }
-        return {
-                x = saldo.x + saldo.w * HUDLayout.AngkaSkalaX,
-                y = saldo.y,
-                w = saldo.w * HUDLayout.AngkaSkalaLebar,
-                h = saldo.h,
-        }
+function HUDLayout.lebarSaldoPx(teksAngka: any, adaSatuan: boolean): number
+        local w = HUDLayout.SaldoPadX * 2 + HUDLayout.SaldoIkonPx + HUDLayout.SaldoGapX * 2
+                + HUDLayout.lebarTeksPx(teksAngka, HUDLayout.SaldoTeksPx)
+        if adaSatuan then
+                w += HUDLayout.lebarTeksPx("Micda", HUDLayout.SaldoSatuanPx)
+        end
+        return math.clamp(w, HUDLayout.SaldoLebarMin, HUDLayout.SaldoLebarMaks)
 end
 
-function HUDLayout.rectSatuan(saldo: { [string]: number }): { [string]: number }
-        return {
-                x = saldo.x + saldo.w * HUDLayout.SatuanSkalaX,
-                y = saldo.y,
-                w = saldo.w * HUDLayout.SatuanSkalaLebar,
-                h = saldo.h,
-        }
+function HUDLayout.muatLayar(vpX: number, teksAngka: any, adaSatuan: boolean, insetKiri: number): boolean
+        local kiri = math.clamp(insetKiri or 0, 0, vpX)
+        local x0 = kiri + (vpX - kiri) * HUDLayout.SaldoSkalaX
+        return x0 + HUDLayout.lebarSaldoPx(teksAngka, adaSatuan) <= vpX + 0.5
 end
 
 function HUDLayout.batasNav(aman: { [string]: number }): { [string]: number }

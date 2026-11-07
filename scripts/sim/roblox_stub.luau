@@ -355,6 +355,7 @@ Enum = {
         NormalId = makeEnum("NormalId", { "Front", "Back", "Top", "Bottom", "Left", "Right" }),
         Font = makeEnum("Font", { "Gotham", "GothamBold", "GothamBlack", "Legacy" }),
         ZIndexBehavior = makeEnum("ZIndexBehavior", { "Sibling", "Global" }),
+        CameraType = makeEnum("CameraType", { "Scriptable", "Custom", "Fixed", "Track", "Follow" }),
         UserInputType = makeEnum("UserInputType", { "MouseButton1", "Touch", "Keyboard" }),
         UserInputState = makeEnum("UserInputState", { "Begin", "Change", "End" }),
         RaycastFilterType = makeEnum("RaycastFilterType", { "Exclude", "Include" }),
@@ -821,6 +822,7 @@ function Stub.install()
         camera.Name = "Camera"
         camera.FieldOfView = 70
         camera.CFrame = CFrame.new(0, 0, 0)
+        camera.Focus = CFrame.new(0, 0, 0)
         camera.ViewportSize = Vector3.new(1024, 600, 0)
         camera.Parent = Workspace
         function camera:ViewportPointToRay(x, y)
