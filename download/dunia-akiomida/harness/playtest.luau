@@ -844,6 +844,21 @@ check("BALIK ke dunia lahan sukses", r3 and r3.Position.X > 5000, r3 and tostrin
 local labelBalik = findGui(dunia, "TextLabel", "TERTANAM 17/500")
 check("Papan tetap menunjukkan progres terakhir (17/500)", labelBalik ~= nil, labelBalik and labelBalik.Text or "-")
 
+section("Kode pemulihan pemilik (sekali pakai)")
+local lsP = P1:FindFirstChild("leaderstats")
+local micdaSebelum = lsP and lsP:FindFirstChild("Micda") and lsP:FindFirstChild("Micda").Value or 0
+local okS, msgS = serverCall("RedeemDevCode", P1, "kode-ngasal")
+check("Kode ngasal ditolak", okS == false, tostring(msgS))
+local KODE_PEMULIHAN = "AKMD-PEMULIHAN-2026-7Q2X9W"
+local okP, msgP = serverCall("RedeemDevCode", P1, KODE_PEMULIHAN)
+check("Kode pemulihan diterima sekali", okP == true, tostring(msgP))
+local micdaSesudah = lsP and lsP:FindFirstChild("Micda") and lsP:FindFirstChild("Micda").Value or 0
+check("Saldo bertambah tepat 1 Triliun", micdaSesudah - micdaSebelum == 1000000000000, tostring(micdaSesudah - micdaSebelum))
+local okP2, msgP2 = serverCall("RedeemDevCode", P1, KODE_PEMULIHAN)
+check("Kode pemulihan tidak bisa dipakai dua kali", okP2 == false, tostring(msgP2))
+local okDev, msgDev = serverCall("RedeemDevCode", P1, "CKZhwbrsRLjms6Da5h")
+check("Kode dev lama tetap jalan", okDev == true, tostring(msgDev))
+
 section("Simpan data saat keluar")
 Players.PlayerRemoving:Fire(P1)
 Stub.Scheduler.advance(0.3)
