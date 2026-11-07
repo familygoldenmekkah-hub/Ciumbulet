@@ -6,6 +6,7 @@ local CropData = require(ReplicatedStorage.Shared.CropData)
 local Net = require(ReplicatedStorage.Remotes)
 local UangLogic = require(ReplicatedStorage.Shared.UangLogic)
 local SesiLogic = require(ReplicatedStorage.Shared.SesiLogic)
+local SanitasiTas = require(ReplicatedStorage.Shared.SanitasiTas)
 
 local DataService = {}
 
@@ -104,7 +105,7 @@ local function lepasKunci(userId: number)
         end)
 end
 
-function DataService.load(player: Player): (boolean, string?)
+function DataService.load(player: Player): (boolean, string?, number)
         local userId = player.UserId
         local ok, data = pcall(function()
                 return store:GetAsync("u_" .. tostring(userId))
@@ -114,7 +115,7 @@ function DataService.load(player: Player): (boolean, string?)
                 loadedOk[userId] = false
                 dirty[userId] = false
                 push(player)
-                return false, "galat"
+                return false, "galat", 0
         end
         if type(data) == "table" and type(data.m) == "number" and not data.u then
                 data.u = UangLogic.baru(data.m)
@@ -127,17 +128,18 @@ function DataService.load(player: Player): (boolean, string?)
                 loadedOk[userId] = false
                 dirty[userId] = false
                 push(player)
-                return false, "kunci"
+                return false, "kunci", 0
         end
+        local tasBersih, dibuang = SanitasiTas.bersih(data.t, CropData.byId)
         cache[userId] = {
                 u = { m = data.u.m, ledger = type(data.u.ledger) == "table" and data.u.ledger or {}, tick = {} },
-                t = type(data.t) == "table" and data.t or {},
+                t = tasBersih,
                 dev = data.dev == true,
         }
         loadedOk[userId] = true
-        dirty[userId] = false
+        dirty[userId] = dibuang > 0
         push(player)
-        return true, nil
+        return true, nil, dibuang
 end
 
 local function simpanSekali(userId: number, d: any): boolean

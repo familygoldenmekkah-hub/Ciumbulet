@@ -129,7 +129,7 @@ local function applySpawn(player: Player)
 end
 
 local function enterServer(player: Player)
-        local ok, alasan = DataService.load(player)
+        local ok, alasan, dibuang = DataService.load(player)
         local d = DataService.get(player)
         local leaderstats = Instance.new("Folder")
         leaderstats.Name = "leaderstats"
@@ -142,6 +142,9 @@ local function enterServer(player: Player)
         DataService.push(player)
         task.delay(4, function()
                 if player.Parent then
+                        if dibuang and dibuang > 0 then
+                                notify(player, "Tas Dibersihkan", tostring(dibuang) .. " item lama yang tidak dipakai sudah dibuang otomatis dari tas.")
+                        end
                         if ok then
                                 notify(player, "Pusat Kota", "Selamat datang! Lewati Gerbang Dunia atau tombol Masuk untuk ke duniamu.")
                         elseif alasan == "kunci" then

@@ -19,6 +19,62 @@ Skor per kriteria 0-10, dikali bobot. Total dihitung dari (skor x bobot) / 10.
 | 8 | Polish & UX (UI, suara, animasi, efek) | 10 | animasi kombat, BGM, partikel | UI rapi & responsif |
 | 9 | Originalitas 100% & aman hak cipta | 5 | - | - |
 
+## Skor v49 (versi LIVE #49, 7 Nov 2026) - PEMBERSIHAN OTOMATIS DATA LAMA: BLOK_PANEN DIHAPUS DARI TAS, SEMAI PANEN TERBACA LAGI
+
+Laporan pemilik (pesan langsung): "Ini kok ada item namanya blok_panen, itu
+wajib dihapus loh! Karena gak kita pakai, kemudian di semai panen kok hasil
+item dari panen gak terbaca!"
+
+Diagnosa jujur: kode #48 sudah bebas blok, TAPI data tas lama di DataStore
+(tertulis sebelum #47) masih berisi slot "blok_panen" dan dimuat mentah tanpa
+disaring. Item hantu itu ikut tampil di tas dan di daftar mesin semai (nama
+mentah, 0 pukulan/item, ditolak server "Hasil panen tidak dikenal") sehingga
+daftar hasil panen terasa "gak terbaca". Satu akar masalah, dua gejala —
+keduanya dibunuh sekaligus.
+
+Diterapkan di #49:
+
+A. **Modul baru Shared/SanitasiTas** (murni, tanpa dependensi, teruji
+   offline): bersih(raw, byId) menolak slot dengan id yang bukan tanaman
+   resmi (blok_panen & kawan-kawan dibuang), kind selain "benih"/"hasil",
+   count bukan angka/0/negatif; count 999 dijepit jadi 250; maksimal 50
+   slot; tanpa daftar id yang sah semuanya ditolak (gagal-aman).
+B. **DataService.load menyaring tas lama** sebelum dipakai; jumlah slot
+   yang dibuang dilaporkan, data langsung ditandai kotor supaya versi
+   bersih tersimpan ke DataStore pada siklus simpan berikutnya — data lama
+   hanya dibersihkan SEKALI di dunia nyata.
+C. **Notifikasi jujur**: pemain yang tasnya mengandung item lama menerima
+   toast "Tas Dibersihkan - N item lama yang tidak dipakai sudah dibuang
+   otomatis dari tas."
+D. **Gudang dunia lama ikut divalidasi**: GudangLogic.simpan/ser/des kini
+   menerima daftar id sah (dikirim GudangService dengan CropData.byId) —
+   blok_panen dari simpanan dunia lama tidak bisa di-restore, disetor,
+   maupun diambil (ambil menolak dengan "Barang tidak dikenal.").
+E. **UI klien memfilter item tak dikenal** di ketiga titik masuk state.tas
+   (GetState awal, GetState sync, Sync berkala) plus guard di daftar semai
+   panen: slot asing tak pernah tampil lagi sebagai baris mati.
+F. **Pengujian**: seksi V baru 13 cek (blok_panen dibuang saat load; 6 slot
+   rusak dibuang & 3 sah tersisa; 999->250; gagal-aman tanpa daftar; tas
+   60 slot dipangkas ke 50; SEMAI PANEN TERBACA LAGI — hasil wortel dari
+   tas bersih bisa diatur jumlah & masuk mesin; blok_panen tak bisa masuk
+   mesin) + 2 cek gudang baru. Tes offline 334 PASS / 0 FAIL, PLAYTEST
+   130 PASS / 0 FAIL, UJIAN MASSA 116 PASS / 0 FAIL, luau-lsp 0 temuan,
+   rojo build sukses. Publish #49.
+
+| # | Kriteria | Skor | Alasan |
+|---|----------|------|--------|
+| 1 Kombat | 0/10 | Belum ada monster/AI/bos. |
+| 2 Crafting | 4/10 | Rantai olah mesin semai kini bersih dari item hantu dari data lama. |
+| 3 Stat & Progresi | 1/10 | Tanpa level (sesuai arah pemilik); soal matematika tetap gerbang tanam. |
+| 4 Ekonomi | 7/10 | Tas & gudang kini menolak/membersihkan item ilegal termasuk dari save lama — inventaris bisa dipercaya penuh. |
+| 5 Dunia & Peta | 7/10 | Tetap: drop tergeletak rapi di atas tanah; belum: rumah, air, dungeon. |
+| 6 Multiplayer | 6.5/10 | Sanitasi berjalan di server untuk semua pemain; trade/party belum ada. |
+| 7 Bertani | 10/10 | Semai panen kembali terbaca: hasil panen dari tas bersih bisa diatur jumlahnya & diproses mesin (13 cek baru). |
+| 8 Polish & UX | 10/10 | Item asing tak pernah tampil lagi di tas/daftar; pembersihan diberi tahu lewat toast, bukan diam-diam. |
+| 9 Originalitas | 10/10 | SanitasiTas & validasi gudang modul orisinal sendiri. |
+
+**TOTAL: 56.0/100** (bobot: 0+60+10+105+70+65+100+100+50 = 560/10 = 56.0)
+
 ## Skor v47 (versi LIVE #48, 7 Nov 2026) - TANPA ITEM BLOK + NAMA BENIH "BENIH X" + DROP TIDAK PERNAH TENGGELAM LAGI + UJIAN SIKLUS PENUH
 
 Permintaan pemilik (pesan langsung): (1) "Di item kita gak ada item namanya

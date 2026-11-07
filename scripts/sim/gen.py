@@ -30,7 +30,7 @@ def output_path() -> pathlib.Path:
 SCENARIO = scenario_text()
 OUTFILE = output_path()
 
-MODULES_SHARED = ["CropData", "Recipes", "StrukBeli", "TasLogic", "Layout", "DuniaLogic", "SoalLogic", "GudangLogic", "PukulLogic", "PanenStatus", "UIStyle", "PukulAnim", "ArahPukul", "KontrolHP", "HUDLayout", "DropBentuk", "IkonJempol", "UangLogic", "SesiLogic", "KlaimDrop", "PanenWaktu", "SemaiLogic", "JualLogic", "TanahDrops"]
+MODULES_SHARED = ["CropData", "Recipes", "StrukBeli", "TasLogic", "SanitasiTas", "Layout", "DuniaLogic", "SoalLogic", "GudangLogic", "PukulLogic", "PanenStatus", "UIStyle", "PukulAnim", "ArahPukul", "KontrolHP", "HUDLayout", "DropBentuk", "IkonJempol", "UangLogic", "SesiLogic", "KlaimDrop", "PanenWaktu", "SemaiLogic", "JualLogic", "TanahDrops"]
 MODULES_SERVER = [
     "RateLimit",
     "DevCodeVault",

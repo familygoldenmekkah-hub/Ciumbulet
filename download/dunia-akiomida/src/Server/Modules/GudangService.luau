@@ -73,7 +73,7 @@ function GudangService.simpan(player, cropId: any, nRaw: any): (boolean, string)
         end
         n = math.min(n, stock, GudangLogic.MaksIsi)
         local gd = stateOf(index)
-        local ok, msg = GudangLogic.simpan(gd, cropId, n)
+        local ok, msg = GudangLogic.simpan(gd, cropId, n, CropData.byId)
         if not ok then
                 return false, msg
         end
@@ -101,6 +101,9 @@ function GudangService.ambil(player, slotI: any, nRaw: any): (boolean, string)
                 return false, msg
         end
         local s = gd.s[i]
+        if not CropData.byId[s.id] then
+                return false, "Barang tidak dikenal."
+        end
         local room = Tas.roomFor(player, "hasil", s.id, n)
         if room < 1 then
                 return false, "Tas penuh! Kosongkan slot tas dulu."
@@ -119,11 +122,11 @@ function GudangService.ambil(player, slotI: any, nRaw: any): (boolean, string)
 end
 
 function GudangService.serLahan(index: number)
-        return GudangLogic.ser(gudang[index])
+        return GudangLogic.ser(gudang[index], CropData.byId)
 end
 
 function GudangService.restoreLahan(index: number, arr: any)
-        gudang[index] = GudangLogic.des(arr)
+        gudang[index] = GudangLogic.des(arr, CropData.byId)
 end
 
 function GudangService.clearLahan(index: number)

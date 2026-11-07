@@ -483,6 +483,8 @@ do
         local des = GudangLogic.des(ser)
         check("Serialize gudang roundtrip", des.s[1].id == "wortel" and des.s[1].count == 150 and GudangLogic.terpakai(des) == 2, "-")
         check("Deserialize tolak data rusak", GudangLogic.terpakai(GudangLogic.des({ { id = 9, count = 5 }, { id = "wortel", count = "x" }, { id = "pisang", count = 40 } })) == 1, tostring(GudangLogic.terpakai(GudangLogic.des({ { id = 9, count = 5 }, { id = "wortel", count = "x" }, { id = "pisang", count = 40 } }))))
+        check("Deserialize tolak 'blok_panen' dari dunia lama", GudangLogic.terpakai(GudangLogic.des({ { id = "blok_panen", count = 12 }, { id = "pisang", count = 40 } }, CropData.byId)) == 1, tostring(GudangLogic.terpakai(GudangLogic.des({ { id = "blok_panen", count = 12 }, { id = "pisang", count = 40 } }, CropData.byId))))
+        check("Setor 'blok_panen' ditolak", not GudangLogic.simpan(gd, "blok_panen", 5, CropData.byId), "-")
         check("Deserialize batasi 1000 slot", (function()
                 local banyak = {}
                 for _ = 1, 1200 do
@@ -1148,6 +1150,54 @@ do
         end
         check("14) Tidak ada satu pun item 'blok' di tas sepanjang ujian", not adaBlok, "-")
         check("15) Siklus utuh server-side: beli -> tanam -> panen -> ambil -> semai -> klaim BERJALAN", TasLogic.countOf(tas, "benih", "wortel") == hasil.benih and micda == CropData.StartMoney - pack.price + hasil.micda, tostring(micda))
+end
+
+print("--- V: Sanitasi tas lama - blok_panen dibuang, semai panen terbaca lagi ---")
+do
+        local SanitasiTas = require("./../src/Shared/SanitasiTas")
+        local SemaiLogic = require("./../src/Shared/SemaiLogic")
+        local tasKotor = {
+                { kind = "hasil", id = "blok_panen", count = 12 },
+                { kind = "benih", id = "wortel", count = 3 },
+                { kind = "hasil", id = "wortel", count = 7 },
+                { kind = "hasil", id = "barang_palsu", count = 5 },
+                { kind = "pusat", id = "wortel", count = 4 },
+                { kind = "hasil", id = "wortel", count = 0 },
+                { kind = "hasil", id = "wortel", count = -3 },
+                { kind = "hasil", id = "wortel", count = "banyak" },
+                { kind = "benih", id = "wortel", count = 999 },
+        }
+        local bersih, dibuang = SanitasiTas.bersih(tasKotor, CropData.byId)
+        check("Slot 'blok_panen' dari data lama DIBUANG saat load", TasLogic.countOf(bersih, "hasil", "blok_panen") == 0, tostring(TasLogic.countOf(bersih, "hasil", "blok_panen")))
+        check("6 slot rusak/asing dibuang, 3 slot sah tersisa", dibuang == 6 and #bersih == 3, tostring(dibuang) .. "/" .. tostring(#bersih))
+        check("Benih & hasil panen yang sah tidak ikut terbuang", TasLogic.countOf(bersih, "benih", "wortel") == 253 and TasLogic.countOf(bersih, "hasil", "wortel") == 7, tostring(TasLogic.countOf(bersih, "benih", "wortel")))
+        check("Count 999 dijepit jadi 250 (stack maksimal)", bersih[#bersih].count == 250, tostring(bersih[#bersih].count))
+        check("Sanitasi aman untuk data hilang/bukan tabel", select(2, SanitasiTas.bersih(nil, CropData.byId)) == 0 and #SanitasiTas.bersih(nil, CropData.byId) == 0, "-")
+        check("slotValid menolak bentuk rusak", not SanitasiTas.slotValid(nil, CropData.byId) and not SanitasiTas.slotValid({ kind = "hasil", id = "blok_panen", count = 1 }, CropData.byId) and not SanitasiTas.slotValid({ kind = "benih", id = "wortel", count = 0 }, CropData.byId), "-")
+        check("slotValid menerima slot sah", SanitasiTas.slotValid({ kind = "hasil", id = "wortel", count = 7 }, CropData.byId), "-")
+        check("Tanpa daftar id, sanitasi gagal-aman (semua ditolak)", (function()
+                local k, d = SanitasiTas.bersih(tasKotor, nil)
+                return #k == 0 and d == 9
+        end)(), "-")
+        local penuh = {}
+        for _ = 1, 60 do
+                table.insert(penuh, { kind = "benih", id = "pisang", count = 1 })
+        end
+        local pBersih, pDibuang = SanitasiTas.bersih(penuh, CropData.byId)
+        check("Tas tidak pernah melebihi 50 slot saat sanitasi", #pBersih == 50 and pDibuang == 10, tostring(#pBersih) .. "/" .. tostring(pDibuang))
+        local namaSemuaSah = true
+        for _, s in ipairs(bersih) do
+                if not CropData.byId[s.id] then
+                        namaSemuaSah = false
+                end
+        end
+        check("Sisa tas hanya item tanaman resmi (benih X / X)", namaSemuaSah, "-")
+        local terbaca = TasLogic.countOf(bersih, "hasil", "wortel")
+        local jumlah = SemaiLogic.saringJumlah(tostring(terbaca), terbaca, CropData.MesinSemai.Kapasitas)
+        check("SEMAI PANEN TERBACA LAGI: hasil wortel dari tas bersih bisa diatur jumlahnya", terbaca == 7 and jumlah == 7, tostring(terbaca) .. "/" .. tostring(jumlah))
+        local diambilMesin = TasLogic.remove(bersih, "hasil", "wortel", jumlah)
+        check("Mesin mengambil 7 wortel dari tas bersih tanpa galat", diambilMesin == 7 and TasLogic.countOf(bersih, "hasil", "wortel") == 0, tostring(diambilMesin))
+        check("blok_panen tidak bisa masuk mesin", TasLogic.countOf(bersih, "hasil", "blok_panen") == 0 and CropData.byId["blok_panen"] == nil, "-")
 end
 
 print(("="):rep(28))

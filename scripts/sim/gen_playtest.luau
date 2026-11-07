@@ -1296,6 +1296,64 @@ return TasLogic
 
 end)()
 
+local MOD_SanitasiTas = (function()
+local SanitasiTas = {}
+
+local MAX_SLOT = 50
+local MAX_STACK = 250
+local KIND_OK = { benih = true, hasil = true }
+
+function SanitasiTas.bersih(raw: any, byId: any): ({ any }, number)
+	local out = {}
+	local dibuang = 0
+	if type(byId) ~= "table" then
+		if type(raw) == "table" then
+			for _ in ipairs(raw) do
+				dibuang += 1
+			end
+		end
+		return out, dibuang
+	end
+	if type(raw) ~= "table" then
+		return out, dibuang
+	end
+	for _, s in ipairs(raw) do
+		local ok = false
+		if #out < MAX_SLOT and type(s) == "table" and KIND_OK[s.kind] and type(s.id) == "string" and byId[s.id] then
+			local n = tonumber(s.count)
+			if n and n == n and n >= 1 then
+				table.insert(out, { kind = s.kind, id = s.id, count = math.min(MAX_STACK, math.floor(n)) })
+				ok = true
+			end
+		end
+		if not ok then
+			dibuang += 1
+		end
+	end
+	return out, dibuang
+end
+
+function SanitasiTas.slotValid(s: any, byId: any): boolean
+	if type(byId) ~= "table" then
+		return false
+	end
+	if type(s) ~= "table" then
+		return false
+	end
+	if s.kind ~= "benih" and s.kind ~= "hasil" then
+		return false
+	end
+	if type(s.id) ~= "string" or not byId[s.id] then
+		return false
+	end
+	local n = tonumber(s.count)
+	return n ~= nil and n == n and n >= 1 and n <= MAX_STACK and n == math.floor(n)
+end
+
+return SanitasiTas
+
+end)()
+
 local MOD_Layout = (function()
 local Layout = {}
 
@@ -1610,83 +1668,83 @@ GudangLogic.MaksSlot = 1000
 GudangLogic.MaksIsi = 250
 
 function GudangLogic.baru(): { s: { { id: string, count: number } } }
-	return { s = {} }
+        return { s = {} }
 end
 
 function GudangLogic.terpakai(gd: any): number
-	if type(gd) ~= "table" or type(gd.s) ~= "table" then
-		return 0
-	end
-	return #gd.s
+        if type(gd) ~= "table" or type(gd.s) ~= "table" then
+                return 0
+        end
+        return #gd.s
 end
 
-function GudangLogic.simpan(gd: any, id: any, n: any): (boolean, string)
-	if type(id) ~= "string" or #id == 0 or #id > 40 then
-		return false, "Barang tidak sah."
-	end
-	if type(n) ~= "number" or n ~= n or n % 1 ~= 0 or n < 1 or n > GudangLogic.MaksIsi then
-		return false, "Jumlah setor harus 1 sampai 250."
-	end
-	if GudangLogic.terpakai(gd) >= GudangLogic.MaksSlot then
-		return false, "Gudang penuh! Tampungan 1000 sudah habis."
-	end
-	table.insert(gd.s, { id = id, count = n })
-	return true, "Tampungan terpakai " .. GudangLogic.terpakai(gd) .. "/" .. GudangLogic.MaksSlot .. " (sisa " .. GudangLogic.MaksSlot - GudangLogic.terpakai(gd) .. ")."
+function GudangLogic.simpan(gd: any, id: any, n: any, byId: any?): (boolean, string)
+        if type(id) ~= "string" or #id == 0 or #id > 40 or (byId ~= nil and type(byId) == "table" and not byId[id]) then
+                return false, "Barang tidak sah."
+        end
+        if type(n) ~= "number" or n ~= n or n % 1 ~= 0 or n < 1 or n > GudangLogic.MaksIsi then
+                return false, "Jumlah setor harus 1 sampai 250."
+        end
+        if GudangLogic.terpakai(gd) >= GudangLogic.MaksSlot then
+                return false, "Gudang penuh! Tampungan 1000 sudah habis."
+        end
+        table.insert(gd.s, { id = id, count = n })
+        return true, "Tampungan terpakai " .. GudangLogic.terpakai(gd) .. "/" .. GudangLogic.MaksSlot .. " (sisa " .. GudangLogic.MaksSlot - GudangLogic.terpakai(gd) .. ")."
 end
 
 function GudangLogic.ambil(gd: any, i: any, n: any): (boolean, string, number)
-	if type(i) ~= "number" or i ~= i or i % 1 ~= 0 or i < 1 or i > GudangLogic.terpakai(gd) then
-		return false, "Slot gudang tidak ada.", 0
-	end
-	local s = gd.s[i]
-	if type(n) ~= "number" or n ~= n or n % 1 ~= 0 or n < 1 then
-		n = s.count
-	end
-	n = math.max(1, math.min(math.floor(n), s.count, GudangLogic.MaksIsi))
-	return true, "OK", n
+        if type(i) ~= "number" or i ~= i or i % 1 ~= 0 or i < 1 or i > GudangLogic.terpakai(gd) then
+                return false, "Slot gudang tidak ada.", 0
+        end
+        local s = gd.s[i]
+        if type(n) ~= "number" or n ~= n or n % 1 ~= 0 or n < 1 then
+                n = s.count
+        end
+        n = math.max(1, math.min(math.floor(n), s.count, GudangLogic.MaksIsi))
+        return true, "OK", n
 end
 
 function GudangLogic.kurangi(gd: any, i: number, n: number)
-	local s = gd.s[i]
-	if not s then
-		return
-	end
-	s.count -= n
-	if s.count <= 0 then
-		table.remove(gd.s, i)
-	end
+        local s = gd.s[i]
+        if not s then
+                return
+        end
+        s.count -= n
+        if s.count <= 0 then
+                table.remove(gd.s, i)
+        end
 end
 
-function GudangLogic.ser(gd: any): { { id: string, count: number } }
-	local out = {}
-	if type(gd) ~= "table" or type(gd.s) ~= "table" then
-		return out
-	end
-	for _, s in ipairs(gd.s) do
-		if #out >= GudangLogic.MaksSlot then
-			break
-		end
-		if type(s) == "table" and type(s.id) == "string" and #s.id <= 40 and type(s.count) == "number" and s.count == s.count and s.count >= 1 then
-			table.insert(out, { id = s.id, count = math.min(GudangLogic.MaksIsi, math.floor(s.count)) })
-		end
-	end
-	return out
+function GudangLogic.ser(gd: any, byId: any?): { { id: string, count: number } }
+        local out = {}
+        if type(gd) ~= "table" or type(gd.s) ~= "table" then
+                return out
+        end
+        for _, s in ipairs(gd.s) do
+                if #out >= GudangLogic.MaksSlot then
+                        break
+                end
+                if type(s) == "table" and type(s.id) == "string" and #s.id <= 40 and type(s.count) == "number" and s.count == s.count and s.count >= 1 and (byId == nil or type(byId) ~= "table" or byId[s.id] ~= nil) then
+                        table.insert(out, { id = s.id, count = math.min(GudangLogic.MaksIsi, math.floor(s.count)) })
+                end
+        end
+        return out
 end
 
-function GudangLogic.des(x: any): { s: { { id: string, count: number } } }
-	local gd = GudangLogic.baru()
-	if type(x) ~= "table" then
-		return gd
-	end
-	for _, s in ipairs(x) do
-		if #gd.s >= GudangLogic.MaksSlot then
-			break
-		end
-		if type(s) == "table" and type(s.id) == "string" and #s.id <= 40 and type(s.count) == "number" and s.count == s.count and s.count >= 1 then
-			table.insert(gd.s, { id = s.id, count = math.min(GudangLogic.MaksIsi, math.floor(s.count)) })
-		end
-	end
-	return gd
+function GudangLogic.des(x: any, byId: any?): { s: { { id: string, count: number } } }
+        local gd = GudangLogic.baru()
+        if type(x) ~= "table" then
+                return gd
+        end
+        for _, s in ipairs(x) do
+                if #gd.s >= GudangLogic.MaksSlot then
+                        break
+                end
+                if type(s) == "table" and type(s.id) == "string" and #s.id <= 40 and type(s.count) == "number" and s.count == s.count and s.count >= 1 and (byId == nil or type(byId) ~= "table" or byId[s.id] ~= nil) then
+                        table.insert(gd.s, { id = s.id, count = math.min(GudangLogic.MaksIsi, math.floor(s.count)) })
+                end
+        end
+        return gd
 end
 
 return GudangLogic
@@ -3930,6 +3988,7 @@ local CropData = MOD_CropData
 local Net = MOD_Remotes
 local UangLogic = MOD_UangLogic
 local SesiLogic = MOD_SesiLogic
+local SanitasiTas = MOD_SanitasiTas
 
 local DataService = {}
 
@@ -4028,7 +4087,7 @@ local function lepasKunci(userId: number)
         end)
 end
 
-function DataService.load(player: Player): (boolean, string?)
+function DataService.load(player: Player): (boolean, string?, number)
         local userId = player.UserId
         local ok, data = pcall(function()
                 return store:GetAsync("u_" .. tostring(userId))
@@ -4038,7 +4097,7 @@ function DataService.load(player: Player): (boolean, string?)
                 loadedOk[userId] = false
                 dirty[userId] = false
                 push(player)
-                return false, "galat"
+                return false, "galat", 0
         end
         if type(data) == "table" and type(data.m) == "number" and not data.u then
                 data.u = UangLogic.baru(data.m)
@@ -4051,17 +4110,18 @@ function DataService.load(player: Player): (boolean, string?)
                 loadedOk[userId] = false
                 dirty[userId] = false
                 push(player)
-                return false, "kunci"
+                return false, "kunci", 0
         end
+        local tasBersih, dibuang = SanitasiTas.bersih(data.t, CropData.byId)
         cache[userId] = {
                 u = { m = data.u.m, ledger = type(data.u.ledger) == "table" and data.u.ledger or {}, tick = {} },
-                t = type(data.t) == "table" and data.t or {},
+                t = tasBersih,
                 dev = data.dev == true,
         }
         loadedOk[userId] = true
-        dirty[userId] = false
+        dirty[userId] = dibuang > 0
         push(player)
-        return true, nil
+        return true, nil, dibuang
 end
 
 local function simpanSekali(userId: number, d: any): boolean
@@ -6828,7 +6888,7 @@ function GudangService.simpan(player, cropId: any, nRaw: any): (boolean, string)
         end
         n = math.min(n, stock, GudangLogic.MaksIsi)
         local gd = stateOf(index)
-        local ok, msg = GudangLogic.simpan(gd, cropId, n)
+        local ok, msg = GudangLogic.simpan(gd, cropId, n, CropData.byId)
         if not ok then
                 return false, msg
         end
@@ -6856,6 +6916,9 @@ function GudangService.ambil(player, slotI: any, nRaw: any): (boolean, string)
                 return false, msg
         end
         local s = gd.s[i]
+        if not CropData.byId[s.id] then
+                return false, "Barang tidak dikenal."
+        end
         local room = Tas.roomFor(player, "hasil", s.id, n)
         if room < 1 then
                 return false, "Tas penuh! Kosongkan slot tas dulu."
@@ -6874,11 +6937,11 @@ function GudangService.ambil(player, slotI: any, nRaw: any): (boolean, string)
 end
 
 function GudangService.serLahan(index: number)
-        return GudangLogic.ser(gudang[index])
+        return GudangLogic.ser(gudang[index], CropData.byId)
 end
 
 function GudangService.restoreLahan(index: number, arr: any)
-        gudang[index] = GudangLogic.des(arr)
+        gudang[index] = GudangLogic.des(arr, CropData.byId)
 end
 
 function GudangService.clearLahan(index: number)
@@ -7302,6 +7365,7 @@ local DropBentuk = MOD_DropBentuk
 local IkonJempol = MOD_IkonJempol
 local JualLogic = MOD_JualLogic
 local SemaiLogic = MOD_SemaiLogic
+local SanitasiTas = MOD_SanitasiTas
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -7596,6 +7660,16 @@ local function ikonSlot(cell: Frame, s: any?)
         end
 end
 
+local function bersihkanTasClient(raw: any): { any }
+        local out = {}
+        for _, s in ipairs(type(raw) == "table" and raw or {}) do
+                if SanitasiTas.slotValid(s, CropData.byId) then
+                        table.insert(out, s)
+                end
+        end
+        return out
+end
+
 local function refreshTas()
         local used = #state.tas
         for i = 1, 50 do
@@ -7636,7 +7710,7 @@ local function syncState()
                 local st = Net.get("GetState"):InvokeServer()
                 if st then
                         state.micda = st.micda or 0
-                        state.tas = st.tas or {}
+                        state.tas = bersihkanTasClient(st.tas)
                         state.lahan = st.lahan
                         state.zone = st.zone or "kota"
                         state.dunia = st.dunia
@@ -7849,9 +7923,12 @@ local function refreshSemai()
                 local order = 0
                 for _, s in ipairs(state.tas) do
                         if s.kind == "hasil" then
-                                order += 1
                                 local info = CropData.byId[s.id]
-                                local cfg = info and CropData.Giling[info.rarity]
+                                if not info then
+                                        continue
+                                end
+                                order += 1
+                                local cfg = CropData.Giling[info.rarity]
                                 local per = cfg and SemaiLogic.pukulanPerItem(cfg) or 0
                                 local row = mk("TextButton", { Size = UDim2.new(1, -8, 0, 54), BackgroundColor3 = warna(s.id == semaiPilih and UIStyle.PermukaanAktif or UIStyle.Permukaan), Text = "", AutoButtonColor = true, LayoutOrder = order }, semaiScroll)
                                 round(row, UIStyle.SudutKecil)
@@ -8808,7 +8885,7 @@ end)
 
 Net.get("Sync").OnClientEvent:Connect(function(payload)
         state.micda = payload.micda
-        state.tas = payload.tas or {}
+        state.tas = bersihkanTasClient(payload.tas)
         angkaLabel.Text = fmt(state.micda)
         if payload.zone then
                 state.zone = payload.zone
@@ -8891,7 +8968,7 @@ task.spawn(function()
         local st = Net.get("GetState"):InvokeServer()
         if st then
                 state.micda = st.micda or 0
-                state.tas = st.tas or {}
+                state.tas = bersihkanTasClient(st.tas)
                 state.lahan = st.lahan
                 state.zone = st.zone or "kota"
                 state.dunia = st.dunia
@@ -9052,7 +9129,7 @@ local function applySpawn(player: Player)
 end
 
 local function enterServer(player: Player)
-        local ok, alasan = DataService.load(player)
+        local ok, alasan, dibuang = DataService.load(player)
         local d = DataService.get(player)
         local leaderstats = Instance.new("Folder")
         leaderstats.Name = "leaderstats"
@@ -9065,6 +9142,9 @@ local function enterServer(player: Player)
         DataService.push(player)
         task.delay(4, function()
                 if player.Parent then
+                        if dibuang and dibuang > 0 then
+                                notify(player, "Tas Dibersihkan", tostring(dibuang) .. " item lama yang tidak dipakai sudah dibuang otomatis dari tas.")
+                        end
                         if ok then
                                 notify(player, "Pusat Kota", "Selamat datang! Lewati Gerbang Dunia atau tombol Masuk untuk ke duniamu.")
                         elseif alasan == "kunci" then

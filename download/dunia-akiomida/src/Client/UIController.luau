@@ -16,6 +16,7 @@ local DropBentuk = require(ReplicatedStorage.Shared.DropBentuk)
 local IkonJempol = require(ReplicatedStorage.Shared.IkonJempol)
 local JualLogic = require(ReplicatedStorage.Shared.JualLogic)
 local SemaiLogic = require(ReplicatedStorage.Shared.SemaiLogic)
+local SanitasiTas = require(ReplicatedStorage.Shared.SanitasiTas)
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -310,6 +311,16 @@ local function ikonSlot(cell: Frame, s: any?)
         end
 end
 
+local function bersihkanTasClient(raw: any): { any }
+        local out = {}
+        for _, s in ipairs(type(raw) == "table" and raw or {}) do
+                if SanitasiTas.slotValid(s, CropData.byId) then
+                        table.insert(out, s)
+                end
+        end
+        return out
+end
+
 local function refreshTas()
         local used = #state.tas
         for i = 1, 50 do
@@ -350,7 +361,7 @@ local function syncState()
                 local st = Net.get("GetState"):InvokeServer()
                 if st then
                         state.micda = st.micda or 0
-                        state.tas = st.tas or {}
+                        state.tas = bersihkanTasClient(st.tas)
                         state.lahan = st.lahan
                         state.zone = st.zone or "kota"
                         state.dunia = st.dunia
@@ -563,9 +574,12 @@ local function refreshSemai()
                 local order = 0
                 for _, s in ipairs(state.tas) do
                         if s.kind == "hasil" then
-                                order += 1
                                 local info = CropData.byId[s.id]
-                                local cfg = info and CropData.Giling[info.rarity]
+                                if not info then
+                                        continue
+                                end
+                                order += 1
+                                local cfg = CropData.Giling[info.rarity]
                                 local per = cfg and SemaiLogic.pukulanPerItem(cfg) or 0
                                 local row = mk("TextButton", { Size = UDim2.new(1, -8, 0, 54), BackgroundColor3 = warna(s.id == semaiPilih and UIStyle.PermukaanAktif or UIStyle.Permukaan), Text = "", AutoButtonColor = true, LayoutOrder = order }, semaiScroll)
                                 round(row, UIStyle.SudutKecil)
@@ -1522,7 +1536,7 @@ end)
 
 Net.get("Sync").OnClientEvent:Connect(function(payload)
         state.micda = payload.micda
-        state.tas = payload.tas or {}
+        state.tas = bersihkanTasClient(payload.tas)
         angkaLabel.Text = fmt(state.micda)
         if payload.zone then
                 state.zone = payload.zone
@@ -1605,7 +1619,7 @@ task.spawn(function()
         local st = Net.get("GetState"):InvokeServer()
         if st then
                 state.micda = st.micda or 0
-                state.tas = st.tas or {}
+                state.tas = bersihkanTasClient(st.tas)
                 state.lahan = st.lahan
                 state.zone = st.zone or "kota"
                 state.dunia = st.dunia
