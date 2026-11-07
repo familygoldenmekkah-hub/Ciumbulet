@@ -871,6 +871,11 @@ function Stub.install()
                                 return true
                         end
                         function ds:UpdateAsync(key, transform)
+                                local fail = self.__failUpdate or 0
+                                if fail > 0 then
+                                        self.__failUpdate = fail - 1
+                                        error("DataStore tulis galat (simulasi)")
+                                end
                                 local old = self.__data[key]
                                 local baru = transform(old)
                                 if baru ~= nil then

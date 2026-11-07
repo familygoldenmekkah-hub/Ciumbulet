@@ -872,6 +872,11 @@ function Stub.install()
                                 return true
                         end
                         function ds:UpdateAsync(key, transform)
+                                local fail = self.__failUpdate or 0
+                                if fail > 0 then
+                                        self.__failUpdate = fail - 1
+                                        error("DataStore tulis galat (simulasi)")
+                                end
                                 local old = self.__data[key]
                                 local baru = transform(old)
                                 if baru ~= nil then
@@ -4440,19 +4445,29 @@ function DataService.bolehSimpan(player: Player): boolean
         return loadedOk[player.UserId] == true
 end
 
+local RETRY_KUNCI = 4
+
 local function ambilKunci(userId: number): boolean
-        local ambil = false
-        local ok = pcall(function()
-                store:UpdateAsync("l_" .. tostring(userId), function(old)
-                        if SesiLogic.bisaAmbil(old, jobId, now()) then
-                                ambil = true
-                                return SesiLogic.kunciBaru(jobId, now())
-                        end
-                        ambil = false
-                        return old
+        for i = 1, RETRY_KUNCI do
+                local ambil = false
+                local ok = pcall(function()
+                        store:UpdateAsync("l_" .. tostring(userId), function(old)
+                                if SesiLogic.bisaAmbil(old, jobId, now()) then
+                                        ambil = true
+                                        return SesiLogic.kunciBaru(jobId, now())
+                                end
+                                ambil = false
+                                return old
+                        end)
                 end)
-        end)
-        return ok and ambil
+                if ok and ambil then
+                        return true
+                end
+                if i < RETRY_KUNCI then
+                        task.wait(0.3 * i * i)
+                end
+        end
+        return false
 end
 
 local function lepasKunci(userId: number)
@@ -4559,17 +4574,9 @@ function DataService.cobaSinkron(player: Player): boolean
         if loadedOk[player.UserId] then
                 return true
         end
-        local userId = player.UserId
-        local lama = cache[userId]
-        local mainan = dirty[userId] == true
-        local ok, alasan, dibuang = DataService.load(player)
+        local ok = DataService.load(player)
         if not ok then
                 return false
-        end
-        if mainan and lama then
-                cache[userId] = lama
-                dirty[userId] = true
-                push(player)
         end
         return true
 end
@@ -6794,10 +6801,21 @@ local function saveSeksi(s: Seksi, force: boolean, leaving: boolean?)
         end
 end
 
+local RETRY_DUNIA = 3
+
 local function loadWorld(ownerId: number): (boolean, string?, any, any, any, any, any)
-        local ok, data = pcall(function()
-                return store:GetAsync(DuniaLogic.keyFor(ownerId))
-        end)
+        local ok, data = false, nil
+        for i = 1, RETRY_DUNIA do
+                ok, data = pcall(function()
+                        return store:GetAsync(DuniaLogic.keyFor(ownerId))
+                end)
+                if ok then
+                        break
+                end
+                if i < RETRY_DUNIA then
+                        task.wait(0.4 * i)
+                end
+        end
         if not ok then
                 return false, nil, {}, {}, nil, {}, nil
         end
@@ -6805,6 +6823,43 @@ local function loadWorld(ownerId: number): (boolean, string?, any, any, any, any
                 return true, nil, {}, {}, nil, {}, nil
         end
         return true, DuniaLogic.cleanName(data.n), DuniaLogic.desPlots(data.pl), DuniaLogic.desMesin(data.mj), data.gd, data.dr, data.lt
+end
+
+local function jadwalkanPulihDunia(s: Seksi, player: Player)
+        task.spawn(function()
+                for _ = 1, 40 do
+                        task.wait(8)
+                        if seksi[s.idx] ~= s or s.ghost or s.savedOk then
+                                return
+                        end
+                        if not player.Parent then
+                                return
+                        end
+                        local ok, _nama, plots, meja, gd, dr, lt = loadWorld(s.ownerId)
+                        if not ok then
+                                continue
+                        end
+                        if seksi[s.idx] ~= s or s.ghost or s.savedOk then
+                                return
+                        end
+                        s.savedOk = true
+                        s.canSave = true
+                        s.dirty = true
+                        Plot.restore(s.idx, plots)
+                        Mesin.restoreLahan(s.idx, meja, s.ownerId)
+                        if Gudang then
+                                Gudang.restoreLahan(s.idx, gd)
+                        end
+                        if Drop then
+                                Drop.restoreLahan(s.idx, dr, lt)
+                        end
+                        Plot.updateBoard(s.idx)
+                        if player.Parent then
+                                Notify(player, "Sinkronisasi Dunia", "Duniamu berhasil dimuat dari data tersimpan.")
+                        end
+                        return
+                end
+        end)
 end
 
 local function buildSection(idx: number, ownerId: number, nama: string, ghost: boolean, savedOk: boolean, plots: any, meja: any, gd: any, dr: any, lt: any): Seksi
@@ -6880,7 +6935,10 @@ function ZonaService.masuk(player: Player): (boolean, string)
         if idx <= 0 then
                 return false, "Semua petak dunia di server ini sedang terpakai. Coba lagi sebentar."
         end
-        buildSection(idx, player.UserId, nama, false, loadOk, plots, meja, gd, dr, lt)
+        local seksiBaru = buildSection(idx, player.UserId, nama, false, loadOk, plots, meja, gd, dr, lt)
+        if not loadOk then
+                jadwalkanPulihDunia(seksiBaru, player)
+        end
         byOwner[player.UserId] = idx
         if placeWait(player, arrivalPos(idx), "dunia", nama) then
                 return true, "Duniamu siap. Masuk dan pulang kini tanpa loading."
@@ -9828,9 +9886,7 @@ local function applySpawn(player: Player)
 end
 
 local function enterServer(player: Player)
-        print("DEBUG-enterServer", player.Name)
         local ok, alasan, dibuang = DataService.load(player)
-        print("DEBUG-load", player.Name, ok, alasan)
         local d = DataService.get(player)
         local leaderstats = Instance.new("Folder")
         leaderstats.Name = "leaderstats"
@@ -9839,7 +9895,6 @@ local function enterServer(player: Player)
         micda.Value = d and UangLogic.saldo(d.u) or 0
         micda.Parent = leaderstats
         leaderstats.Parent = player
-        print("DEBUG-leaderstats", player.Name)
         applySpawn(player)
         DataService.push(player)
         task.delay(4, function()
@@ -10319,6 +10374,61 @@ Stub.Scheduler.advance(30)
 local ls2b = P2:FindFirstChild("leaderstats")
 check("Sinkron otomatis: data asli 5.000 diadopsi tanpa banner lama", ls2b ~= nil and ls2b:FindFirstChild("Micda") ~= nil and ls2b:FindFirstChild("Micda").Value == 5000, ls2b and tostring(ls2b:FindFirstChild("Micda").Value) or "hilang")
 check("Kedua pemain hidup berdampingan", P1.Parent ~= nil and P2.Parent ~= nil, "-")
+
+section("Keluar-masuk: sesi darurat dengan transaksi TIDAK menghapus data asli")
+profStore.__data["u_1003"] = { m = 7777, t = { { kind = "benih", id = "wortel", count = 9 } }, dev = false }
+profStore.__failGet = 5
+local P3 = Stub.addPlayer(1003, "petani3")
+Stub.giveCharacter(P3, 12, 6, 44)
+Players.PlayerAdded:Fire(P3)
+Stub.Scheduler.advance(2)
+local ls3 = P3:FindFirstChild("leaderstats")
+check("P3 darurat: saldo default 10.000 tampil sementara", ls3 ~= nil and ls3:FindFirstChild("Micda") ~= nil and ls3:FindFirstChild("Micda").Value == 10000, ls3 and tostring(ls3:FindFirstChild("Micda").Value) or "hilang")
+local okDev, msgDev = serverCall("RedeemDevCode", P3, MOD_DevCodeVault.CODE)
+check("P3 bertransaksi di sesi darurat (tandai simpan = kondisi pemakai nyata)", okDev == true, tostring(msgDev))
+Stub.Scheduler.advance(30)
+local st3 = serverCall("GetState", P3)
+check("Data asli SELALU menang: saldo 7.777 diadopsi, bukan sesi darurat", st3 ~= nil and st3.micda == 7777, st3 and tostring(st3.micda))
+check("Data asli SELALU menang: Benih Wortel 9 kembali di tas", tasCount(P3, "benih", "wortel") == 9, tostring(tasCount(P3, "benih", "wortel")))
+
+section("Keluar-masuk cepat: kunci sesi tertahan tulisan lama dipakai ulang otomatis")
+profStore.__data["u_1004"] = { m = 3333, t = {}, dev = false }
+profStore.__failUpdate = 3
+local P4 = Stub.addPlayer(1004, "petani4")
+Stub.giveCharacter(P4, 18, 6, 44)
+Players.PlayerAdded:Fire(P4)
+Stub.Scheduler.advance(6)
+local st4 = serverCall("GetState", P4)
+check("Rejoin cepat: kunci diambil ulang, data asli 3.333 langsung terpakai (tanpa sesi darurat)", st4 ~= nil and st4.micda == 3333, st4 and tostring(st4.micda))
+profStore.__failUpdate = 0
+
+section("Keluar-masuk: dunia pulih sendiri saat DataStore gagal saat masuk")
+local duniaStore = Stub.Services.DataStoreService:GetDataStore("AKM_Dunia")
+duniaStore.__data["d_1005"] = {
+        n = "Dunia Lima",
+        pl = { [0] = { c = "wortel", r = os.time() + 600, h = 0, l = 0 } },
+        mj = {},
+        gd = {},
+        dr = {},
+}
+duniaStore.__failGet = 3
+local P5 = Stub.addPlayer(1005, "petani5")
+Stub.giveCharacter(P5, 24, 6, 44)
+Players.PlayerAdded:Fire(P5)
+Stub.Scheduler.advance(2)
+local okMasuk, msgMasuk
+task.spawn(function()
+        okMasuk, msgMasuk = serverCall("DuniaAct", P5, "masuk", nil)
+end)
+Stub.Scheduler.advance(2)
+check("Masuk dunia tetap jalan walau DataStore gagal (tunggu pulih)", okMasuk == true, tostring(msgMasuk))
+check("Dunia sementara kosong (plot belum terbaca)", MOD_PlotService.filledCount(1) == 0, tostring(MOD_PlotService.filledCount(1)))
+Stub.Scheduler.advance(30)
+check("Dunia pulih otomatis: pohon tersimpan 1 plot muncul lagi", MOD_PlotService.filledCount(1) == 1, tostring(MOD_PlotService.filledCount(1)))
+duniaStore.__failGet = 0
+Players.PlayerRemoving:Fire(P5)
+Stub.Scheduler.advance(0.5)
+check("Bersih-bersih ujian: lahan 1 kembali kosong setelah P5 keluar", MOD_PlotService.filledCount(1) == 0, tostring(MOD_PlotService.filledCount(1)))
 
 section("Booting UI klien")
 local pg = Instance.new("Folder")

@@ -79,19 +79,29 @@ function DataService.bolehSimpan(player: Player): boolean
         return loadedOk[player.UserId] == true
 end
 
+local RETRY_KUNCI = 4
+
 local function ambilKunci(userId: number): boolean
-        local ambil = false
-        local ok = pcall(function()
-                store:UpdateAsync("l_" .. tostring(userId), function(old)
-                        if SesiLogic.bisaAmbil(old, jobId, now()) then
-                                ambil = true
-                                return SesiLogic.kunciBaru(jobId, now())
-                        end
-                        ambil = false
-                        return old
+        for i = 1, RETRY_KUNCI do
+                local ambil = false
+                local ok = pcall(function()
+                        store:UpdateAsync("l_" .. tostring(userId), function(old)
+                                if SesiLogic.bisaAmbil(old, jobId, now()) then
+                                        ambil = true
+                                        return SesiLogic.kunciBaru(jobId, now())
+                                end
+                                ambil = false
+                                return old
+                        end)
                 end)
-        end)
-        return ok and ambil
+                if ok and ambil then
+                        return true
+                end
+                if i < RETRY_KUNCI then
+                        task.wait(0.3 * i * i)
+                end
+        end
+        return false
 end
 
 local function lepasKunci(userId: number)
@@ -198,17 +208,9 @@ function DataService.cobaSinkron(player: Player): boolean
         if loadedOk[player.UserId] then
                 return true
         end
-        local userId = player.UserId
-        local lama = cache[userId]
-        local mainan = dirty[userId] == true
         local ok = DataService.load(player)
         if not ok then
                 return false
-        end
-        if mainan and lama then
-                cache[userId] = lama
-                dirty[userId] = true
-                push(player)
         end
         return true
 end

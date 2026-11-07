@@ -146,9 +146,7 @@ local function applySpawn(player: Player)
 end
 
 local function enterServer(player: Player)
-        print("DEBUG-enterServer", player.Name)
         local ok, alasan, dibuang = DataService.load(player)
-        print("DEBUG-load", player.Name, ok, alasan)
         local d = DataService.get(player)
         local leaderstats = Instance.new("Folder")
         leaderstats.Name = "leaderstats"
@@ -157,7 +155,6 @@ local function enterServer(player: Player)
         micda.Value = d and UangLogic.saldo(d.u) or 0
         micda.Parent = leaderstats
         leaderstats.Parent = player
-        print("DEBUG-leaderstats", player.Name)
         applySpawn(player)
         DataService.push(player)
         task.delay(4, function()

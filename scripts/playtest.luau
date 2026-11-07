@@ -260,6 +260,61 @@ local ls2b = P2:FindFirstChild("leaderstats")
 check("Sinkron otomatis: data asli 5.000 diadopsi tanpa banner lama", ls2b ~= nil and ls2b:FindFirstChild("Micda") ~= nil and ls2b:FindFirstChild("Micda").Value == 5000, ls2b and tostring(ls2b:FindFirstChild("Micda").Value) or "hilang")
 check("Kedua pemain hidup berdampingan", P1.Parent ~= nil and P2.Parent ~= nil, "-")
 
+section("Keluar-masuk: sesi darurat dengan transaksi TIDAK menghapus data asli")
+profStore.__data["u_1003"] = { m = 7777, t = { { kind = "benih", id = "wortel", count = 9 } }, dev = false }
+profStore.__failGet = 5
+local P3 = Stub.addPlayer(1003, "petani3")
+Stub.giveCharacter(P3, 12, 6, 44)
+Players.PlayerAdded:Fire(P3)
+Stub.Scheduler.advance(2)
+local ls3 = P3:FindFirstChild("leaderstats")
+check("P3 darurat: saldo default 10.000 tampil sementara", ls3 ~= nil and ls3:FindFirstChild("Micda") ~= nil and ls3:FindFirstChild("Micda").Value == 10000, ls3 and tostring(ls3:FindFirstChild("Micda").Value) or "hilang")
+local okDev, msgDev = serverCall("RedeemDevCode", P3, MOD_DevCodeVault.CODE)
+check("P3 bertransaksi di sesi darurat (tandai simpan = kondisi pemakai nyata)", okDev == true, tostring(msgDev))
+Stub.Scheduler.advance(30)
+local st3 = serverCall("GetState", P3)
+check("Data asli SELALU menang: saldo 7.777 diadopsi, bukan sesi darurat", st3 ~= nil and st3.micda == 7777, st3 and tostring(st3.micda))
+check("Data asli SELALU menang: Benih Wortel 9 kembali di tas", tasCount(P3, "benih", "wortel") == 9, tostring(tasCount(P3, "benih", "wortel")))
+
+section("Keluar-masuk cepat: kunci sesi tertahan tulisan lama dipakai ulang otomatis")
+profStore.__data["u_1004"] = { m = 3333, t = {}, dev = false }
+profStore.__failUpdate = 3
+local P4 = Stub.addPlayer(1004, "petani4")
+Stub.giveCharacter(P4, 18, 6, 44)
+Players.PlayerAdded:Fire(P4)
+Stub.Scheduler.advance(6)
+local st4 = serverCall("GetState", P4)
+check("Rejoin cepat: kunci diambil ulang, data asli 3.333 langsung terpakai (tanpa sesi darurat)", st4 ~= nil and st4.micda == 3333, st4 and tostring(st4.micda))
+profStore.__failUpdate = 0
+
+section("Keluar-masuk: dunia pulih sendiri saat DataStore gagal saat masuk")
+local duniaStore = Stub.Services.DataStoreService:GetDataStore("AKM_Dunia")
+duniaStore.__data["d_1005"] = {
+        n = "Dunia Lima",
+        pl = { [0] = { c = "wortel", r = os.time() + 600, h = 0, l = 0 } },
+        mj = {},
+        gd = {},
+        dr = {},
+}
+duniaStore.__failGet = 3
+local P5 = Stub.addPlayer(1005, "petani5")
+Stub.giveCharacter(P5, 24, 6, 44)
+Players.PlayerAdded:Fire(P5)
+Stub.Scheduler.advance(2)
+local okMasuk, msgMasuk
+task.spawn(function()
+        okMasuk, msgMasuk = serverCall("DuniaAct", P5, "masuk", nil)
+end)
+Stub.Scheduler.advance(2)
+check("Masuk dunia tetap jalan walau DataStore gagal (tunggu pulih)", okMasuk == true, tostring(msgMasuk))
+check("Dunia sementara kosong (plot belum terbaca)", MOD_PlotService.filledCount(1) == 0, tostring(MOD_PlotService.filledCount(1)))
+Stub.Scheduler.advance(30)
+check("Dunia pulih otomatis: pohon tersimpan 1 plot muncul lagi", MOD_PlotService.filledCount(1) == 1, tostring(MOD_PlotService.filledCount(1)))
+duniaStore.__failGet = 0
+Players.PlayerRemoving:Fire(P5)
+Stub.Scheduler.advance(0.5)
+check("Bersih-bersih ujian: lahan 1 kembali kosong setelah P5 keluar", MOD_PlotService.filledCount(1) == 0, tostring(MOD_PlotService.filledCount(1)))
+
 section("Booting UI klien")
 local pg = Instance.new("Folder")
 pg.Name = "PlayerGui"

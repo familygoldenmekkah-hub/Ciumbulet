@@ -2389,9 +2389,7 @@ local function applySpawn(player: Player)
 end
 
 local function enterServer(player: Player)
-        print("DEBUG-enterServer", player.Name)
         local ok, alasan, dibuang = DataService.load(player)
-        print("DEBUG-load", player.Name, ok, alasan)
         local d = DataService.get(player)
         local leaderstats = Instance.new("Folder")
         leaderstats.Name = "leaderstats"
@@ -2400,7 +2398,6 @@ local function enterServer(player: Player)
         micda.Value = d and UangLogic.saldo(d.u) or 0
         micda.Parent = leaderstats
         leaderstats.Parent = player
-        print("DEBUG-leaderstats", player.Name)
         applySpawn(player)
         DataService.push(player)
         task.delay(4, function()
@@ -3780,19 +3777,29 @@ function DataService.bolehSimpan(player: Player): boolean
         return loadedOk[player.UserId] == true
 end
 
+local RETRY_KUNCI = 4
+
 local function ambilKunci(userId: number): boolean
-        local ambil = false
-        local ok = pcall(function()
-                store:UpdateAsync("l_" .. tostring(userId), function(old)
-                        if SesiLogic.bisaAmbil(old, jobId, now()) then
-                                ambil = true
-                                return SesiLogic.kunciBaru(jobId, now())
-                        end
-                        ambil = false
-                        return old
+        for i = 1, RETRY_KUNCI do
+                local ambil = false
+                local ok = pcall(function()
+                        store:UpdateAsync("l_" .. tostring(userId), function(old)
+                                if SesiLogic.bisaAmbil(old, jobId, now()) then
+                                        ambil = true
+                                        return SesiLogic.kunciBaru(jobId, now())
+                                end
+                                ambil = false
+                                return old
+                        end)
                 end)
-        end)
-        return ok and ambil
+                if ok and ambil then
+                        return true
+                end
+                if i < RETRY_KUNCI then
+                        task.wait(0.3 * i * i)
+                end
+        end
+        return false
 end
 
 local function lepasKunci(userId: number)
@@ -3899,17 +3906,9 @@ function DataService.cobaSinkron(player: Player): boolean
         if loadedOk[player.UserId] then
                 return true
         end
-        local userId = player.UserId
-        local lama = cache[userId]
-        local mainan = dirty[userId] == true
         local ok = DataService.load(player)
         if not ok then
                 return false
-        end
-        if mainan and lama then
-                cache[userId] = lama
-                dirty[userId] = true
-                push(player)
         end
         return true
 end
@@ -7064,10 +7063,21 @@ local function saveSeksi(s: Seksi, force: boolean, leaving: boolean?)
         end
 end
 
+local RETRY_DUNIA = 3
+
 local function loadWorld(ownerId: number): (boolean, string?, any, any, any, any, any)
-        local ok, data = pcall(function()
-                return store:GetAsync(DuniaLogic.keyFor(ownerId))
-        end)
+        local ok, data = false, nil
+        for i = 1, RETRY_DUNIA do
+                ok, data = pcall(function()
+                        return store:GetAsync(DuniaLogic.keyFor(ownerId))
+                end)
+                if ok then
+                        break
+                end
+                if i < RETRY_DUNIA then
+                        task.wait(0.4 * i)
+                end
+        end
         if not ok then
                 return false, nil, {}, {}, nil, {}, nil
         end
@@ -7075,6 +7085,43 @@ local function loadWorld(ownerId: number): (boolean, string?, any, any, any, any
                 return true, nil, {}, {}, nil, {}, nil
         end
         return true, DuniaLogic.cleanName(data.n), DuniaLogic.desPlots(data.pl), DuniaLogic.desMesin(data.mj), data.gd, data.dr, data.lt
+end
+
+local function jadwalkanPulihDunia(s: Seksi, player: Player)
+        task.spawn(function()
+                for _ = 1, 40 do
+                        task.wait(8)
+                        if seksi[s.idx] ~= s or s.ghost or s.savedOk then
+                                return
+                        end
+                        if not player.Parent then
+                                return
+                        end
+                        local ok, _nama, plots, meja, gd, dr, lt = loadWorld(s.ownerId)
+                        if not ok then
+                                continue
+                        end
+                        if seksi[s.idx] ~= s or s.ghost or s.savedOk then
+                                return
+                        end
+                        s.savedOk = true
+                        s.canSave = true
+                        s.dirty = true
+                        Plot.restore(s.idx, plots)
+                        Mesin.restoreLahan(s.idx, meja, s.ownerId)
+                        if Gudang then
+                                Gudang.restoreLahan(s.idx, gd)
+                        end
+                        if Drop then
+                                Drop.restoreLahan(s.idx, dr, lt)
+                        end
+                        Plot.updateBoard(s.idx)
+                        if player.Parent then
+                                Notify(player, "Sinkronisasi Dunia", "Duniamu berhasil dimuat dari data tersimpan.")
+                        end
+                        return
+                end
+        end)
 end
 
 local function buildSection(idx: number, ownerId: number, nama: string, ghost: boolean, savedOk: boolean, plots: any, meja: any, gd: any, dr: any, lt: any): Seksi
@@ -7150,7 +7197,10 @@ function ZonaService.masuk(player: Player): (boolean, string)
         if idx <= 0 then
                 return false, "Semua petak dunia di server ini sedang terpakai. Coba lagi sebentar."
         end
-        buildSection(idx, player.UserId, nama, false, loadOk, plots, meja, gd, dr, lt)
+        local seksiBaru = buildSection(idx, player.UserId, nama, false, loadOk, plots, meja, gd, dr, lt)
+        if not loadOk then
+                jadwalkanPulihDunia(seksiBaru, player)
+        end
         byOwner[player.UserId] = idx
         if placeWait(player, arrivalPos(idx), "dunia", nama) then
                 return true, "Duniamu siap. Masuk dan pulang kini tanpa loading."

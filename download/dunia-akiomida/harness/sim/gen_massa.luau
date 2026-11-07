@@ -860,6 +860,11 @@ function Stub.install()
                 if not stores[name] then
                         local ds = { __data = {} }
                         function ds:GetAsync(key)
+                                local fail = self.__failGet or 0
+                                if fail > 0 then
+                                        self.__failGet = fail - 1
+                                        error("DataStore galat (simulasi)")
+                                end
                                 return self.__data[key]
                         end
                         function ds:SetAsync(key, value)
@@ -867,6 +872,11 @@ function Stub.install()
                                 return true
                         end
                         function ds:UpdateAsync(key, transform)
+                                local fail = self.__failUpdate or 0
+                                if fail > 0 then
+                                        self.__failUpdate = fail - 1
+                                        error("DataStore tulis galat (simulasi)")
+                                end
                                 local old = self.__data[key]
                                 local baru = transform(old)
                                 if baru ~= nil then
@@ -4435,19 +4445,29 @@ function DataService.bolehSimpan(player: Player): boolean
         return loadedOk[player.UserId] == true
 end
 
+local RETRY_KUNCI = 4
+
 local function ambilKunci(userId: number): boolean
-        local ambil = false
-        local ok = pcall(function()
-                store:UpdateAsync("l_" .. tostring(userId), function(old)
-                        if SesiLogic.bisaAmbil(old, jobId, now()) then
-                                ambil = true
-                                return SesiLogic.kunciBaru(jobId, now())
-                        end
-                        ambil = false
-                        return old
+        for i = 1, RETRY_KUNCI do
+                local ambil = false
+                local ok = pcall(function()
+                        store:UpdateAsync("l_" .. tostring(userId), function(old)
+                                if SesiLogic.bisaAmbil(old, jobId, now()) then
+                                        ambil = true
+                                        return SesiLogic.kunciBaru(jobId, now())
+                                end
+                                ambil = false
+                                return old
+                        end)
                 end)
-        end)
-        return ok and ambil
+                if ok and ambil then
+                        return true
+                end
+                if i < RETRY_KUNCI then
+                        task.wait(0.3 * i * i)
+                end
+        end
+        return false
 end
 
 local function lepasKunci(userId: number)
@@ -4461,11 +4481,22 @@ local function lepasKunci(userId: number)
         end)
 end
 
+local RETRY_MUAT = 3
+
 function DataService.load(player: Player): (boolean, string?, number)
         local userId = player.UserId
-        local ok, data = pcall(function()
-                return store:GetAsync("u_" .. tostring(userId))
-        end)
+        local ok, data = false, nil
+        for i = 1, RETRY_MUAT do
+                ok, data = pcall(function()
+                        return store:GetAsync("u_" .. tostring(userId))
+                end)
+                if ok then
+                        break
+                end
+                if i < RETRY_MUAT then
+                        task.wait(0.4 * i)
+                end
+        end
         if not ok then
                 cache[userId] = defaultData()
                 loadedOk[userId] = false
@@ -4537,6 +4568,17 @@ function DataService.startLoops()
                         end
                 end
         end)
+end
+
+function DataService.cobaSinkron(player: Player): boolean
+        if loadedOk[player.UserId] then
+                return true
+        end
+        local ok = DataService.load(player)
+        if not ok then
+                return false
+        end
+        return true
 end
 
 function DataService.drop(player: Player)
@@ -6759,10 +6801,21 @@ local function saveSeksi(s: Seksi, force: boolean, leaving: boolean?)
         end
 end
 
+local RETRY_DUNIA = 3
+
 local function loadWorld(ownerId: number): (boolean, string?, any, any, any, any, any)
-        local ok, data = pcall(function()
-                return store:GetAsync(DuniaLogic.keyFor(ownerId))
-        end)
+        local ok, data = false, nil
+        for i = 1, RETRY_DUNIA do
+                ok, data = pcall(function()
+                        return store:GetAsync(DuniaLogic.keyFor(ownerId))
+                end)
+                if ok then
+                        break
+                end
+                if i < RETRY_DUNIA then
+                        task.wait(0.4 * i)
+                end
+        end
         if not ok then
                 return false, nil, {}, {}, nil, {}, nil
         end
@@ -6770,6 +6823,43 @@ local function loadWorld(ownerId: number): (boolean, string?, any, any, any, any
                 return true, nil, {}, {}, nil, {}, nil
         end
         return true, DuniaLogic.cleanName(data.n), DuniaLogic.desPlots(data.pl), DuniaLogic.desMesin(data.mj), data.gd, data.dr, data.lt
+end
+
+local function jadwalkanPulihDunia(s: Seksi, player: Player)
+        task.spawn(function()
+                for _ = 1, 40 do
+                        task.wait(8)
+                        if seksi[s.idx] ~= s or s.ghost or s.savedOk then
+                                return
+                        end
+                        if not player.Parent then
+                                return
+                        end
+                        local ok, _nama, plots, meja, gd, dr, lt = loadWorld(s.ownerId)
+                        if not ok then
+                                continue
+                        end
+                        if seksi[s.idx] ~= s or s.ghost or s.savedOk then
+                                return
+                        end
+                        s.savedOk = true
+                        s.canSave = true
+                        s.dirty = true
+                        Plot.restore(s.idx, plots)
+                        Mesin.restoreLahan(s.idx, meja, s.ownerId)
+                        if Gudang then
+                                Gudang.restoreLahan(s.idx, gd)
+                        end
+                        if Drop then
+                                Drop.restoreLahan(s.idx, dr, lt)
+                        end
+                        Plot.updateBoard(s.idx)
+                        if player.Parent then
+                                Notify(player, "Sinkronisasi Dunia", "Duniamu berhasil dimuat dari data tersimpan.")
+                        end
+                        return
+                end
+        end)
 end
 
 local function buildSection(idx: number, ownerId: number, nama: string, ghost: boolean, savedOk: boolean, plots: any, meja: any, gd: any, dr: any, lt: any): Seksi
@@ -6845,7 +6935,10 @@ function ZonaService.masuk(player: Player): (boolean, string)
         if idx <= 0 then
                 return false, "Semua petak dunia di server ini sedang terpakai. Coba lagi sebentar."
         end
-        buildSection(idx, player.UserId, nama, false, loadOk, plots, meja, gd, dr, lt)
+        local seksiBaru = buildSection(idx, player.UserId, nama, false, loadOk, plots, meja, gd, dr, lt)
+        if not loadOk then
+                jadwalkanPulihDunia(seksiBaru, player)
+        end
         byOwner[player.UserId] = idx
         if placeWait(player, arrivalPos(idx), "dunia", nama) then
                 return true, "Duniamu siap. Masuk dan pulang kini tanpa loading."
@@ -9811,11 +9904,19 @@ local function enterServer(player: Player)
                         end
                         if ok then
                                 notify(player, "Pusat Kota", "Selamat datang! Lewati Gerbang Dunia atau tombol Masuk untuk ke duniamu.")
-                        elseif alasan == "kunci" then
-                                AuditService.catat(player, "sesi_ganda", "load")
-                                notify(player, "Mode Sesi", "Akunmu sedang aktif di server lain. Progres di sini tidak tersimpan.")
                         else
-                                notify(player, "Mode Sesi", "Progres sementara hanya tersimpan di sesi ini.")
+                                if alasan == "kunci" then
+                                        AuditService.catat(player, "sesi_ganda", "load")
+                                end
+                                notify(player, "Sinkronisasi", "Data kamu sedang disinkronkan — progres kamu aman.")
+                                task.spawn(function()
+                                        while player.Parent and not DataService.bolehSimpan(player) do
+                                                task.wait(8)
+                                                if DataService.cobaSinkron(player) and player.Parent then
+                                                        notify(player, "Sinkronisasi", "Data kamu sudah tersinkron. Selamat bermain!")
+                                                end
+                                        end
+                                end)
                         end
                 end
         end)

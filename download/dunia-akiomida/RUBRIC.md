@@ -19,6 +19,77 @@ Skor per kriteria 0-10, dikali bobot. Total dihitung dari (skor x bobot) / 10.
 | 8 | Polish & UX (UI, suara, animasi, efek) | 10 | animasi kombat, BGM, partikel | UI rapi & responsif |
 | 9 | Originalitas 100% & aman hak cipta | 5 | - | - |
 
+## Skor v56 (versi LIVE #60, 7 Nov 2026) - DATA TIDAK PERNAH NOL LAGI: PEMULIHAN KELUAR-MASUK (ANTI-HAPUS DATA)
+
+Keluhan pemilik: "Masalah besar tetap — waktu user keluar masuk lagi,
+ternyata tetep diulang terus dari nol!" AKAR DITEMUKAN (2 lapis + 1 dunia):
+
+1. **BUG PEMUSNAH DATA di cobaSinkron v55** — desain lama "progres sesi
+   darurat dipertahankan" ternyata berbalik jadi penghapus data: begitu
+   pemain bertransaksi SATU kali di sesi darurat (beli/tanam/jual —
+   tandai simpan aktif), saat data asli berhasil dimuat data asli itu
+   justru DIBUANG dan data darurat (saldo awal 10.000 + tas kosong)
+   disimpan MENIMPA data asli di DataStore. Semua progres lama hilang
+   permanen -> setiap login berikutnya memang "dari nol" dan begitu terus.
+   Ini akar keluhan pemilik.
+2. **PEMICU: rejoin cepat dijatuhkan ke sesi darurat** — saat keluar,
+   server menulis kunci sesi (lepas kunci); rejoin dalam ~6 dtk kena
+   throttle tulis DataStore pada kunci yang sama, percobaan ambil kunci
+   hanya 1x -> gagal -> sesi darurat -> pemicu bug (1).
+3. **DUNIA ikut nol** — loadWorld saat Masuk Dunia tanpa retry: sekali
+   GetAsync gagal, dunia dibangun KOSONG dan canSave=false seumur sesi
+   (tanam/mesin/gudang sesi itu tidak pernah tersimpan).
+
+Diterapkan di #60:
+
+A. **Data asli SELALU menang (DataService.cobaSinkron dibersihkan)** —
+   pemulihan kini HANYA mengadopsi data asli dari DataStore; sesi darurat
+   tidak pernah lagi menimpa data asli. Progres sesi darurat yang terbuang
+   lebih baik daripada kehilangan seluruh progres asli.
+B. **Ambil kunci sesi diulang 4x** (jarak tunggu 0,3/1,2/2,7 dtk) —
+   rejoin cepat tidak lagi kena throttle jadi sesi darurat; data asli
+   langsung terpakai tanpa turun ke mode tunggu.
+C. **loadWorld diulang 3x** saat Masuk Dunia (0,4/0,8 dtk) — throttle
+   kecil tidak lagi bikin dunia tampak kosong.
+D. **Pemulihan dunia di latar (jadwalkanPulihDunia)** — bila load dunia
+   tetap gagal, dunia tetap bisa dimasuki (bisa main) dan tiap 8 dtk
+   server mencoba lagi (maks 40x): begitu DataStore pulih, pohon/mesin/
+   gudang/drop tersimpan DIADOPSI di tempat (Plot.restore hanya isi plot
+   kosong — tanaman sesi tetap aman), canSave dibuka, dunia langsung
+   dijadwalkan simpan, pemain diberi toast netral "Sinkronisasi Dunia".
+   Seksi basi ditangani aman: seksi diganti/pemilik keluar -> loop
+   berhenti (cek identitas seksi + savedOk + ghost).
+E. **Print DEBUGenterServer/DEBUGload/DEBUGleaderstats dihapus** dari
+   init.server (sisa debugging v55).
+F. **Stub uji bertambah __failUpdate** (sabotase tulis DataStore) untuk
+   mensimulasikan throttle kunci saat rejoin cepat.
+G. **Pengujian baru playtest (+8 cek)**: (1) sesi darurat DENGAN
+   transaksi nyata (kode dev -> tandai simpan) -> pulih -> data asli
+   7.777 + Benih Wortel 9 diadopsi, BUKAN data darurat; (2) kunci
+   disabotase 3x tulis (rejoin cepat) -> kunci diambil ulang, data asli
+   3.333 langsung terpakai tanpa sesi darurat; (3) DataStore dunia gagal
+   3x saat Masuk -> dunia kosong sementara -> pulih otomatis -> pohon
+   tersimpan muncul lagi -> bersih-bersih ujian kembalikan lahan.
+   Offline 399 PASS / 0 FAIL, playtest 164 PASS / 0 FAIL, massa 122 PASS
+   / 0 FAIL, luau-lsp 0 temuan, rojo build sukses. Publish #60.
+H. **Kejujuran**: data pemain yang SUDAH tertimpa musnah sebelum #60
+   tidak bisa dikembalikan otomatis oleh game (timpa di DataStore tidak
+   dibatalkan dari dalam game). Setelah #60 jalur penimpa ditutup total.
+
+| # | Kriteria | Skor | Alasan |
+|---|----------|------|--------|
+| 1 Kombat | 0/10 | Belum ada monster/AI/bos. |
+| 2 Crafting | 4.5/10 | Tetap dari #51. |
+| 3 Stat & Progresi | 1/10 | Tanpa level (sesuai arah pemilik). |
+| 4 Ekonomi | 9/10 | Jalur penimpa data ditutup total + pemulihan dunia di latar; integritas progres sekarang teruji kebal rejoin cepat, throttle, dan sesi darurat. |
+| 5 Dunia & Peta | 7/10 | Tetap dari #51. |
+| 6 Multiplayer | 7/10 | Tetap dari #51. |
+| 7 Bertani | 10/10 | Tetap. |
+| 8 Polish & UX | 10/10 | Pemain tidak lagi kehilangan progres saat keluar-masuk; pemulihan tanpa banner menakutkan. |
+| 9 Originalitas | 10/10 | Tetap. |
+
+**TOTAL: 60.3/100** (bobot: 0+67.5+10+135+70+70+100+100+50 = 602.5/10 = 60.25)
+
 ## Skor v55 (versi LIVE #59, 7 Nov 2026) - HAPUS "MODE SESI": SINKRONISASI DATA OTOMATIS (RETRY + ADOPSI LATAR)
 
 Keluhan pemilik (screenshot in-game): pemain kedapatan papan "Mode Sesi —
