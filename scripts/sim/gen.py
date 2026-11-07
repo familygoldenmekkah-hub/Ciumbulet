@@ -50,6 +50,7 @@ MODULES_SERVER = [
     "TanamService",
     "GudangService",
     "DropService",
+    "TradeService",
 ]
 
 
@@ -102,6 +103,10 @@ def strip_scenario_header(text: str) -> str:
 def map_require(match: re.Match) -> str:
     arg = match.group(1).strip()
     name = None
+    m = re.fullmatch(r'"\./(\w+)"', arg)
+    if m:
+        name = m.group(1)
+        return ("LOAD_UI()" if name == LAZY_UI else "MOD_" + name)
     m = re.search(r"ReplicatedStorage\.Shared\.(\w+)", arg)
     if m:
         name = m.group(1)
@@ -173,6 +178,7 @@ def main() -> None:
     parts.append(wrap_module("Remotes", read(SRC / "Remotes" / "init.luau")))
     for name in MODULES_SERVER:
         parts.append(wrap_module(name, read(SRC / "Server" / "Modules" / f"{name}.luau")))
+    parts.append(wrap_module("TradeUI", read(SRC / "Client" / "TradeUI.luau")))
     parts.append(wrap_module(LAZY_UI, read(SRC / "Client" / f"{LAZY_UI}.luau"), lazy=True))
 
     server_init = re.sub(

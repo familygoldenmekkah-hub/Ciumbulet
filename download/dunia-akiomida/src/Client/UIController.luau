@@ -155,6 +155,33 @@ local camera = Workspace.CurrentCamera
 local aman = mk("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1) }, gui)
 local amanPad = mk("UIPadding", { PaddingTop = UDim.new(0, 0), PaddingLeft = UDim.new(0, 0), PaddingRight = UDim.new(0, 0), PaddingBottom = UDim.new(0, 0) }, aman)
 
+-- Chip versi server: bukti visual pemain ada di server TERBARU.
+-- Server lama (pra-tanda) tidak punya chip ini sama sekali.
+local teksVersiServer: string = "AKIOMIDA"
+do
+        local okV, vV = pcall(function()
+                return game.PlaceVersion
+        end)
+        if okV and type(vV) == "number" then
+                teksVersiServer = "AKIOMIDA #" .. tostring(vV)
+        end
+end
+mk("TextLabel", {
+        Name = "ChipVersiServer",
+        AnchorPoint = Vector2.new(0, 1),
+        Position = UDim2.new(0, 8, 1, -6),
+        Size = UDim2.new(0, 120, 0, 16),
+        BackgroundTransparency = 1,
+        Text = teksVersiServer,
+        TextSize = 11,
+        Font = FON,
+        TextColor3 = warna(UIStyle.Abu),
+        TextTransparency = 0.35,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextWrapped = false,
+        ZIndex = 1,
+}, aman)
+
 local function teksSkala(props: { [string]: any }, parent: Instance): TextLabel
         props.TextScaled = true
         local l = mk("TextLabel", props, parent)
@@ -399,11 +426,7 @@ local function openPanel(name: string)
                 f.Visible = n == name
         end
         panelTitle.Text = PANEL_TITLES[name] or ""
-        if name == "semai" or name == "tanam" or name == "trade" then
-                panelBatas.MaxSize = Vector2.new(820, 660)
-        else
-                panelBatas.MaxSize = Vector2.new(UIStyle.LebarPanelMaks, UIStyle.TinggiPanelMaks)
-        end
+        panelBatas.MaxSize = Vector2.new(UIStyle.LebarPanelMaks, UIStyle.TinggiPanelMaks)
         kunciKamera()
         dim.Visible = true
         currentPanel = name

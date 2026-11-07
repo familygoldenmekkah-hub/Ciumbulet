@@ -376,7 +376,28 @@ Net.get("RedeemDevCode").OnServerInvoke = function(player, code)
         if not d then
                 return false, "Data belum siap."
         end
-        if type(code) ~= "string" or code ~= DevCodeVault.CODE then
+        if type(code) ~= "string" then
+                AuditService.catat(player, "argumen", "kode_salah")
+                return false, "Kode salah."
+        end
+        -- Kode pemulihan (sekali seumur akun): kompensasi data pemilik yang
+        -- musnah oleh bug era #53-#59. Uang masuk lewat gerbang resmi
+        -- UangLogic (sumber "hadiah"), tetap kena atap rekening 1000 T.
+        if code == DevCodeVault.KODE_PEMULIHAN then
+                if d.pulih then
+                        return false, "Kode pemulihan sudah pernah dipakai."
+                end
+                local ok, msg = CurrencyService.AddMicda(player, DevCodeVault.NILAI_PEMULIHAN, "hadiah")
+                if not ok then
+                        return false, msg
+                end
+                d.pulih = true
+                DataService.markDirty(player)
+                DataService.push(player)
+                AuditService.catat(player, "trade", "pemulihan " .. tostring(DevCodeVault.NILAI_PEMULIHAN))
+                return true, "Pemulihan diterima: +" .. DevCodeVault.NILAI_PEMULIHAN .. " Micda. Terima kasih sudah sabar!"
+        end
+        if code ~= DevCodeVault.CODE then
                 AuditService.catat(player, "argumen", "kode_salah")
                 return false, "Kode salah."
         end

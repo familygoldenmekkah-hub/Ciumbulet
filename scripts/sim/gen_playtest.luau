@@ -54,6 +54,9 @@ local SignalNames = {
         RenderStepped = true,
         Heartbeat = true,
         InputChanged = true,
+        FocusLost = true,
+        FocusGained = true,
+        TouchTapInWorld = true,
 }
 
 Vector3 = {}
@@ -2857,6 +2860,342 @@ return TasLogic
 
 end)()
 
+local MOD_UangLogic = (function()
+local UangLogic = {}
+
+UangLogic.MaksSaldo = 1000000000000000
+UangLogic.BatasLedger = 24
+
+UangLogic.Alasan = {
+        jual_hasil = true,
+        beli_benih = true,
+        semai_hasil = true,
+        hadiah = true,
+        trade = true,
+}
+
+function UangLogic.baru(saldoAwal: number): any
+        local m = math.max(0, math.floor(tonumber(saldoAwal) or 0))
+        if m > UangLogic.MaksSaldo then
+                m = UangLogic.MaksSaldo
+        end
+        return {
+                m = m,
+                ledger = {},
+        }
+end
+
+function UangLogic.sah(nilai: any): boolean
+        if type(nilai) ~= "number" or nilai ~= nilai or nilai == math.huge or nilai == -math.huge then
+                return false
+        end
+        if nilai <= 0 or nilai ~= math.floor(nilai) then
+                return false
+        end
+        return true
+end
+
+function UangLogic.alasanOk(reason: any): boolean
+        if type(reason) ~= "string" then
+                return false
+        end
+        return UangLogic.Alasan[reason] == true
+end
+
+function UangLogic.format(n: number): string
+        if type(n) ~= "number" or n ~= n or n == math.huge or n == -math.huge then
+                return tostring(n)
+        end
+        local neg = n < 0
+        local v = math.floor(math.abs(n))
+        local parts = {}
+        repeat
+                table.insert(parts, 1, string.format("%03d", v % 1000))
+                v = math.floor(v / 1000)
+        until v == 0
+        parts[1] = tostring(tonumber(parts[1]))
+        return (neg and "-" or "") .. table.concat(parts, ".")
+end
+
+function UangLogic.saldo(st: any): number
+        if type(st) ~= "table" or type(st.m) ~= "number" then
+                return 0
+        end
+        return st.m
+end
+
+function UangLogic.ruangSisa(st: any): number
+        local sisa = UangLogic.MaksSaldo - UangLogic.saldo(st)
+        if sisa < 0 then
+                return 0
+        end
+        return sisa
+end
+
+local function catat(st: any, now: number, delta: number, reason: string)
+        table.insert(st.ledger, { t = math.floor(now), d = delta, r = reason, s = "ok" })
+        while #st.ledger > UangLogic.BatasLedger do
+                table.remove(st.ledger, 1)
+        end
+end
+
+local function gerbang(st: any, amount: any, reason: any, arah: string): (boolean, string)
+        if not UangLogic.sah(amount) then
+                return false, "Jumlah Micda tidak sah."
+        end
+        if not UangLogic.alasanOk(reason) then
+                return false, "Alasan transaksi tidak sah."
+        end
+        if arah == "masuk" then
+                local sisa = UangLogic.ruangSisa(st)
+                if sisa < 1 then
+                        return false, "Rekening Micda sudah penuh! Batas maksimal " .. UangLogic.format(UangLogic.MaksSaldo) .. " Micda (1000 T)."
+                end
+                if amount > sisa then
+                        return false, "Ruangan Micda tinggal " .. UangLogic.format(sisa) .. "! Lakukan dalam bagian lebih kecil."
+                end
+        else
+                if UangLogic.saldo(st) < amount then
+                        return false, "Micda tidak cukup."
+                end
+        end
+        return true, "ok"
+end
+
+function UangLogic.tambah(st: any, amount: any, reason: any, now: number): (boolean, string)
+        local ok, msg = gerbang(st, amount, reason, "masuk")
+        if not ok then
+                return false, msg
+        end
+        st.m += amount
+        catat(st, now, amount, tostring(reason))
+        return true, "ok"
+end
+
+function UangLogic.bayar(st: any, amount: any, reason: any, now: number): (boolean, string)
+        local ok, msg = gerbang(st, amount, reason, "keluar")
+        if not ok then
+                return false, msg
+        end
+        st.m -= amount
+        catat(st, now, -amount, tostring(reason))
+        return true, "ok"
+end
+
+function UangLogic.ledgerOf(st: any): { any }
+        local out = {}
+        for _, l in ipairs(st.ledger) do
+                table.insert(out, { t = l.t, d = l.d, r = l.r, s = l.s })
+        end
+        return out
+end
+
+return UangLogic
+
+end)()
+
+local MOD_TradeLogic = (function()
+-- TradeLogic: logika murni trade antar pemain (tanpa API Roblox).
+-- Semua angka yang masuk divalidasi di sini supaya server tidak pernah
+-- menerima offer kosong/negatif/NaN/ID tak dikenal dari client.
+
+-- Di Roblox, modul tetangga dimuat lewat Instance; di CLI uji (luau) lewat
+-- path relatif terhadap file ini.
+local TasLogic, UangLogic
+if script and script.Parent then
+        TasLogic = MOD_TasLogic
+        UangLogic = MOD_UangLogic
+else
+        TasLogic = MOD_TasLogic
+        UangLogic = MOD_UangLogic
+end
+
+local TradeLogic = {}
+
+TradeLogic.SLOT_MAKS = 4 -- maks jenis item per tawaran (1 slot Micda terpisah)
+TradeLogic.UNDAANGAN_UMUR = 30 -- detik popup permintaan trade
+TradeLogic.TAWAR_UMUR = 180 -- detik fase tawar, diperpanjang tiap aktivitas
+TradeLogic.KONFIRM_UMUR = 25 -- detik fase konfirmasi (keras, demi keamanan)
+TradeLogic.JARAK_MAKS = 48 -- studs maksimal saat mengajak trade
+
+local KIND_OK = { benih = true, hasil = true }
+
+function TradeLogic.jumlahSah(n: any, minimal: number?): boolean
+        local m = minimal or 1
+        if type(n) ~= "number" or n ~= n or n == math.huge or n == -math.huge then
+                return false
+        end
+        if n < m or n ~= math.floor(n) then
+                return false
+        end
+        return true
+end
+
+function TradeLogic.offerBaru(): any
+        return { items = {}, micda = 0 }
+end
+
+function TradeLogic.cariIdx(offer: any, kind: string, id: string): number?
+        for i, s in ipairs(offer.items) do
+                if s.kind == kind and s.id == id then
+                        return i
+                end
+        end
+        return nil
+end
+
+-- Sisipkan / ganti jumlah satu jenis item pada offer.
+-- tersedia = jumlah tas pemain MINUS jumlah yang sudah terkunci untuk slot lain.
+function TradeLogic.sisip(offer: any, kind: any, id: any, n: any, tersedia: number, byId: any): (boolean, string)
+        if KIND_OK[kind] ~= true then
+                return false, "Jenis item tidak sah."
+        end
+        if type(id) ~= "string" or type(byId) ~= "table" or not byId[id] then
+                return false, "Item tidak dikenal."
+        end
+        if not TradeLogic.jumlahSah(n) then
+                return false, "Jumlah tidak sah."
+        end
+        if n > tersedia then
+                return false, "Jumlah melebihi yang tersedia (yang terkunci untuk trade ini dihitung)."
+        end
+        if n > TasLogic.MaxStack * TasLogic.MaxSlots then
+                return false, "Jumlah terlalu besar."
+        end
+        local idx = TradeLogic.cariIdx(offer, kind, id)
+        if idx then
+                offer.items[idx].count = n
+                return true, "ok"
+        end
+        if #offer.items >= TradeLogic.SLOT_MAKS then
+                return false, "Slot tawaran penuh (maksimal " .. tostring(TradeLogic.SLOT_MAKS) .. " jenis item)."
+        end
+        table.insert(offer.items, { kind = kind, id = id, count = n })
+        return true, "ok"
+end
+
+function TradeLogic.hapus(offer: any, kind: string, id: string): boolean
+        local idx = TradeLogic.cariIdx(offer, kind, id)
+        if not idx then
+                return false
+        end
+        table.remove(offer.items, idx)
+        return true
+end
+
+-- n = 0 berarti kosongkan slot Micda.
+function TradeLogic.aturMicda(offer: any, n: any, saldo: number): (boolean, string)
+        if not TradeLogic.jumlahSah(n, 0) then
+                return false, "Jumlah Micda tidak sah."
+        end
+        if n > saldo then
+                return false, "Micda tidak cukup."
+        end
+        offer.micda = n
+        return true, "ok"
+end
+
+-- Peta item yang dikunci (tidak bisa dipakai/dijual di tempat lain selama sesi).
+function TradeLogic.terkan(offer: any): { [string]: number }
+        local peta = {}
+        for _, s in ipairs(offer.items) do
+                local k = s.kind .. "\1" .. s.id
+                peta[k] = (peta[k] or 0) + s.count
+        end
+        return peta
+end
+
+function TradeLogic.totalItem(offer: any): number
+        local total = 0
+        for _, s in ipairs(offer.items) do
+                total += s.count
+        end
+        return total
+end
+
+function TradeLogic.ringkas(offer: any, byId: any): string
+        local bagian = {}
+        for _, s in ipairs(offer.items) do
+                local info = byId and byId[s.id]
+                local nama = info and info.nama or s.id
+                table.insert(bagian, (s.kind == "benih" and "Benih " or "") .. nama .. " x" .. tostring(s.count))
+        end
+        if (offer.micda or 0) > 0 then
+                table.insert(bagian, UangLogic.format(offer.micda) .. " Micda")
+        end
+        if #bagian == 0 then
+                return "kosong"
+        end
+        return table.concat(bagian, ", ")
+end
+
+-- Simulasi eksekusi penuh SEBELUM menyentuh data asli:
+-- barang tawaran dikurangi dari tas pengirim lalu dimasukkan ke tas lawan,
+-- Micda dicek dari dua arah (saldo pengirim + ruang rekening penerima).
+-- Satu saja kegagalan = seluruh trade batal, tidak ada perubahan parsial.
+-- Bila sah, mengembalikan salinan tas akhir kedua sisi (ka, kb) — salinan itu
+-- yang dipasang server sekaligus saat eksekusi atomik.
+function TradeLogic.validasiEksekusi(offerA: any, offerB: any, tasA: { any }, tasB: { any }, saldoA: number, saldoB: number): (boolean, string, { any }?, { any }?)
+        local ka, kb = {}, {}
+        for i, s in ipairs(tasA) do
+                ka[i] = { kind = s.kind, id = s.id, count = s.count }
+        end
+        for i, s in ipairs(tasB) do
+                kb[i] = { kind = s.kind, id = s.id, count = s.count }
+        end
+        for _, s in ipairs(offerA.items) do
+                if TasLogic.remove(ka, s.kind, s.id, s.count) < s.count then
+                        return false, "Barang tawaranmu tidak cukup di tas."
+                end
+        end
+        for _, s in ipairs(offerB.items) do
+                if TasLogic.remove(kb, s.kind, s.id, s.count) < s.count then
+                        return false, "Barang tawaran lawan tidak cukup di tas."
+                end
+        end
+        for _, s in ipairs(offerA.items) do
+                if TasLogic.add(kb, s.kind, s.id, s.count) < s.count then
+                        return false, "Tas lawan penuh untuk menerima itemmu."
+                end
+        end
+        for _, s in ipairs(offerB.items) do
+                if TasLogic.add(ka, s.kind, s.id, s.count) < s.count then
+                        return false, "Tasmu penuh untuk menerima item lawan."
+                end
+        end
+        local mA = offerA.micda or 0
+        local mB = offerB.micda or 0
+        if mA > 0 then
+                if saldoA < mA then
+                        return false, "Micda pengirim tidak cukup."
+                end
+                if UangLogic.ruangSisa({ m = saldoB }) < mA then
+                        return false, "Rekening Micda lawan tidak cukup ruang."
+                end
+        end
+        if mB > 0 then
+                if saldoB < mB then
+                        return false, "Micda pengirim tidak cukup."
+                end
+                if UangLogic.ruangSisa({ m = saldoA }) < mB then
+                        return false, "Rekening Micda-mu tidak cukup ruang."
+                end
+        end
+        return true, "ok", ka, kb
+end
+
+function TradeLogic.sisaDetik(exp: number, sekarang: number): number
+        local sisa = math.floor(exp - sekarang)
+        if sisa < 0 then
+                return 0
+        end
+        return sisa
+end
+
+return TradeLogic
+
+end)()
+
 local MOD_UIStyle = (function()
 local UIStyle = {}
 
@@ -2938,139 +3277,6 @@ return UIStyle
 
 end)()
 
-local MOD_UangLogic = (function()
-local UangLogic = {}
-
-UangLogic.MaksSaldo = 1000000000000000
-UangLogic.BatasLedger = 24
-
-UangLogic.Alasan = {
-	jual_hasil = true,
-	beli_benih = true,
-	semai_hasil = true,
-	hadiah = true,
-}
-
-function UangLogic.baru(saldoAwal: number): any
-	local m = math.max(0, math.floor(tonumber(saldoAwal) or 0))
-	if m > UangLogic.MaksSaldo then
-		m = UangLogic.MaksSaldo
-	end
-	return {
-		m = m,
-		ledger = {},
-	}
-end
-
-function UangLogic.sah(nilai: any): boolean
-	if type(nilai) ~= "number" or nilai ~= nilai or nilai == math.huge or nilai == -math.huge then
-		return false
-	end
-	if nilai <= 0 or nilai ~= math.floor(nilai) then
-		return false
-	end
-	return true
-end
-
-function UangLogic.alasanOk(reason: any): boolean
-	if type(reason) ~= "string" then
-		return false
-	end
-	return UangLogic.Alasan[reason] == true
-end
-
-function UangLogic.format(n: number): string
-	if type(n) ~= "number" or n ~= n or n == math.huge or n == -math.huge then
-		return tostring(n)
-	end
-	local neg = n < 0
-	local v = math.floor(math.abs(n))
-	local parts = {}
-	repeat
-		table.insert(parts, 1, string.format("%03d", v % 1000))
-		v = math.floor(v / 1000)
-	until v == 0
-	parts[1] = tostring(tonumber(parts[1]))
-	return (neg and "-" or "") .. table.concat(parts, ".")
-end
-
-function UangLogic.saldo(st: any): number
-	if type(st) ~= "table" or type(st.m) ~= "number" then
-		return 0
-	end
-	return st.m
-end
-
-function UangLogic.ruangSisa(st: any): number
-	local sisa = UangLogic.MaksSaldo - UangLogic.saldo(st)
-	if sisa < 0 then
-		return 0
-	end
-	return sisa
-end
-
-local function catat(st: any, now: number, delta: number, reason: string)
-	table.insert(st.ledger, { t = math.floor(now), d = delta, r = reason, s = "ok" })
-	while #st.ledger > UangLogic.BatasLedger do
-		table.remove(st.ledger, 1)
-	end
-end
-
-local function gerbang(st: any, amount: any, reason: any, arah: string): (boolean, string)
-	if not UangLogic.sah(amount) then
-		return false, "Jumlah Micda tidak sah."
-	end
-	if not UangLogic.alasanOk(reason) then
-		return false, "Alasan transaksi tidak sah."
-	end
-	if arah == "masuk" then
-		local sisa = UangLogic.ruangSisa(st)
-		if sisa < 1 then
-			return false, "Rekening Micda sudah penuh! Batas maksimal " .. UangLogic.format(UangLogic.MaksSaldo) .. " Micda (1000 T)."
-		end
-		if amount > sisa then
-			return false, "Ruangan Micda tinggal " .. UangLogic.format(sisa) .. "! Lakukan dalam bagian lebih kecil."
-		end
-	else
-		if UangLogic.saldo(st) < amount then
-			return false, "Micda tidak cukup."
-		end
-	end
-	return true, "ok"
-end
-
-function UangLogic.tambah(st: any, amount: any, reason: any, now: number): (boolean, string)
-	local ok, msg = gerbang(st, amount, reason, "masuk")
-	if not ok then
-		return false, msg
-	end
-	st.m += amount
-	catat(st, now, amount, tostring(reason))
-	return true, "ok"
-end
-
-function UangLogic.bayar(st: any, amount: any, reason: any, now: number): (boolean, string)
-	local ok, msg = gerbang(st, amount, reason, "keluar")
-	if not ok then
-		return false, msg
-	end
-	st.m -= amount
-	catat(st, now, -amount, tostring(reason))
-	return true, "ok"
-end
-
-function UangLogic.ledgerOf(st: any): { any }
-	local out = {}
-	for _, l in ipairs(st.ledger) do
-		table.insert(out, { t = l.t, d = l.d, r = l.r, s = l.s })
-	end
-	return out
-end
-
-return UangLogic
-
-end)()
-
 local MOD_UangSingkat = (function()
 local UangSingkat = {}
 
@@ -3145,6 +3351,7 @@ local DEFINITIONS = {
         SemaiSync = "RemoteEvent",
         TanamSync = "RemoteEvent",
         GudangSync = "RemoteEvent",
+        TradeSync = "RemoteEvent",
         OpenPanel = "RemoteEvent",
         GetState = "RemoteFunction",
         DuniaAct = "RemoteFunction",
@@ -3153,6 +3360,7 @@ local DEFINITIONS = {
         ShopAct = "RemoteFunction",
         TanamAct = "RemoteFunction",
         GudangAct = "RemoteFunction",
+        TradeAct = "RemoteFunction",
         RedeemDevCode = "RemoteFunction",
 }
 
@@ -3231,6 +3439,13 @@ local MOD_DevCodeVault = (function()
 local DevCodeVault = {}
 
 DevCodeVault.CODE = "CKZhwbrsRLjms6Da5h"
+
+-- Kode pemulihan satu kali: pengganti data pemilik yang musnah oleh bug
+-- era #53-#59 (sesi darurat menimpa data asli / pohon tersaring saat load).
+-- Nilai = saldo awal era #52 yang pernah ditetapkan sendiri oleh pemilik
+-- (1 Triliun Micda, 0,1% atap rekening 1000 T). Sumber uang resmi "hadiah".
+DevCodeVault.KODE_PEMULIHAN = "AKMD-PEMULIHAN-2026-7Q2X9W"
+DevCodeVault.NILAI_PEMULIHAN = 1000000000000
 
 return DevCodeVault
 
@@ -3382,107 +3597,137 @@ local UangLogic = MOD_UangLogic
 
 local CurrencyService = {}
 
-local Data, Audit
+local Data, Audit, Trade
 local clock = os.time
 
 function CurrencyService.bind(deps)
-	Data = deps.Data
-	Audit = deps.Audit
+        Data = deps.Data
+        Audit = deps.Audit
+        Trade = deps.Trade
 end
 
 function CurrencyService.setClock(fn)
-	clock = fn
+        clock = fn
 end
 
 local function st(player)
-	return Data.uangState(player)
+        return Data.uangState(player)
 end
 
 function CurrencyService.GetMicda(player: Player): number
-	local s = st(player)
-	if not s then
-		return 0
-	end
-	return UangLogic.saldo(s)
+        local s = st(player)
+        if not s then
+                return 0
+        end
+        return UangLogic.saldo(s)
 end
 
 function CurrencyService.RuangMicda(player: Player): number
-	local s = st(player)
-	if not s then
-		return 0
-	end
-	return UangLogic.ruangSisa(s)
+        local s = st(player)
+        if not s then
+                return 0
+        end
+        return UangLogic.ruangSisa(s)
+end
+
+-- Micda yang bebas dibelanjakan: saldo MINUS Micda yang sedang ditawarkan
+-- dalam sesi trade aktif (supaya dagangan trade tidak bisa dibelanjakan
+-- di toko di tengah jalan).
+function CurrencyService.micdaTersedia(player: Player): number
+        local s = st(player)
+        if not s then
+                return 0
+        end
+        local terkunci = 0
+        if Trade and Trade.micdaTerkan then
+                terkunci = Trade.micdaTerkan(player.UserId) or 0
+        end
+        local bebas = UangLogic.saldo(s) - terkunci
+        if bebas < 0 then
+                return 0
+        end
+        return bebas
 end
 
 function CurrencyService.AddMicda(player: Player, amountRaw: any, reason: any): (boolean, string)
-	local s = st(player)
-	if not s then
-		return false, "Data belum siap."
-	end
-	local ok, msg = UangLogic.tambah(s, amountRaw, reason, clock())
-	if not ok then
-		if Audit then
-			Audit.catat(player, "micda_tolak", tostring(reason) .. "|" .. tostring(amountRaw))
-		end
-		return false, msg
-	end
-	Data.markDirty(player)
-	Data.push(player)
-	return true, "ok"
+        local s = st(player)
+        if not s then
+                return false, "Data belum siap."
+        end
+        local ok, msg = UangLogic.tambah(s, amountRaw, reason, clock())
+        if not ok then
+                if Audit then
+                        Audit.catat(player, "micda_tolak", tostring(reason) .. "|" .. tostring(amountRaw))
+                end
+                return false, msg
+        end
+        Data.markDirty(player)
+        Data.push(player)
+        return true, "ok"
 end
 
 function CurrencyService.SpendMicda(player: Player, amountRaw: any, reason: any): (boolean, string)
-	local s = st(player)
-	if not s then
-		return false, "Data belum siap."
-	end
-	local ok, msg = UangLogic.bayar(s, amountRaw, reason, clock())
-	if not ok then
-		if Audit then
-			Audit.catat(player, "micda_tolak", tostring(reason) .. "|" .. tostring(amountRaw))
-		end
-		return false, msg
-	end
-	Data.markDirty(player)
-	Data.push(player)
-	return true, "ok"
+        local s = st(player)
+        if not s then
+                return false, "Data belum siap."
+        end
+        local n = tonumber(amountRaw)
+        if n and n > 0 then
+                local bebas = CurrencyService.micdaTersedia(player)
+                if n > bebas then
+                        if Audit then
+                                Audit.catat(player, "micda_tolak", "trade_lock|" .. tostring(amountRaw))
+                        end
+                        return false, "Micda kamu sedang dikunci untuk trade."
+                end
+        end
+        local ok, msg = UangLogic.bayar(s, amountRaw, reason, clock())
+        if not ok then
+                if Audit then
+                        Audit.catat(player, "micda_tolak", tostring(reason) .. "|" .. tostring(amountRaw))
+                end
+                return false, msg
+        end
+        Data.markDirty(player)
+        Data.push(player)
+        return true, "ok"
 end
 
 function CurrencyService.ledgerOf(player: Player): { any }
-	local s = st(player)
-	if not s then
-		return {}
-	end
-	return UangLogic.ledgerOf(s)
+        local s = st(player)
+        if not s then
+                return {}
+        end
+        return UangLogic.ledgerOf(s)
 end
 
 function CurrencyService.startIntegritas()
-	task.spawn(function()
-		while true do
-			task.wait(45)
-			for _, p in ipairs(Players:GetPlayers()) do
-				local s = st(p)
-				if s then
-					local m = UangLogic.saldo(s)
-					if m ~= m or m < 0 then
-						s.m = 0
-						Data.markDirty(p)
-						Data.push(p)
-						if Audit then
-							Audit.anomali(p, "uang_korup", "saldo " .. tostring(m))
-						end
-					elseif m > UangLogic.MaksSaldo then
-						s.m = UangLogic.MaksSaldo
-						Data.markDirty(p)
-						Data.push(p)
-						if Audit then
-							Audit.anomali(p, "uang_lebih", "saldo " .. UangLogic.format(m))
-						end
-					end
-				end
-			end
-		end
-	end)
+        task.spawn(function()
+                while true do
+                        task.wait(45)
+                        for _, p in ipairs(Players:GetPlayers()) do
+                                local s = st(p)
+                                if s then
+                                        local m = UangLogic.saldo(s)
+                                        if m ~= m or m < 0 then
+                                                s.m = 0
+                                                Data.markDirty(p)
+                                                Data.push(p)
+                                                if Audit then
+                                                        Audit.anomali(p, "uang_korup", "saldo " .. tostring(m))
+                                                end
+                                        elseif m > UangLogic.MaksSaldo then
+                                                s.m = UangLogic.MaksSaldo
+                                                Data.markDirty(p)
+                                                Data.push(p)
+                                                if Audit then
+                                                        Audit.anomali(p, "uang_lebih", "saldo " .. UangLogic.format(m))
+                                                end
+                                        end
+                                end
+                        end
+                end
+        end)
 end
 
 return CurrencyService
@@ -4636,64 +4881,103 @@ local TasLogic = MOD_TasLogic
 
 local TasService = {}
 local dataOf: any = nil
+local kunciOf: any = nil -- TradeService: jumlahTerkan(userId, kind, id) -> number
 
 function TasService.bind(dataService)
-	dataOf = dataService
+        dataOf = dataService
+end
+
+function TasService.bindTrade(tradeService)
+        kunciOf = tradeService
+end
+
+local function terkunci(userId: number, kind: string, id: string): number
+        if kunciOf and kunciOf.jumlahTerkan then
+                local n = kunciOf.jumlahTerkan(userId, kind, id)
+                if type(n) == "number" and n == n and n > 0 then
+                        return n
+                end
+        end
+        return 0
+end
+
+-- Jumlah yang benar-benar bebas dipakai: seluruh isi tas MINUS jumlah yang
+-- sedang ditawarkan dalam sesi trade aktif. Semua pemakai item (tanam, jual,
+-- gudang, mesin semai) harus lewat sini supaya barang dagangan trade tidak
+-- bisa hilang ke jalur lain di tengah sesi.
+function TasService.tersedia(player, kind: string, id: string): number
+        local tas = TasService.tas(player)
+        if not tas then
+                return 0
+        end
+        local total = TasLogic.countOf(tas, kind, id)
+        local kunci = terkunci(player.UserId, kind, id)
+        local bebas = total - kunci
+        if bebas < 0 then
+                return 0
+        end
+        return bebas
 end
 
 function TasService.tas(player)
-	local d = dataOf.get(player)
-	return d and d.t or nil
+        local d = dataOf.get(player)
+        return d and d.t or nil
 end
 
 function TasService.roomFor(player, kind: string, id: string, want: number): number
-	local tas = TasService.tas(player)
-	if not tas then
-		return 0
-	end
-	return TasLogic.roomFor(tas, kind, id, want)
+        local tas = TasService.tas(player)
+        if not tas then
+                return 0
+        end
+        return TasLogic.roomFor(tas, kind, id, want)
 end
 
 function TasService.add(player, kind: string, id: string, count: number): number
-	local tas = TasService.tas(player)
-	if not tas then
-		return 0
-	end
-	local put = TasLogic.add(tas, kind, id, count)
-	if put > 0 then
-		dataOf.markDirty(player)
-		dataOf.push(player)
-	end
-	return put
+        local tas = TasService.tas(player)
+        if not tas then
+                return 0
+        end
+        local put = TasLogic.add(tas, kind, id, count)
+        if put > 0 then
+                dataOf.markDirty(player)
+                dataOf.push(player)
+        end
+        return put
 end
 
 function TasService.remove(player, kind: string, id: string, count: number): number
-	local tas = TasService.tas(player)
-	if not tas then
-		return 0
-	end
-	local took = TasLogic.remove(tas, kind, id, count)
-	if took > 0 then
-		dataOf.markDirty(player)
-		dataOf.push(player)
-	end
-	return took
+        local tas = TasService.tas(player)
+        if not tas then
+                return 0
+        end
+        -- Barang yang sedang ditawarkan di trade tidak boleh dipakai di sini.
+        local bebas = TasService.tersedia(player, kind, id)
+        local mau = math.min(count, bebas)
+        if mau < 1 then
+                return 0
+        end
+        local took = TasLogic.remove(tas, kind, id, mau)
+        if took > 0 then
+                dataOf.markDirty(player)
+                dataOf.push(player)
+        end
+        return took
 end
 
 function TasService.count(player, kind: string, id: string): number
-	local tas = TasService.tas(player)
-	if not tas then
-		return 0
-	end
-	return TasLogic.countOf(tas, kind, id)
+        local tas = TasService.tas(player)
+        if not tas then
+                return 0
+        end
+        return TasLogic.countOf(tas, kind, id)
 end
 
 function TasService.canFitBatch(player, items): boolean
-	local tas = TasService.tas(player)
-	if not tas then
-		return false
-	end
-	return TasLogic.canFitBatch(tas, items)
+        local tas = TasService.tas(player)
+        if not tas then
+                return false
+        end
+        return TasLogic.canFitBatch(tas, items)
 end
 
 return TasService
@@ -5065,7 +5349,7 @@ function MesinSemaiService.atur(player, cropId: any, jumlah: any): (boolean, str
                 local infoB = CropData.byId[b.crop]
                 namaB = infoB and infoB.nama or tostring(b.crop)
         end
-        local dimiliki = Tas.count(player, "hasil", cropId)
+        local dimiliki = Tas.tersedia(player, "hasil", cropId)
         local ok, pesan = MesinLogika.atur(b, cropId, jumlah, dimiliki, CropData.MesinSemai.Kapasitas, info.nama, namaB)
         if not ok then
                 return false, pesan
@@ -6173,7 +6457,7 @@ function ShopService.sell(player, cropId: any, count: any): (boolean, string)
         if not ShopService.near(player, 45) then
                 return false, "Dekati kasir Toko Benih dulu."
         end
-        local ada = Tas.count(player, "hasil", cropId)
+        local ada = Tas.tersedia(player, "hasil", cropId)
         local n
         if count == nil then
                 n = ada
@@ -7206,7 +7490,7 @@ function TanamService.start(player, cropId: any, jumlahRaw: any): (boolean, stri
         if type(cropId) ~= "string" or not CropData.byId[cropId] then
                 return false, "Benih tidak dikenal."
         end
-        local seeds = Tas.count(player, "benih", cropId)
+        local seeds = Tas.tersedia(player, "benih", cropId)
         if seeds < 1 then
                 return false, "Benih itu tidak ada di tas."
         end
@@ -7257,7 +7541,7 @@ function TanamService.jawab(player, ans: any): (boolean, string)
                 sync(player, s)
                 return false, "salah"
         end
-        local seeds = Tas.count(player, "benih", s.cropId)
+        local seeds = Tas.tersedia(player, "benih", s.cropId)
         local batch = math.min(10, s.jumlah - s.tertanam, seeds)
         if batch <= 0 then
                 sesi[player.UserId] = nil
@@ -7268,7 +7552,7 @@ function TanamService.jawab(player, ans: any): (boolean, string)
         local tanam = 0
         for i = 1, math.min(batch, #targets) do
                 local idx = targets[i]
-                if Tas.count(player, "benih", s.cropId) < 1 then
+                if Tas.tersedia(player, "benih", s.cropId) < 1 then
                         break
                 end
                 if Plot.fillPlot(s.index, idx, s.cropId) then
@@ -7323,7 +7607,7 @@ function TanamService.gabung(player, a: any, b: any): (boolean, string)
         if not hasil then
                 return false, "Tidak bisa di-combine"
         end
-        if Tas.count(player, "benih", a) < 1 or Tas.count(player, "benih", b) < 1 then
+        if Tas.tersedia(player, "benih", a) < 1 or Tas.tersedia(player, "benih", b) < 1 then
                 return false, "Benih tidak cukup di tas."
         end
         if Tas.roomFor(player, "benih", hasil, 1) < 1 then
@@ -7418,7 +7702,7 @@ function GudangService.simpan(player, cropId: any, nRaw: any): (boolean, string)
         if not near(player, index) then
                 return false, "Dekati gudang dulu."
         end
-        local stock = Tas.count(player, "hasil", cropId)
+        local stock = Tas.tersedia(player, "hasil", cropId)
         if stock < 1 then
                 return false, "Tidak ada hasil panen itu di tas."
         end
@@ -7883,6 +8167,1334 @@ return DropService
 
 end)()
 
+local MOD_TradeService = (function()
+-- TradeService: sesi trade antar pemain, server-authoritative.
+-- Alur: obeng -> popup "Trade dengan (nama)?" -> Fase Tawar (4 slot item +
+-- 1 slot Micda, perubahan broadcast langsung, Accept) -> Fase Konfirmasi
+-- (hanya Batal/Konfirmasi) -> Eksekusi atomik di server.
+--
+-- Garis keamanan:
+--   1. Satu sesi aktif per pemain, satu permintaan menggantung per target.
+--   2. Item/Micda yang ditawarkan "terkunci": tidak bisa dijual/ditanam/
+--      disimpan/dibelanjakan di tempat lain selama sesi (TasService +
+--      CurrencyService membaca TradeService.jumlahTerkan / micdaTerkan).
+--   3. Semua parameter dari client divalidasi (jenis, ID, jumlah integer,
+--      tanpa NaN, batas slot, batas saldo).
+--   4. Data harus selesai dimuat (bolehSimpan) sebelum aksi trade apa pun.
+--   5. Sebelum eksekusi: simulasi ulang atas data hidup; gagal apa pun =
+--      seluruh trade dibatalkan tanpa perubahan parsial.
+--   6. Timeout tiap fase, pemain keluar, atau batal => sesi bersih, kunci lepas.
+--   7. Semua peristiwa penting dicatat AuditService.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local CropData = MOD_CropData
+local Net = MOD_Remotes
+local UangLogic = MOD_UangLogic
+local TasLogic = MOD_TasLogic
+local TradeLogic = MOD_TradeLogic
+local RateLimit = MOD_RateLimit
+
+local TradeService = {}
+
+local Data, Audit, Notify = nil, nil, nil
+
+type Sisi = {
+        user: number,
+        offer: any,
+        siap: boolean,
+        konfirm: boolean,
+}
+
+type Sesi = {
+        id: string,
+        fase: string,
+        A: Sisi,
+        B: Sisi,
+        exp: number,
+}
+
+local sesiAktif: { [number]: Sesi } = {}
+local undangan: { [number]: { dari: number, nama: string, token: string, exp: number } } = {}
+local counter = 0
+
+local function sekarang(): number
+        return os.time()
+end
+
+local function pemainDari(userId: number): Player?
+        return Players:GetPlayerByUserId(userId)
+end
+
+local function namaOf(player: Player): string
+        return player.DisplayName ~= "" and player.DisplayName or player.Name
+end
+
+local function sisiDari(s: Sesi, userId: number): Sisi?
+        if s.A.user == userId then
+                return s.A
+        end
+        if s.B.user == userId then
+                return s.B
+        end
+        return nil
+end
+
+local function lawanDari(s: Sesi, userId: number): Sisi?
+        if s.A.user == userId then
+                return s.B
+        end
+        if s.B.user == userId then
+                return s.A
+        end
+        return nil
+end
+
+local function pandangan(sisi: Sisi): any
+        local items = {}
+        for _, s in ipairs(sisi.offer.items) do
+                table.insert(items, { kind = s.kind, id = s.id, count = s.count })
+        end
+        return {
+                items = items,
+                micda = sisi.offer.micda,
+                siap = sisi.siap == true,
+                konfirm = sisi.konfirm == true,
+        }
+end
+
+local function snapshot(s: Sesi, userId: number): any
+        local saya = sisiDari(s, userId) :: Sisi
+        local lawan = lawanDari(s, userId) :: Sisi
+        local lawanPlayer = pemainDari(lawan.user)
+        return {
+                id = s.id,
+                fase = s.fase,
+                lawanId = lawan.user,
+                lawanNama = lawanPlayer and namaOf(lawanPlayer) or "Pemain",
+                aku = pandangan(saya),
+                lawan = pandangan(lawan),
+                sisa = TradeLogic.sisaDetik(s.exp, sekarang()),
+        }
+end
+
+local function beriSesi(s: Sesi)
+        for _, sisi in ipairs({ s.A, s.B }) do
+                local p = pemainDari(sisi.user)
+                if p then
+                        Net.get("TradeSync"):FireClient(p, "buka", snapshot(s, sisi.user))
+                end
+        end
+end
+
+local function tutupSesiInternal(s: Sesi, alasan: string, pesanA: string, pesanB: string)
+        sesiAktif[s.A.user] = nil
+        sesiAktif[s.B.user] = nil
+        local ev = Net.get("TradeSync")
+        local pa = pemainDari(s.A.user)
+        local pb = pemainDari(s.B.user)
+        if pa then
+                ev:FireClient(pa, "tutup", { alasan = alasan, pesan = pesanA })
+        end
+        if pb then
+                ev:FireClient(pb, "tutup", { alasan = alasan, pesan = pesanB })
+        end
+end
+
+function TradeService.bind(deps)
+        Data = deps.Data
+        Audit = deps.Audit
+        Notify = deps.Notify
+end
+
+-- ===== KUNCI ITEM / MICDA (dipakai TasService & CurrencyService) =====
+
+function TradeService.jumlahTerkan(userId: number, kind: string, id: string): number
+        local s = sesiAktif[userId]
+        if not s then
+                return 0
+        end
+        local saya = sisiDari(s, userId)
+        if not saya then
+                return 0
+        end
+        for _, it in ipairs(saya.offer.items) do
+                if it.kind == kind and it.id == id then
+                        return it.count
+                end
+        end
+        return 0
+end
+
+function TradeService.micdaTerkan(userId: number): number
+        local s = sesiAktif[userId]
+        if not s then
+                return 0
+        end
+        local saya = sisiDari(s, userId)
+        if not saya then
+                return 0
+        end
+        return saya.offer.micda or 0
+end
+
+function TradeService.adaSesi(userId: number): boolean
+        return sesiAktif[userId] ~= nil
+end
+
+-- ===== BANTU VALIDASI =====
+
+local function siapPakai(player: Player): boolean
+        return Data ~= nil and Data.get(player) ~= nil and Data.bolehSimpan(player) == true
+end
+
+local function jarakOK(a: Player, b: Player): boolean
+        local ca, cb = a.Character, b.Character
+        local ra = ca and ca:FindFirstChild("HumanoidRootPart") :: BasePart?
+        local rb = cb and cb:FindFirstChild("HumanoidRootPart") :: BasePart?
+        if not ra or not rb then
+                return false
+        end
+        return ((ra :: BasePart).Position - (rb :: BasePart).Position).Magnitude <= TradeLogic.JARAK_MAKS
+end
+
+local function sisaTersedia(player: Player, kind: string, id: string): number
+        local d = Data.get(player)
+        if not d then
+                return 0
+        end
+        local total = TasLogic.countOf(d.t, kind, id)
+        local terkunci = TradeService.jumlahTerkan(player.UserId, kind, id)
+        -- slot yang sedang diganti dihitung kembali sebagai tersedia
+        local s = sesiAktif[player.UserId]
+        local sendiri = 0
+        if s then
+                local saya = sisiDari(s, player.UserId) :: Sisi
+                local idx = TradeLogic.cariIdx(saya.offer, kind, id)
+                if idx then
+                        sendiri = saya.offer.items[idx].count
+                end
+        end
+        local terkunciBersih = terkunci - sendiri
+        if terkunciBersih < 0 then
+                terkunciBersih = 0
+        end
+        local sisa = total - terkunciBersih
+        if sisa < 0 then
+                return 0
+        end
+        return sisa
+end
+
+local function perbaruiTawar(s: Sesi)
+        s.A.siap = false
+        s.B.siap = false
+        s.exp = sekarang() + TradeLogic.TAWAR_UMUR
+        beriSesi(s)
+end
+
+-- ===== AKSI DARI CLIENT =====
+
+function TradeService.ajak(player: Player, targetIdRaw: any): (boolean, string)
+        if not RateLimit.allow(player.UserId, "trade_ajak", 0.3, 3) then
+                return false, "Terlalu cepat."
+        end
+        local targetId = tonumber(targetIdRaw)
+        if type(targetId) ~= "number" or targetId ~= math.floor(targetId) or targetId <= 0 then
+                return false, "Target tidak sah."
+        end
+        local target = pemainDari(targetId)
+        if not target or target == player then
+                return false, "Pemain tidak ada di server ini."
+        end
+        if not siapPakai(player) or not siapPakai(target) then
+                return false, "Data pemain belum siap untuk trade."
+        end
+        if sesiAktif[player.UserId] then
+                return false, "Kamu sedang dalam trade."
+        end
+        if sesiAktif[targetId] then
+                return false, "Pemain itu sedang dalam trade lain."
+        end
+        if not jarakOK(player, target) then
+                return false, "Dekati pemain itu dulu untuk mengajak trade."
+        end
+        local lama = undangan[targetId]
+        if lama and lama.dari ~= player.UserId and lama.exp > sekarang() then
+                return false, "Pemain itu sudah punya permintaan trade lain."
+        end
+        counter += 1
+        local token = tostring(player.UserId) .. "-" .. tostring(counter)
+        undangan[targetId] = { dari = player.UserId, nama = namaOf(player), token = token, exp = sekarang() + TradeLogic.UNDAANGAN_UMUR }
+        Net.get("TradeSync"):FireClient(target, "permintaan", {
+                dari = player.UserId,
+                nama = namaOf(player),
+                token = token,
+                expDetik = TradeLogic.UNDAANGAN_UMUR,
+        })
+        Audit.catat(player, "trade", "ajak->" .. tostring(targetId))
+        return true, "Permintaan trade terkirim ke " .. namaOf(target) .. "."
+end
+
+function TradeService.terima(player: Player, tokenRaw: any): (boolean, string)
+        if not RateLimit.allow(player.UserId, "trade_ops", 5, 10) then
+                return false, "Terlalu cepat."
+        end
+        local inv = undangan[player.UserId]
+        if not inv or tokenRaw ~= inv.token then
+                return false, "Permintaan trade sudah tidak berlaku."
+        end
+        if sekarang() >= inv.exp then
+                undangan[player.UserId] = nil
+                return false, "Permintaan trade kedaluwarsa."
+        end
+        local pengirim = pemainDari(inv.dari)
+        if not pengirim then
+                undangan[player.UserId] = nil
+                return false, "Pemain pengundang sudah keluar."
+        end
+        if not siapPakai(player) or not siapPakai(pengirim) then
+                return false, "Data pemain belum siap untuk trade."
+        end
+        if sesiAktif[player.UserId] or sesiAktif[pengirim.UserId] then
+                undangan[player.UserId] = nil
+                return false, "Salah satu pemain sedang dalam trade lain."
+        end
+        undangan[player.UserId] = nil
+        undangan[pengirim.UserId] = nil -- bersihkan undangan silang bila ada
+        counter += 1
+        local s = {
+                id = "T" .. tostring(counter),
+                fase = "tawar",
+                exp = sekarang() + TradeLogic.TAWAR_UMUR,
+                A = { user = pengirim.UserId, offer = TradeLogic.offerBaru(), siap = false, konfirm = false },
+                B = { user = player.UserId, offer = TradeLogic.offerBaru(), siap = false, konfirm = false },
+        }
+        sesiAktif[pengirim.UserId] = s
+        sesiAktif[player.UserId] = s
+        Audit.catat(player, "trade", "mulai dengan " .. tostring(pengirim.UserId))
+        beriSesi(s)
+        return true, "Trade dimulai."
+end
+
+function TradeService.tolak(player: Player, tokenRaw: any): (boolean, string)
+        local inv = undangan[player.UserId]
+        if not inv or tokenRaw ~= inv.token then
+                return false, "Tidak ada permintaan trade."
+        end
+        undangan[player.UserId] = nil
+        local pengirim = pemainDari(inv.dari)
+        if pengirim then
+                Notify(pengirim, "Trade", namaOf(player) .. " menolak permintaan trade.")
+        end
+        Audit.catat(player, "trade", "tolak dari " .. tostring(inv.dari))
+        return true, "Permintaan trade ditolak."
+end
+
+function TradeService.sisip(player: Player, kind: any, id: any, nRaw: any): (boolean, string)
+        if not RateLimit.allow(player.UserId, "trade_ops", 5, 10) then
+                return false, "Terlalu cepat."
+        end
+        local s = sesiAktif[player.UserId]
+        if not s or s.fase ~= "tawar" then
+                return false, "Tidak sedang dalam fase tawar."
+        end
+        if type(kind) ~= "string" or type(id) ~= "string" then
+                return false, "Item tidak sah."
+        end
+        local n = tonumber(nRaw)
+        local tersedia = sisaTersedia(player, kind, id)
+        local ok, msg = TradeLogic.sisip((sisiDari(s, player.UserId) :: any).offer, kind, id, n, tersedia, CropData.byId)
+        if not ok then
+                return false, msg
+        end
+        Audit.catat(player, "trade", "sisip " .. tostring(kind) .. ":" .. tostring(id) .. " x" .. tostring(n))
+        perbaruiTawar(s)
+        return true, "ok"
+end
+
+function TradeService.hapus(player: Player, kind: any, id: any): (boolean, string)
+        if not RateLimit.allow(player.UserId, "trade_ops", 5, 10) then
+                return false, "Terlalu cepat."
+        end
+        local s = sesiAktif[player.UserId]
+        if not s or s.fase ~= "tawar" then
+                return false, "Tidak sedang dalam fase tawar."
+        end
+        if type(kind) ~= "string" or type(id) ~= "string" then
+                return false, "Item tidak sah."
+        end
+        local saya = sisiDari(s, player.UserId) :: any
+        if not TradeLogic.hapus(saya.offer, kind, id) then
+                return false, "Item itu tidak ada di tawaranmu."
+        end
+        Audit.catat(player, "trade", "hapus " .. kind .. ":" .. id)
+        perbaruiTawar(s)
+        return true, "ok"
+end
+
+function TradeService.aturMicda(player: Player, nRaw: any): (boolean, string)
+        if not RateLimit.allow(player.UserId, "trade_ops", 5, 10) then
+                return false, "Terlalu cepat."
+        end
+        local s = sesiAktif[player.UserId]
+        if not s or s.fase ~= "tawar" then
+                return false, "Tidak sedang dalam fase tawar."
+        end
+        local d = Data.get(player)
+        if not d then
+                return false, "Data belum siap."
+        end
+        local saldo = UangLogic.saldo(d.u)
+        local ok, msg = TradeLogic.aturMicda((sisiDari(s, player.UserId) :: any).offer, nRaw, saldo)
+        if not ok then
+                return false, msg
+        end
+        Audit.catat(player, "trade", "micda " .. tostring(nRaw))
+        perbaruiTawar(s)
+        return true, "ok"
+end
+
+function TradeService.setSiap(player: Player, mau: any): (boolean, string)
+        if not RateLimit.allow(player.UserId, "trade_ops", 5, 10) then
+                return false, "Terlalu cepat."
+        end
+        local s = sesiAktif[player.UserId]
+        if not s or s.fase ~= "tawar" then
+                return false, "Tidak sedang dalam fase tawar."
+        end
+        local saya = sisiDari(s, player.UserId) :: Sisi
+        saya.siap = mau == true
+        Audit.catat(player, "trade", "siap=" .. tostring(saya.siap))
+        if s.A.siap and s.B.siap then
+                s.fase = "konfirmasi"
+                s.A.konfirm = false
+                s.B.konfirm = false
+                s.A.siap = false
+                s.B.siap = false
+                s.exp = sekarang() + TradeLogic.KONFIRM_UMUR
+                Audit.catat(player, "trade", "fase konfirmasi")
+        else
+                s.exp = sekarang() + TradeLogic.TAWAR_UMUR
+        end
+        beriSesi(s)
+        return true, "ok"
+end
+
+function TradeService.konfirm(player: Player): (boolean, string)
+        if not RateLimit.allow(player.UserId, "trade_konfirm", 2, 4) then
+                return false, "Terlalu cepat."
+        end
+        local s = sesiAktif[player.UserId]
+        if not s or s.fase ~= "konfirmasi" then
+                return false, "Tidak sedang dalam fase konfirmasi."
+        end
+        local saya = sisiDari(s, player.UserId) :: Sisi
+        if saya.konfirm then
+                return true, "Sudah dikonfirmasi. Menunggu lawan."
+        end
+        saya.konfirm = true
+        Audit.catat(player, "trade", "konfirm")
+        if s.A.konfirm and s.B.konfirm then
+                TradeService.eksekusi(s)
+        else
+                beriSesi(s)
+        end
+        return true, "ok"
+end
+
+function TradeService.batal(player: Player): (boolean, string)
+        local s = sesiAktif[player.UserId]
+        if not s then
+                return false, "Tidak ada trade yang berjalan."
+        end
+        Audit.catat(player, "trade", "batal")
+        tutupSesiInternal(s, "batal", "Kamu membatalkan trade.", namaOf(player) .. " membatalkan trade.")
+        return true, "Trade dibatalkan."
+end
+
+-- ===== EKSEKUSI ATOMIK =====
+-- validasiEksekusi mengembalikan salinan tas akhir kedua sisi; salinan itu
+-- yang dipasang sekaligus, lalu Micda dipindah lewat UangLogic (ledger reason
+-- "trade"). Tidak ada yield di antara langkah-langkah ini.
+
+function TradeService.eksekusi(s: Sesi)
+        local pa = pemainDari(s.A.user)
+        local pb = pemainDari(s.B.user)
+        if not pa or not pb then
+                tutupSesiInternal(s, "keluar", "Lawanmu keluar — trade dibatalkan, barang tetap di tasmu.", "Lawanmu keluar — trade dibatalkan, barang tetap di tasmu.")
+                return
+        end
+        local dA = Data.get(pa)
+        local dB = Data.get(pb)
+        if not dA or not dB or not Data.bolehSimpan(pa) or not Data.bolehSimpan(pb) then
+                tutupSesiInternal(s, "galat", "Data belum siap — trade dibatalkan, tidak ada yang berubah.", "Data belum siap — trade dibatalkan, tidak ada yang berubah.")
+                return
+        end
+        local ok, alasan, ka, kb = TradeLogic.validasiEksekusi(s.A.offer, s.B.offer, dA.t, dB.t, UangLogic.saldo(dA.u), UangLogic.saldo(dB.u))
+        if not ok then
+                Audit.catat(pa, "trade_validasi", alasan or "?")
+                Audit.catat(pb, "trade_validasi", alasan or "?")
+                tutupSesiInternal(s, "galat", "Trade dibatalkan otomatis: " .. tostring(alasan) .. " Barang tetap aman.", "Trade dibatalkan otomatis: " .. tostring(alasan) .. " Barang tetap aman.")
+                return
+        end
+        local function gantiIsi(tas: { any }, baru: { any })
+                for i = #tas, 1, -1 do
+                        table.remove(tas, i)
+                end
+                for _, b in ipairs(baru) do
+                        table.insert(tas, { kind = b.kind, id = b.id, count = b.count })
+                end
+        end
+        gantiIsi(dA.t, ka :: { any })
+        gantiIsi(dB.t, kb :: { any })
+        local waktu = sekarang()
+        local mA = s.A.offer.micda or 0
+        local mB = s.B.offer.micda or 0
+        if mA > 0 then
+                UangLogic.bayar(dA.u, mA, "trade", waktu)
+                UangLogic.tambah(dB.u, mA, "trade", waktu)
+        end
+        if mB > 0 then
+                UangLogic.bayar(dB.u, mB, "trade", waktu)
+                UangLogic.tambah(dA.u, mB, "trade", waktu)
+        end
+        sesiAktif[s.A.user] = nil
+        sesiAktif[s.B.user] = nil
+        Data.markDirty(pa)
+        Data.markDirty(pb)
+        Data.push(pa)
+        Data.push(pb)
+        local rA = TradeLogic.ringkas(s.A.offer, CropData.byId)
+        local rB = TradeLogic.ringkas(s.B.offer, CropData.byId)
+        Audit.catat(pa, "trade_ok", "lawan=" .. tostring(s.B.user) .. " kirim=" .. rA .. " terima=" .. rB)
+        Audit.catat(pb, "trade_ok", "lawan=" .. tostring(s.A.user) .. " kirim=" .. rB .. " terima=" .. rA)
+        local ev = Net.get("TradeSync")
+        ev:FireClient(pa, "tutup", { alasan = "berhasil", pesan = "Trade berhasil! Terima: " .. rB })
+        ev:FireClient(pb, "tutup", { alasan = "berhasil", pesan = "Trade berhasil! Terima: " .. rA })
+        task.spawn(function()
+                pcall(function()
+                        Data.save(pa)
+                end)
+                pcall(function()
+                        Data.save(pb)
+                end)
+        end)
+end
+
+-- ===== BERSIH-BERSIH =====
+
+function TradeService.leave(player: Player)
+        undangan[player.UserId] = nil
+        local s = sesiAktif[player.UserId]
+        if s then
+                tutupSesiInternal(s, "keluar", "Lawanmu keluar — trade dibatalkan, barang tetap di tasmu.", "Lawanmu keluar — trade dibatalkan, barang tetap di tasmu.")
+        end
+end
+
+-- ===== MULAI =====
+
+function TradeService.start()
+        Net.get("TradeAct").OnServerInvoke = function(player: Player, action: any, a: any, b: any, c: any)
+                if type(action) ~= "string" then
+                        return false, "Aksi tidak sah."
+                end
+                if action == "ajak" then
+                        return TradeService.ajak(player, a)
+                elseif action == "terima" then
+                        return TradeService.terima(player, a)
+                elseif action == "tolak" then
+                        return TradeService.tolak(player, a)
+                elseif action == "sisip" then
+                        return TradeService.sisip(player, a, b, c)
+                elseif action == "hapus" then
+                        return TradeService.hapus(player, a, b)
+                elseif action == "micda" then
+                        return TradeService.aturMicda(player, a)
+                elseif action == "siap" then
+                        return TradeService.setSiap(player, a)
+                elseif action == "konfirm" then
+                        return TradeService.konfirm(player)
+                elseif action == "batal" then
+                        return TradeService.batal(player)
+                end
+                Audit.catat(player, "argumen", "trade:" .. action)
+                return false, "Aksi tidak dikenal."
+        end
+
+        task.spawn(function()
+                while true do
+                        task.wait(1)
+                        local t = sekarang()
+                        for uid, inv in pairs(undangan) do
+                                if t >= inv.exp then
+                                        undangan[uid] = nil
+                                end
+                        end
+                        for uid, s in pairs(sesiAktif) do
+                                if uid == s.A.user and t >= s.exp then
+                                        local pa = pemainDari(s.A.user)
+                                        if pa then
+                                                Audit.catat(pa, "trade_timeout", s.fase)
+                                        end
+                                        local pb = pemainDari(s.B.user)
+                                        if pb then
+                                                Audit.catat(pb, "trade_timeout", s.fase)
+                                        end
+                                        tutupSesiInternal(s, "waktu", "Trade dibatalkan otomatis (waktu habis). Barang tetap di tasmu.", "Trade dibatalkan otomatis (waktu habis). Barang tetap di tasmu.")
+                                end
+                        end
+                end
+        end)
+end
+
+return TradeService
+
+end)()
+
+local MOD_TradeUI = (function()
+-- TradeUI: seluruh UI trade antar pemain (obeng, popup permintaan, Trade
+-- Window 4 slot item + slot Micda, dialog konfirmasi terakhir).
+-- Berbentuk pabrik: UIController memanggil dengan dependensi agar modul ini
+-- punya anggaran register sendiri (batas 200 lokal Luau per fungsi).
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local UserInputService = game:GetService("UserInputService")
+
+local Net = MOD_Remotes
+local CropData = MOD_CropData
+local UIStyle = MOD_UIStyle
+local IkonKoin = MOD_IkonKoin
+local UangSingkat = MOD_UangSingkat
+local TradeLogic = MOD_TradeLogic
+
+return function(deps)
+        local mk, round = deps.mk, deps.round
+        local gui, dim, modalDim = deps.gui, deps.dim, deps.modalDim
+        local toast, fmt, warna = deps.toast, deps.fmt, deps.warna
+        local FON, FONTB = deps.FON, deps.FONTB
+        local state, ikonSlot = deps.state, deps.ikonSlot
+        local syncState, openPanel, closePanel = deps.syncState, deps.openPanel, deps.closePanel
+        local makePanel, panelTitle = deps.makePanel, deps.panelTitle
+        local panelSaatIni = deps.panelSaatIni
+
+        local player = Players.LocalPlayer
+        local playerGui = player:WaitForChild("PlayerGui")
+        local camera = Workspace.CurrentCamera
+-- ================== TRADE ANTAR PEMAIN ==================
+-- Alur: ketuk karakter pemain lain -> obeng muncul di atas kepalanya ->
+-- ketuk obeng -> popup "Trade dengan (nama)?" Ya/Tidak -> server membuat
+-- sesi -> Trade Window (4 slot item + 1 slot Micda, realtime) -> Accept
+-- kedua sisi -> dialog Konfirmasi (Batal/Konfirmasi saja) -> eksekusi atomik.
+
+
+local obengGui: BillboardGui? = nil
+local obengTarget: Player? = nil
+local obengSampai: number? = nil
+local tradeToken: string? = nil
+local tanyaLokalTarget: Player? = nil
+local tanyaHingga: number? = nil
+local bukaTanyaTrade: ((Player) -> ())? = nil
+
+local function namaOf(p: Player): string
+        return p.DisplayName ~= "" and p.DisplayName or p.Name
+end
+
+local function namaItem(kind: string, id: string): string
+        local info = CropData.byId[id]
+        if not info then
+                return id
+        end
+        if kind == "benih" then
+                return "Benih " .. info.nama
+        end
+        return info.nama
+end
+
+-- ===== POPUP PERMINTAAN TRADE =====
+
+local tradeTanyaDim = mk("Frame", { Name = "TradeTanya", Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, Visible = false, Active = true, ZIndex = 36 }, gui)
+local tradeTanya = mk("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.new(0.88, 0, 0, 178), BackgroundColor3 = warna(UIStyle.Latar), Active = true, ZIndex = 37 }, tradeTanyaDim)
+round(tradeTanya, 12)
+mk("UISizeConstraint", { MinSize = Vector2.new(280, 170), MaxSize = Vector2.new(430, 240) }, tradeTanya)
+mk("TextLabel", { Size = UDim2.new(1, -24, 0, 26), Position = UDim2.new(0, 12, 0, 12), BackgroundTransparency = 1, Text = "Permintaan Trade", TextSize = UIStyle.UkuranJudul, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 38 }, tradeTanya)
+local tanyaNama = mk("TextLabel", { Size = UDim2.new(1, -24, 0, 40), Position = UDim2.new(0, 12, 0, 44), BackgroundTransparency = 1, Text = "Trade dengan ...?", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Aksen), TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true, ZIndex = 38 }, tradeTanya)
+local tanyaInfo = mk("TextLabel", { Size = UDim2.new(1, -24, 0, 34), Position = UDim2.new(0, 12, 0, 88), BackgroundTransparency = 1, Text = "", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true, ZIndex = 38 }, tradeTanya)
+local tanyaYa = mk("TextButton", { Size = UDim2.new(0.5, -9, 0, 44), Position = UDim2.new(0, 12, 1, -56), BackgroundColor3 = warna(UIStyle.Hijau), Text = "Ya", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = Color3.new(1, 1, 1), ZIndex = 38 }, tradeTanya)
+round(tanyaYa, UIStyle.SudutKecil)
+local tanyaTidak = mk("TextButton", { Size = UDim2.new(0.5, -9, 0, 44), Position = UDim2.new(0.5, 9, 1, -56), BackgroundColor3 = warna(UIStyle.Merah), Text = "Tidak", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = Color3.new(1, 1, 1), ZIndex = 38 }, tradeTanya)
+round(tanyaTidak, UIStyle.SudutKecil)
+
+local function sembunyiTanya()
+        tradeToken = nil
+        tanyaLokalTarget = nil
+        tanyaHingga = nil
+        tradeTanyaDim.Visible = false
+end
+
+tanyaTidak.Activated:Connect(function()
+        local token = tradeToken
+        sembunyiTanya()
+        if token then
+                task.spawn(function()
+                        pcall(function()
+                                Net.get("TradeAct"):InvokeServer("tolak", token)
+                        end)
+                end)
+        end
+end)
+
+tanyaYa.Activated:Connect(function()
+        local token = tradeToken
+        local target = tanyaLokalTarget
+        sembunyiTanya()
+        task.spawn(function()
+                if token then
+                        local ok, msg = false, ""
+                        pcall(function()
+                                ok, msg = Net.get("TradeAct"):InvokeServer("terima", token)
+                        end)
+                        if ok == false then
+                                toast("Trade", tostring(msg))
+                        end
+                elseif target and target.Parent then
+                        local ok, msg = false, ""
+                        pcall(function()
+                                ok, msg = Net.get("TradeAct"):InvokeServer("ajak", target.UserId)
+                        end)
+                        toast(ok == true and "Trade" or "Gagal", tostring(msg))
+                end
+        end)
+end)
+
+-- ===== PANEL TRADE =====
+
+local tradePanel = makePanel("trade")
+local tradeScroll = mk("ScrollingFrame", { Size = UDim2.new(1, -8, 1, -8), Position = UDim2.new(0, 4, 0, 4), BackgroundTransparency = 1, ScrollBarThickness = 6, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(0, 0, 0, 0) }, tradePanel)
+mk("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, tradeScroll)
+
+local tradeKolom = mk("Frame", { Size = UDim2.new(1, 0, 0, 198), BackgroundTransparency = 1, LayoutOrder = 1 }, tradeScroll)
+local kiri = mk("Frame", { Size = UDim2.new(0.5, -6, 1, 0), BackgroundTransparency = 1 }, tradeKolom)
+local kanan = mk("Frame", { Position = UDim2.new(0.5, 6, 0, 0), Size = UDim2.new(0.5, -6, 1, 0), BackgroundTransparency = 1 }, tradeKolom)
+
+local function buatSisi(induk: Frame): any
+        local judul = mk("TextLabel", { Size = UDim2.new(1, 0, 0, 20), BackgroundTransparency = 1, Text = "", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left }, induk)
+        local grid = mk("Frame", { Size = UDim2.new(1, 0, 0, 100), Position = UDim2.new(0, 0, 0, 24), BackgroundTransparency = 1 }, induk)
+        mk("UIGridLayout", { CellSize = UDim2.new(0.5, -4, 0, 48), CellPadding = UDim2.new(0, 4, 0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, grid)
+        local slot = {}
+        for i = 1, 4 do
+                local cell = mk("TextButton", { BackgroundColor3 = warna(UIStyle.Permukaan), Text = "", AutoButtonColor = false, LayoutOrder = i }, grid)
+                round(cell, UIStyle.SudutKecil)
+                local nama = mk("TextLabel", { Size = UDim2.new(1, -44, 0, 22), Position = UDim2.new(0, 38, 0, 4), BackgroundTransparency = 1, Text = "", TextWrapped = true, TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left }, cell)
+                local count = mk("TextLabel", { Size = UDim2.new(1, -44, 0, 18), Position = UDim2.new(0, 38, 1, -22), BackgroundTransparency = 1, Text = "", TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Aksen), TextXAlignment = Enum.TextXAlignment.Left }, cell)
+                slot[i] = { btn = cell, nama = nama, count = count }
+        end
+        local micdaBtn = mk("TextButton", { Size = UDim2.new(1, 0, 0, 38), Position = UDim2.new(0, 0, 0, 128), BackgroundColor3 = warna(UIStyle.Permukaan), Text = "", AutoButtonColor = false }, induk)
+        round(micdaBtn, UIStyle.SudutKecil)
+        local mIkon = IkonKoin.buat(micdaBtn, 22)
+        mIkon.Position = UDim2.new(0, 8, 0, 8)
+        local micdaLabel = mk("TextLabel", { Size = UDim2.new(1, -52, 1, -10), Position = UDim2.new(0, 40, 0, 5), BackgroundTransparency = 1, Text = "Micda: 0", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left }, micdaBtn)
+        local status = mk("TextLabel", { Size = UDim2.new(1, 0, 0, 18), Position = UDim2.new(0, 0, 1, -18), BackgroundTransparency = 1, Text = "Belum siap", TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left }, induk)
+        return { judul = judul, slot = slot, micdaBtn = micdaBtn, micdaLabel = micdaLabel, status = status }
+end
+
+local kiriSisi = buatSisi(kiri)
+local kananSisi = buatSisi(kanan)
+
+mk("TextLabel", { Size = UDim2.new(1, 0, 0, 18), BackgroundTransparency = 1, Text = "Ketuk item di bawah untuk menawarkan. Perubahan me-reset persetujuan.", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true, LayoutOrder = 2 }, tradeScroll)
+
+local tradeBarisAksi = mk("Frame", { Size = UDim2.new(1, 0, 0, 46), BackgroundTransparency = 1, LayoutOrder = 3 }, tradeScroll)
+local tradeSiapBtn = mk("TextButton", { Size = UDim2.new(0.6, -6, 1, 0), BackgroundColor3 = warna(UIStyle.Hijau), Text = "Terima Tawaran", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = Color3.new(1, 1, 1) }, tradeBarisAksi)
+round(tradeSiapBtn, UIStyle.SudutKecil)
+local tradeWaktu = mk("TextLabel", { Size = UDim2.new(0.4, -6, 1, 0), Position = UDim2.new(0.6, 6, 0, 0), BackgroundTransparency = 1, Text = "", TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Center, VerticalAlignment = Enum.VerticalAlignment.Center }, tradeBarisAksi)
+
+local pickerJudul = mk("TextLabel", { Size = UDim2.new(1, 0, 0, 18), BackgroundTransparency = 1, Text = "Tas kamu (ketuk untuk menawarkan):", TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 4 }, tradeScroll)
+local tradeTas = mk("ScrollingFrame", { Size = UDim2.new(1, 0, 0, 132), BackgroundTransparency = 1, ScrollBarThickness = 6, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(0, 0, 0, 0), LayoutOrder = 5 }, tradeScroll)
+mk("UIGridLayout", { CellSize = UDim2.new(0.32, -4, 0, 40), CellPadding = UDim2.new(0, 4, 0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, tradeTas)
+
+-- ===== POPUP JUMLAH ITEM =====
+
+local tradeQtyDim = mk("Frame", { Name = "TradeQty", Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.5, Visible = false, Active = true, ZIndex = 30 }, gui)
+local tradeQtyBox = mk("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.new(0.88, 0, 0, 260), BackgroundColor3 = warna(UIStyle.Latar), Active = true, ZIndex = 31 }, tradeQtyDim)
+round(tradeQtyBox, 12)
+mk("UISizeConstraint", { MinSize = Vector2.new(280, 250), MaxSize = Vector2.new(420, 400) }, tradeQtyBox)
+local qtyJudul = mk("TextLabel", { Size = UDim2.new(1, -24, 0, 28), Position = UDim2.new(0, 12, 0, 10), BackgroundTransparency = 1, Text = "Tawarkan Item", TextSize = UIStyle.UkuranJudul, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 32 }, tradeQtyBox)
+local qtyItem = mk("TextLabel", { Size = UDim2.new(1, -24, 0, 40), Position = UDim2.new(0, 12, 0, 40), BackgroundTransparency = 1, Text = "", TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Aksen), TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true, ZIndex = 32 }, tradeQtyBox)
+local qtyAngka = mk("TextLabel", { Size = UDim2.new(1, -24, 0, 42), Position = UDim2.new(0, 12, 0, 84), BackgroundColor3 = warna(UIStyle.Permukaan), Text = "1", TextSize = UIStyle.UkuranJudul, Font = FONTB, TextColor3 = warna(UIStyle.Teks), ZIndex = 32 }, tradeQtyBox)
+round(qtyAngka, UIStyle.SudutKecil)
+local qtyRow = mk("Frame", { Size = UDim2.new(1, -24, 0, 40), Position = UDim2.new(0, 12, 0, 132), BackgroundTransparency = 1, ZIndex = 31 }, tradeQtyBox)
+mk("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, qtyRow)
+
+local qtyKey: any? = nil
+local qtyDraft = 1
+
+local function tersediaAku(kind: string, id: string, editLama: number?): number
+        local total = 0
+        for _, s in ipairs(state.tas) do
+                if s.kind == kind and s.id == id then
+                        total += s.count
+                end
+        end
+        local tawar = 0
+        if state.trade then
+                for _, s in ipairs(state.trade.aku.items) do
+                        if s.kind == kind and s.id == id then
+                                tawar += s.count
+                        end
+                end
+        end
+        if editLama and editLama > 0 then
+                tawar -= editLama
+        end
+        local bebas = total - tawar
+        if bebas < 0 then
+                bebas = 0
+        end
+        return bebas
+end
+
+local function qtySet(n: number)
+        if not qtyKey then
+                return
+        end
+        if n < 1 then
+                n = 1
+        end
+        if n > qtyKey.maks then
+                n = qtyKey.maks
+        end
+        qtyDraft = n
+        qtyAngka.Text = tostring(n)
+end
+
+for _, delta in ipairs({ -100, -10, -1, 1, 10, 100 }) do
+        local b = mk("TextButton", { Size = UDim2.new(0, 52, 1, 0), BackgroundColor3 = warna(UIStyle.PermukaanAktif), Text = (delta > 0 and "+" or "") .. tostring(delta), TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks), LayoutOrder = 3 + delta }, qtyRow)
+        round(b, UIStyle.SudutKecil)
+        b.Activated:Connect(function()
+                qtySet(qtyDraft + delta)
+        end)
+end
+local qtyMaks = mk("TextButton", { Size = UDim2.new(0, 52, 1, 0), BackgroundColor3 = warna(UIStyle.PermukaanAktif), Text = "Maks", TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Teks), LayoutOrder = 9 }, qtyRow)
+round(qtyMaks, UIStyle.SudutKecil)
+qtyMaks.Activated:Connect(function()
+        if qtyKey then
+                qtySet(qtyKey.maks)
+        end
+end)
+
+local qtyHapus = mk("TextButton", { Size = UDim2.new(0.5, -9, 0, 42), Position = UDim2.new(0, 12, 1, -54), BackgroundColor3 = warna(UIStyle.Merah), Text = "Hapus dari Tawaran", TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = Color3.new(1, 1, 1), Visible = false, ZIndex = 32 }, tradeQtyBox)
+round(qtyHapus, UIStyle.SudutKecil)
+local qtyBatal = mk("TextButton", { Size = UDim2.new(0.5, -9, 0, 42), Position = UDim2.new(0.5, 9, 1, -54), BackgroundColor3 = warna(UIStyle.PermukaanAktif), Text = "Batal", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks), ZIndex = 32 }, tradeQtyBox)
+round(qtyBatal, UIStyle.SudutKecil)
+local qtyOke = mk("TextButton", { Size = UDim2.new(1, -24, 0, 42), Position = UDim2.new(0, 12, 1, -54), BackgroundColor3 = warna(UIStyle.Hijau), Text = "Tawarkan", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = Color3.new(1, 1, 1), ZIndex = 32 }, tradeQtyBox)
+round(qtyOke, UIStyle.SudutKecil)
+
+local function bukaQty(kind: string, id: string, editLama: number?)
+        if not state.trade or state.trade.fase ~= "tawar" then
+                return
+        end
+        local maks = tersediaAku(kind, id, editLama)
+        if maks < 1 then
+                toast("Trade", "Semua item itu sudah dipakai di tawaranmu.")
+                return
+        end
+        qtyKey = { kind = kind, id = id, maks = maks, edit = editLama or 0 }
+        qtyDraft = (editLama and editLama > 0) and editLama or 1
+        if qtyDraft > maks then
+                qtyDraft = maks
+        end
+        qtyJudul.Text = (editLama and editLama > 0) and "Ubah Tawaran" or "Tawarkan Item"
+        qtyItem.Text = namaItem(kind, id) .. "  -  bebas ditawarkan: " .. tostring(maks)
+        qtyAngka.Text = tostring(qtyDraft)
+        local modeEdit = (editLama and editLama > 0) == true
+        qtyHapus.Visible = modeEdit
+        qtyOke.Visible = not modeEdit
+        tradeQtyDim.Visible = true
+end
+
+qtyBatal.Activated:Connect(function()
+        qtyKey = nil
+        tradeQtyDim.Visible = false
+end)
+
+qtyOke.Activated:Connect(function()
+        local k = qtyKey
+        if not k then
+                return
+        end
+        qtyKey = nil
+        tradeQtyDim.Visible = false
+        task.spawn(function()
+                pcall(function()
+                        Net.get("TradeAct"):InvokeServer("sisip", k.kind, k.id, qtyDraft)
+                end)
+        end)
+end)
+
+qtyHapus.Activated:Connect(function()
+        local k = qtyKey
+        if not k then
+                return
+        end
+        qtyKey = nil
+        tradeQtyDim.Visible = false
+        task.spawn(function()
+                pcall(function()
+                        Net.get("TradeAct"):InvokeServer("hapus", k.kind, k.id)
+                end)
+        end)
+end)
+
+-- ===== POPUP MICDA =====
+
+local tradeMicdaDim = mk("Frame", { Name = "TradeMicda", Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.5, Visible = false, Active = true, ZIndex = 30 }, gui)
+local tradeMicdaBox = mk("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.new(0.88, 0, 0, 250), BackgroundColor3 = warna(UIStyle.Latar), Active = true, ZIndex = 31 }, tradeMicdaDim)
+round(tradeMicdaBox, 12)
+mk("UISizeConstraint", { MinSize = Vector2.new(280, 240), MaxSize = Vector2.new(420, 380) }, tradeMicdaBox)
+mk("TextLabel", { Size = UDim2.new(1, -24, 0, 28), Position = UDim2.new(0, 12, 0, 10), BackgroundTransparency = 1, Text = "Tawarkan Micda", TextSize = UIStyle.UkuranJudul, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 32 }, tradeMicdaBox)
+local micdaInfo = mk("TextLabel", { Size = UDim2.new(1, -24, 0, 20), Position = UDim2.new(0, 12, 0, 42), BackgroundTransparency = 1, Text = "", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 32 }, tradeMicdaBox)
+local micdaKotak = mk("TextBox", { Size = UDim2.new(1, -24, 0, 44), Position = UDim2.new(0, 12, 0, 66), BackgroundColor3 = warna(UIStyle.Permukaan), Text = "0", PlaceholderText = "Jumlah Micda", TextSize = UIStyle.UkuranJudul, Font = FONTB, TextColor3 = warna(UIStyle.Teks), ClearTextOnFocus = false, ZIndex = 32 }, tradeMicdaBox)
+round(micdaKotak, UIStyle.SudutKecil)
+local micdaRow = mk("Frame", { Size = UDim2.new(1, -24, 0, 40), Position = UDim2.new(0, 12, 0, 116), BackgroundTransparency = 1, ZIndex = 31 }, tradeMicdaBox)
+mk("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, micdaRow)
+
+local function micdaParse(teks: any): number
+        if type(teks) ~= "string" then
+                return 0
+        end
+        local bersih = teks:gsub("[^0-9]", "")
+        local n = tonumber(bersih)
+        if not n then
+                return 0
+        end
+        return math.floor(n)
+end
+
+local micdaDraft = 0
+
+local function micdaSet(n: number)
+        if not state.trade then
+                return
+        end
+        local saldo = state.micda or 0
+        if n < 0 then
+                n = 0
+        end
+        if n > saldo then
+                n = saldo
+        end
+        micdaDraft = n
+        micdaKotak.Text = tostring(n)
+end
+
+for _, langkah in ipairs({ -100000000, -1000000, -10000, -1000, 1000, 10000, 1000000, 100000000 }) do
+        local label = "+" .. UangSingkat.singkat(langkah)
+        if langkah < 0 then
+                label = "-" .. UangSingkat.singkat(-langkah)
+        end
+        local b = mk("TextButton", { Size = UDim2.new(0, 72, 1, 0), BackgroundColor3 = warna(UIStyle.PermukaanAktif), Text = label, TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Teks), LayoutOrder = 4 + langkah }, micdaRow)
+        round(b, UIStyle.SudutKecil)
+        b.Activated:Connect(function()
+                micdaSet(micdaDraft + langkah)
+        end)
+end
+local micdaNol = mk("TextButton", { Size = UDim2.new(0, 72, 1, 0), BackgroundColor3 = warna(UIStyle.PermukaanAktif), Text = "Kosong", TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Teks), LayoutOrder = 99 }, micdaRow)
+round(micdaNol, UIStyle.SudutKecil)
+micdaNol.Activated:Connect(function()
+        micdaSet(0)
+end)
+
+local micdaBatal = mk("TextButton", { Size = UDim2.new(0.5, -9, 0, 42), Position = UDim2.new(0, 12, 1, -54), BackgroundColor3 = warna(UIStyle.PermukaanAktif), Text = "Batal", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks), ZIndex = 32 }, tradeMicdaBox)
+round(micdaBatal, UIStyle.SudutKecil)
+local micdaOke = mk("TextButton", { Size = UDim2.new(0.5, -9, 0, 42), Position = UDim2.new(0.5, 9, 1, -54), BackgroundColor3 = warna(UIStyle.Hijau), Text = "Tawarkan", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = Color3.new(1, 1, 1), ZIndex = 32 }, tradeMicdaBox)
+round(micdaOke, UIStyle.SudutKecil)
+
+local function bukaMicda()
+        if not state.trade or state.trade.fase ~= "tawar" then
+                return
+        end
+        micdaDraft = state.trade.aku.micda or 0
+        micdaKotak.Text = tostring(micdaDraft)
+        micdaInfo.Text = "Saldo kamu: " .. fmt(state.micda or 0) .. " Micda - yang ditawarkan terkunci"
+        tradeMicdaDim.Visible = true
+end
+
+micdaKotak.FocusLost:Connect(function()
+        micdaSet(micdaParse(micdaKotak.Text))
+end)
+micdaBatal.Activated:Connect(function()
+        tradeMicdaDim.Visible = false
+end)
+micdaOke.Activated:Connect(function()
+        tradeMicdaDim.Visible = false
+        task.spawn(function()
+                pcall(function()
+                        Net.get("TradeAct"):InvokeServer("micda", micdaDraft)
+                end)
+        end)
+end)
+
+-- ===== DIALOG KONFIRMASI TERAKHIR =====
+
+local tradeKonfirmDim = mk("Frame", { Name = "TradeKonfirm", Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.55, Visible = false, Active = true, ZIndex = 34 }, gui)
+local tradeKonfirmBox = mk("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.new(0.9, 0, 0, 300), BackgroundColor3 = warna(UIStyle.Latar), Active = true, ZIndex = 35 }, tradeKonfirmDim)
+round(tradeKonfirmBox, 12)
+mk("UISizeConstraint", { MinSize = Vector2.new(290, 280), MaxSize = Vector2.new(440, 420) }, tradeKonfirmBox)
+mk("TextLabel", { Size = UDim2.new(1, -24, 0, 28), Position = UDim2.new(0, 12, 0, 10), BackgroundTransparency = 1, Text = "Konfirmasi Terakhir", TextSize = UIStyle.UkuranJudul, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 36 }, tradeKonfirmBox)
+mk("TextLabel", { Size = UDim2.new(1, -24, 0, 20), Position = UDim2.new(0, 12, 0, 40), BackgroundTransparency = 1, Text = "Tawaran sudah terkunci. Cek sekali lagi - setelah ini tidak bisa diubah.", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true, ZIndex = 36 }, tradeKonfirmBox)
+local konfirmKirim = mk("TextLabel", { Size = UDim2.new(1, -24, 0, 44), Position = UDim2.new(0, 12, 0, 66), BackgroundColor3 = warna(UIStyle.Permukaan), Text = "", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true, ZIndex = 36 }, tradeKonfirmBox)
+round(konfirmKirim, UIStyle.SudutKecil)
+local konfirmTerima = mk("TextLabel", { Size = UDim2.new(1, -24, 0, 44), Position = UDim2.new(0, 12, 0, 116), BackgroundColor3 = warna(UIStyle.PermukaanAktif), Text = "", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true, ZIndex = 36 }, tradeKonfirmBox)
+round(konfirmTerima, UIStyle.SudutKecil)
+local konfirmStatus = mk("TextLabel", { Size = UDim2.new(1, -24, 0, 24), Position = UDim2.new(0, 12, 0, 166), BackgroundTransparency = 1, Text = "", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Kuning), TextXAlignment = Enum.TextXAlignment.Left, Visible = false, ZIndex = 36 }, tradeKonfirmBox)
+local konfirmBatal = mk("TextButton", { Size = UDim2.new(0.5, -9, 0, 46), Position = UDim2.new(0, 12, 1, -58), BackgroundColor3 = warna(UIStyle.Merah), Text = "Batal Trade", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = Color3.new(1, 1, 1), ZIndex = 36 }, tradeKonfirmBox)
+round(konfirmBatal, UIStyle.SudutKecil)
+local konfirmYa = mk("TextButton", { Size = UDim2.new(0.5, -9, 0, 46), Position = UDim2.new(0.5, 9, 1, -58), BackgroundColor3 = warna(UIStyle.Hijau), Text = "Sudah, Konfirmasi", TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = Color3.new(1, 1, 1), ZIndex = 36 }, tradeKonfirmBox)
+round(konfirmYa, UIStyle.SudutKecil)
+
+local function sembunyiKonfirmasi()
+        tradeKonfirmDim.Visible = false
+end
+
+local function tampilKonfirmasi()
+        if not state.trade or state.trade.fase ~= "konfirmasi" then
+                sembunyiKonfirmasi()
+                return
+        end
+        local t = state.trade
+        konfirmKirim.Text = "Kamu kirim: " .. TradeLogic.ringkas({ items = t.aku.items, micda = t.aku.micda }, CropData.byId)
+        konfirmTerima.Text = "Kamu terima: " .. TradeLogic.ringkas({ items = t.lawan.items, micda = t.lawan.micda }, CropData.byId)
+        konfirmYa.Visible = not t.aku.konfirm
+        konfirmBatal.Visible = not t.aku.konfirm
+        konfirmStatus.Visible = t.aku.konfirm == true
+        konfirmStatus.Text = "Menunggu " .. UIStyle.potong(t.lawanNama, 14) .. " konfirmasi..."
+        tradeKonfirmDim.Visible = true
+end
+
+konfirmYa.Activated:Connect(function()
+        if not state.trade then
+                return
+        end
+        state.trade.aku.konfirm = true
+        konfirmYa.Visible = false
+        konfirmBatal.Visible = false
+        konfirmStatus.Visible = true
+        task.spawn(function()
+                pcall(function()
+                        Net.get("TradeAct"):InvokeServer("konfirm")
+                end)
+        end)
+end)
+
+konfirmBatal.Activated:Connect(function()
+        task.spawn(function()
+                pcall(function()
+                        Net.get("TradeAct"):InvokeServer("batal")
+                end)
+        end)
+end)
+
+-- ===== RENDER =====
+
+local function renderSisi(sisi: any, susunan: any)
+        for i = 1, 4 do
+                local cell = susunan.slot[i]
+                local it = sisi.items[i]
+                if it then
+                        cell.btn.BackgroundColor3 = warna(it.kind == "benih" and UIStyle.Permukaan or UIStyle.PermukaanAktif)
+                        cell.nama.Text = UIStyle.potong(namaItem(it.kind, it.id))
+                        cell.count.Text = "x" .. tostring(it.count)
+                        ikonSlot(cell.btn, it)
+                else
+                        cell.btn.BackgroundColor3 = warna(UIStyle.Permukaan)
+                        cell.nama.Text = ""
+                        cell.count.Text = ""
+                        ikonSlot(cell.btn, nil)
+                end
+        end
+        susunan.micdaLabel.Text = "Micda: " .. fmt(sisi.micda or 0)
+        if sisi.konfirm then
+                susunan.status.Text = "Sudah dikonfirmasi"
+                susunan.status.TextColor3 = Color3.fromRGB(120, 220, 140)
+        elseif sisi.siap then
+                susunan.status.Text = "Siap"
+                susunan.status.TextColor3 = warna(UIStyle.Kuning)
+        else
+                susunan.status.Text = "Belum siap"
+                susunan.status.TextColor3 = warna(UIStyle.Abu)
+        end
+end
+
+local function isiTradeTas()
+        for _, c in ipairs(tradeTas:GetChildren()) do
+                if c:IsA("TextButton") then
+                        c:Destroy()
+                end
+        end
+        local agregat: { [string]: any } = {}
+        local urutan = {}
+        for _, s in ipairs(state.tas) do
+                local k = s.kind .. "\1" .. s.id
+                if not agregat[k] then
+                        agregat[k] = { kind = s.kind, id = s.id, total = 0 }
+                        table.insert(urutan, k)
+                end
+                agregat[k].total += s.count
+        end
+        local n = 0
+        for _, k in ipairs(urutan) do
+                local a = agregat[k]
+                local bebas = tersediaAku(a.kind, a.id, nil)
+                if bebas > 0 then
+                        n += 1
+                        local chip = mk("TextButton", { BackgroundColor3 = warna(a.kind == "benih" and UIStyle.Permukaan or UIStyle.PermukaanAktif), Text = "", AutoButtonColor = false, LayoutOrder = n }, tradeTas)
+                        round(chip, UIStyle.SudutKecil)
+                        ikonSlot(chip, { kind = a.kind, id = a.id, count = bebas })
+                        mk("TextLabel", { Size = UDim2.new(1, -40, 0, 20), Position = UDim2.new(0, 34, 0, 2), BackgroundTransparency = 1, Text = UIStyle.potong(namaItem(a.kind, a.id), 16), TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, chip)
+                        mk("TextLabel", { Size = UDim2.new(1, -40, 0, 16), Position = UDim2.new(0, 34, 1, -18), BackgroundTransparency = 1, Text = "x" .. tostring(bebas), TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Aksen), TextXAlignment = Enum.TextXAlignment.Left }, chip)
+                        chip.Activated:Connect(function()
+                                bukaQty(a.kind, a.id, nil)
+                        end)
+                end
+        end
+end
+
+local function refreshTrade()
+        if not state.trade then
+                return
+        end
+        local t = state.trade
+        panelTitle.Text = "Trade dengan " .. UIStyle.potong(t.lawanNama)
+        kiriSisi.judul.Text = "Kamu"
+        kananSisi.judul.Text = UIStyle.potong(t.lawanNama, 14)
+        renderSisi(t.aku, kiriSisi)
+        renderSisi(t.lawan, kananSisi)
+        tradeWaktu.Text = "Auto-batal " .. tostring(t.sisa or 0) .. "s"
+        if t.fase == "konfirmasi" then
+                tradeSiapBtn.Visible = false
+                tradeTas.Visible = false
+                pickerJudul.Text = "Tawaran terkunci - lanjut ke konfirmasi di bawah."
+                isiTradeTas()
+                tampilKonfirmasi()
+        else
+                tradeSiapBtn.Visible = true
+                tradeSiapBtn.Text = t.aku.siap and "Batal Siap" or "Terima Tawaran"
+                tradeSiapBtn.BackgroundColor3 = warna(t.aku.siap and UIStyle.PermukaanAktif or UIStyle.Hijau)
+                tradeTas.Visible = true
+                pickerJudul.Text = "Tas kamu (ketuk untuk menawarkan):"
+                isiTradeTas()
+                sembunyiKonfirmasi()
+        end
+end
+
+for i, cell in ipairs(kiriSisi.slot) do
+        cell.btn.Activated:Connect(function()
+                if not state.trade or state.trade.fase ~= "tawar" then
+                        return
+                end
+                local it = state.trade.aku.items[i]
+                if it then
+                        bukaQty(it.kind, it.id, it.count)
+                end
+        end)
+end
+kiriSisi.micdaBtn.Activated:Connect(bukaMicda)
+
+tradeSiapBtn.Activated:Connect(function()
+        if not state.trade or state.trade.fase ~= "tawar" then
+                return
+        end
+        task.spawn(function()
+                pcall(function()
+                        Net.get("TradeAct"):InvokeServer("siap", not state.trade.aku.siap)
+                end)
+        end)
+end)
+
+-- ===== OBENG DI ATAS KEPALA =====
+
+local function sembunyiObeng()
+        if obengGui then
+                obengGui:Destroy()
+                obengGui = nil
+        end
+        obengTarget = nil
+        obengSampai = nil
+end
+
+local function tampilObeng(target: Player)
+        if obengTarget == target and obengGui then
+                obengSampai = os.clock() + 7
+                return
+        end
+        sembunyiObeng()
+        local char = target.Character
+        local kepala = char and (char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart"))
+        if not kepala or not kepala:IsA("BasePart") then
+                return
+        end
+        local g = Instance.new("BillboardGui")
+        g.Name = "ObengTrade"
+        g.Adornee = kepala
+        g.Size = UDim2.fromOffset(64, 64)
+        g.StudsOffset = Vector3.new(0, 2.8, 0)
+        g.MaxDistance = 60
+        g.AlwaysOnTop = true
+        local btn = mk("TextButton", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = warna(UIStyle.PermukaanAktif), BackgroundTransparency = 0.08, Text = "", AutoButtonColor = true, BorderSizePixel = 0, ZIndex = 2 }, g)
+        round(btn, 32)
+        mk("UIStroke", { Color = warna(UIStyle.Aksen), Thickness = 2, Transparency = 0.2 }, btn)
+        local gagang = mk("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.57, 0.57), Size = UDim2.fromScale(0.14, 0.5), BackgroundColor3 = warna(UIStyle.Teks), BorderSizePixel = 0, Rotation = 45, ZIndex = 3 }, btn)
+        mk("UICorner", { CornerRadius = UDim.new(0.5, 0) }, gagang)
+        local kepalaObeng = mk("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.44, 0.44), Size = UDim2.fromScale(0.42, 0.42), BackgroundColor3 = warna(UIStyle.Teks), BorderSizePixel = 0, Rotation = 45, ZIndex = 3 }, btn)
+        mk("UICorner", { CornerRadius = UDim.new(0.5, 0) }, kepalaObeng)
+        local celah = mk("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.36, 0.52), Size = UDim2.fromScale(0.28, 0.09), BackgroundColor3 = warna(UIStyle.PermukaanAktif), BorderSizePixel = 0, Rotation = 45, ZIndex = 4 }, btn)
+        mk("UICorner", { CornerRadius = UDim.new(0.5, 0) }, celah)
+        btn.Activated:Connect(function()
+                if obengTarget and obengTarget.Parent and bukaTanyaTrade then
+                        bukaTanyaTrade(obengTarget)
+                end
+        end)
+        g.Parent = playerGui
+        obengGui = g
+        obengTarget = target
+        obengSampai = os.clock() + 7
+end
+
+-- ===== KETUK DUNIA -> PILIH PEMAIN =====
+
+local function pemainDariTap(px: number, py: number): Player?
+        local ok, ray = pcall(function()
+                return camera:ScreenPointToRay(px, py)
+        end)
+        if not ok or not ray then
+                return nil
+        end
+        local params = RaycastParams.new()
+        params.FilterType = Enum.RaycastFilterType.Exclude
+        local exclude: { Instance } = { camera }
+        if player.Character then
+                table.insert(exclude, player.Character)
+        end
+        params.FilterDescendantsInstances = exclude
+        params.IgnoreWater = true
+        local hit = Workspace:Raycast(ray.Origin, ray.Direction * 60, params)
+        if not hit then
+                return nil
+        end
+        local m: Instance? = hit.Instance
+        while m and m.Parent do
+                local p = Players:GetPlayerFromCharacter(m)
+                if p and p ~= player then
+                        return p
+                end
+                m = m.Parent
+        end
+        return nil
+end
+
+local function padaTapDunia(px: number, py: number, diproses: boolean)
+        if diproses then
+                return
+        end
+        if dim.Visible or modalDim.Visible or tradeTanyaDim.Visible or tradeQtyDim.Visible or tradeMicdaDim.Visible then
+                return
+        end
+        if state.trade then
+                return
+        end
+        local target = pemainDariTap(px, py)
+        if target then
+                tampilObeng(target)
+        end
+end
+
+UserInputService.TouchTapInWorld:Connect(function(pos: Vector2, diproses: boolean)
+        padaTapDunia(pos.X, pos.Y, diproses)
+end)
+
+UserInputService.InputBegan:Connect(function(input: InputObject, diproses: boolean)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                local m = UserInputService:GetMouseLocation()
+                padaTapDunia(m.X, m.Y, diproses)
+        end
+end)
+
+bukaTanyaTrade = function(target: Player)
+        if state.trade or dim.Visible or modalDim.Visible or tradeTanyaDim.Visible then
+                return
+        end
+        tradeToken = nil
+        tanyaLokalTarget = target
+        tanyaNama.Text = "Trade dengan " .. UIStyle.potong(namaOf(target)) .. "?"
+        tanyaInfo.Text = "Permintaan akan dikirim. Trade baru jalan kalau dia setuju juga."
+        tanyaHingga = os.clock() + 15
+        tradeTanyaDim.Visible = true
+end
+
+-- ===== SINKRON DARI SERVER =====
+
+Net.get("TradeSync").OnClientEvent:Connect(function(kejadian: any, payload: any)
+        if kejadian == "permintaan" then
+                if state.trade or type(payload) ~= "table" or type(payload.token) ~= "string" then
+                        return
+                end
+                tradeToken = payload.token
+                tanyaLokalTarget = nil
+                tanyaNama.Text = "Trade dengan " .. UIStyle.potong(tostring(payload.nama)) .. "?"
+                tanyaInfo.Text = "Hangus otomatis dalam " .. tostring(payload.expDetik or 30) .. " detik."
+                tanyaHingga = os.clock() + (tonumber(payload.expDetik) or 30) + 0.5
+                tradeTanyaDim.Visible = true
+        elseif kejadian == "buka" then
+                if type(payload) ~= "table" then
+                        return
+                end
+                sembunyiTanya()
+                sembunyiObeng()
+                state.trade = payload
+                openPanel("trade")
+                refreshTrade()
+        elseif kejadian == "tutup" then
+                state.trade = nil
+                sembunyiTanya()
+                sembunyiKonfirmasi()
+                sembunyiObeng()
+                if panelSaatIni() == "trade" then
+                        closePanel()
+                end
+                toast("Trade", (type(payload) == "table" and payload.pesan) and tostring(payload.pesan) or "Trade selesai.")
+                syncState()
+        end
+end)
+
+-- ===== LINGKARAN PEMBERSIH =====
+
+task.spawn(function()
+        while true do
+                task.wait(1)
+                if obengGui then
+                        if dim.Visible or modalDim.Visible or (obengSampai and os.clock() > obengSampai) or not obengTarget or not obengTarget.Parent then
+                                sembunyiObeng()
+                        end
+                end
+                if tradeTanyaDim.Visible and tanyaHingga and os.clock() > tanyaHingga then
+                        sembunyiTanya()
+                end
+                if state.trade and panelSaatIni() == "trade" then
+                        local sisa = state.trade.sisa
+                        if type(sisa) == "number" and sisa > 0 then
+                                state.trade.sisa = sisa - 1
+                                tradeWaktu.Text = "Auto-batal " .. tostring(sisa - 1) .. "s"
+                        end
+                end
+        end
+end)
+end
+
+end)()
+
 local MOD_UIController = nil
 local function LOAD_UIController()
 	if not MOD_UIController then
@@ -7925,6 +9537,7 @@ local state = {
         role = "hub",
         gudang = nil,
         tanam = nil,
+        trade = nil,
 }
 
 local function fmt(n: number): string
@@ -8014,6 +9627,7 @@ local PANEL_TITLES = {
         gerbang = "Gerbang Dunia",
         tanam = "Papan Tanam",
         gudang = "Gudang Hasil Panen",
+        trade = "Trade",
 }
 
 local function mk(class: string, props: { [string]: any }, parent: Instance?): Instance
@@ -8041,6 +9655,33 @@ local camera = Workspace.CurrentCamera
 
 local aman = mk("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1) }, gui)
 local amanPad = mk("UIPadding", { PaddingTop = UDim.new(0, 0), PaddingLeft = UDim.new(0, 0), PaddingRight = UDim.new(0, 0), PaddingBottom = UDim.new(0, 0) }, aman)
+
+-- Chip versi server: bukti visual pemain ada di server TERBARU.
+-- Server lama (pra-tanda) tidak punya chip ini sama sekali.
+local teksVersiServer: string = "AKIOMIDA"
+do
+        local okV, vV = pcall(function()
+                return game.PlaceVersion
+        end)
+        if okV and type(vV) == "number" then
+                teksVersiServer = "AKIOMIDA #" .. tostring(vV)
+        end
+end
+mk("TextLabel", {
+        Name = "ChipVersiServer",
+        AnchorPoint = Vector2.new(0, 1),
+        Position = UDim2.new(0, 8, 1, -6),
+        Size = UDim2.new(0, 120, 0, 16),
+        BackgroundTransparency = 1,
+        Text = teksVersiServer,
+        TextSize = 11,
+        Font = FON,
+        TextColor3 = warna(UIStyle.Abu),
+        TextTransparency = 0.35,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextWrapped = false,
+        ZIndex = 1,
+}, aman)
 
 local function teksSkala(props: { [string]: any }, parent: Instance): TextLabel
         props.TextScaled = true
@@ -8275,24 +9916,37 @@ local function makePanel(name: string): Frame
 end
 
 local function openPanel(name: string)
+        if state.trade and name ~= "trade" then
+                task.spawn(function()
+                        pcall(function()
+                                Net.get("TradeAct"):InvokeServer("batal")
+                        end)
+                end)
+        end
         for n, f in pairs(panels) do
                 f.Visible = n == name
         end
         panelTitle.Text = PANEL_TITLES[name] or ""
-        if name == "semai" or name == "tanam" then
-                panelBatas.MaxSize = Vector2.new(760, 620)
-        else
-                panelBatas.MaxSize = Vector2.new(UIStyle.LebarPanelMaks, UIStyle.TinggiPanelMaks)
-        end
+        panelBatas.MaxSize = Vector2.new(UIStyle.LebarPanelMaks, UIStyle.TinggiPanelMaks)
         kunciKamera()
         dim.Visible = true
         currentPanel = name
-        if name == "tanam" then
+        if name == "tanam" or name == "trade" then
                 sembunyikanKontrol()
         end
 end
 
-closeBtn.Activated:Connect(closePanel)
+closeBtn.Activated:Connect(function()
+        local tradeTerbuka = currentPanel == "trade" and state.trade ~= nil
+        closePanel()
+        if tradeTerbuka then
+                task.spawn(function()
+                        pcall(function()
+                                Net.get("TradeAct"):InvokeServer("batal")
+                        end)
+                end)
+        end
+end)
 
 local function bersihkan(parent: Instance)
         for _, c in ipairs(parent:GetChildren()) do
@@ -9759,6 +11413,35 @@ task.spawn(function()
         end
 end)
 
+do
+-- ================== TRADE ANTAR PEMAIN ==================
+-- UI trade dipisah ke TradeUI (modul sendiri) supaya anggaran register
+-- lokal UIController tetap aman.
+        local TradeUI = MOD_TradeUI
+        TradeUI({
+                mk = mk,
+                round = round,
+                gui = gui,
+                dim = dim,
+                modalDim = modalDim,
+                toast = toast,
+                fmt = fmt,
+                warna = warna,
+                FON = FON,
+                FONTB = FONTB,
+                state = state,
+                ikonSlot = ikonSlot,
+                syncState = syncState,
+                openPanel = openPanel,
+                closePanel = closePanel,
+                makePanel = makePanel,
+                panelTitle = panelTitle,
+                panelSaatIni = function()
+                        return currentPanel
+                end,
+        })
+end
+
 print("[AKIOMIDA] UI siap.")
 
 return true
@@ -9793,6 +11476,7 @@ local ZonaService = MOD_ZonaService
 local TanamService = MOD_TanamService
 local GudangService = MOD_GudangService
 local DropService = MOD_DropService
+local TradeService = MOD_TradeService
 local WorldBuilder = MOD_WorldBuilder
 
 Net.init()
@@ -9801,7 +11485,7 @@ local function notify(player: Player, title: string, msg: string)
         Net.get("Notify"):FireClient(player, title, msg)
 end
 
-CurrencyService.bind({ Data = DataService, Audit = AuditService })
+CurrencyService.bind({ Data = DataService, Audit = AuditService, Trade = TradeService })
 AuditService.bind({
         Data = DataService,
         Simpan = function(p: Player)
@@ -9836,6 +11520,8 @@ local deps = {
         Drop = DropService,
 }
 TasService.bind(DataService)
+TasService.bindTrade(TradeService)
+TradeService.bind({ Data = DataService, Audit = AuditService, Net = Net, Notify = notify })
 PlotService.bind(deps)
 MesinSemaiService.bind(deps)
 ShopService.bind(deps)
@@ -9968,6 +11654,9 @@ end
 local function tutupSesi(player: Player)
         -- Tiap langkah dijaga pcall: satu langkah gagal tidak boleh melewatkan
         -- simpanan data / pelepasan kunci (kunci menggantung = rejoin kena sesi darurat).
+        pcall(function()
+                TradeService.leave(player) -- batalkan sesi trade + undangan (kunci item lepas)
+        end)
         pcall(function()
                 TanamService.leave(player)
         end)
@@ -10144,7 +11833,28 @@ Net.get("RedeemDevCode").OnServerInvoke = function(player, code)
         if not d then
                 return false, "Data belum siap."
         end
-        if type(code) ~= "string" or code ~= DevCodeVault.CODE then
+        if type(code) ~= "string" then
+                AuditService.catat(player, "argumen", "kode_salah")
+                return false, "Kode salah."
+        end
+        -- Kode pemulihan (sekali seumur akun): kompensasi data pemilik yang
+        -- musnah oleh bug era #53-#59. Uang masuk lewat gerbang resmi
+        -- UangLogic (sumber "hadiah"), tetap kena atap rekening 1000 T.
+        if code == DevCodeVault.KODE_PEMULIHAN then
+                if d.pulih then
+                        return false, "Kode pemulihan sudah pernah dipakai."
+                end
+                local ok, msg = CurrencyService.AddMicda(player, DevCodeVault.NILAI_PEMULIHAN, "hadiah")
+                if not ok then
+                        return false, msg
+                end
+                d.pulih = true
+                DataService.markDirty(player)
+                DataService.push(player)
+                AuditService.catat(player, "trade", "pemulihan " .. tostring(DevCodeVault.NILAI_PEMULIHAN))
+                return true, "Pemulihan diterima: +" .. DevCodeVault.NILAI_PEMULIHAN .. " Micda. Terima kasih sudah sabar!"
+        end
+        if code ~= DevCodeVault.CODE then
                 AuditService.catat(player, "argumen", "kode_salah")
                 return false, "Kode salah."
         end
@@ -10159,6 +11869,7 @@ end
 
 DataService.startLoops()
 ZonaService.startLoops()
+TradeService.start()
 CurrencyService.startIntegritas()
 
 print("[AKIOMIDA] Server-authoritative: ekonomi 1000T, deteksi anomali tanpa batas angka tetap, transaksi terjaga, kick aman-data siap.")
@@ -11006,6 +12717,21 @@ local r3 = rootOf(P1)
 check("BALIK ke dunia lahan sukses", r3 and r3.Position.X > 5000, r3 and tostring(r3.Position) or "-")
 local labelBalik = findGui(dunia, "TextLabel", "TERTANAM 17/500")
 check("Papan tetap menunjukkan progres terakhir (17/500)", labelBalik ~= nil, labelBalik and labelBalik.Text or "-")
+
+section("Kode pemulihan pemilik (sekali pakai)")
+local lsP = P1:FindFirstChild("leaderstats")
+local micdaSebelum = lsP and lsP:FindFirstChild("Micda") and lsP:FindFirstChild("Micda").Value or 0
+local okS, msgS = serverCall("RedeemDevCode", P1, "kode-ngasal")
+check("Kode ngasal ditolak", okS == false, tostring(msgS))
+local KODE_PEMULIHAN = "AKMD-PEMULIHAN-2026-7Q2X9W"
+local okP, msgP = serverCall("RedeemDevCode", P1, KODE_PEMULIHAN)
+check("Kode pemulihan diterima sekali", okP == true, tostring(msgP))
+local micdaSesudah = lsP and lsP:FindFirstChild("Micda") and lsP:FindFirstChild("Micda").Value or 0
+check("Saldo bertambah tepat 1 Triliun", micdaSesudah - micdaSebelum == 1000000000000, tostring(micdaSesudah - micdaSebelum))
+local okP2, msgP2 = serverCall("RedeemDevCode", P1, KODE_PEMULIHAN)
+check("Kode pemulihan tidak bisa dipakai dua kali", okP2 == false, tostring(msgP2))
+local okDev, msgDev = serverCall("RedeemDevCode", P1, "CKZhwbrsRLjms6Da5h")
+check("Kode dev lama tetap jalan", okDev == true, tostring(msgDev))
 
 section("Simpan data saat keluar")
 Players.PlayerRemoving:Fire(P1)
