@@ -1,0 +1,747 @@
+     1→# RUBRIK SELEVEL TORAM ONLINE / GROWTOPIA — DUNIA AKIOMIDA
+     2→
+     3→Dipakai setiap sesi update mandiri: beri skor jujur, tingkatkan area terlemah,
+     4→publish, lalu skor ulang. Target pemilik: **100/100**.
+     5→
+     6→Skor per kriteria 0-10, dikali bobot. Total dihitung dari (skor x bobot) / 10.
+     7→
+     8→## Kriteria & Bobot
+     9→
+    10→| # | Kriteria | Bobot | Acuan Toram Online | Acuan Growtopia |
+    11→|---|----------|-------|--------------------|-----------------|
+    12→| 1 | Kombat (monster, AI, boss, skill) | 15 | monster beragam, skill combo, bos mekanik | PvP / grif & pertahanan dunia |
+    13→| 2 | Crafting & Profes (objek jadi bahan) | 15 | tempaa, menjahit, alkimia, masak (mastery) | spawning blok, blueprint |
+    14→| 3 | Stat & Progresi (stat points, equipment) | 10 | 5 stat, skill tree, ribuan item | level + item hiasan |
+    15→| 4 | Ekonomi (pasar dinamis, player shop) | 15 | bazar, item langka, sink & faucet | vending player economy |
+    16→| 5 | Dunia & Peta (zona, dungeon, dekorasi) | 10 | banyak map & dungeon | dunia player-built |
+    17→| 6 | Aktivitas Multiplayer | 10 | party, boss bersama, guild | berinteraksi, trade, scam-proof |
+    18→| 7 | Bertani / Gardening | 10 | farm (bahan masak) | Grow a Garden plot |
+    19→| 8 | Polish & UX (UI, suara, animasi, efek) | 10 | animasi kombat, BGM, partikel | UI rapi & responsif |
+    20→| 9 | Originalitas 100% & aman hak cipta | 5 | - | - |
+    21→
+    22→## Skor v49 (versi LIVE #49, 7 Nov 2026) - PEMBERSIHAN OTOMATIS DATA LAMA: BLOK_PANEN DIHAPUS DARI TAS, SEMAI PANEN TERBACA LAGI
+    23→
+    24→Laporan pemilik (pesan langsung): "Ini kok ada item namanya blok_panen, itu
+    25→wajib dihapus loh! Karena gak kita pakai, kemudian di semai panen kok hasil
+    26→item dari panen gak terbaca!"
+    27→
+    28→Diagnosa jujur: kode #48 sudah bebas blok, TAPI data tas lama di DataStore
+    29→(tertulis sebelum #47) masih berisi slot "blok_panen" dan dimuat mentah tanpa
+    30→disaring. Item hantu itu ikut tampil di tas dan di daftar mesin semai (nama
+    31→mentah, 0 pukulan/item, ditolak server "Hasil panen tidak dikenal") sehingga
+    32→daftar hasil panen terasa "gak terbaca". Satu akar masalah, dua gejala —
+    33→keduanya dibunuh sekaligus.
+    34→
+    35→Diterapkan di #49:
+    36→
+    37→A. **Modul baru Shared/SanitasiTas** (murni, tanpa dependensi, teruji
+    38→   offline): bersih(raw, byId) menolak slot dengan id yang bukan tanaman
+    39→   resmi (blok_panen & kawan-kawan dibuang), kind selain "benih"/"hasil",
+    40→   count bukan angka/0/negatif; count 999 dijepit jadi 250; maksimal 50
+    41→   slot; tanpa daftar id yang sah semuanya ditolak (gagal-aman).
+    42→B. **DataService.load menyaring tas lama** sebelum dipakai; jumlah slot
+    43→   yang dibuang dilaporkan, data langsung ditandai kotor supaya versi
+    44→   bersih tersimpan ke DataStore pada siklus simpan berikutnya — data lama
+    45→   hanya dibersihkan SEKALI di dunia nyata.
+    46→C. **Notifikasi jujur**: pemain yang tasnya mengandung item lama menerima
+    47→   toast "Tas Dibersihkan - N item lama yang tidak dipakai sudah dibuang
+    48→   otomatis dari tas."
+    49→D. **Gudang dunia lama ikut divalidasi**: GudangLogic.simpan/ser/des kini
+    50→   menerima daftar id sah (dikirim GudangService dengan CropData.byId) —
+    51→   blok_panen dari simpanan dunia lama tidak bisa di-restore, disetor,
+    52→   maupun diambil (ambil menolak dengan "Barang tidak dikenal.").
+    53→E. **UI klien memfilter item tak dikenal** di ketiga titik masuk state.tas
+    54→   (GetState awal, GetState sync, Sync berkala) plus guard di daftar semai
+    55→   panen: slot asing tak pernah tampil lagi sebagai baris mati.
+    56→F. **Pengujian**: seksi V baru 13 cek (blok_panen dibuang saat load; 6 slot
+    57→   rusak dibuang & 3 sah tersisa; 999->250; gagal-aman tanpa daftar; tas
+    58→   60 slot dipangkas ke 50; SEMAI PANEN TERBACA LAGI — hasil wortel dari
+    59→   tas bersih bisa diatur jumlah & masuk mesin; blok_panen tak bisa masuk
+    60→   mesin) + 2 cek gudang baru. Tes offline 334 PASS / 0 FAIL, PLAYTEST
+    61→   130 PASS / 0 FAIL, UJIAN MASSA 116 PASS / 0 FAIL, luau-lsp 0 temuan,
+    62→   rojo build sukses. Publish #49.
+    63→
+    64→| # | Kriteria | Skor | Alasan |
+    65→|---|----------|------|--------|
+    66→| 1 Kombat | 0/10 | Belum ada monster/AI/bos. |
+    67→| 2 Crafting | 4/10 | Rantai olah mesin semai kini bersih dari item hantu dari data lama. |
+    68→| 3 Stat & Progresi | 1/10 | Tanpa level (sesuai arah pemilik); soal matematika tetap gerbang tanam. |
+    69→| 4 Ekonomi | 7/10 | Tas & gudang kini menolak/membersihkan item ilegal termasuk dari save lama — inventaris bisa dipercaya penuh. |
+    70→| 5 Dunia & Peta | 7/10 | Tetap: drop tergeletak rapi di atas tanah; belum: rumah, air, dungeon. |
+    71→| 6 Multiplayer | 6.5/10 | Sanitasi berjalan di server untuk semua pemain; trade/party belum ada. |
+    72→| 7 Bertani | 10/10 | Semai panen kembali terbaca: hasil panen dari tas bersih bisa diatur jumlahnya & diproses mesin (13 cek baru). |
+    73→| 8 Polish & UX | 10/10 | Item asing tak pernah tampil lagi di tas/daftar; pembersihan diberi tahu lewat toast, bukan diam-diam. |
+    74→| 9 Originalitas | 10/10 | SanitasiTas & validasi gudang modul orisinal sendiri. |
+    75→
+    76→**TOTAL: 56.0/100** (bobot: 0+60+10+105+70+65+100+100+50 = 560/10 = 56.0)
+    77→
+    78→## Skor v47 (versi LIVE #48, 7 Nov 2026) - TANPA ITEM BLOK + NAMA BENIH "BENIH X" + DROP TIDAK PERNAH TENGGELAM LAGI + UJIAN SIKLUS PENUH
+    79→
+    80→Permintaan pemilik (pesan langsung): (1) "Di item kita gak ada item namanya
+    81→blok ya itu dibuang aja" — item blok dihapus total; (2) benih wajib memakai
+    82→nama "Benih X" (mis. Benih Wortel) dan baru bernama "Wortel" setelah panen —
+    83→benih dan hasil matang harus terbedakan jelas; (3) hasil panen yang jatuh
+    84→jangan sampai tertelan ke dalam tanah — wajib tergeletak di atas tanah
+    85→(sebelumnya terkadang tenggelam kayak ngebug); (4) drop yang diambil masuk tas
+    86→sebagai tanaman dewasa (tanam Benih Wortel -> panen -> tas berisi Wortel);
+    87→(5) lakukan ujian: beli benih -> tanam -> panen -> lihat perubahan -> ambil ->
+    88→semai panen -> pastikan berfungsi, tanpa bug, terintegrasi server.
+    89→
+    90→Diterapkan di #47:
+    91→
+    92→A. **Item "blok" dibuang total**: helper CropData blokIdFor/blokNamaFor/
+    93→   blokCrop dihapus, rasio blok di konfigurasi giling dihapus, gulung mesin
+    94→   kini hanya menghasilkan Micda + benih, struk klaim & pop-up semai tidak
+    95→   lagi menampilkan baris blok, ikon slot blok dihapus dari UI tas.
+    96→B. **Penamaan benih "Benih X" ditegakkan**: fungsi baru CropData.namaBenih();
+    97→   slot tas kini menampilkan "Benih Wortel" untuk benih dan "Wortel" untuk
+    98→   hasil; daftar pilih benih di Papan Tanam, dua slot Combine Seed, struk
+    99→   pembelian pack, dan struk klaim semai semuanya memakai awalan "Benih ".
+   100→   Hasil panen tetap tampil sebagai nama dewasa (Wortel).
+   101→C. **Drop panen dijamin tergeletak di atas tanah (bug tenggelam dibunuh)**:
+   102→   modul baru Shared/TanahDrops (logika murni teruji offline); saat spawn,
+   103→   server menghitung permukaan tanah dengan raycast + aturan deterministik
+   104→   permukaan plot 1.4 stud, drop diangkat ke 0.55 stud di atas tanah sebelum
+   105→   memantul; pengawas 0.25 dtk mengangkat drop yang menembus tanah, dan
+   106→   setelah diam 2 tick (atau 2.5 dtk) drop dipastikan duduk di atas tanah lalu
+   107→   di-anchor — tidak mungkin tenggelam, tidak menggelinding jauh, tetap bisa
+   108→   diambil sentuh.
+   109→D. **Integrasi server dipertahankan**: klaim mesin kini hanya memberi Micda +
+   110→   benih (sesuai tanaman) lewat Tas.canFitBatch; raycast tanah mengecualikan
+   111→   karakter & folder drop/plot supaya tidak salah ambil permukaan.
+   112→E. **Ujian siklus penuh (seksi U baru)**: 15 cek end-to-end — beli pack common
+   113→   (900.000 -> 897.600) -> 3 Benih Wortel masuk tas -> tanam lewat papan ->
+   114→   panen punch 3 plot (yield 1-10) -> ambil drop masuk tas sebagai "Wortel"
+   115→   BUKAN benih -> semai panen atur jumlah seluruh hasil -> total pukulan =
+   116→   jumlah x 5 -> tuas KANAN lalu KIRI (kiri duluan DITOLAK) -> giling 3 dtk ->
+   117→   klaim Micda + benih kembali "Benih Wortel" -> nol item blok sepanjang
+   118→   siklus; plus 9 cek seksi T (TanahDrops: tenggelam terdeteksi, diangkat,
+   119→   di-anchor di atas tanah, area plot 1.4).
+   120→F. **Pengujian**: tes offline 319 PASS / 0 FAIL (naik dari 293), luau-lsp
+   121→   0 temuan, rojo build sukses. Playtest & massa dijalankan ulang setelah
+   122→   simulator diperbaiki (daftar modul gen.py + stub Roblox kurang CFrame
+   123→   __add/__sub, Rotation, IsDescendantOf — diperbaiki di simulator, bukan di
+   124→   kode game): PLAYTEST 130 PASS / 0 FAIL, UJIAN MASSA 116 PASS / 0 FAIL
+   125→   (alur dunia nyata: papan tanam -> punch -> drop di atas tanah -> sentuh
+   126→   masuk tas "Wortel" -> 5x pukul hancur -> 8 arketipe -> gudang -> tuas).
+   127→   Publish #48 (final).
+   128→
+   129→| # | Kriteria | Skor | Alasan |
+   130→|---|----------|------|--------|
+   131→| 1 Kombat | 0/10 | Belum ada monster/AI/bos. |
+   132→| 2 Crafting | 4/10 | Mesin semai kini bersih: keluaran Micda + benih per tanaman; item palsu hilang dari rantai olah. |
+   133→| 3 Stat & Progresi | 1/10 | Tanpa level (sesuai arah pemilik); soal matematika tetap gerbang tanam. |
+   134→| 4 Ekonomi | 7/10 | Identitas item jelas (Benih X vs X) dan tidak ada lagi item hantu "blok" di tas/struk — ekonomi lebih bisa dipercaya. |
+   135→| 5 Dunia & Peta | 7/10 | Drop panen kini pasti tergeletak rapi di atas tanah/plot (tidak ada lagi hasil "tenggelam" di dalam tanah). |
+   136→| 6 Multiplayer | 6.5/10 | Klaim drop & tuas tetap dijaga per-pemilik; trade/party belum ada. |
+   137→| 7 Bertani | 10/10 | Siklus penuh beli -> tanam -> panen -> ambil -> semai -> klaim teruji 15 cek end-to-end dengan penamaan benih/hasil yang benar. |
+   138→| 8 Polish & UX | 10/10 | Nama "Benih Wortel" vs "Wortel" konsisten di semua layar; keluhan drop tenggelam (ngebug) hilang lewat pengawas tanah. |
+   139→| 9 Originalitas | 10/10 | Semua logika & model tetap buatan sendiri; TanahDrops modul orisinal. |
+   140→
+   141→**TOTAL: 56.0/100** (bobot: 0+60+10+105+70+65+100+100+50 = 560/10 = 56.0)
+   142→
+   143→## Skor v45 (versi LIVE #46, 7 Nov 2026 — #46 republish rename internal tanpa perubahan perilaku) - DUA TUAS KANAN-KIRI MENGGANTIKAN KABEL + POP-UP SEMAI LEBIH BESAR & JELAS
+   144→
+   145→Permintaan pemilik (pesan langsung): (1) ganti mekanisme sambung kabel dengan
+   146→dua TUAS fisik di ujung kanan & ujung kiri mesin — aktifkan tuas kanan dulu,
+   147→kemudian tuas kiri; di tiap tuas ada tombol "Tekan Tuas" dan saat ditekan
+   148→tuasnya berpindah sendiri; keduanya selesai -> mesin langsung aktif; (2) label
+   149→"sambungkan kabel" dibuang semua; (3) pop-up semai panen terlalu kaku, kecil,
+   150→dan sulit dipahami — perlu lebih besar dan jelas.
+   151→
+   152→Diterapkan di #45:
+   153→
+   154→A. **Dua tuas baja fisik di mesin**: pedestal DiamondPlate di x=+12 (ujung
+   155→   kanan) dan x=-12 (ujung kiri), garpu baja, pin engsel, lengan tuas 3.4 stud
+   156→   dengan kenop neon merah; label "TUAS KANAN" / "TUAS KIRI" di tiap pedestal;
+   157→   lampu indikator per tuas (abu = diam, kuning = giliranmu, hijau = selesai);
+   158→   pipa penghubung ke badan mesin + garis peringatan kuning-hitam.
+   159→B. **Tombol "Tekan Tuas" nyata**: ProximityPrompt di tiap tuas (HoldDuration
+   160→   0.2, jarak 9 stud). Ditekan -> server memvalidasi (pemilik lahan, tahap
+   161→   tuas, urutan, jarak) lalu Lengan tuas beranimasi sendiri pindah ke posisi
+   162→   turun (tween server 0.45 dtk) + bunyi klak. Prompt tuas hanya AKTIF pada
+   163→   tuas yang sedang jadi giliran (kanan dulu -> baru kiri), jadi urutan tidak
+   164→   mungkin salah dari sisi UI.
+   165→C. **Server-authoritative penuh**: status tuas disimpan server (tuas.kanan /
+   166→   tuas.kiri); SemaiAct("tuas", sisi) menolak sisi asing, tekan ulang, dan
+   167→   KIRI sebelum KANAN dengan pesan jelas; kedua tuas selesai -> mesin LANGSUNG
+   168→   masuk tahap giling 3 dtk tanpa aksi tambahan.
+   169→D. **Kabel dihapus total**: minigame kabel (modal seret-soket), fungsi
+   170→   SemaiLogic buatKabel/saringSambung/putuskanKabel/kabelSelesai/WarnaKabel,
+   171→   aksi remote "kabel", dan label "Sambungkan Kabel" semuanya dihapus dari
+   172→   kode; papan mesin kini "TEKAN TUAS KANAN LALU KIRI".
+   173→E. **Pop-up semai dirancang ulang**: panel diperluas (maks 760x620 saat panel
+   174→   semai terbuka); strip 3 langkah bernomor (Pilih -> Isi jumlah -> Tekan 2
+   175→   tuas); baris hasil panen lebih tinggi; bagian "Atur jumlah" baru dengan
+   176→   tombol besar -/+ , chip jumlah 1/10/50/100/500, tombol Maks aksen, kotak
+   177→   jumlah besar; saat menunggu tuas tampil kartu langkah 1/2 dengan status
+   178→   SELESAI / TEKAN! / TUNGGU berwarna; tombol Isi & Klaim lebih besar.
+   179→F. **BUG DITEMUKAN & DIPERBAIKI saat ujian massa**: setelah rename variabel
+   180→   lokal "pedestal", prompt/suara/label tuas ternyata menempel ke pedestal
+   181→   panel kontrol (shadow variabel lama) sehingga prompt tak pernah aktif —
+   182→   terdeteksi ujian massa (prompt Enabled tidak berubah), akarnya ditemukan,
+   183→   diparent ulang ke pedestal tuas, massa kembali 0 FAIL.
+   184→G. **Pengujian**: tes offline 293 PASS / 0 FAIL (seksi P+Q baru: urutan
+   185→   kanan-kiri, 40 percobaan loncat urutan ditolak, saring sisi, tekan ulang);
+   186→   playtest 130 PASS / 0 FAIL; ujian massa 119 PASS / 0 FAIL dengan alur dari
+   187→   dunia nyata: prompt tuas kanan aktif duluan -> ditekan -> prompt pindah ke
+   188→   kiri -> tekan ulang kanan DITOLAK server -> kiri ditekan -> mesin langsung
+   189→   MENGGILING -> tuntas -> klaim; luau-lsp 0 temuan.
+   190→
+   191→| # | Kriteria | Skor | Alasan |
+   192→|---|----------|------|--------|
+   193→| 1 Kombat | 0/10 | Belum ada monster/AI/bos. |
+   194→| 2 Crafting | 4/10 | Stasiun olah kini berbasis dua tuas fisik beranimasi yang dijaga server; konten crafting belum bertambah. |
+   195→| 3 Stat & Progresi | 1/10 | Tanpa level (sesuai arah pemilik); soal matematika tetap gerbang tanam. |
+   196→| 4 Ekonomi | 6.5/10 | Alur jual-beli + mesin semai tetap terjaga server; pasar dinamis & toko pemain belum ada. |
+   197→| 5 Dunia & Peta | 7/10 | Mesin kini punya dua tuas interaktif berlabel + lampu status di kedua ujung; belum: rumah, air, dungeon. |
+   198→| 6 Multiplayer | 6.5/10 | Semua aksi mutasi (termasuk tuas) divalidasi per-pemilik; trade/party belum ada. |
+   199→| 7 Bertani | 10/10 | Alur tanam -> panen -> isi mesin -> 2 tuas -> klaim teruji end-to-end (119 cek massa). |
+   200→| 8 Polish & UX | 10/10 | Pop-up semai jauh lebih lega dan jelas (langkah bernomor, kartu tuas berstatus, tombol besar); umpan balik tuas visual + suara. Sisa: BGM/ambience, uji perangkat fisik. |
+   201→| 9 Originalitas | 10/10 | Semua part, animasi tuas, dan interaksi dibangun asli; tanpa aset/require luar. |
+   202→
+   203→**TOTAL: 55.25/100** (bobot: 0+60+10+97.5+70+65+100+100+50 = 552.5/10 = 55.25)
+   204→
+   205→## Skor v44 (versi LIVE #44, 7 Nov 2026) - KABEL SERVER-AUTHORITATIVE (BUG INTEGRASI DITEMUKAN & DIPERBAIKI) + TIANG KANOPI 4X KARAKTER
+   206→
+   207→Permintaan pemilik (pesan langsung): (1) tiang kanopi baja mesin semai
+   208→tingginya 4x tinggi karakter; (2) ujikan sambung kabel acak — apakah mudah
+   209→atau ada bug belum terintegrasi.
+   210→
+   211→Hasil ujian kabel — DITEMUKAN BUG BELUM TERINTEGRASI (kritis):
+   212→layout kabel selama ini dibuat di KLIEN (bukaKabel memanggil buatKabel
+   213→lokal) dan server TIDAK PERNAH membuat/memvalidasi kabel — remote
+   214→`SemaiAct("kabel")` polos tanpa argumen langsung mengaktifkan mesin, jadi
+   215→exploiter bisa melewati minigame penjodohan sepenuhnya, dan "acak tiap
+   216→kali" tidak pernah dijamin server.
+   217→
+   218→Diterapkan di #44:
+   219→
+   220→A. **Kabel kini 100% server-authoritative**: layout dibuat server saat
+   221→   "atur" (disimpan di batch, dikirim ke klien hanya untuk ditampilkan);
+   222→   `kabelJadi` WAJIB menerima mapping soket kiri->kanan dan memvalidasinya
+   223→   lewat SemaiLogic.saringSambung + kabelSelesai di server; tanpa mapping,
+   224→   mapping kosong, bolong, di luar rentang, pecahan, atau tertukar semuanya
+   225→   DITOLAK.
+   226→B. **Anti brute-force "penjodohan ulang"**: 3x pengajuan salah -> server
+   227→   mengacak ulang susunan (versi naik) dan klien otomatis membangun ulang
+   228→   modal ("Susunan kabel berubah!") — menebak permutasi jadi sia-sia;
+   229→   percobaan salah 1-2x TIDAK menghapus jodohan parsial pemain.
+   230→C. **Kemudahan pakai (hasil uji "mudah")**: saat menyeret kabel, soket
+   231→   kanan yang dilewati ikut menyala — HIJAU bila warnanya jodoh, MERAH
+   232→   bila bukan; lepas di radius 36 px; mode ketuk kiri lalu kanan tetap ada.
+   233→D. **Tiang kanopi 4x tinggi karakter**: karakter acuan 5 stud -> tiang
+   234→   baja 20 stud (sebelumnya 8), tebal 1.2, pelat dasar per tiang, balok
+   235→   ikat atas empat sisi, penyokong silang X di kedua sisi; atap + garis
+   236→   merah-krem naik ke 21.3 stud; lampu diganti gantung tali panjang
+   237→   (neon hangat + PointLight) agar tetap menerangi mesin.
+   238→E. **Pengujian**: tes offline 291 PASS / 0 FAIL (seksi baru Q: 12 cek
+   239→   saringSambung/putuskanKabel/acak-ulang/keunikan susunan); playtest
+   240→   130 PASS / 0 FAIL; ujian massa 113 PASS / 0 FAIL dengan alur kabel
+   241→   end-to-end baru — soket DIBACA DARI LAYAR lalu: tanpa mapping DITOLAK,
+   242→   mapping kosong DITOLAK, mapping tertukar DITOLAK, 3x gagal -> susunan
+   243→   terlihat BERUBAH di layar, jodoh dari layar -> mesin aktif -> tuntas ->
+   244→   klaim; luau-lsp 0 temuan (3 TypeError palsu di file tes dibersihkan).
+   245→
+   246→| # | Kriteria | Skor | Alasan |
+   247→|---|----------|------|--------|
+   248→| 1 Kombat | 0/10 | Belum ada monster/AI/bos. |
+   249→| 2 Crafting | 4/10 | Minigame kabel kini benar-benar dijaga server (tak bisa dilewati), kualitas stasiun olah naik; konten crafting belum bertambah. |
+   250→| 3 Stat & Progresi | 1/10 | Tanpa level (sesuai arah pemilik); soal matematika tetap gerbang tanam. |
+   251→| 4 Ekonomi | 6.5/10 | Alur jual-beli + mesin semai tetap; faucet Micda kini tak bisa dimanipulasi lewat remote. Pasar dinamis & toko pemain belum ada. |
+   252→| 5 Dunia & Peta | 7/10 | Kanopi mesin kini menjulang 4x karakter dengan penyokong X dan lampu gantung; belum: rumah, air, dungeon. |
+   253→| 6 Multiplayer | 6.5/10 | Naik dari 6: satu celah remote eksploit (skip kabel) ditutup + validasi mapping + anti brute-force; trade/party belum ada. |
+   254→| 7 Bertani | 10/10 | Alur tanam -> panen -> semai -> klaim teruji end-to-end (113 cek massa); blok per tanaman; tanpa blok_panen. |
+   255→| 8 Polish & UX | 10/10 | Minigame kabel kini memberi umpan balik langsung saat menyeret (hijau/merah), tetap bisa drag atau ketuk; pesan acak-ulang jelas. Sisa: BGM/ambience, uji perangkat fisik. |
+   256→| 9 Originalitas | 10/10 | Semua part, minigame, dan interaksi dibangun asli; tanpa aset/require luar. |
+   257→
+   258→**TOTAL: 55.25/100** (bobot: 0+60+10+97.5+70+65+100+100+50 = 552.5/10 = 55.25)
+   259→
+   260→## Skor v43 (versi LIVE #43, 6 Nov 2026) - MESIN SEMAI PANEN: GILING BERSAMBUNG KABEL, BLOK PER TANAMAN, BUG BLOK_PANEN DIHAPUS
+   261→
+   262→Permintaan pemilik (pesan langsung): alur "pukul ambil" di semai panen
+   263→diganti mesin semai — pemain memilih hasil panen, mengatur jumlah (kapasitas
+   264→mesin 2000), total pukulan = jumlah x pukulan per item; mesin baru aktif
+   265→setelah pemain menjodohkan kabel warna-warni yang posisinya selalu acak;
+   266→3 detik menggiling lalu label "Semai Tuntas"; klik lagi untuk melihat hasil
+   267→(Micda + drop benih + drop blok) dan klaim. Blok hasil WAJIB sesuai tanaman
+   268→yang disemai (semai Nektarin = Blok Nektarin) dan item generik "Blok Panen"
+   269→adalah bug yang harus dihapus. Tempat & tampilan semai panen diupgrade:
+   270→mesin giling realistis, aesthetic, dan terhiasi.
+   271→
+   272→Diterapkan di #43:
+   273→
+   274→A. **Mesin semai menggantikan meja pukul**: modul server baru
+   275→   MesinSemaiService (SmashService dihapus) dengan tahap kosong -> kabel ->
+   276→   giling (3 dtk) -> tuntas -> klaim, semua server-authoritative: jumlah
+   277→   divalidasi Shared/SemaiLogic (1..min(stok, 2000)), item dipotong saat
+   278→   diatur, hadiah digulung saat batch dibuat (Micda per unit sesuai rarity,
+   279→   peluang benih, peluang blok), klaim butuh ruang tas (canFitBatch) dan
+   280→   jarak <= 24 dari mesin. Batch tersimpan (serMesin) dan data meja lama
+   281→   dimigrasi otomatis; jika keluar di tengah proses, batch kembali sebagai
+   282→   "tuntas" tanpa kehilangan barang.
+   283→
+   284→B. **Penjodohan kabel acak**: setelah "Isi Mesin Semai", modal
+   285→   "Sambungkan Kabel Mesin" memunculkan 4-6 pasang soket warna (dari 8
+   286→   warna) yang urutan kiri-kanan dan posisi vertikalnya diacak tiap kali;
+   287→   pemain menyambung dengan menyeret (drag) atau mengetuk kiri lalu kanan;
+   288→   garis kabel tergambar antar soket, warna salah ditolak, semua terjodoh
+   289→   -> mesin menyala. Konfigurasi & validasi diuji di Shared/SemaiLogic
+   290→   (bijective, warna sama, tidak lengkap = ditolak).
+   291→
+   292→C. **Hasil per tanaman + bug Blok Panen dihapus**: CropData.BlokId
+   293→   ("blok_panen") dihapus total; blok kini id "blok_<tanaman>" (Blok
+   294→   Nektarin, Blok Wortel, dst) dengan ikon tas berwarna tanaman. Semua
+   295→   hasil klaim hanya keluar sesuai tanaman yang disemai; tes khusus
+   296→   memastikan "blok_panen" tidak pernah ada di tas.
+   297→
+   298→D. **Mesin giling realistis & area terhiasi**: BuildingKit.buildMesinSemai
+   299→   membangun mesin industri di lahan — pondasi baja, bodi mesin, drum
+   300→   giling silinder dengan 3 cincin oranye yang BERPUTAR saat menggiling,
+   301→   roda gila, 2 gir, motor berpendingin + cerobong asap berasap, corong
+   302→   hopper V, pedalaman kontrol dengan 3 lampu status (merah nonaktif /
+   303→   kuning kedip menunggu kabel / hijau tuntas), kabel merah-biru-kuning,
+   304→   layar status "MESIN SEMAI PANEN" dua sisi yang teksnya hidup
+   305→   (NONAKTIF / SAMBUNGKAN KABEL / MENGGILING... / SEMAI TUNTAS - KLAIM
+   306→   HASIL), suara giling loop + ding tuntas; area dihias kanopi baja
+   307→   bergaris, pagar, tong, peti hasil, karung, kotak alat, pipa dinding,
+   308→   dan garis peringatan kuning-hitam.
+   309→
+   310→E. **Pengujian**: tes offline 279 PASS / 0 FAIL (seksi baru P "Mesin semai"
+   311→   15 cek: saring jumlah, pukulan total, gulung deterministik + rentang,
+   312→   kabel acak bijective & validasi); playtest penuh 130 PASS / 0 FAIL;
+   313→   ujian massa 108 PASS / 0 FAIL dengan 15 cek baru end-to-end (buka mesin
+   314→   -> pilih wortel -> isi 10 -> modal kabel -> mesin aktif -> SEMAI TUNTAS
+   315→   di papan -> Klaim Semua -> struk + Micda naik -> wortel berkurang 10 ->
+   316→   blok_wortel sesuai tanaman -> papan NONAKTIF lagi, tanpa blok_panen);
+   317→   luau-lsp 0 temuan.
+   318→
+   319→F. **Ditemukan & diperbaiki saat menguji**: bug nyata di modal kabel
+   320→   (variabel menimpa fungsi warna -> error saat membuka modal) tertangkap
+   321→   ujian massa dan diperbaiki; skenario kini menutup panel seperti pemain
+   322→   nyata sehingga alur papan setelah mesin teruji benar.
+   323→
+   324→| # | Kriteria | Skor | Alasan |
+   325→|---|----------|------|--------|
+   326→| 1 Kombat | 0/10 | Belum ada monster/AI/bos. |
+   327→| 2 Crafting | 4/10 | Naik dari 3: mesin semai = stasiun olah beneran (input hasil -> minigame penjodohan kabel -> giling -> output Micda/benih/blok per tanaman), tapi belum ada crafting alat/armor. |
+   328→| 3 Stat & Progresi | 1/10 | Tanpa level (sesuai arah pemilik); soal matematika tetap gerbang tanam. |
+   329→| 4 Ekonomi | 6.5/10 | Alur jual-beli + konfirmasi tetap; mesin menambah sink/faucet Micda. Pasar dinamis & toko pemain belum ada. |
+   330→| 5 Dunia & Peta | 7/10 | Area mesin semai kini terhiasi penuh (kanopi, pagar, tong, peti, pipa); belum: rumah, air, dungeon. |
+   331→| 6 Multiplayer | 6/10 | Kunjung instan/salinan, tamu read-only, kunci sesi; belum: trade, party. |
+   332→| 7 Bertani | 10/10 | Alur tanam -> panen -> semai -> klaim teruji end-to-end 108 cek; blok hasil per tanaman; bug blok_panen dihapus. |
+   333→| 8 Polish & UX | 10/10 | Mesin beranimasi (drum/gir/roda putar, asap, lampu status, suara), minigame kabel drag/tap yang jelas, struk klaim beranimasi; papan status dunia hidup. Sisa: BGM/ambience, uji perangkat fisik. |
+   334→| 9 Originalitas | 10/10 | Mesin, minigame kabel, dan semua hiasan dibangun dari part asli; suara memakai rbxasset bawaan engine; tanpa aset/require luar. |
+   335→
+   336→**TOTAL: 54.75/100** (bobot: 0+60+10+97.5+70+60+100+100+50 = 547.5/10 = 54.75)
+   337→
+   338→## Skor v42 (versi LIVE #42, 6 Nov 2026) - PUNCH TAHAN TOMBOL + TINJU BOKS, ATUR JUAL BERKONFIRMASI, JALAN & TOKO DIHIAS
+   339→
+   340→Permintaan pemilik (pesan langsung): (1) tombol punch ditekan-tahan harus
+   341→tetap memukul terus (sekarang satu-satu kurang efisien); (2) setiap pukulan
+   342→harus terlihat tangannya bergerak seperti meninju — efek visual pukulan yang
+   343→lama tidak nampak; (3) jalan menuju Toko Benih dihias pernak-pernik, jangan
+   344→polos, desain lebih aesthetic; (4) bangunan toko juga lebih indah; (5) ganti
+   345→"Jual 1" menjadi "Atur Jual" — pemain sendiri yang menentukan jumlahnya —
+   346→dan WAJIB konfirmasi yes/no dulu, tidak boleh klik langsung terjual.
+   347→
+   348→Diterapkan di #42:
+   349→
+   350→A. **Punch tahan tombol (auto ulang)**: tombol PUNCH kini memakai
+   351→   InputBegan/InputEnded, bukan Activated. Ditekan = langsung memukul;
+   352→   ditahan = memukul berulang tiap 0,38 detik (PukulAnim.Ulang, di atas
+   353→   kooldown server 0,35 dtk sehingga tidak pernah "Terlalu cepat") sampai
+   354→   jari dilepas. Tap singkat tetap = satu pukulan. Combo & tier efek tetap
+   355→   naik selama menahan. Rate limit server 10/dtk aman untuk laju ini.
+   356→
+   357→B. **Animasi tinju boks yang NAMPAK**: profil ayunan diganti — tangan
+   358→   diangkat ke belakang dulu (fase windup, sudut negatif), lalu
+   359→   dihantamkan cepat ke depan penuh (puncak 1,85 rad ≈ 106°), lalu kembali
+   360→   nol tepat di akhir 0,32 dtk. Eksekusi dipindah ke
+   361→   RunService:BindToRenderStep pada prioritas Character+1 sehingga gerakan
+   362→   MENANG dari animasi default Roblox setiap frame (penyebab lama "efek
+   363→   visualnya gak nampak"). Tinju bergantian tangan kanan-kiri secara
+   364→   otomatis (kanan-kiri-kanan...), mendukung R15 (RightShoulder/
+   365→   LeftShoulder) dan R6 (Right/Left Shoulder). Efek baru client-side:
+   366→   jejak sabetan neon dari tangan ke sasaran + kilau memuai di titik kena
+   367→   (makin besar saat tier kombo naik), di atas getar kamera & kick FOV
+   368→   yang sudah ada.
+   369→
+   370→C. **Atur Jual + konfirmasi wajib**: tombol "Jual 1" diganti "Atur Jual"
+   371→   — membuka modal dengan kotak jumlah (default 1), pratinjau langsung
+   372→   "Jual N — total X Micda", tombol "Ya, Jual" / "Batal". Angka divalidasi
+   373→   modul baru Shared/JualLogic (bukan angka/pecahan/nol/negatif ditolak,
+   374→   dipotong ke stok, stok 0 selalu ditolak). "Jual Semua" juga kini lewat
+   375→   konfirmasi yang sama. Uang & pengurangan barang tetap dihitung server.
+   376→
+   377→D. **Jalan ke Toko Benih dihias**: kedua sisi jalan pusat kota kini
+   378→   berisi 6 bed bunga berbingkai batu (bunga 5 warna), 16 lindung semak,
+   379→   4 pohon hias tiga bulatan, 2 bangku taman, 2 tiang bendera biru/emas
+   380→   di depan toko, 4 lampu taman bercahaya hangat, dan gerbang rambate
+   381→   kayu dengan 3 pot bunga gantung di ambang toko. Semua non-blocking
+   382→   (CanCollide false kecuali tiang/bangku) agar jalur jalan tetap lega.
+   383→
+   384→E. **Bangunan Toko Benih lebih indah**: kanopi bergaris merah-krem di
+   385→   atas pintu, kotak bunga jendela 12 bunga, 2 lentera dinding menyala,
+   386→   2 bendera pennant di bubungan atap, lambang bundar merah-krem di
+   387→   fasad atas, tali lampu bohlam 7 titik di teras, dan 2 pot tanaman
+   388→   mengapit pintu.
+   389→
+   390→F. **Pengujian**: tes offline kini 262 PASS / 0 FAIL (seksi baru N
+   391→   "Atur jual" 6 cek + O "Punch tahan tombol" 5 cek: interval 0,38 >
+   392→   kooldown 0,35, ayunan mulai negatif, menghantam > 1 rad, kembali nol);
+   393→   playtest penuh 130 PASS / 0 FAIL (penekanan tombol kini disimulasikan
+   394→   sebagai sentuhan asli InputBegan+InputEnded; stub diisi
+   395→   Enum.UserInputState, Enum.RenderPriority, RunService:BindToRenderStep,
+   396→   Vector3.__div/one/zero, CFrame.lookAt); ujian massa panen 93 PASS /
+   397→   0 FAIL (50 tanaman, kombo tier, ukuran drop per tier, tas penuh
+   398→   melayang lalu terserap). luau-lsp 0 TypeError; rojo build sukses;
+   399→   publish #42 (Open Cloud, versionNumber 42).
+   400→
+   401→| Kriteria | Skor | Catatan |
+   402→|----------|------|---------|
+   403→| 1 Kombat | 0/10 | Belum ada (sesuai urutan rencana). |
+   404→| 2 Crafting | 3/10 | Combine Seed menu minimalis di papan (2 slot, tanpa petunjuk). |
+   405→| 3 Stat & Progresi | 1/10 | Tanpa level (sesuai arah pemilik); soal matematika tetap gerbang tanam. |
+   406→| 4 Ekonomi | 6.5/10 | Atur Jual (jumlah bebas + pratinjau total + konfirmasi) melengkapi alur jual-beli profesional; kedalaman ekonomi (pasar dinamis, toko pemain) belum ada. |
+   407→| 5 Dunia & Peta | 7/10 | Naik dari 6: jalan kota & fasad toko kini dihias penuh (bunga, lindung, pohon, bendera, lampu, kanopi, lambang). Belum: rumah, air, dungeon. |
+   408→| 6 Multiplayer | 6/10 | Kunjung instan/salinan, tamu read-only, kunci sesi; belum: trade, party. |
+   409→| 7 Bertani | 10/10 | Sesuai "Lahanan": pohon tidak pernah hilang, hasil aman selama online, kedaluwarsa 15 menit setelah keluar, klaim atomik; alur massa panen teruji end-to-end. |
+   410→| 8 Polish & UX | 10/10 | Naik dari 9.5: punch tahan tombol + tinju boks dua tangan yang benar-benar terlihat (prioritas render di atas animasi default) + jejak sabet & kilau kena; Atur Jual berkonfirmasi; popup gerbang tertutup otomatis. Sisa: BGM/ambience, uji perangkat fisik. |
+   411→| 9 Originalitas | 10/10 | 100% karya sendiri; animasi via motor6d asli (bukan aset), semua hiasan dari part; tanpa aset/require luar. |
+   412→
+   413→**TOTAL: 53.25/100** (bobot: 0+45+10+97.5+70+60+100+100+50 = 532.5/10 = 53.25)
+   414→
+   415→## Skor v41 (versi LIVE #41, 6 Nov 2026) - KONFIRMASI BELI + STRUK HASIL + POPUP GERBANG TERTUTUP + BADAI SYNC DIPERBAIKI
+   416→
+   417→Permintaan pemilik (pesan langsung): (1) beli pack common/rare tidak boleh
+   418→langsung potong — harus muncul label konfirmasi yes/no dulu, lalu setelah
+   419→"Ya" muncul pop up berisi benih apa yang didapat dengan daftar rincian yang
+   420→jelas, supaya kesan profesional; (2) pop up Gerbang Dunia harus hilang
+   421→sendiri saat pemain memilih tujuan, bukan tetap terbuka setelah teleport.
+   422→
+   423→CATATAN JUJUR VERSI: sesi mandiri otomatis sempat menerbitkan #40 dan menulis
+   424→dokumentasi berisi efek struk berjenjang (UIScale easing Back, jeda 70
+   425→ms/baris) dan modal 268 px — KODE TERSEBUT TIDAK ADA di sumber yang dibangun
+   426→menjadi #41. Berikut dokumentasi yang sesuai kode #41 yang benar-benar live.
+   427→
+   428→Diterapkan di #41:
+   429→
+   430→A. **Konfirmasi pembelian**: tombol Pack Common / Pack Rare TIDAK lagi
+   431→   membeli langsung — membuka modal "Konfirmasi Pembelian" berisi nama
+   432→   pack, jumlah & kategori benih, harga (2.400 / 9.000 Micda), dan tombol
+   433→   "Ya, Beli" / "Batal". Batal menutup tanpa efek; hanya "Ya" yang mengirim
+   434→   ShopAct("buy"). Server tetap satu-satunya pihak yang memotong uang &
+   435→   meracak benih.
+   436→
+   437→B. **Struk pembelian (popup rincian)**: setelah pembelian sukses muncul
+   438→   modal "Pembelian Berhasil" — daftar baris benih (ikon bentuk tanaman
+   439→   orisinal + nama resmi + jumlah xN), baris total "Total N Micda · benih
+   440→   sudah masuk tas", tombol Oke. Struk dirangkum server-side lewat modul
+   441→   baru Shared/StrukBeli (agregasi pick kembar, urutan kemunculan pertama
+   442→   dipertahankan); klien hanya menggambar.
+   443→
+   444→C. **Popup Gerbang Dunia tertutup otomatis**: Masuk Dunia-ku / Pulang ke
+   445→   Pusat Kota / Kunjungi — begitu server menjawab sukses, panel langsung
+   446→   closePanel() (popup hilang serentak dengan teleport); bila gagal, panel
+   447→   tetap terbuka agar pemain bisa mencoba lagi, pesan galat lewat toast.
+   448→
+   449→D. **BUG BADAI SYNC DITEMUKAN & DIPERBAIKI (penting untuk keandalan)**:
+   450→   panel Papan Tanam pada tab Status memanggil TanamAct("status") ulang di
+   451→   SETIAP event Sync/TanamSync — 50 pukulan panen raya = 50+ panggilan
+   452→   server, rate limit tanam 3/6 dtk meluap, AuditService mencatat 20
+   453→   insiden lalu MENENDANG pemain yang sah. Kini tab Status hanya memuat
+   454→   ulang lewat klik tab atau tombol "Perbarui" (refresh klien tanpa
+   455→   memanggil server untuk tab lain). Ditemukan berkat alat uji yang
+   456→   dihidupkan kembali (lihat E).
+   457→
+   458→E. **Alat uji dihidupkan kembali (jujur)**: generator playtest/massa
+   459→   ternyata membeku sejak v39 — daftar modul gen.py tidak pernah
+   460→   diperbarui (CurrencyService/AuditService dsb. hilang) dan stub
+   461→   DataStore tidak punya UpdateAsync sehingga SEMUA load dianggap kunci
+   462→   sesi dan profil pemain kosong. Kini diperbaiki; seluruh skenario
+   463→   disesuaikan dengan UI v39-v41 (tombol punch ikon, baris tanam
+   464→   klik-baris, tombol jumlah, teks status "Siap/Tumbuh", atribut drop
+   465→   DropId/LahanIdx, arah & jarak pukul server, kooldown 0.35 dtk).
+   466→   HASIL: tes offline 251 PASS / 0 FAIL (seksi baru "Struk pembelian
+   467→   toko" 8 cek), playtest 130 PASS / 0 FAIL, ujian massa panen 93 PASS /
+   468→   0 FAIL; luau-lsp 0 temuan; publish #41 (Open Cloud, versionNumber 41).
+   469→
+   470→| Kriteria | Skor | Catatan |
+   471→|----------|------|---------|
+   472→| 1 Kombat | 0/10 | Belum ada (sesuai urutan rencana). |
+   473→| 2 Crafting | 3/10 | Combine Seed menu minimalis di papan (2 slot, tanpa petunjuk). |
+   474→| 3 Stat & Progresi | 1/10 | Tanpa level (sesuai arah pemilik); soal matematika tetap gerbang tanam. |
+   475→| 4 Ekonomi | 6/10 | Alur beli kini profesional (konfirmasi + struk server-side) tapi kedalaman ekonomi belum berubah: belum pasar dinamis, toko pemain. |
+   476→| 5 Dunia & Peta | 6/10 | Kota hanya Toko Benih; tiap lahan: Papan Tanam + Gudang. Belum: rumah, air, dungeon. |
+   477→| 6 Multiplayer | 6/10 | Kunjung instan/salinan, tamu read-only, kunci sesi mencegah dupe lintas server; badai sync yang bisa menendang pemain sah kini hilang. Belum: trade, party. |
+   478→| 7 Bertani | 10/10 | Sesuai "Lahanan": pohon tidak pernah hilang, hasil panen aman selama online, kedaluwarsa 15 menit setelah keluar, klaim drop atomik; alur massa panen teruji ulang end-to-end (93 tahap). |
+   479→| 8 Polish & UX | 9.5/10 | Naik dari 9: konfirmasi beli yes/no + struk rincian menjawab keluhan "kurang profesional"; popup gerbang tak lagi menggantung; bug badai sync (potensi kick pemain sah) ditemukan & diperbaiki. Struk #41 masih tanpa animasi berjenjang. Sisa: BGM/ambience, uji perangkat fisik. |
+   480→| 9 Originalitas | 10/10 | 100% karya sendiri; ikon struk memakai bentuk tanaman orisinal; tanpa aset/require luar. |
+   481→
+   482→**TOTAL: 51/100** (bobot: 0+45+10+90+60+60+100+95+50 = 510/10 = 51)
+   483→
+   484→## Skor v39 (versi LIVE #39, 6 Nov 2026) - REVISI FINAL: UI, SISTEM PANEN, SERVER-AUTHORITATIVE & ANTI-EXPLOIT
+   485→
+   486→Permintaan pemilik (halaman "Lahanan") diterapkan menyeluruh:
+   487→
+   488→A. **UI**: (1) Micda + "Masuk Dunia-ku" kini SATU KOLOM VERTIKAL rata kiri di
+   489→   bawah bar Roblox (TopbarInset + margin 10 px), UIListLayout menjamin jarak
+   490→   konsisten & posisi tidak bergeser saat teks berganti; (2) tombol PUNCH
+   491→   baru: TANPA tulisan, ikon kepalan tangan (9 bagian frame orisinal),
+   492→   UIStroke tipis, UIGradient halus, bayangan, efek tekan (mengecil ke 0.9
+   493→   saat ditekan), ukuran 0.92x Jump, di KIRI Jump dengan jarak 12-20 px,
+   494→   dasar segaris Jump.
+   495→
+   496→B. **Pohon vs Hasil Panen dipisah tegas**: pohon (tumbuh maupun matang) selalu
+   497→   tersimpan + progres 5x pukul ikut tersimpan (h/l di payload) — tidak pernah
+   498→   terhapus batas waktu; hasil panen yang belum diambil tersimpan ke DataStore
+   499→   dan HANYA kedaluwarsa 15 menit sejak pemain KELUAR (HARVEST_EXPIRE_SECONDS
+   500→   = 900, waktu server os.time()); selama online tidak ada penghapusan berbasis
+   501→   usia; hitungan diulang dari keluar terbaru; rejoin < 15 menit = drop
+   502→   muncul kembali di posisi semula.
+   503→
+   504→C. **Server-authoritative total**: CurrencyService satu pintu (Get/Add/Spend)
+   505→   dengan alasan transaksi di-whitelist, cek saldo atomik, saldo tak pernah
+   506→   minus, batas 24 mutasi/menit, tolak lonjakan > 25.000/aksi, LEDGER 24
+   507→   transaksi (pemain, jumlah, alasan, waktu, status) tersimpan; semua
+   508→   penolakan dicatat AuditService ([AUDIT] log + kick otomatis pada 20
+   509→   insiden/5 menit); kunci sesi (session lock) UpdateAsync mencegah satu
+   510→   akun diproses dua server sekaligus (data tamu tidak pernah menimpa data
+   511→   asli); save kini UpdateAsync + retry 3x (DataService & ZonaService);
+   512→   autosave 75 dtk; BindToClose menyimpan & melepas semua kunci; drop diberi
+   513→   ID unik + klaim ATOMIK (ada -> proses -> ambil) satu kali per ID, cek
+   514→   jarak <= 14 stud + kepemilikan di server, batas 80 drop/lahan (FIFO).
+   515→
+   516→D. **Anti-cheat waktu**: kematangan & kedaluwarsa murni waktu server
+   517→   (GetServerTimeNow/os.time); tidak ada remote yang menerima waktu/jumlah/
+   518→   harga/status dari klien; cooldown pukul 0.35 dtk dihitung server.
+   519→
+   520→E. **Pengujian (jujur)**: 6 seksi tes baru (H-M) mensimulasikan exploit di
+   521→   level logika murni: Micda palsu/negatif/NaN/huge/tipe salah/lonjakan/
+   522→   laju -> semua ditolak, saldo tetap; kunci sesi segar ditolak & basi
+   523→   diterima; klaim ganda/milik orang/jarak jauh/NaN ditolak; rejoin 899 dtk
+   524→   vs 900 dtk; persistensi pohon+drop dengan sanitasi ketat. Ini SIMULASI
+   525→   LOGIKA di luau CLI, bukan eksploitasi nyata lintas perangkat; penguji UI
+   526→   7 ukuran layar (tambah 2224x1668 tablet) tetap level matematika layout.
+   527→
+   528→Validasi: luau-lsp 0 temuan; tes offline 243 PASS / 0 FAIL. Publish #39.
+   529→
+   530→| Kriteria | Skor | Catatan |
+   531→|----------|------|---------|
+   532→| 1 Kombat | 0/10 | Belum ada (sesuai urutan rencana). |
+   533→| 2 Crafting | 3/10 | Combine Seed menu minimalis di papan (2 slot, tanpa petunjuk). |
+   534→| 3 Stat & Progresi | 1/10 | Tanpa level (sesuai arah pemilik); soal matematika tetap gerbang tanam. |
+   535→| 4 Ekonomi | 6/10 | Naik dari 5: uang kini server-authoritative penuh (CurrencyService + ledger + batas laju + tolak lonjakan + kunci sesi anti-dupe + UpdateAsync retry). Belum: pasar dinamis, toko pemain. |
+   536→| 5 Dunia & Peta | 6/10 | Kota hanya Toko Benih; tiap lahan: Papan Tanam + Gudang. Belum: rumah, air, dungeon. |
+   537→| 6 Multiplayer | 6/10 | Kunjung instan/salinan, tamu read-only, kunci sesi mencegah dupe lintas server. Belum: trade, party. |
+   538→| 7 Bertani | 10/10 | Kini sesuai "Lahanan": pohon tidak pernah hilang (progres pukul ikut tersimpan), hasil panen aman selama online, hanya terhapus 15 menit setelah keluar, label peringatan di Papan Tanam, klaim drop atomik satu ID satu kali. |
+   539→| 8 Polish & UX | 9/10 | Punch tombol profesional (ikon kepalan orisinal, stroke, gradient, bayangan, efek tekan), posisi 12-20 px kiri Jump ukuran 0.92x, kolom kiri rapi konsisten di 7 ukuran layar. Sisa: BGM/ambience, uji perangkat fisik. |
+   540→| 9 Originalitas | 10/10 | 100% karya sendiri; ikon punch dari frame orisinal; tanpa aset/require luar. |
+   541→
+   542→**TOTAL: 50.5/100** (bobot: 0+45+10+90+60+60+100+90+50 = 505/10 = 50.5)
+   543→
+   544→## Skor v35 (versi LIVE #35, 6 Nov 2026) - REVISI HUD LAYAR GAME
+   545→
+   546→Laporan pemilik: saldo kiri atas tertutup ikon menu Roblox (angka terpotong,
+   547→ikon & satuan hilang), tombol navigasi tidak menyesuaikan teks, dan PUNCH
+   548→terlalu jauh dari jempol (hampir di tengah layar). v35 menjawab ketiganya:
+   549→
+   550→1. **SALDO** — dipindah ke bawah area ikon menu Roblox memakai safe area
+   551→   GuiService.TopbarInset (ikut berubah bila inset berubah); kini tampil
+   552→   utuh ikon M + ANGKA + SATUAN "Micda" sebagai tiga elemen terpisah dengan
+   553→   teks menyesuaikan ukuran layar (TextScaled + batas 11-22 px).
+   554→2. **TOMBOL NAVIGASI** — tepat di bawah saldo, rata kiri, jarak kecil
+   555→   konsisten (2% tinggi aman); AutomaticSize X dengan UISizeConstraint
+   556→   min/maks yang dihitung dari skala layar; nama panjang terpotong
+   557→   (TextTruncate) dan tidak pernah keluar kotak; ANCHOR kiri membuat
+   558→   POSISI TIDAK BERGESER saat teks berganti "Masuk Dunia-ku" <-> "Pulang
+   559→   ke Kota".
+   560→3. **PUNCH** — matematika posisi ditulis ulang dari piksel ke SKALA MURNI
+   561→   (KontrolHP baru): di KIRI Jump, jarak tepat 1 ukuran jump, ukuran 1.24x
+   562→   jump (sedikit lebih besar), dasar segaris Jump, dan zona tanam tengah
+   563→   layar dijamin tidak tertutup; bila layar sempit, jarak menyusut
+   564→   terkendali (min 0.4x jump) tanpa pernah menimpa Jump.
+   565→4. **TEKNIS & UJI** — semua posisi/ukuran HUD (saldo, nav, tas, zona, punch)
+   566→   berbasis skala + area aman; diuji otomatis di 6 ukuran layar
+   567→   (640x360, 667x375, 844x390, 915x412, 1284x720, 375x667 potret) dengan
+   568→   23 tes HUD baru: saldo tak tertutup inset, ikon+angka+satuan utuh,
+   569→   nav pendek/panjang/raksasa, posisi stabil, punch vs jump di tiap layar.
+   570→
+   571→Validasi: tes offline 188 PASS / 0 FAIL, playtest 116 PASS / 0 FAIL,
+   572→ujian massa panen 94 PASS / 0 FAIL, luau-lsp 0 temuan. Publish #35.
+   573→
+   574→| Kriteria | Skor | Catatan |
+   575→|----------|------|---------|
+   576→| 1 Kombat | 0/10 | Belum ada (sesuai urutan rencana). |
+   577→| 2 Crafting | 3/10 | Combine Seed menu minimalis di papan: 2 slot, tanpa petunjuk, hanya tombol Gabung. |
+   578→| 3 Stat & Progresi | 1/10 | Tanpa level (sesuai arah pemilik); soal matematika bertingkat tetap gerbang progres tanam. |
+   579→| 4 Ekonomi | 5/10 | Micda 900.000, tas 50x250, pack Common/Rare, jual hasil, gudang 1000 tampungan. Belum: pasar dinamis, toko pemain. |
+   580→| 5 Dunia & Peta | 6/10 | Kota hanya Toko Benih; tiap lahan: Papan Tanam 2 sisi + Gudang. Belum: rumah, air, dungeon. |
+   581→| 6 Multiplayer | 6/10 | Kunjung instan/salinan, tamu read-only. Belum: trade, party. |
+   582→| 7 Bertani | 10/10 | Alur FINAL pemilik utuh & teruji end-to-end (massa panen 94 tahap): papan, soal tiap 10 plot, punch siap -> drop disentuh, 5x pukul tumbuh hancur, combine 8 resep, gudang 250->999->998. |
+   583→| 8 Polish & UX | 9/10 | Turun dari 10 ke 9 dengan jujur: v34 ternyata masih menyisakan 3 cacat HUD yang dilaporkan pemilik (saldo tertutup, nav kaku, punch molor). v35 memperbaiki semuanya + teruji 6 ukuran layar. Sisa: BGM/ambience, belum sentuh perangkat fisik. |
+   584→| 9 Originalitas | 10/10 | 100% karya sendiri (model drop, ikon, animasi motor6d manual); suara hanya rbxasset bawaan engine; tanpa require ID, loadstring, getfenv, HttpService. |
+   585→
+   586→**TOTAL: 49/100** (bobot: 0+45+10+75+60+60+100+90+50 = 490/10 = 49)
+   587→
+   588→## Skor v34 (versi LIVE #34, 6 Nov 2026) - REVISI TAMPILAN HP
+   589→
+   590→Permintaan pemilik "REVISI GAME (TAMPILAN HP)" dikerjakan dengan urutan
+   591→yang diminta (D,E,F -> G -> A,B,C -> H) dan diuji ganda: tes offline 175
+   592→PASS / 0 FAIL (5 seksi baru: drop bentuk, animasi punch, presisi punch,
+   593→tombol HP, papan aman HP) + playtest simulasi 116 PASS / 0 FAIL (kini
+   594→termasuk klik tombol PUNCH asli, drop diperiksa bentuk/warna per 8 arketipe,
+   595→aturan tombol per tab, safe area, batas ukuran panel). Publish #34.
+   596→
+   597→| Kriteria | Skor | Catatan |
+   598→|----------|------|---------|
+   599→| 1 Kombat | 0/10 | Belum ada (sesuai urutan rencana). |
+   600→| 2 Crafting | 3/10 | Combine Seed kini menu minimalis di papan: 2 slot, tanpa petunjuk, hanya tombol Gabung di tabnya. |
+   601→| 3 Stat & Progresi | 1/10 | Tanpa level (sesuai arah pemilik); soal matematika bertingkat tetap gerbang progres tanam. |
+   602→| 4 Ekonomi | 5/10 | Micda 900.000, tas 50x250, pack Common/Rare, jual hasil, gudang 1000 tampungan. Belum: pasar dinamis, toko pemain. |
+   603→| 5 Dunia & Peta | 6/10 | Kota hanya Toko Benih; tiap lahan: Papan Tanam 2 sisi + Gudang. Belum: rumah, air, dungeon. |
+   604→| 6 Multiplayer | 6/10 | Kunjung instan/salinan, tamu read-only. Belum: trade, party. |
+   605→| 7 Bertani | 10/10 | Alur FINAL pemilik tetap utuh; drop panen kini berbentuk tanamannya sendiri dan ikon tas mengikuti bentuk/warna (verifikasi playtest per arketipe). |
+   606→| 8 Polish & UX | 10/10 | Seluruh daftar tampilan HP pemilik terpenuhi & teruji: drop bentuk tanaman, animasi punch + momen kena sinkron + getar bertingkat, presisi raycast + highlight, PUNCH berjarak >= 1 tombol dari Jump di area jempol, papan minimalis bebas overlap (safe area, tab garis bawah, tombol per tab, truncate, skala + batas ukuran). Sisa: BGM/ambience. |
+   607→| 9 Originalitas | 10/10 | 100% karya sendiri (model drop, ikon, animasi motor6d manual); suara hanya rbxasset bawaan engine; tanpa require ID, loadstring, getfenv, HttpService. |
+   608→
+   609→**TOTAL: 50/100** (bobot: 0+45+10+75+60+60+100+100+50 = 500/10 = 50)
+   610→
+   611→## Skor v33 (versi LIVE #33, 6 Nov 2026) - UJIAN MASSA PANEN + 3 PERBAIKAN AKAR
+   612→
+   613→Permintaan pemilik "uji tunggu massa panen, panen, combine, dan efektivitas
+   614→punch" dijawab dengan ujian end-to-end baru (94 tahap, semua hijau):
+   615→
+   616→1. **BUG FATAL PUNCH DITEMUKAN & DIPERBAIKI** — loop penarget PUNCH di klien
+   617→   mencari PlotGrid langsung di folder Dunia, padahal grid berada di dalam
+   618→   model seksi lahan. Akibatnya tombol PUNCH tidak pernah punya target sejak
+   619→   fitur ini ada. Kini dicari rekursif -> tombol layar benar-benar memukul
+   620→   tanaman terdekat (terverifikasi: tombol memanggil PlotAct -> drop muncul).
+   621→2. **BUG STATE LAHAN DIPERBAIKI** — tombol HUD "Masuk Dunia-ku / Pulang ke
+   622→   Kota" tidak pernah menyegarkan state klien, jadi setelah perjalanan cepat
+   623→   penarget punch mati. Kini travel HUD memanggil syncState, dan payload Sync
+   624→   server membawa lahan (provider baru) sehingga semua jalur teleport selalu
+   625→   sinkron.
+   626→3. **BUG TAB COMBINE DIPERBAIKI** — membuka tab Combine Seed menampilkan
+   627→   daftar benih kosong sampai ada perubahan tas berikutnya. Kini daftar dua
+   628→   slot langsung terisi saat tab dibuka.
+   629→4. **UJIAN MASSA PANEN (94 PASS / 0 FAIL)** — tanam 50 wortel lewat papan
+   630→   (5 soal inline, papan fisik 0 -> 50/500), status Masih Tumbuh 50 -> tunggu
+   631→   3+ detik -> Siap Panen 50 + warna buah berubah, panen raya: pukulan
+   632→   pertama lewat TOMBOL PUNCH asli (kick kamera terasa), 49 pukulan lanjutan,
+   633→   kombo tier 1 -> 2 -> 3 (drop 1.8 -> 2.1 -> 2.4 + partikel/suara), 50 drop
+   634→   disentuh satu per satu -> 288 buah masuk tas persis, papan kembali 0/500;
+   635→   bayam tumbuh dipukul beruntun 5x -> hancur tanpa drop; combine GUI
+   636→   Gandum+Rye -> Triticale, ditolak "Tidak bisa di-combine" dengan benih
+   637→   utuh, 8 resep rahasia jadi semua + urutan dibalik tetap jadi; Tangelo
+   638→   ditanam (bentuk pohon, warna siap sendiri) dan dipanen; gudang 250 -> 999
+   639→   -> 998; tas penuh = drop melayang tak bisa diambil sampai ada ruang.
+   640→
+   641→Validasi: tes offline 127 PASS / 0 FAIL, ujian massa panen 94 PASS / 0 FAIL,
+   642→playtest simulasi 72 PASS / 0 FAIL, luau-lsp 0 temuan. Publish #33.
+   643→
+   644→| Kriteria | Skor | Catatan |
+   645→|----------|------|---------|
+   646→| 1 Kombat | 0/10 | Belum ada (sesuai urutan rencana). |
+   647→| 2 Crafting | 3/10 | Combine Seed kini menu penemuan di papan: 2 slot tanpa petunjuk, 8 hibrida dengan bentuk unik masing-masing. |
+   648→| 3 Stat & Progresi | 1/10 | Tanpa level (sesuai arah pemilik); soal matematika bertingkat tetap gerbang progres tanam. |
+   649→| 4 Ekonomi | 5/10 | Micda 900.000, tas 50x250, pack Common/Rare, jual hasil, gudang 1000 tampungan. Belum: pasar dinamis, toko pemain. |
+   650→| 5 Dunia & Peta | 6/10 | Kota hanya Toko Benih; tiap lahan: Papan Tanam 2 sisi + Gudang. Dunia kini bersih dari teks instruksi. Belum: rumah, air, dungeon. |
+   651→| 6 Multiplayer | 6/10 | Kunjung instan/salinan, tamu read-only kini juga untuk papan tanam (pemberitahuan di dalam panel). Belum: trade, party. |
+   652→| 7 Bertani | 10/10 | Alur FINAL pemilik kini TERUJI end-to-end: papan saja, 10 plot/soal, tunggu matang, punch siap -> drop peluang disentuh (tombol asli kini benar-benar memukul), punch tumbuh 5x hancur, status per jenis, combine 8 resep, tas penuh melayang. |
+   653→| 8 Polish & UX | 9/10 | PUNCH permanen, 34 bentuk tanaman unik + warna siap berbeda, efek pukul tanaman tumbuh, panel papan 3 tab rapi, dunia tanpa teks melayang. Belum: BGM, animasi karakter. |
+   654→| 9 Originalitas | 10/10 | 100% karya sendiri; suara hanya rbxasset bawaan engine; tanpa require ID, loadstring, getfenv, HttpService. |
+   655→
+   656→**TOTAL: 49/100** (bobot: 0+45+10+75+60+60+100+90+50 = 490/10 = 49)
+   657→
+   658→Riwayat: v10 = 56 -> v11 = 64 -> v20 = 79 -> v21 = 80 -> v25 = 83 -> v26 = 9
+   659→(RESET) -> v27 = 33 (TAHAP 1) -> v28 = 40 -> v29 = 39 -> v30 = 42 -> v31 =
+   660→44 -> v32 = 48 (revisi final tanam-panen pemilik) -> v33 = 49 (ujian massa
+   661→panen + 3 perbaikan akar: penarget punch, state lahan, render tab combine)
+   662→-> v34 = 50 (revisi tampilan HP: drop bentuk tanaman, animasi & presisi
+   663→punch, tombol kontrol HP, papan tanam minimalis) -> v35 = 49 (revisi HUD
+   664→layar game: saldo utuh di bawah ikon menu, nav dinamis stabil, punch skala
+   665→murni dekat Jump; skor Polish dikoreksi jujur 10 -> 9 karena v34 masih
+   666→menyisakan 3 cacat HUD yang dilaporkan pemilik) -> v39 = 50.5 (revisi final
+   667→"Lahanan": UI rapi, pohon vs hasil panen dipisah, server-authoritative total,
+   668→anti-exploit) -> v41 = 51 (konfirmasi beli + struk hasil + popup gerbang
+   669→tertutup otomatis; bug badai sync yang bisa menendang pemain sah ditemukan &
+   670→diperbaiki; alat uji playtest/massa dihidupkan kembali dan seluruhnya hijau).
+   671→Celah menuju 100: kombat (15), ekonomi pemain (10), dunia lebih kaya (4),
+   672→BGM (0-1), multiplayer lanjut (4), crafting lanjut (12), animasi struk (0.5).
+   673→
+   674→## Arsitektur dunia sambung (v29) - tanpa ID manual, tanpa teleport API, anti-lag
+   675→
+   676→- SATU place, SATU jenis server. Pusat Kota di koordinat 0; setiap dunia
+   677→  pribadi = seksi Model di petak koordinat X+5000 (24 petak 240x220 per server).
+   678→- Masuk/pulang/kunjung = teleport CFrame server: tanpa loading screen, tanpa
+   679→  ReserveServer, tanpa MemoryStore, tanpa kegagalan TeleportService. Seksi
+   680→  pemilik TETAP ADA selama ia online - pulang ke kota lalu kembali = dunia
+   681→  persis seperti ditinggal (termasuk isi meja semai).
+   682→- Anti-jatuh saat streaming: SafeFloor raksasa (8000x1600, tak ter-stream),
+   683→  anchor root 1,1 dtk saat tiba, RequestStreamAroundAsync, watchdog Y<-20
+   684→  mengembalikan ke titik tiba.
+   685→- Kunjungan: pemain di server yang sama -> langsung; pemain offline -> seksi
+   686→  hantu baca-saja dari DataStore AKM_Dunia (auto-hancur 120 dtk kosong);
+   687→  pemilik kembali masuk -> hantu otomatis jadi dunia miliknya.
+   688→- Persistensi: DataStore AKM_Dunia per userId (tanaman + meja, sanitasi ketat
+   689→  DuniaLogic), save tiap 60 dtk bila berubah + saat keluar game + BindToClose.
+   690→  Bila DataStore gagal, dunia tetap bisa dimainkan mode sesi (tanpa menimpa
+   691→  data lama).
+   692→- Peran: pemilik lahan (ownerOf per seksi) vs tamu; PlotAct/SmashAct divalidasi
+   693→  server per-seksi dengan pesan jujur.
+   694→- StreamingEnabled aktif; semua Anchored; plot tanpa Script dari satu template;
+   695→  tanaman hanya dibuat saat ditanam/dimuat; save hanya bila dirty.
+   696→
+   697→## Keamanan TAHAP 1 (wajib resep, semua dipenuhi)
+   698→
+   699→- Semua logika uang, tas, pembelian, penjualan, pukulan, drop, gabung benih di ServerScriptService.
+   700→- Semua RemoteFunction divalidasi server: pemilik lahan, jarak (plot 48, meja/kasir 24-30, gerbang prompt), saldo, dan batas laju per detik (token bucket per remote).
+   701→- Tanpa require ID angka, loadstring, getfenv, HttpService.
+   702→- Tanpa model/script luar - semua Part buatan sendiri.
+   703→- Data penting (Micda, tas) hanya di server + DataStore AKM_T1; ReplicatedStorage hanya config statis.
+   704→
+   705→## Anti-lag (v29, semua dipenuhi)
+   706→
+   707→- Dunia pribadi = seksi koordinat jauh dalam satu server: pemain kota tidak
+   708→  pernah memuat seksi lain (di luar radius streaming); ramai keluar-masuk
+   709→  tidak menggeser beban antar server.
+   710→- Plot = Part sederhana tanpa Script, diklon dari satu template.
+   711→- Sisa waktu tumbuh dihitung on-demand (readyAt timestamp), tanpa loop per plot;
+   712→  1 loop per lahan hanya menyentuh plot yang baru siap.
+   713→- Visual tanaman hanya dibuat saat ditanam / dimuat dari data.
+   714→- Seksi hantu kunjungan auto-hancur 120 dtk kosong; save dunia hanya bila
+   715→  berubah (flag dirty) tiap 60 dtk.
+   716→- StreamingEnabled aktif; semua objek Anchored; tanpa Mesh berat.
+   717→
+   718→## Catatan penting place Pusat Kota
+   719→
+   720→Semenjak v29, Pusat Kota dan semua dunia pribadi berada di place dan server
+   721→yang SAMA, dipisah koordinat (kota di 0, dunia di X+5000) - tidak ada
+   722→kebutuhan place kedua, ID manual, ReserveServer, MemoryStore, maupun
+   723→TeleportService. Gerbang di dunia pribadi mengembalikan pemain ke Pusat Kota
+   724→seketika (CFrame); gerbang di Pusat Kota membuka panel Masuk/Kunjungi dunia.
+   725→
+   726→## Catatan kepatuhan syariah (permintaan pemilik, tetap berlaku)
+   727→
+   728→- TANPA RIBA: tidak ada bunga/cicilan; beli lunas di muka.
+   729→- TANPA MAYSIR: pack benih berisi benih pasti (3 benih acak dari kategori yang dijamin), bukan undian barang/jackpot; peluang pukul adalah hasil usaha dan transparan di UI.
+   730→- TANPA GHARAR: harga, isi pack, dan harga beli hasil panen terlihat sebelum konfirmasi.
+   731→- TANPA SYIRIK: hiasan netral.
+   732→- Mata uang: MICDA (nama milik sendiri).
+   733→
+   734→## Aturan tetap setiap sesi (WAJIB)
+   735→
+   736→1. Semua aset & kode original buatan sendiri - tidak menyalin aset/nama konten pihak ketiga.
+   737→2. Tidak menghadirkan: toggle wawasan, ads.js, donasi, share (permintaan pemilik).
+   738→3. Kode dev tetap server-only (DevCodeVault), kredensial hanya di .secrets/.
+   739→4. Test dulu: `tools/luau tests/run_tests.luau` (harus 0 FAIL) + luau-lsp
+   740→   analyze 0 TypeError + playtest 0 FAIL
+   741→   (`cd /home/z/my-project/scripts && python3 sim/gen.py && tools luau
+   742→   sim/gen_playtest.luau` via `tools/luau sim/gen_playtest.luau`).
+   743→5. Publish langsung ke Roblox (jangan kirim file ke pemilik):
+   744→   `export ROBLOX_API_KEY="$(grep -E '^ROBLOX_API_KEY=' /home/z/my-project/.secrets/akiomida.env | cut -d= -f2-)"`
+   745→   `python3 publish.py --universe-id 10774464946 --place-id 77626159664192 --file build/DuniaAkiomida.rbxlx`
+   746→6. Update README.md + tabel skor di file ini setiap publish.
+   747→

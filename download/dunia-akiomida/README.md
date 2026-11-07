@@ -1,44 +1,43 @@
 # DUNIA AKIOMIDA (Roblox)
 
-Status: LIVE di Roblox (**versionNumber 48**, 7 Nov 2026) — **TANPA ITEM BLOK +
-NAMA BENIH "BENIH X" + DROP TIDAK PERNAH TENGGELAM LAGI + UJIAN SIKLUS PENUH**:
+Status: LIVE di Roblox (**versionNumber 50**, 7 Nov 2026) — **SEMAI PANEN: PILIH
+ITEM -> ATUR JUMLAH + KAMERA PANEL DIKUNCI**:
 
-1. **ITEM "BLOK" DIBUANG TOTAL** — sesuai laporan pemilik bahwa tidak ada item
-   bernama blok: helper blokIdFor/blokNamaFor/blokCrop dihapus dari CropData,
-   rasio blok dihapus dari konfigurasi giling, gulung mesin kini hanya
-   menghasilkan Micda + benih sesuai tanaman, baris blok dihapus dari pop-up
-   semai & struk klaim, ikon slot blok dihapus dari tas. Tidak ada satu pun
-   jalur kode yang bisa menghasilkan item blok lagi (dipagari tes).
-2. **NAMA BENIH WAJIB "BENIH X"** — fungsi baru CropData.namaBenih(): benih
-   selalu tampil "Benih Wortel" dst., dan baru menjadi "Wortel" setelah
-   dipanen. Ditegakkan di SEMUA layar: slot tas (benih vs hasil kini beda
-   nama), daftar pilih benih Papan Tanam, dua slot Combine Seed, struk
-   pembelian pack ("Benih Gandum"), dan struk klaim semai.
-3. **DROP PANEN DIJAMIN TERGELETAK DI ATAS TANAH** — akar keluhan "terkadang
-   tenggelam ke dalam tanah kayak ngebug" dibunuh berlapis: (a) saat spawn
-   server menghitung permukaan tanah (raycast + aturan deterministik permukaan
-   plot 1.4 stud, karakter & folder drop/plot dikecualikan) lalu mengangkat
-   drop 0.55 stud di atas tanah sebelum memantul; (b) pengawas 0.25 dtk
-   mengangkat kembali drop yang menembus tanah; (c) setelah diam 2 tick (atau
-   2.5 dtk) drop dipastikan duduk DI ATAS tanah lalu di-anchor — mustahil
-   tenggelam, tidak menggelinding jauh, tetap bisa diambil sentuh. Logika
-   murninya ada di modul baru Shared/TanahDrops dan diuji offline.
-4. **UJIAN PEMILIK SIKLUS PENUH (15 cek end-to-end)** — beli pack common
-   (900.000 -> 897.600) -> 3 Benih Wortel masuk tas -> tanam lewat papan ->
-   panen punch 3 plot -> ambil drop masuk tas sebagai "Wortel" BUKAN benih ->
-   semai panen atur jumlah seluruh hasil -> pukulan = jumlah x 5 -> tuas
-   KANAN lalu KIRI (kiri duluan DITOLAK) -> giling 3 dtk -> klaim Micda +
-   benih kembali "Benih Wortel" -> nol item blok sepanjang siklus. Tes
-   offline kini 319 PASS / 0 FAIL (naik dari 293; +9 seksi TanahDrops, +15
-   seksi Ujian pemilik), luau-lsp 0 temuan, rojo build sukses.
-5. **UJIAN PLAYTEST & MASSA DIJALANKAN ULANG (dengan perbaikan simulator)** —
-   kedua generator ternyata mati di boot: daftar modul gen.py tidak memuat
-   TanahDrops + stub Roblox belum punya CFrame __add/__sub, properti Rotation,
-   dan IsDescendantOf. Ketiganya ditambahkan ke simulator (bukan ke kode
-   game), lalu: PLAYTEST 130 PASS / 0 FAIL dan UJIAN MASSA 116 PASS / 0 FAIL —
-   termasuk alur dunia nyata: tanam lewat papan -> punch -> drop spawn di atas
-   tanah -> sentuh masuk tas sebagai "Wortel" -> 5x pukul hancur tanaman
-   tumbuh -> 8 arketipe drop -> gudang -> tuas. Publish #48 (final).
+1. **ALUR BARU MESIN SEMAI PERSIS SPESIFIKASI PEMILIK** — membuka mesin kini
+   menampilkan DAFTAR hasil panen di tas (contoh: "Wortel x250, Tomat x10"),
+   dirangkum PER JENIS: 250+250+250 slot berbeda tampil satu baris "Wortel
+   x750" dan semuanya terhitung. Klik salah satu item -> muncul pop-up "Atur
+   Jumlah Semai" dengan tombol -, +, dan Maks (tanpa preset). Setelah
+   konfirmasi, item masuk ke mesin. Tas kosong menampilkan pesan yang sesuai.
+2. **ATURAN SATU JENIS ITEM + TOP-UP + KAPASITAS 2000** — mesin hanya
+   memproses satu jenis item dalam satu waktu; memasukkan item BERBEDA saat
+   mesin masih berisi DITOLAK dengan notifikasi "Mesin sedang memproses [nama
+   item]" (toast klien + validasi server). Item SAMA boleh ditambah sampai
+   batas kapasitas 2000 — top-up menambah total pukulan & hasil gulingan
+   secara linear dan status tuas dipertahankan. Jumlah kecil (10) pun bisa
+   langsung disemai. Tombol Maks = jumlah terkecil antara stok di tas dan
+   sisa kapasitas mesin.
+3. **VALIDASI LENGKAP** — tidak bisa input melebihi stok di tas (pesan
+   menyebut stok nyata), tidak bisa melebihi sisa kapasitas (2000 dikurangi
+   isi mesin), jumlah 0/negatif/pecahan tidak bisa dikonfirmasi, mesin penuh
+   2000/2000 menolak tambahan, dan saat menggiling/tuntas-belum-diklaim isi
+   baru ditolak.
+4. **KAMERA PANEL DIKUNCI (keluhan papan tanam)** — geser area di luar
+   pop-up TIDAK LAGI memutar kamera (semua dim/modal kini Active = input
+   diserap), dan zoom in/out DIKUNCI selama menu papan tanam/panel apa pun
+   terbuka: jarak kamera dikunci di posisi saat panel dibuka (modul baru
+   Shared/KameraKunci) dan dipulihkan persis saat panel ditutup.
+5. **AGREGASI TAS DI SEMUA DAFTAR** — TasLogic.ringkas dipakai di daftar
+   semai, toko (jual memakai total tas, bukan satu slot), gudang, papan
+   tanam, dan Combine Seed — 250+250+250 tidak lagi muncul sebagai tiga
+   baris terpisah.
+6. **PENGUJIAN 7 SKENARIO WAJIB PEMILIK SEMUANYA** — seksi W baru 20 cek:
+   tas kosong (pesan sesuai); 1 jenis 10 langsung semai; 250+250+250 semai
+   sekaligus 750; isi tepat 2000 lalu tambah lagi DITOLAK; input melebihi
+   stok & kapasitas DITOLAK; mesin proses A masukkan B DITOLAK; setelah A
+   selesai B bisa — plus top-up, tahap giling/tuntas, Maks, dan agregasi.
+   Seksi X 7 cek kamera. Tes offline 361 PASS / 0 FAIL, luau-lsp 0 temuan,
+   rojo build sukses. Publish #50.
 
 Isi v45-v46 tetap (dua tuas kanan-kiri menggantikan kabel + pop-up semai
 lebih besar & jelas):
@@ -261,6 +260,7 @@ Skor banding Toram/Growtopia: **51/100** — lihat `RUBRIC.md`.
 | v47 | **TANPA ITEM BLOK + NAMA BENIH "BENIH X" + DROP TIDAK TENGGELAM + UJIAN SIKLUS PENUH** (permintaan pemilik): (1) item "blok" dibuang total (helper CropData, rasio giling, baris struk/pop-up, ikon tas) — mesin kini hanya keluar Micda + benih sesuai tanaman; (2) benih wajib tampil "Benih X" (Benih Wortel) dan baru jadi "Wortel" setelah panen — ditegakkan di slot tas, pilih benih papan tanam, slot Combine Seed, struk beli & struk klaim; (3) bug drop panen "terkadang tenggelam ke tanah" dibunuh berlapis: hitung permukaan tanah saat spawn (raycast + aturan plot 1.4 stud via modul baru Shared/TanahDrops), angkat drop 0.55 stud sebelum memantul, pengawas 0.25 dtk mengangkat yang menembus, lalu anchor tepat DI ATAS tanah setelah diam — tetap bisa diambil sentuh; (4) ujian pemilik 15 cek end-to-end: beli pack -> 3 Benih Wortel -> tanam -> panen punch -> ambil masuk tas sebagai "Wortel" (bukan benih) -> semai atur jumlah -> tuas KANAN-KIRI (kiri duluan ditolak) -> giling 3 dtk -> klaim Micda + benih kembali, nol blok. Tes offline 319 PASS / 0 FAIL, luau-lsp 0 (#47). |
 | v48 | (finalisasi v47) simulator playtest/massa diperbaiki (daftar modul gen.py + stub CFrame __add/__sub, Rotation, IsDescendantOf) lalu DIJALANKAN ULANG: playtest 130 PASS / 0 FAIL, ujian massa 116 PASS / 0 FAIL, offline 319 PASS / 0 FAIL, luau-lsp 0; penjaga kecepatan drop dibuat aman untuk drop pulihan; publish #48. |
 | v49 | **PEMBERSIHAN OTOMATIS DATA LAMA: BLOK_PANEN DIHAPUS DARI TAS & SEMAI PANEN TERBACA LAGI** (laporan pemilik: "masih ada item blok_panen, wajib dihapus; di semai panen hasil panen gak terbaca"): akar masalahnya BUKAN kode — data tas lama di DataStore (sebelum #47) masih menyimpan slot "blok_panen" dan dimuat mentah. Solusi: modul baru Shared/SanitasiTas menyaring tas saat load (id bukan tanaman resmi dibuang, kind/count rusak dibuang, 999->250, maks 50 slot, gagal-aman), data bersih langsung ditandai simpan ulang + toast "Tas Dibersihkan"; gudang dunia lama ikut divalidasi (setor/ambil/restore menolak blok_panen); UI klien memfilter item tak dikenal di 3 titik masuk tas + guard daftar semai. Seksi test V baru 13 cek: blok_panen dibuang saat load, tas bersih bikin SEMAI PANEN TERBACA LAGI (wortel bisa diatur jumlah & masuk mesin), blok_panen tak bisa masuk mesin. Tes offline 334 PASS / 0 FAIL, playtest 130 PASS / 0 FAIL, massa 116 PASS / 0 FAIL, luau-lsp 0 (#49). |
+| v50 | **SEMAI PANEN: PILIH ITEM -> ATUR JUMLAH + KAMERA PANEL DIKUNCI** (permintaan pemilik, revisi UI & Logic mesin): (1) buka mesin = daftar hasil panen di tas dirangkum per jenis (250+250+250 = satu baris "Wortel x750"), klik item -> pop-up "Atur Jumlah Semai" (-, +, Maks — preset dihapus sesuai revisi pemilik) -> konfirmasi masuk mesin; tas kosong = pesan sesuai; (2) aturan satu jenis: item berbeda saat mesin berisi DITOLAK dgn notifikasi "Mesin sedang memproses [nama item]" (toast klien + server), item SAMA boleh di-top-up sampai 2000 (pukulan & hasil linear, status tuas dipertahankan), stok tas dihitung total lintas slot, 10 pun bisa langsung disemai, Maks = min(stok, sisa kapasitas); (3) validasi penuh: melebihi stok/sisa kapasitas ditolak, 0/negatif/pecahan tak bisa dikonfirmasi, penuh 2000/2000 ditolak, giling/tuntas-belum-klaim ditolak; (4) keluhan papan tanam: geser di luar pop-up tak lagi memutar kamera (dim/modal Active) + zoom dikunci selama panel terbuka via modul baru Shared/KameraKunci (min=max=jarak saat buka, pulih saat tutup); (5) TasLogic.ringkas mengagregasi daftar di semai/toko/gudang/tanam/combine. Seksi W 20 cek (7 skenario wajib pemilik semuanya lolos) + seksi X 7 cek kamera. Tes offline 361 PASS / 0 FAIL, luau-lsp 0, rojo build sukses (#50). |
 
 ## Sesi update mandiri berikutnya (tanpa menunggu pemilik)
 

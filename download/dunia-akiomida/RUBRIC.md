@@ -19,6 +19,61 @@ Skor per kriteria 0-10, dikali bobot. Total dihitung dari (skor x bobot) / 10.
 | 8 | Polish & UX (UI, suara, animasi, efek) | 10 | animasi kombat, BGM, partikel | UI rapi & responsif |
 | 9 | Originalitas 100% & aman hak cipta | 5 | - | - |
 
+## Skor v50 (versi LIVE #50, 7 Nov 2026) - SEMAI PANEN: PILIH ITEM -> ATUR JUMLAH + KAMERA PANEL DIKUNCI
+
+Permintaan pemilik (pesan langsung): "Waktu masuk papan tanam kan muncul.
+Pop up kok bisa geser area luar harusnya jangan, jadi ngalihin fokus loh!
+Lagi di menu papan tanam malah bisa zoom out zoom in itu jelek!" + revisi
+UI & Logic mesin semai: buka mesin = daftar hasil panen di tas; klik item =
+pop-up atur jumlah (-, +, Maks); satu jenis item per waktu, item sama boleh
+ditambah sampai 2000; 7 skenario wajib diuji semuanya sebelum dikirim.
+
+Diterapkan di #50:
+
+A. **Alur baru mesin semai**: daftar item dirangkum per jenis via
+   TasLogic.ringkas (250+250+250 = satu baris "Wortel x750", terhitung
+   total); klik item membuka pop-up "Atur Jumlah Semai" dengan -, +, Maks
+   (preset dihapus sesuai revisi); konfirmasi memasukkan item; tas kosong
+   menampilkan pesan yang sesuai.
+B. **Aturan satu jenis item (server-authoritative)**: item berbeda saat
+   mesin berisi ditolak dengan notifikasi "Mesin sedang memproses [nama
+   item]" (toast klien instan + MesinLogika.atur di server); item SAMA
+   boleh di-top-up sampai kapasitas 2000 — pukulan & hasil gulingan
+   ditambahkan linear, status tuas dipertahankan; saat menggiling atau
+   tuntas-belum-diklaim isi baru ditolak; jumlah kecil (10) bisa langsung
+   disemai; Maks = min(stok tas, sisa kapasitas) via MesinLogika.maksIsi.
+C. **Validasi dua lapis**: melebihi stok ditolak dengan stok nyata,
+   melebihi sisa kapasitas (2000 - isi mesin) ditolak, jumlah
+   0/negatif/pecahan tidak bisa dikonfirmasi, mesin penuh 2000/2000
+   menolak tambahan.
+D. **Kamera panel dikunci**: dim & semua modal kini Active sehingga geser
+   di luar pop-up tidak memutar kamera; zoom dikunci selama panel apa pun
+   terbuka pada jarak saat dibuka (modul baru Shared/KameraKunci) dan
+   dipulihkan persis saat panel ditutup — keluhan fokus papan tanam tuntas.
+E. **Agregasi tas di semua daftar**: semai, toko (jual memakai total tas,
+   bukan satu slot), gudang, papan tanam, Combine Seed.
+F. **Pengujian**: seksi W baru 20 cek — 7 skenario wajib pemilik semuanya
+   (tas kosong; 10 langsung semai; 750 dari 250+250+250; isi 2000 ditolak
+   tambah; melebihi stok & kapasitas ditolak; proses A masukkan B ditolak
+   dengan nama item; setelah A selesai B bisa) + top-up linear, tahap
+   giling/tuntas, Maks, ringkas multi-slot, sisaKapasitas aman rusak;
+   seksi X 7 cek KameraKunci. Tes offline 361 PASS / 0 FAIL, luau-lsp
+   0 temuan, rojo build sukses. Publish #50.
+
+| # | Kriteria | Skor | Alasan |
+|---|----------|------|--------|
+| 1 Kombat | 0/10 | Belum ada monster/AI/bos. |
+| 2 Crafting | 4.5/10 | Rantai mesin semai kini alurnya benar-benar machine-flow: pilih item -> atur jumlah -> top-up -> tuas -> klaim. |
+| 3 Stat & Progresi | 1/10 | Tanpa level (sesuai arah pemilik); soal matematika tetap gerbang tanam. |
+| 4 Ekonomi | 7/10 | Isi mesin & stok tas kini tervalidasi ketat dua lapis (klien + server); inventaris bisa dipercaya. |
+| 5 Dunia & Peta | 7/10 | Tetap: drop tergeletak rapi di atas tanah; belum: rumah, air, dungeon. |
+| 6 Multiplayer | 6.5/10 | Aturan mesin berlaku server-side untuk semua pemain; trade/party belum ada. |
+| 7 Bertani | 10/10 | Semai panen sesuai spesifikasi lengkap pemilik + 20 cek otomatis. |
+| 8 Polish & UX | 10/10 | Panel tak lagi mencuri fokus: geser luar pop-up mati, zoom terkunci selama menu terbuka; daftar dirangkum per jenis. |
+| 9 Originalitas | 10/10 | MesinLogika & KameraKunci modul orisinal sendiri. |
+
+**TOTAL: 56.8/100** (bobot: 0+67.5+10+105+70+65+100+100+50 = 567.5/10 = 56.8)
+
 ## Skor v49 (versi LIVE #49, 7 Nov 2026) - PEMBERSIHAN OTOMATIS DATA LAMA: BLOK_PANEN DIHAPUS DARI TAS, SEMAI PANEN TERBACA LAGI
 
 Laporan pemilik (pesan langsung): "Ini kok ada item namanya blok_panen, itu

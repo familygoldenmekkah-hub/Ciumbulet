@@ -4,6 +4,7 @@ local TweenService = game:GetService("TweenService")
 
 local CropData = require(ReplicatedStorage.Shared.CropData)
 local SemaiLogic = require(ReplicatedStorage.Shared.SemaiLogic)
+local MesinLogika = require(ReplicatedStorage.Shared.MesinLogika)
 
 local MesinSemaiService = {}
 
@@ -339,61 +340,69 @@ local function resetTuas(index: number)
         end
 end
 
-function MesinSemaiService.atur(player, cropId: any, jumlah: any): (boolean, string)
+function MesinSemaiService.atur(player, cropId: any, jumlah: any): (boolean, string, any?)
         local index = Land.landOf(player)
         if not index then
                 return false, "Kamu tidak punya lahan."
         end
-        if batch[index] then
-                return false, "Mesin masih berisi semaian. Selesaikan dulu."
-        end
         if type(cropId) ~= "string" or not CropData.byId[cropId] then
                 return false, "Hasil panen tidak dikenal."
-        end
-        if type(jumlah) ~= "number" or jumlah ~= jumlah or jumlah % 1 ~= 0 or jumlah < 1 then
-                return false, "Jumlah tidak sah."
         end
         if not mesin[index] or not dekatMesin(player, index) then
                 return false, "Terlalu jauh dari mesin."
         end
+        local b = batch[index]
+        if b and b.pemilik ~= player.UserId then
+                return false, "Bukan semaianmu."
+        end
         local info = CropData.byId[cropId]
-        local cfg = CropData.Giling[info.rarity]
-        local kapasitas = CropData.MesinSemai.Kapasitas
-        if jumlah > kapasitas then
-                jumlah = kapasitas
+        local namaB = "?"
+        if b then
+                local infoB = CropData.byId[b.crop]
+                namaB = infoB and infoB.nama or tostring(b.crop)
         end
         local dimiliki = Tas.count(player, "hasil", cropId)
-        if dimiliki < 1 then
-                return false, "Tidak ada " .. info.nama .. " di tas."
+        local ok, pesan = MesinLogika.atur(b, cropId, jumlah, dimiliki, CropData.MesinSemai.Kapasitas, info.nama, namaB)
+        if not ok then
+                return false, pesan
         end
-        if jumlah > dimiliki then
-                jumlah = dimiliki
-        end
+        local cfg = CropData.Giling[info.rarity]
+        local per = SemaiLogic.pukulanPerItem(cfg)
         local diambil = Tas.remove(player, "hasil", cropId, jumlah)
         if diambil < 1 then
                 return false, "Hasil panen tidak bisa diambil dari tas."
         end
-        local hasil = SemaiLogic.gulung(rng, cfg, diambil)
-        resetTuas(index)
-        batch[index] = {
-                pemilik = player.UserId,
-                crop = cropId,
-                jumlah = diambil,
-                pukulan = SemaiLogic.pukulanTotal(diambil, SemaiLogic.pukulanPerItem(cfg)),
-                hasil = hasil,
-                tahap = "tuas",
-                tuas = SemaiLogic.tuasBaru(),
-        }
+        local tambahan = SemaiLogic.gulung(rng, cfg, diambil)
+        if b then
+                b.jumlah += diambil
+                b.pukulan += SemaiLogic.pukulanTotal(diambil, per)
+                b.hasil.micda += tambahan.micda
+                b.hasil.benih += tambahan.benih
+        else
+                resetTuas(index)
+                batch[index] = {
+                        pemilik = player.UserId,
+                        crop = cropId,
+                        jumlah = diambil,
+                        pukulan = SemaiLogic.pukulanTotal(diambil, per),
+                        hasil = tambahan,
+                        tahap = "tuas",
+                        tuas = SemaiLogic.tuasBaru(),
+                }
+        end
         if World then
                 World.touch(index)
         end
         MesinSemaiService.terapkanTahap(index)
         syncLahan(index)
-        return true, info.nama .. " x" .. tostring(diambil) .. " masuk mesin. Tekan tuas KANAN, lalu tuas KIRI!", {
+        local total = batch[index].jumlah
+        local kapasitas = CropData.MesinSemai.Kapasitas
+        return true, info.nama .. " x" .. tostring(diambil) .. " masuk mesin (isi " .. tostring(total) .. "/" .. tostring(kapasitas) .. "). Tekan tuas KANAN, lalu tuas KIRI!", {
                 crop = cropId,
-                jumlah = diambil,
+                jumlah = total,
                 pukulan = batch[index].pukulan,
                 kapasitas = kapasitas,
+                sisa = kapasitas - total,
         }
 end
 

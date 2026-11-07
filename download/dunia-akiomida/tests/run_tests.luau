@@ -1200,6 +1200,75 @@ do
         check("blok_panen tidak bisa masuk mesin", TasLogic.countOf(bersih, "hasil", "blok_panen") == 0 and CropData.byId["blok_panen"] == nil, "-")
 end
 
+print("--- W: Revisi mesin semai (pilih item -> atur jumlah -> isi) ---")
+do
+        local MesinLogika = require("./../src/Shared/MesinLogika")
+        local SemaiLogic = require("./../src/Shared/SemaiLogic")
+        local K = CropData.MesinSemai.Kapasitas
+        local ok0, pesan0 = MesinLogika.atur(nil, "wortel", 10, 0, K, "Wortel", "-")
+        check("1) Tas kosong: isi mesin ditolak & daftar kosong beralasan", not ok0 and string.find(pesan0, "di tas", 1, true) ~= nil, pesan0)
+        local ok1, pesan1 = MesinLogika.atur(nil, "wortel", 10, 10, K, "Wortel", "-")
+        check("2) 1 jenis item jumlah kecil (10) langsung bisa disemai", ok1, pesan1)
+        local batch = { pemilik = 1, crop = "wortel", jumlah = 10, pukulan = 50, hasil = { micda = 10, benih = 2 }, tahap = "tuas", tuas = { kanan = false, kiri = false } }
+        local ok2, pesan2 = MesinLogika.atur(batch, "pisang", 5, 100, K, "Pisang", "Wortel")
+        check("3) Mesin proses Wortel, masukkan Pisang DITOLAK dengan notifikasi nama item", not ok2 and string.find(pesan2, "Mesin sedang memproses Wortel", 1, true) ~= nil, pesan2)
+        local ok3, pesan3 = MesinLogika.atur(batch, "wortel", 240, 500, K, "Wortel", "Wortel")
+        check("4) Item SAMA boleh ditambah lagi saat mesin belum aktif (top-up)", ok3, pesan3)
+        check("5) Top-up menambah total pukulan linear", SemaiLogic.pukulanTotal(10 + 240, 5) == 50 + SemaiLogic.pukulanTotal(240, 5), "-")
+        local penuh = { crop = "wortel", jumlah = 2000, tahap = "tuas" }
+        local ok4, pesan4 = MesinLogika.atur(penuh, "wortel", 1, 100, K, "Wortel", "Wortel")
+        check("6) Isi tepat 2000 lalu tambah 1 lagi DITOLAK (penuh)", not ok4 and string.find(pesan4, "penuh", 1, true) ~= nil, pesan4)
+        local ok5, pesan5 = MesinLogika.atur(nil, "wortel", 99999, 40, K, "Wortel", "-")
+        check("7) Input melebihi stok tas DITOLAK", not ok5 and string.find(pesan5, "stok", 1, true) ~= nil, pesan5)
+        local sisa500 = { crop = "wortel", jumlah = 1500, tahap = "tuas" }
+        local ok6, pesan6 = MesinLogika.atur(sisa500, "wortel", 600, 9999, K, "Wortel", "Wortel")
+        check("8) Input melebihi sisa kapasitas (sisa 500) DITOLAK", not ok6 and string.find(pesan6, "kapasitas", 1, true) ~= nil, pesan6)
+        local ok7 = MesinLogika.atur(nil, "pisang", 5, 100, K, "Pisang", "-")
+        check("9) Setelah item A selesai & diklaim, item B bisa masuk", ok7, "-")
+        local ok8, pesan8 = MesinLogika.atur({ crop = "wortel", jumlah = 10, tahap = "giling" }, "wortel", 1, 10, K, "Wortel", "Wortel")
+        check("10) Saat mesin menggiling, isi apapun ditolak", not ok8, pesan8)
+        local ok9, pesan9 = MesinLogika.atur({ crop = "wortel", jumlah = 10, tahap = "tuntas" }, "wortel", 1, 10, K, "Wortel", "Wortel")
+        check("11) Saat tuntas belum diklaim, isi mesin ditolak (klaim dulu)", not ok9 and string.find(pesan9, "Klaim", 1, true) ~= nil, pesan9)
+        check("12) Jumlah 0 / negatif / bukan angka tidak bisa dikonfirmasi", not MesinLogika.atur(nil, "wortel", 0, 10, K, "Wortel", "-") and not MesinLogika.atur(nil, "wortel", -2, 10, K, "Wortel", "-") and not MesinLogika.atur(nil, "wortel", "banyak", 10, K, "Wortel", "-") and not MesinLogika.atur(nil, "wortel", 2.5, 10, K, "Wortel", "-"), "-")
+        check("13) Maks = stok saat mesin kosong", MesinLogika.maksIsi(750, nil, K) == 750, tostring(MesinLogika.maksIsi(750, nil, K)))
+        check("14) Maks = sisa kapasitas saat mesin berisi 1500", MesinLogika.maksIsi(9999, { jumlah = 1500, tahap = "tuas" }, K) == 500, tostring(MesinLogika.maksIsi(9999, { jumlah = 1500, tahap = "tuas" }, K)))
+        check("15) Maks 0 saat kapasitas penuh", MesinLogika.maksIsi(100, { jumlah = 2000, tahap = "tuas" }, K) == 0, "-")
+        check("16) Stok bertahap terhitung total (250+250+250 = 750)", (function()
+                local t = {}
+                for _ = 1, 3 do
+                        TasLogic.add(t, "hasil", "wortel", 250)
+                end
+                return #t == 3 and TasLogic.countOf(t, "hasil", "wortel") == 750
+        end)(), "-")
+        local rk = TasLogic.ringkas((function()
+                local t = {}
+                TasLogic.add(t, "hasil", "pisang", 10)
+                TasLogic.add(t, "hasil", "wortel", 5)
+                TasLogic.add(t, "benih", "wortel", 2)
+                TasLogic.add(t, "hasil", "pisang", 5)
+                return t
+        end)(), "hasil")
+        check("17) Daftar semai merangkum multi-slot jadi 1 baris per item", #rk == 2 and rk[1].id == "pisang" and rk[1].count == 15 and rk[2].id == "wortel" and rk[2].count == 5, tostring(#rk))
+        check("18) Semai sekaligus 750 dari stok bertahap diterima", MesinLogika.atur(nil, "wortel", 750, 750, K, "Wortel", "-"), "-")
+        check("19) batchAktif menolak tabel rusak", not MesinLogika.batchAktif(nil) and not MesinLogika.batchAktif({ tahap = "kosong" }) and MesinLogika.batchAktif({ tahap = "tuas" }), "-")
+        check("20) sisaKapasitas aman untuk isi rusak", MesinLogika.sisaKapasitas({ jumlah = "banyak" }, K) == K and MesinLogika.sisaKapasitas({ jumlah = -5 }, K) == K and MesinLogika.sisaKapasitas(nil, K) == K, "-")
+end
+
+print("--- X: Kunci kamera saat panel terbuka ---")
+do
+        local KameraKunci = require("./../src/Shared/KameraKunci")
+        check("Jarak dijepit ke rentang aman", KameraKunci.jepit(0.2) == 0.5 and KameraKunci.jepit(500) == 128 and KameraKunci.jepit(14) == 14, "-")
+        check("Jarak NaN atau bukan angka jatuh ke 0.5", KameraKunci.jepit(0 / 0) == 0.5 and KameraKunci.jepit(nil) == 0.5 and KameraKunci.jepit("jauh") == 0.5, "-")
+        local mn, mx, simpan = KameraKunci.kunci(0.5, 128, 14)
+        check("Kunci: min = max = jarak kamera saat ini (zoom terkunci)", mn == 14 and mx == 14, tostring(mn) .. "/" .. tostring(mx))
+        check("Kunci menyimpan batas lama", simpan.min == 0.5 and simpan.max == 128, "-")
+        local mn2, mx2 = KameraKunci.buka(simpan)
+        check("Buka kamera memulihkan batas lama", mn2 == 0.5 and mx2 == 128, tostring(mn2) .. "/" .. tostring(mx2))
+        check("Buka kamera aman untuk data rusak", KameraKunci.buka(nil) == 0.5 and select(2, KameraKunci.buka("rusak")) == 128, "-")
+        local _, _, simpan3 = KameraKunci.kunci(300, 2, 12)
+        check("Batas lama terbalik dibereskan saat menyimpan", simpan3.min == 128 and simpan3.max == 128, tostring(simpan3.min) .. "/" .. tostring(simpan3.max))
+end
+
 print(("="):rep(28))
 print(string.format("HASIL: %d PASS, %d FAIL", passed, failed))
 if failed > 0 then
