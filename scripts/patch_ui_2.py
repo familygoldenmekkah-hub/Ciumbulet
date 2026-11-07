@@ -1,199 +1,102 @@
-#!/usr/bin/env python3
-"""Patch UIController.luau part 2: inventory sections, remotes, tips, help, new panels."""
+P = '/home/z/my-project/download/dunia-akiomida/src/Client/UIController.luau'
+s = open(P).read()
 
-PATH = "/home/z/my-project/download/dunia-akiomida/src/Client/UIController.luau"
-src = open(PATH).read()
+def ganti(lama, baru):
+    global s
+    lama = lama.expandtabs(8)
+    baru = baru.expandtabs(8)
+    if lama not in s:
+        raise SystemExit("TIDAK KETEMU: " + lama[:90])
+    s = s.replace(lama, baru, 1)
 
-def rep(old, new, count=1):
-    global src
-    assert src.count(old) == count, f"MATCH FAIL ({src.count(old)} != {count}): {old[:90]!r}"
-    src = src.replace(old, new)
+ganti(
+"""local semaiDim = mk("Frame", { Name = "ModalSemai",""",
+"""local semaiDim = mk("Frame", { Name = "ModalSemai",""")
 
-# ---------------------------------------------------------------- 1. renderInv: tambah peralatan & konsumsi
-rep("""        local sections = {
-                { title = "BIBIT", data = s.Seeds, lookup = Config.Crops, kind = "seed" },
-                { title = "HASIL PANEN", data = s.Crops, lookup = Config.Crops, kind = "crop" },
-                { title = "SUMBER DAYA", data = s.Bag, lookup = Config.Resources, kind = "bag" },
-                { title = "IKAN", data = s.Fish, lookup = Config.Fish, kind = "fish" },
-        }""",
-"""        local sections = {
-                { title = "BIBIT", data = s.Seeds, lookup = Config.Crops, kind = "seed" },
-                { title = "HASIL PANEN", data = s.Crops, lookup = Config.Crops, kind = "crop" },
-                { title = "SUMBER DAYA", data = s.Bag, lookup = Config.Resources, kind = "bag" },
-                { title = "IKAN", data = s.Fish, lookup = Config.Fish, kind = "fish" },
-        }
+import re
+rxM = re.compile(
+    'local m = mk\\("Frame", \\{ Size = UDim2\\.new\\(0, 28, 0, 28\\), Position = UDim2\\.new\\(0, 6, 0, (5|4)\\), BackgroundColor3 = warna\\(UIStyle\\.Aksen\\) \\}, row\\)\\n(\\s*)mk\\("UICorner", \\{ CornerRadius = UDim\\.new\\(0\\.5, 0\\) \\}, m\\)\\n\\s*mk\\("TextLabel", \\{ Size = UDim2\\.fromScale\\(1, 1\\), BackgroundTransparency = 1, Text = "M", Font = FONTB, TextSize = UIStyle\\.UkuranKecil, TextColor3 = warna\\(UIStyle\\.Latar\\), ZIndex = 2 \\}, m\\)'
+)
+def gantiM(mo):
+    return 'local m = IkonKoin.buat(row, 28)\n' + mo.group(2) + 'm.Position = UDim2.new(0, 6, 0, ' + mo.group(1) + ')'
+s, nM = rxM.subn(gantiM, s)
+if nM != 2:
+    raise SystemExit("blok ikon M tidak tepat 2: " + str(nM))
 
-        -- peralatan tempaan (v3): pakai cepat dari tas
-        for _, eq in ipairs(Balance.Equipment) do
-                local count = s.Equips[eq.id] or 0
-                if count > 0 then
-                        local equipped = s.Equipped[eq.kind] == eq.id
-                        local statText = eq.kind == "weapon" and ("ATK +" .. eq.atk) or ("DEF +" .. eq.def)
-                        invRow(eq.name .. " x" .. count .. (equipped and "  [TERPAKAI]" or ""),
-                                statText .. " - Lv " .. eq.level .. " | " .. (eq.desc or "Peralatan tempaan"),
-                                Color3.fromRGB(eq.color[1], eq.color[2], eq.color[3]),
-                                equipped and "Lepas" or "Pakai",
-                                function()
-                                        local res = Remotes.get("Equip"):InvokeServer(eq.kind, equipped and "" or eq.id)
-                                        self:handleResult(res)
-                                        self:renderInv()
-                                end)
-                end
-        end
+ganti(
+"""local jualPreview = mk("TextLabel", { Size = UDim2.new(1, -24, 0, 24), Position = UDim2.new(0, 12, 0, 140), BackgroundTransparency = 1, Text = "", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Aksen), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, jualBox)""",
+"""local jualBaris = mk("Frame", { Size = UDim2.new(1, -24, 0, 24), Position = UDim2.new(0, 12, 0, 140), BackgroundTransparency = 1 }, jualBox)
+	mk("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8), VerticalAlignment = Enum.VerticalAlignment.Center, SortOrder = Enum.SortOrder.LayoutOrder }, jualBaris)
+	IkonKoin.buat(jualBaris, 20).LayoutOrder = 1
+	local jualPreview = mk("TextLabel", { LayoutOrder = 2, AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.new(0, 0, 1, 0), BackgroundTransparency = 1, Text = "", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Aksen), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, jualBaris)""")
 
-        -- makanan & ramuan (v3): makan langsung
-        for _, u in ipairs(Balance.Usables) do
-                local count = s.Usables[u.id] or 0
-                if count > 0 then
-                        invRow(u.name .. " x" .. count, u.desc .. " - jual @" .. self:clientPrice(u.sell, u.id) .. " koin",
-                                Color3.fromRGB(u.color[1], u.color[2], u.color[3]),
-                                "Makan",
-                                function()
-                                        local res = Remotes.get("UseItem"):InvokeServer(u.id)
-                                        self:handleResult(res)
-                                        self:renderInv()
-                                end)
-                end
-        end""")
+ganti(
+"""mk("TextLabel", { Size = UDim2.new(1, 0, 0, 24), BackgroundTransparency = 1, Text = "Harga: " .. fmt(pack.price) .. " Micda", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Aksen), TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 3 }, modalIsi)""",
+"""local hargaRow = mk("Frame", { Size = UDim2.new(1, 0, 0, 24), BackgroundTransparency = 1, LayoutOrder = 3 }, modalIsi)
+mk("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8), VerticalAlignment = Enum.VerticalAlignment.Center, SortOrder = Enum.SortOrder.LayoutOrder }, hargaRow)
+IkonKoin.buat(hargaRow, 20).LayoutOrder = 1
+mk("TextLabel", { LayoutOrder = 2, AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.new(0, 0, 1, 0), BackgroundTransparency = 1, Text = "Harga: " .. fmt(pack.price) .. " Micda", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Aksen), TextXAlignment = Enum.TextXAlignment.Left }, hargaRow)""")
 
-# ---------------------------------------------------------------- 2. TIPS baru
-rep("""local TIPS = {
-        "Klaim ladang GRATIS di Kawasan Ladang (Utara), lalu tanami bibit!",
-        "Jual hasil panen ke Bu Laris di Pasar Pengepul - harga pasar berubah tiap 10 menit!",
-        "Tebang pohon di Hutan Kayu untuk Kayu, dan tambang bijih di Tambang Selatan.",
-        "Kucing Koin memberi +10% harga jual. Lihat Toko Peliharaan!",
-        "Crops tumbuh nyata waktu - tanam lalu jelajahi dunia sambil menunggu.",
-        "Pakai Kaleng Siram supaya tanaman tumbuh 25% lebih cepat.",
-        "Bonus login harian 100 koin. Datang lagi besok!",
-        "Kuis Kak Pintar di alun-alun memberi koin bonus - sepenuhnya opsional.",
-}""",
-"""local TIPS = {
-        "Klaim ladang GRATIS di Kawasan Ladang (Utara), lalu tanami bibit!",
-        "Jual hasil panen ke Bu Laris di Pasar Pengepul - harga pasar berubah tiap 10 menit!",
-        "Tempa balok besi dari bijih di PAK TEMPA, lalu buat Pedang Besi & Zirah!",
-        "Serang Gelatin Hijau di Padang Timur untuk Gelatin - bahan Zirah Kulit!",
-        "BOSS RAID: Raja Golem muncul di Arena Timur - serang bersama semua pemain!",
-        "Naik level dapat 2 poin stat - buka panel Kar dan bagikan ke STR/VIT/AGI!",
-        "Makan Roti Aktif dari Bu Masak untuk lari lebih cepat 12%!",
-        "Dagang aman antar pemain: tombol Dagang, dekati partner, undang & SIAP!",
-        "Papan Tugas Harian di alun-alun memberi koin & XP besar - ambil tiap hari!",
-        "Kucing Koin memberi +10% harga jual. Lihat Toko Peliharaan!",
-        "Bonus login harian 100 koin. Datang lagi besok!",
-        "Kuis Kak Pintar di alun-alun memberi koin bonus - sepenuhnya opsional.",
-}""")
+ganti(
+"""local tanamTab = mk("Frame", { Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Visible = true }, tanamBody)
+mk("TextLabel", { Size = UDim2.new(0.55, 0, 0, 18), Position = UDim2.new(0, 2, 0, 0), BackgroundTransparency = 1, Text = "Pilih benih untuk ditanam", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, tanamTab)
+local jumlahLabel = mk("TextLabel", { Size = UDim2.new(0.45, -4, 0, 18), Position = UDim2.new(0.55, 4, 0, 0), BackgroundTransparency = 1, Text = "Jumlah: -", TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Aksen), TextXAlignment = Enum.TextXAlignment.Right }, tanamTab)
+local tanamList = mk("ScrollingFrame", { Size = UDim2.new(1, 0, 1, -118), Position = UDim2.new(0, 0, 0, 22), BackgroundTransparency = 1, ScrollBarThickness = 6, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(0, 0, 0, 0) }, tanamTab)
+mk("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, tanamList)
+local tanamFeedback = mk("TextLabel", { Size = UDim2.new(1, 0, 0, 16), Position = UDim2.new(0, 2, 1, -98), BackgroundTransparency = 1, Text = "", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, tanamTab)
 
-# ---------------------------------------------------------------- 3. Help text
-rep("""                Text = table.concat({
-                        "1. KLAIM LADANG (utara): dekati papan Ladang, tekan Ambil Alih. Gratis!",
-                        "2. BELI BIBIT (Pasar Timur): Kak Tani menjual bibit wortel s/d melon bintang.",
-                        "3. TANAM: dekati petak tanah coklat, tekan E, pilih bibit.",
-                        "4. TUMBUH NYATA WAKTU: tanaman tumbuh saat kamu menjelajah. Siram dengan Kaleng Siram untuk +25% kecepatan.",
-                        "5. PANEN: petak bercahaya = siap. Tekan E untuk panen.",
-                        "6. JUAL: Bu Laris di Pasar Pengepul. Harga pasar naik-turun tiap 10 menit - jual saat permintaan tinggi!",
-                        "7. KUMPUL: tebang pohon di Hutan Kayu, tambang batu/besi/kristal di Tambang Selatan (perlu Belik), mancing di Danau Tenang (perlu Pancing).",
-                        "8. KAYA: beli peliharaan (bonus jual), Sepeda Angin (lari cepat), upgrade belik.",
-                        "9. LEVEL: semua aktivitas memberi XP. Level tinggi membuka bibit mahal.",
-                        "10. KUIS Kak Pintar opsional: +20 koin per jawaban benar. Diabaikan juga tidak apa-apa.",
-                }, "\\n"),""",
-"""                Text = table.concat({
-                        "1. KUMPUL: tanam & panen (Ladang Utara), tebang pohon (Hutan), tambang bijih (Tambang, perlu Belik), mancing (Danau, perlu Pancing).",
-                        "2. JUAL: Bu Laris di Pasar Pengepul - harga naik-turun tiap 10 menit, jual saat permintaan tinggi!",
-                        "3. KOMBAT: dekati monster (Gelatin/Serigala/Golem) lalu tekan E untuk menyerang. Monster membalas - makan ramuan bila HP tipis!",
-                        "4. TEMPAA: kumpulkan bahan, buat Balok Besi di PAK TEMPA, lalu tempa Pedang & Zirah. Pakai di panel Kar.",
-                        "5. STAT: tiap naik level = 2 poin. Panel Kar: STR (serangan), VIT (HP), AGI (lari), INT (ramuan), DEX (kritikal).",
-                        "6. MASAK: Bu Masak menjual resep - Roti Aktif (lari cepat), Sate Ikan & Ramuan (pulihkan HP).",
-                        "7. BOSS: Raja Golem muncul di Arena Timur tiap ±15 menit. Serang bersama - hadiah sesuai kontribusi, teratas dapat bonus besar!",
-                        "8. TUGAS: Papan Tugas di alun-alun - rotasi harian, hadiah koin+XP besar.",
-                        "9. DAGANG: tombol Dagang, dekati pemain lain, undang, tawar barang/koin, keduanya SIAP -> tukar aman.",
-                        "10. LEVEL membuka bibit mahal & resep tempaa. Semua aktivitas memberi XP!",
-                        "11. KUIS Kak Pintar opsional: +20 koin per jawaban benar. Diabaikan juga tidak apa-apa.",
-                }, "\\n"),""")
+local angkaRow = mk("Frame", { Size = UDim2.new(1, 0, 0, 34), Position = UDim2.new(0, 0, 1, -78), BackgroundTransparency = 1 }, tanamTab)
+mk("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, angkaRow)""",
+"""local tanamTab = mk("Frame", { Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Visible = true }, tanamBody)
+mk("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, tanamTab)
+local kepalaTanam = mk("Frame", { Size = UDim2.new(1, 0, 0, 18), BackgroundTransparency = 1, LayoutOrder = 1 }, tanamTab)
+mk("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, SortOrder = Enum.SortOrder.LayoutOrder }, kepalaTanam)
+mk("TextLabel", { Size = UDim2.new(0.55, 0, 1, 0), BackgroundTransparency = 1, Text = "Pilih benih untuk ditanam", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, LayoutOrder = 1 }, kepalaTanam)
+local jumlahLabel = mk("TextLabel", { Size = UDim2.new(0.45, -4, 1, 0), BackgroundTransparency = 1, Text = "Jumlah: -", TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Aksen), TextXAlignment = Enum.TextXAlignment.Right, LayoutOrder = 2 }, kepalaTanam)
+local tanamList = mk("ScrollingFrame", { Size = UDim2.new(1, 0, 1, -118), BackgroundTransparency = 1, ScrollBarThickness = 6, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(0, 0, 0, 0), LayoutOrder = 2 }, tanamTab)
+mk("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, tanamList)
+mk("UIFlexItem", { FlexMode = Enum.UIFlexMode.Grow }, tanamList)
+local tanamFeedback = mk("TextLabel", { Size = UDim2.new(1, 0, 0, 16), BackgroundTransparency = 1, Text = "", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, LayoutOrder = 3 }, tanamTab)
 
-# ---------------------------------------------------------------- 4. wireRemotes: tambahan event v3
-rep("""        Remotes.get("OpenQuiz").OnClientEvent:Connect(function()
-                self:showPanel("Quiz")
-                self:requestQuiz()
-        end)
+local angkaRow = mk("Frame", { Size = UDim2.new(1, 0, 0, 34), BackgroundTransparency = 1, LayoutOrder = 4 }, tanamTab)
+mk("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, angkaRow)""")
 
-        -- minta state awal (fallback kalau StateSync pertama terlewat)""",
-"""        Remotes.get("OpenQuiz").OnClientEvent:Connect(function()
-                self:showPanel("Quiz")
-                self:requestQuiz()
-        end)
+ganti(
+"""local mulaiBtn = mk("TextButton", { Size = UDim2.new(1, 0, 0, 36), Position = UDim2.new(0, 0, 1, -38), BackgroundColor3 = warna(UIStyle.Hijau), Text = "Mulai Tanam", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = Color3.new(1, 1, 1) }, tanamTab)
+round(mulaiBtn)""",
+"""local mulaiBtn = mk("TextButton", { Size = UDim2.new(1, 0, 0, 36), BackgroundColor3 = warna(UIStyle.Hijau), Text = "Mulai Tanam", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = Color3.new(1, 1, 1), LayoutOrder = 5 }, tanamTab)
+round(mulaiBtn)""")
 
-        ---------------------------------------------------------------- v3
-        Remotes.get("OpenCraft").OnClientEvent:Connect(function(station)
-                self.craftStation = station
-                self:renderCraft()
-                self:showPanel("Craft")
-        end)
+ganti(
+"""local soalView = mk("Frame", { Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Visible = false }, tanamBody)
+local soalNomor = mk("TextLabel", { Size = UDim2.new(1, 0, 0, 18), Position = UDim2.new(0, 2, 0, 0), BackgroundTransparency = 1, Text = "", TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left }, soalView)
+local soalTeks = mk("TextLabel", { Size = UDim2.new(1, 0, 0, 58), Position = UDim2.new(0, 0, 0, 24), BackgroundColor3 = warna(UIStyle.Permukaan), Text = "?", TextSize = UIStyle.UkuranJudul, Font = FONTB, TextColor3 = warna(UIStyle.Teks) }, soalView)
+round(soalTeks)
+local soalJawab = mk("TextBox", { Size = UDim2.new(0.6, 0, 0, 42), Position = UDim2.new(0.2, 0, 0, 92), BackgroundColor3 = warna(UIStyle.Permukaan), Text = "", PlaceholderText = "Tulis jawaban angka", TextSize = UIStyle.UkuranIsi, Font = FON, TextColor3 = warna(UIStyle.Teks), ClearTextOnFocus = true }, soalView)
+round(soalJawab, UIStyle.SudutKecil)
+local soalBtn = mk("TextButton", { Size = UDim2.new(0.6, 0, 0, 38), Position = UDim2.new(0.2, 0, 0, 140), BackgroundColor3 = warna(UIStyle.Hijau), Text = "Jawab", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = Color3.new(1, 1, 1) }, soalView)
+round(soalBtn)
+local soalFeedback = mk("TextLabel", { Size = UDim2.new(1, 0, 0, 28), Position = UDim2.new(0, 2, 0, 186), BackgroundTransparency = 1, Text = "", TextWrapped = true, TextSize = UIStyle.UkuranKecil, Font = FON, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left }, soalView)
+local batalBtn = mk("TextButton", { AnchorPoint = Vector2.new(0.5, 1), Size = UDim2.new(0.6, 0, 0, 26), Position = UDim2.new(0.5, 0, 1, -2), BackgroundTransparency = 1, Text = "Batalkan Sesi Tanam", TextSize = UIStyle.UkuranKecil, Font = FONTB, TextColor3 = warna(UIStyle.Merah) }, soalView)""",
+"""local soalView = mk("ScrollingFrame", { Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Visible = false, ScrollBarThickness = 6, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(0, 0, 0, 0) }, tanamBody)
+mk("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder, HorizontalAlignment = Enum.HorizontalAlignment.Center }, soalView)
+mk("UIPadding", { PaddingTop = UDim.new(0, 4), PaddingLeft = UDim.new(0, 4), PaddingRight = UDim.new(0, 4), PaddingBottom = UDim.new(0, 4) }, soalView)
+local progresRow = mk("Frame", { Size = UDim2.new(1, -20, 0, 22), BackgroundTransparency = 1, LayoutOrder = 1 }, soalView)
+mk("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 10), VerticalAlignment = Enum.VerticalAlignment.Center, SortOrder = Enum.SortOrder.LayoutOrder }, progresRow)
+local progresBar = mk("Frame", { Size = UDim2.new(0.62, -10, 1, -6), BackgroundColor3 = warna(UIStyle.PermukaanAktif), LayoutOrder = 1 }, progresRow)
+round(progresBar, 5)
+local progresIsi = mk("Frame", { Size = UDim2.fromScale(0, 1), BackgroundColor3 = warna(UIStyle.Aksen), BorderSizePixel = 0 }, progresBar)
+round(progresIsi, 5)
+local progresTeks = mk("TextLabel", { Size = UDim2.new(0.38, -10, 1, 0), BackgroundTransparency = 1, Text = "0/0", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Abu), TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 2 }, progresRow)
+local soalTeks = mk("TextLabel", { Size = UDim2.new(1, -20, 0, 58), BackgroundColor3 = warna(UIStyle.Permukaan), Text = "?", TextSize = UIStyle.UkuranJudul, Font = FONTB, TextColor3 = warna(UIStyle.Teks), LayoutOrder = 2 }, soalView)
+round(soalTeks)
+local soalJawab = mk("TextBox", { Size = UDim2.new(1, -20, 0, 44), BackgroundColor3 = warna(UIStyle.Permukaan), Text = "", PlaceholderText = "Tulis jawaban angka", TextSize = UIStyle.UkuranIsi, Font = FON, TextColor3 = warna(UIStyle.Teks), ClearTextOnFocus = true, LayoutOrder = 3 }, soalView)
+round(soalJawab, UIStyle.SudutKecil)
+local soalSkala = mk("UIScale", { Scale = 1 }, soalJawab)
+local soalBtn = mk("TextButton", { Size = UDim2.new(1, -20, 0, 44), BackgroundColor3 = warna(UIStyle.Hijau), Text = "Jawab", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = Color3.new(1, 1, 1), LayoutOrder = 4 }, soalView)
+round(soalBtn)
+local batalBtn = mk("TextButton", { Size = UDim2.new(1, -20, 0, 44), BackgroundColor3 = warna(UIStyle.Permukaan), Text = "Batalkan Sesi Tanam", TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Merah), LayoutOrder = 5 }, soalView)
+round(batalBtn, UIStyle.SudutKecil)""")
 
-        Remotes.get("OpenQuest").OnClientEvent:Connect(function()
-                self:renderQuest()
-                self:showPanel("Quest")
-        end)
-
-        Remotes.get("OpenChar").OnClientEvent:Connect(function()
-                self:renderChar()
-                self:showPanel("Char")
-        end)
-
-        Remotes.get("OpenTrade").OnClientEvent:Connect(function()
-                self:renderTrade()
-                self:showPanel("Trade")
-        end)
-
-        Remotes.get("BossState").OnClientEvent:Connect(function(info)
-                if info.active then
-                        self.bossBar.Visible = true
-                        self.bossTitle.Text = info.name .. " - " .. (info.zone or "Arena")
-                        self.bossHp.Size = UDim2.fromScale(math.clamp((info.hp or 1) / (info.maxHp or 1), 0.02, 1), 1)
-                else
-                        self.bossBar.Visible = false
-                        if info.killed then
-                                self:toast("BOSS DIKALAHKAN!", info.name .. " tumbang berkat kerja sama tim!", T.Red)
-                                makeSound(1.4):Play()
-                        end
-                end
-        end)
-
-        Remotes.get("TradeSync").OnClientEvent:Connect(function(snap)
-                if snap.inviteFrom then
-                        self.inviteFrom = snap.inviteFrom
-                        if self.activePanel == "Trade" then
-                                self:renderTrade()
-                        end
-                        return
-                end
-                self.inviteFrom = nil
-                self.tradeSnap = snap
-                if self.activePanel == "Trade" then
-                        self:renderTrade()
-                end
-        end)
-
-        -- detak HP: ikat humanoid lokal
-        task.spawn(function()
-                local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-                if not humanoid then
-                        humanoid = player.CharacterAdded:Wait():FindFirstChildOfClass("Humanoid")
-                end
-                local function refreshHp()
-                        if self.hpText and self.hpBar then
-                                self.hpText.Text = "HP " .. math.ceil(humanoid.Health) .. "/" .. math.ceil(humanoid.MaxHealth)
-                                self.hpBar.Size = UDim2.fromScale(math.clamp(humanoid.Health / math.max(1, humanoid.MaxHealth), 0.02, 1), 1)
-                        end
-                end
-                humanoid.HealthChanged:Connect(refreshHp)
-                humanoid.Changed:Connect(function(prop)
-                        if prop == "MaxHealth" or prop == "Health" then
-                                refreshHp()
-                        end
-                end)
-                refreshHp()
-        end)
-
-        -- minta state awal (fallback kalau StateSync pertama terlewat)""")
-
-open(PATH, "w").write(src)
-print("patch part 2 OK")
+open(P, 'w').write(s)
+print("patch tahap 2a selesai")

@@ -1,297 +1,185 @@
-#!/usr/bin/env python3
-"""Patch UIController.luau with v3 Toram-grade panels (Char/Craft/Quest/Trade + HUD upgrades)."""
-import sys
+P = '/home/z/my-project/download/dunia-akiomida/src/Client/UIController.luau'
+s = open(P).read()
 
-PATH = "/home/z/my-project/download/dunia-akiomida/src/Client/UIController.luau"
-src = open(PATH).read()
+def ganti(lama, baru, wajib=True):
+    global s
+    lama = lama.expandtabs(8)
+    baru = baru.expandtabs(8)
+    if lama not in s:
+        if wajib:
+            raise SystemExit("TIDAK KETEMU: " + lama[:90])
+        return
+    s = s.replace(lama, baru, 1)
 
-def rep(old, new, count=1):
-    global src
-    assert src.count(old) == count, f"MATCH FAIL ({src.count(old)} != {count}): {old[:80]!r}"
-    src = src.replace(old, new)
+ganti(
+"""local UangSingkat = require(ReplicatedStorage.Shared.UangSingkat)""",
+"""local UangSingkat = require(ReplicatedStorage.Shared.UangSingkat)
+local IkonKoin = require(ReplicatedStorage.Shared.IkonKoin)""")
 
-# ---------------------------------------------------------------- 1. header requires
-rep("""local Config = require(ReplicatedStorage.Shared.Config)
-local Remotes = require(ReplicatedStorage.Remotes)
-local Util = require(ReplicatedStorage.Shared.Util)""",
-"""local Config = require(ReplicatedStorage.Shared.Config)
-local Balance = require(ReplicatedStorage.Shared.Balance)
-local Remotes = require(ReplicatedStorage.Remotes)
-local Util = require(ReplicatedStorage.Shared.Util)""")
-
-# ---------------------------------------------------------------- 2. new() init + build calls
-rep("""        self.state = nil
-        self.activePanel = nil
-        self.shopId = nil
-        self.shopTab = "beli"
-        self.pendingPlant = nil
-
-        self:buildGui()
-        self:buildHud()
-        self:buildShopPanel()
-        self:buildPlantPanel()
-        self:buildInvPanel()
-        self:buildQuizPanel()
-        self:buildCodePanel()
-        self:buildHelpPanel()
-        self:wireRemotes()
-        self:startTips()""",
-"""        self.state = nil
-        self.activePanel = nil
-        self.shopId = nil
-        self.shopTab = "beli"
-        self.pendingPlant = nil
-        self.craftStation = nil
-        self.tradeSnap = nil
-        self.inviteFrom = nil
-        self.bossInfo = nil
-
-        self:buildGui()
-        self:buildHud()
-        self:buildShopPanel()
-        self:buildPlantPanel()
-        self:buildInvPanel()
-        self:buildQuizPanel()
-        self:buildCodePanel()
-        self:buildHelpPanel()
-        self:buildCharPanel()
-        self:buildCraftPanel()
-        self:buildQuestPanel()
-        self:buildTradePanel()
-        self:wireRemotes()
-        self:startTips()""")
-
-# ---------------------------------------------------------------- 3. showPanel list
-rep("""        for _, n in { "Shop", "Plant", "Inv", "Quiz", "Code", "Help" } do""",
-"""        for _, n in { "Shop", "Plant", "Inv", "Quiz", "Code", "Help", "Char", "Craft", "Quest", "Trade" } do""")
-
-# ---------------------------------------------------------------- 4. HP bar + quest chip + boss bar
-rep("""        self.xpBar = Util.create("Frame", {
-                Size = UDim2.fromScale(0, 1),
-                BackgroundColor3 = T.Blue,
-                BorderSizePixel = 0,
-        }, barBg)
-        corner(self.xpBar, 7)""",
-"""        self.xpBar = Util.create("Frame", {
-                Size = UDim2.fromScale(0, 1),
-                BackgroundColor3 = T.Blue,
-                BorderSizePixel = 0,
-        }, barBg)
-        corner(self.xpBar, 7)
-
-        ---------------------------------------------------------------- chip HP (v3)
-        local hpChip = Util.create("Frame", {
-                Name = "HpChip",
-                Position = UDim2.fromOffset(16, 130),
-                Size = UDim2.fromOffset(170, 46),
-                BackgroundColor3 = T.Bg,
-                BackgroundTransparency = 0.15,
-                BorderSizePixel = 0,
-        }, self.gui)
-        corner(hpChip, 12)
-        self.hpText = Util.create("TextLabel", {
-                Position = UDim2.fromOffset(10, 3),
-                Size = UDim2.new(1, -20, 0, 22),
-                BackgroundTransparency = 1,
-                Font = Enum.Font.GothamBold,
-                TextScaled = true,
-                TextColor3 = T.Red,
-                TextXAlignment = Enum.TextXAlignment.Left,
-                Text = "HP 100/100",
-        }, hpChip)
-        local hpBg = Util.create("Frame", {
-                Position = UDim2.fromOffset(10, 28),
-                Size = UDim2.new(1, -20, 0, 12),
-                BackgroundColor3 = T.PanelLight,
-                BorderSizePixel = 0,
-        }, hpChip)
-        corner(hpBg, 6)
-        self.hpBar = Util.create("Frame", {
-                Size = UDim2.fromScale(1, 1),
-                BackgroundColor3 = Color3.fromRGB(235, 90, 90),
-                BorderSizePixel = 0,
-        }, hpBg)
-        corner(self.hpBar, 6)
-
-        ---------------------------------------------------------------- chip tugas aktif (v3)
-        self.questChip = Util.create("TextLabel", {
-                Name = "QuestChip",
-                Position = UDim2.fromOffset(16, 182),
-                Size = UDim2.fromOffset(240, 54),
-                BackgroundTransparency = 1,
-                Font = Enum.Font.Gotham,
-                TextScaled = true,
-                TextColor3 = T.Gold,
-                TextXAlignment = Enum.TextXAlignment.Left,
-                TextStrokeTransparency = 0.8,
-                Text = "",
-                Visible = false,
-        }, self.gui)
-
-        ---------------------------------------------------------------- bar boss raid (v3, atas tengah)
-        local bossBar = Util.create("Frame", {
-                Name = "BossBar",
-                AnchorPoint = Vector2.new(0.5, 0),
-                Position = UDim2.new(0.5, 0, 0, 12),
-                Size = UDim2.fromOffset(430, 62),
-                BackgroundColor3 = T.Bg,
-                BackgroundTransparency = 0.2,
-                BorderSizePixel = 0,
-                Visible = false,
-        }, self.gui)
-        corner(bossBar, 12)
-        self.bossTitle = Util.create("TextLabel", {
-                Size = UDim2.new(1, -16, 0, 24),
-                Position = UDim2.fromOffset(8, 4),
-                BackgroundTransparency = 1,
-                Font = Enum.Font.GothamBlack,
-                TextScaled = true,
-                TextColor3 = Color3.fromRGB(255, 90, 90),
-                Text = "RAJA GOLEM",
-        }, bossBar)
-        local bossBg = Util.create("Frame", {
-                Position = UDim2.fromOffset(12, 32),
-                Size = UDim2.new(1, -24, 0, 20),
-                BackgroundColor3 = Color3.fromRGB(60, 20, 20),
-                BorderSizePixel = 0,
-        }, bossBar)
-        corner(bossBg, 8)
-        self.bossHp = Util.create("Frame", {
-                Size = UDim2.fromScale(1, 1),
-                BackgroundColor3 = Color3.fromRGB(255, 80, 80),
-                BorderSizePixel = 0,
-        }, bossBg)
-        corner(self.bossHp, 8)
-        self.bossBar = bossBar""")
-
-# ---------------------------------------------------------------- 5. tombol kanan atas: 6 tombol 2 baris
-rep("""        local actions = {
-                { name = "Tas", label = "Tas", color = T.Gold, cb = function()
-                        self:renderInv()
-                        self:showPanel("Inv")
-                end },
-                { name = "Kode", label = "Kode", color = T.Blue, cb = function()
-                        self:showPanel("Code")
-                end },
-                { name = "Bantuan", label = "?", color = T.Green, cb = function()
-                        self:showPanel("Help")
-                end },
-        }
-        local i = 0
-        for _, act in actions do
-                i += 1
-                btn({
-                        parent = self.gui,
-                        Name = "Btn" .. act.name,
-                        AnchorPoint = Vector2.new(1, 0),
-                        Position = UDim2.new(1, -16 - (i - 1) * 92, 0, 14),
-                        Size = UDim2.fromOffset(84, 42),
-                        BackgroundColor3 = act.color,
-                        TextColor3 = Color3.fromRGB(30, 30, 36),
-                        Text = act.label,
-                        _radius = 12,
-                }).Activated:Connect(act.cb)
-        end""",
-"""        local actions = {
-                { name = "Tas", label = "Tas", color = T.Gold, cb = function()
-                        self:renderInv()
-                        self:showPanel("Inv")
-                end },
-                { name = "Kar", label = "Kar", color = T.Blue, cb = function()
-                        self:renderChar()
-                        self:showPanel("Char")
-                end },
-                { name = "Tugas", label = "Tugas", color = T.Green, cb = function()
-                        self:renderQuest()
-                        self:showPanel("Quest")
-                end },
-                { name = "Dagang", label = "Dagang", color = Color3.fromRGB(224, 140, 190), cb = function()
-                        self:renderTrade()
-                        self:showPanel("Trade")
-                end },
-                { name = "Kode", label = "Kode", color = T.Blue, cb = function()
-                        self:showPanel("Code")
-                end },
-                { name = "Bantuan", label = "?", color = T.Green, cb = function()
-                        self:showPanel("Help")
-                end },
-        }
-        local i = 0
-        for _, act in actions do
-                i += 1
-                local rowIdx = math.floor((i - 1) / 3)
-                local colIdx = (i - 1) % 3
-                btn({
-                        parent = self.gui,
-                        Name = "Btn" .. act.name,
-                        AnchorPoint = Vector2.new(1, 0),
-                        Position = UDim2.new(1, -16 - colIdx * 92, 0, 14 + rowIdx * 50),
-                        Size = UDim2.fromOffset(84, 42),
-                        BackgroundColor3 = act.color,
-                        TextColor3 = Color3.fromRGB(30, 30, 36),
-                        Text = act.label,
-                        _radius = 12,
-                }).Activated:Connect(act.cb)
-        end""")
-
-# ---------------------------------------------------------------- 6. renderState refresh + HUD extras
-rep("""        -- refresh panel terbuka supaya harga/inv tetap segar
-        if self.activePanel == "Shop" and self.shopId then
-                self:renderShop()
-        elseif self.activePanel == "Plant" and self.pendingPlant then
-                self:renderPlantPanel()
-        elseif self.activePanel == "Inv" then
-                self:renderInv()
+ganti(
+"""local function warna3b(t: any): Color3
+        if type(t) == "table" then
+                return Color3.fromRGB(t[1] or 200, t[2] or 200, t[3] or 200)
         end
+        return warna(UIStyle.Abu)
 end""",
-"""        self:renderHudExtras()
+"""local function warna3b(t: any): Color3
+        if type(t) == "table" then
+                return Color3.fromRGB(t[1] or 200, t[2] or 200, t[3] or 200)
+        end
+        return warna(UIStyle.Abu)
+end
 
-        -- refresh panel terbuka supaya harga/inv tetap segar
-        if self.activePanel == "Shop" and self.shopId then
-                self:renderShop()
-        elseif self.activePanel == "Plant" and self.pendingPlant then
-                self:renderPlantPanel()
-        elseif self.activePanel == "Inv" then
-                self:renderInv()
-        elseif self.activePanel == "Char" then
-                self:renderChar()
-        elseif self.activePanel == "Craft" then
-                self:renderCraft()
-        elseif self.activePanel == "Quest" then
-                self:renderQuest()
+local function folderTanaman(): Folder?
+        local dunia = Workspace:FindFirstChild("Dunia")
+        return dunia and dunia:FindFirstChild("PlotGrid_" .. tostring(state.lahan), true)
+end
+
+local function fxTumbuh(posisi: Vector3)
+        local wadah = Instance.new("Part")
+        wadah.Size = Vector3.new(0.4, 0.4, 0.4)
+        wadah.Transparency = 1
+        wadah.CFrame = CFrame.new(posisi)
+        wadah.Anchored = true
+        wadah.CanCollide = false
+        wadah.CanQuery = false
+        wadah.CanTouch = false
+        wadah.Parent = Workspace
+        local cahaya = Instance.new("ParticleEmitter")
+        cahaya.Color = ColorSequence.new(Color3.fromRGB(160, 240, 165), Color3.fromRGB(96, 198, 112))
+        cahaya.LightEmission = 0.85
+        cahaya.Lifetime = NumberRange.new(0.35, 0.7)
+        cahaya.Speed = NumberRange.new(2.5, 5)
+        cahaya.SpreadAngle = Vector2.new(180, 180)
+        cahaya.Size = NumberSequence.new(0.32, 0)
+        cahaya.Enabled = false
+        cahaya.Parent = wadah
+        local bunyi = Instance.new("Sound")
+        bunyi.SoundId = "rbxasset://sounds/electronicpingshort.wav"
+        bunyi.PlaybackSpeed = 1.5
+        bunyi.Volume = 0.4
+        bunyi.Parent = wadah
+        pcall(function()
+                cahaya:Emit(14)
+                bunyi:Play()
+        end)
+        task.delay(1.6, function()
+                wadah:Destroy()
+        end)
+end
+
+local function efekTanamanBaru(sebelum: { [number]: boolean })
+        task.spawn(function()
+                task.wait(0.14)
+                local folder = state.zone == "dunia" and state.lahan and folderTanaman() or nil
+                if not folder then
+                        return
+                end
+                local jumlahFx = 0
+                for _, m in ipairs(folder:GetChildren()) do
+                        if m:IsA("Model") and string.sub(m.Name, 1, 8) == "Tanaman_" and jumlahFx < 12 then
+                                local idx = m:GetAttribute("PlotIdx")
+                                if type(idx) == "number" and not sebelum[idx] then
+                                        jumlahFx += 1
+                                        fxTumbuh(m:GetPivot().Position + Vector3.new(0, 0.8, 0))
+                                end
+                        end
+                end
+        end)
+end""")
+
+ganti(
+"""local ikonSaldo = mk("Frame", { LayoutOrder = 1, Size = UDim2.fromOffset(HUDLayout.SaldoIkonPx, HUDLayout.SaldoIkonPx), BackgroundColor3 = warna(UIStyle.Aksen) }, saldo)
+mk("UICorner", { CornerRadius = UDim.new(0.5, 0) }, ikonSaldo)
+teksSkala({ Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Text = "M", Font = FONTB, TextColor3 = warna(UIStyle.Latar) }, ikonSaldo)""",
+"""local ikonSaldo = mk("Frame", { LayoutOrder = 1, Size = UDim2.fromOffset(HUDLayout.SaldoIkonPx, HUDLayout.SaldoIkonPx), BackgroundTransparency = 1 }, saldo)
+IkonKoin.buat(ikonSaldo, HUDLayout.SaldoIkonPx)""")
+
+ganti(
+"""local jumpPxNyata: number? = nil""",
+"""local jumpPxNyata: number? = nil
+local lompatBtnNyata: GuiObject? = nil""")
+
+ganti(
+"""     jumpPxNyata = jump.AbsoluteSize.X
+        aturPunch()""",
+"""     jumpPxNyata = jump.AbsoluteSize.X
+        lompatBtnNyata = jump
+        aturPunch()""")
+
+ganti(
+"""local function closePanel()
+        dim.Visible = false
+        currentPanel = nil
+        bukaKamera()
+end""",
+"""local function sembunyikanKontrol()
+        punchBtn.Visible = false
+        punchShadow.Visible = false
+        if lompatBtnNyata then
+                lompatBtnNyata.Visible = false
         end
 end
 
---------------------------------------------------------------------
--- HP / TUGAS / BOSS: pembaruan HUD tiap state
---------------------------------------------------------------------
-
-function UIController:renderHudExtras()
-        local s = self.state
-        if not s then
-                return
+local function tampilkanKontrol()
+        punchBtn.Visible = true
+        punchShadow.Visible = true
+        if lompatBtnNyata then
+                lompatBtnNyata.Visible = true
         end
+end
 
-        -- tugas aktif
-        local q = s.Quest
-        if q and q.id ~= "" then
-                local def = nil
-                for _, d in ipairs(Balance.Quests) do
-                        if d.id == q.id then
-                                def = d
-                                break
-                        end
-                end
-                if def then
-                        self.questChip.Visible = true
-                        self.questChip.Text = (q.done and "[SIAP KLAIM] " or "Tugas: ") .. def.title .. " "
-                                .. math.min(q.prog, def.goal.count) .. "/" .. def.goal.count
-                        self.questChip.TextColor3 = q.done and T.Green or T.Gold
-                end
+local function closePanel()
+        dim.Visible = false
+        currentPanel = nil
+        tampilkanKontrol()
+        bukaKamera()
+end""")
+
+ganti(
+"""     panelTitle.Text = PANEL_TITLES[name] or ""
+        if name == "semai" then
+                panelBatas.MaxSize = Vector2.new(760, 620)
         else
-                self.questChip.Visible = false
+                panelBatas.MaxSize = Vector2.new(UIStyle.LebarPanelMaks, UIStyle.TinggiPanelMaks)
+        end
+        kunciKamera()
+        dim.Visible = true
+        currentPanel = name
+end""",
+"""     panelTitle.Text = PANEL_TITLES[name] or ""
+        if name == "semai" or name == "tanam" then
+                panelBatas.MaxSize = Vector2.new(760, 620)
+        else
+                panelBatas.MaxSize = Vector2.new(UIStyle.LebarPanelMaks, UIStyle.TinggiPanelMaks)
+        end
+        kunciKamera()
+        dim.Visible = true
+        currentPanel = name
+        if name == "tanam" then
+                sembunyikanKontrol()
         end
 end""")
 
-open(PATH, "w").write(src)
-print("patch part 1 OK")
+ganti(
+"""local toastOrder = 0
+local function toast(title: string, msg: string)""",
+"""local toastOrder = 0
+
+local function toastSaja(teks: string)
+        toastOrder += 1
+        local f = mk("Frame", { Size = UDim2.new(1, 0, 0, 40), BackgroundColor3 = warna(UIStyle.Latar), BackgroundTransparency = 0.1, LayoutOrder = -toastOrder }, toastHolder)
+        round(f)
+        mk("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8), VerticalAlignment = Enum.VerticalAlignment.Center, SortOrder = Enum.SortOrder.LayoutOrder }, f)
+        mk("UIPadding", { PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10) }, f)
+        IkonKoin.buat(f, 18).LayoutOrder = 1
+        mk("TextLabel", { LayoutOrder = 2, AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.new(0, 0, 1, 0), BackgroundTransparency = 1, Text = teks, TextSize = UIStyle.UkuranIsi, Font = FONTB, TextColor3 = warna(UIStyle.Teks), TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = false }, f)
+        task.delay(2, function()
+                f:Destroy()
+        end)
+end
+
+local function toast(title: string, msg: string)""")
+
+open(P, 'w').write(s)
+print("patch tahap 1 selesai")

@@ -382,7 +382,7 @@ if mulaiBtn then
         mulaiBtn.Activated:Fire()
         Stub.Scheduler.advance(0.1)
 end
-check("Soal 1 dari 5 tampil", findGui(gui, "TextLabel", "Soal 1 dari 5") ~= nil, "-")
+check("Progres sederhana 1/5 tampil tanpa gaya kuis", findGui(gui, "TextLabel", "1/5") ~= nil and findGui(gui, "TextLabel", "Soal 1 dari") == nil, "-")
 check("Papan fisik TERTANAM 0/500", findGui(dunia, "TextLabel", "TERTANAM 0/500") ~= nil, "-")
 
 for i = 1, 5 do
@@ -395,6 +395,11 @@ for i = 1, 5 do
                 check("Soal 5 benar -> 50 plot terisi penuh", okJ and findGui(dunia, "TextLabel", "TERTANAM 50/500") ~= nil, tostring(detJ))
         end
 end
+check("Panel papan menutup sendiri setelah soal terakhir", gui:FindFirstChild("DimLayar") ~= nil and gui:FindFirstChild("DimLayar").Visible == false, "-")
+check("Tombol punch tampil kembali setelah sesi selesai", gui:FindFirstChild("TombolPunch") ~= nil and gui:FindFirstChild("TombolPunch").Visible == true, "-")
+check("Toast netral '+50 Wortel' tampil", findGui(gui, "TextLabel", "+50 Wortel") ~= nil, "-")
+Stub.Scheduler.advance(2.1)
+check("Toast 50 hilang sendiri dalam 2 detik", findGui(gui, "TextLabel", "+50 Wortel") == nil, "-")
 check("Benih wortel sisa 5", tasCount(P1, "benih", "wortel") == 5, tostring(tasCount(P1, "benih", "wortel")))
 local grid = gridOf(dunia)
 local hitungTanaman = 0
@@ -560,6 +565,8 @@ check("Punch tanpa tanaman di depan ditolak", okKosong == false and tostring(msg
 
 section("Punch tanaman masih tumbuh: beruntun dalam jendela, 5x hancur, tanpa drop")
 moveTo(P1, 5085, 5, 18)
+firePrompt(dunia, { object = "Papan Tanam" }, P1)
+Stub.Scheduler.advance(0.1)
 kembaliTabTanam(gui)
 check("Pilih benih Bayam", pilihBenih(gui, "Bayam"), "-")
 tombolJumlah(gui, "10")
@@ -604,7 +611,8 @@ check("Status: siap panen 0", findGui(gui, "TextLabel", "Siap 0") ~= nil, "-")
 
 section("COMBINE SEED lewat papan GUI: cocok jadi Triticale")
 moveTo(P1, 5085, 5, 18)
-burn(1.2)
+firePrompt(dunia, { object = "Papan Tanam" }, P1)
+Stub.Scheduler.advance(0.1)
 local tabGabungBtn = nil
 for _, d in ipairs(gui:GetDescendants()) do
         if d:IsA("TextButton") and d.Text == "Combine Seed" then
@@ -691,7 +699,8 @@ check("Urutan dibalik (Ipaensis x Duranensis) tetap jadi", okSwap2 and string.fi
 
 section("Benih hibrida bisa ditanam: Tangelo bentuk pohon sendiri")
 moveTo(P1, 5085, 5, 18)
-burn(1.2)
+firePrompt(dunia, { object = "Papan Tanam" }, P1)
+Stub.Scheduler.advance(0.1)
 kembaliTabTanam(gui)
 check("Pilih benih Tangelo", pilihBenih(gui, "Tangelo"), "-")
 tombolJumlah(gui, "1")

@@ -225,7 +225,7 @@ check("Tidak ada BillboardGui / teks melayang di dunia", countClass(dunia, "Bill
 section("Pemain utama masuk")
 local profStore = Stub.Services.DataStoreService:GetDataStore("AKM_T1")
 profStore.__data["u_1001"] = {
-        m = 999999999999000,
+        m = 10000,
         t = {
                 { kind = "benih", id = "wortel", count = 25 },
                 { kind = "benih", id = "pisang", count = 2 },
@@ -244,7 +244,7 @@ Stub.Scheduler.advance(0.5)
 
 local ls = P1:FindFirstChild("leaderstats")
 check("leaderstats Micda dibuat", ls ~= nil and ls:FindFirstChild("Micda") ~= nil)
-check("Micda awal 999.999.999.999.000", ls and ls:FindFirstChild("Micda") and ls:FindFirstChild("Micda").Value == 999999999999000, tostring(ls and ls:FindFirstChild("Micda").Value))
+check("Micda awal pemain 10.000", ls and ls:FindFirstChild("Micda") and ls:FindFirstChild("Micda").Value == 10000, tostring(ls and ls:FindFirstChild("Micda").Value))
 
 section("Booting UI klien")
 local pg = Instance.new("Folder")
@@ -266,22 +266,30 @@ section("HUD saldo: singkatan Indonesia + ketuk angka penuh")
 local saldoHUD = gui:FindFirstChild("SaldoHUD", true)
 check("Kotak saldo ada dan bisa diketuk (TextButton)", saldoHUD ~= nil and saldoHUD:IsA("TextButton"), saldoHUD and saldoHUD.ClassName or "hilang")
 check("Kotak saldo melebar otomatis (AutomaticSize X)", saldoHUD ~= nil and saldoHUD.AutomaticSize == Enum.AutomaticSize.X, saldoHUD and tostring(saldoHUD.AutomaticSize))
+check("Ikon koin emas di HUD, tanpa huruf M", saldoHUD ~= nil and saldoHUD:FindFirstChild("IkonKoin", true) ~= nil and (function()
+        for _, d in ipairs(saldoHUD:GetDescendants()) do
+                if (d:IsA("TextLabel") or d:IsA("TextButton")) and d.Text == "M" then
+                        return false
+                end
+        end
+        return true
+end)(), "-")
 local angkaHUD = saldoHUD and saldoHUD:FindFirstChild("SaldoAngka")
 local satuanHUD = saldoHUD and saldoHUD:FindFirstChild("SaldoSatuan")
 check("Teks angka satu baris (TextWrapped = false)", angkaHUD ~= nil and angkaHUD.TextWrapped == false, angkaHUD and tostring(angkaHUD.TextWrapped) or "hilang")
-check("Saldo awal tampil singkat 999,99 T", angkaHUD ~= nil and angkaHUD.Text == "999,99 T", angkaHUD and angkaHUD.Text or "hilang")
+check("Saldo awal tampil singkat 10 Rb", angkaHUD ~= nil and angkaHUD.Text == "10 Rb", angkaHUD and angkaHUD.Text or "hilang")
 check("Satuan Micda tampil di mode singkat", satuanHUD ~= nil and satuanHUD.Visible == true, "-")
 if saldoHUD then
         saldoHUD.Activated:Fire()
         Stub.Scheduler.advance(0.05)
 end
-check("Ketuk 1: angka lengkap bertitik 999.999.999.999.000", angkaHUD ~= nil and angkaHUD.Text == "999.999.999.999.000", angkaHUD and angkaHUD.Text or "hilang")
+check("Ketuk 1: angka lengkap bertitik 10.000", angkaHUD ~= nil and angkaHUD.Text == "10.000", angkaHUD and angkaHUD.Text or "hilang")
 check("Satuan Micda disembunyikan di mode penuh (hemat lebar)", satuanHUD ~= nil and satuanHUD.Visible == false, "-")
 if saldoHUD then
         saldoHUD.Activated:Fire()
         Stub.Scheduler.advance(0.05)
 end
-check("Ketuk 2: kembali ke singkatan 999,99 T", angkaHUD ~= nil and angkaHUD.Text == "999,99 T", angkaHUD and angkaHUD.Text or "hilang")
+check("Ketuk 2: kembali ke singkatan 10 Rb", angkaHUD ~= nil and angkaHUD.Text == "10 Rb", angkaHUD and angkaHUD.Text or "hilang")
 check("Satuan Micda kembali tampil", satuanHUD ~= nil and satuanHUD.Visible == true, "-")
 if angkaHUD then
         angkaHUD.Text = MOD_UangSingkat.singkat(1000000000000000)
@@ -313,7 +321,7 @@ check("Popup konfirmasi muncul (tidak langsung beli)", (function()
         return m ~= nil and m.Visible == true and findGui(gui, "TextLabel", "Konfirmasi Pembelian") ~= nil
 end)(), "-")
 check("Isi pack & harga tampil di konfirmasi", findGui(gui, "TextLabel", "3 benih acak") ~= nil and findGui(gui, "TextLabel", "Harga: 2.400 Micda") ~= nil, "-")
-check("Micda belum terpotong sebelum Ya", ls and ls:FindFirstChild("Micda").Value == 999999999999000, tostring(ls and ls:FindFirstChild("Micda").Value))
+check("Micda belum terpotong sebelum Ya", ls and ls:FindFirstChild("Micda").Value == 10000, tostring(ls and ls:FindFirstChild("Micda").Value))
 local batalBtn = (function()
         local m = gui:FindFirstChild("ModalBeli")
         return m and findGui(m, "TextButton", "Batal") or nil
@@ -325,7 +333,7 @@ if batalBtn then
 end
 check("Batal = konfirmasi hilang & saldo utuh", (function()
         local m = gui:FindFirstChild("ModalBeli")
-        return m ~= nil and m.Visible == false and ls and ls:FindFirstChild("Micda").Value == 999999999999000
+        return m ~= nil and m.Visible == false and ls and ls:FindFirstChild("Micda").Value == 10000
 end)(), "-")
 if buyCommon then
         buyCommon.Activated:Fire()
@@ -341,7 +349,7 @@ if yaBtn then
         Stub.Scheduler.advance(0.2)
 end
 local micdaAfterBuy = ls and ls:FindFirstChild("Micda") and ls:FindFirstChild("Micda").Value
-check("Beli setelah Ya (999.999.999.999.000 - 2.400 = 999.999.999.996.600)", micdaAfterBuy == 999999999996600, tostring(micdaAfterBuy))
+check("Beli setelah Ya (10.000 - 2.400 = 7.600)", micdaAfterBuy == 7600, tostring(micdaAfterBuy))
 check("Popup struk isi benih muncul", findGui(gui, "TextLabel", "Pembelian Berhasil") ~= nil, "-")
 check("Struk memuat daftar benih & total", findGui(gui, "TextLabel", "Total 2.400 Micda") ~= nil and (function()
         local m = gui:FindFirstChild("ModalBeli")
@@ -492,6 +500,9 @@ if mulaiBtn then
 end
 local soal1 = findSoalTeks(gui)
 check("Soal matematika muncul di papan", soal1 ~= nil, soal1 and soal1.Text or "hilang")
+check("Progres sederhana 1/1 tampil", findGui(gui, "TextLabel", "1/1") ~= nil, "-")
+check("Teks gaya kuis 'Soal 1 dari' hilang", findGui(gui, "TextLabel", "Soal 1 dari") == nil, "-")
+check("Tombol punch disembunyikan saat panel terbuka", gui:FindFirstChild("TombolPunch") ~= nil and gui:FindFirstChild("TombolPunch").Visible == false, "-")
 
 local label0 = findGui(dunia, "TextLabel", "TERTANAM 0/500")
 check("Papan menampilkan TERTANAM 0/500 sebelum jawab", label0 ~= nil, "-")
@@ -503,17 +514,31 @@ if soal1 then
         jawabBtn.Activated:Fire()
         Stub.Scheduler.advance(0.1)
 end
-local salah = findGui(gui, "TextLabel", "Salah")
-check("Jawaban salah tertahan (pesan di dalam papan)", salah ~= nil, salah and salah.Text or "-")
+local boxSalah = findTextBoxByPlaceholder(gui, "Tulis jawaban angka")
+local merah = Color3.fromRGB(178, 84, 72)
+local warnaSalahOk = boxSalah ~= nil and math.abs(boxSalah.BackgroundColor3.r - merah.r) < 0.01 and math.abs(boxSalah.BackgroundColor3.g - merah.g) < 0.01 and math.abs(boxSalah.BackgroundColor3.b - merah.b) < 0.01
+check("Jawaban salah: kolom memerah, tanpa kalimat kuis", warnaSalahOk and findGui(gui, "TextLabel", "Salah") == nil, boxSalah and tostring(boxSalah.BackgroundColor3) or "hilang")
 local masih0 = findGui(dunia, "TextLabel", "TERTANAM 0/500")
 check("Jawaban salah tidak membuka plot", masih0 ~= nil, "-")
+Stub.Scheduler.advance(0.7)
+local boxPulih = findTextBoxByPlaceholder(gui, "Tulis jawaban angka")
+local normal = Color3.fromRGB(32, 35, 42)
+local warnaPulihOk = boxPulih ~= nil and math.abs(boxPulih.BackgroundColor3.r - normal.r) < 0.01 and math.abs(boxPulih.BackgroundColor3.g - normal.g) < 0.01 and math.abs(boxPulih.BackgroundColor3.b - normal.b) < 0.01
+check("Kolom input pulih ke warna normal", warnaPulihOk, boxPulih and tostring(boxPulih.BackgroundColor3) or "hilang")
 
 burn(1.2)
 local okJ1, detJ1 = jawabSoal(gui)
-Stub.Scheduler.advance(0.1)
+Stub.Scheduler.advance(0.3)
 check("Jawaban benar diterima server", okJ1 == true, tostring(detJ1))
+check("Tanaman muncul dengan efek partikel singkat", countClass(Workspace, "ParticleEmitter") >= 1, tostring(countClass(Workspace, "ParticleEmitter")))
+check("Tanaman muncul dengan suara pendek", countClass(Workspace, "Sound") >= 1, tostring(countClass(Workspace, "Sound")))
+check("Toast netral '+10 Wortel' tampil", findGui(gui, "TextLabel", "+10 Wortel") ~= nil, "-")
 local label10 = findGui(dunia, "TextLabel", "TERTANAM 10/500")
 check("10 plot terisi setelah 1 soal benar", label10 ~= nil, label10 and label10.Text or "-")
+check("Panel papan menutup sendiri setelah sesi selesai", gui:FindFirstChild("DimLayar") ~= nil and gui:FindFirstChild("DimLayar").Visible == false, "-")
+check("Tombol punch tampil kembali setelah panel tutup", gui:FindFirstChild("TombolPunch") ~= nil and gui:FindFirstChild("TombolPunch").Visible == true, "-")
+Stub.Scheduler.advance(2.0)
+check("Toast hilang sendiri dalam 2 detik", findGui(gui, "TextLabel", "+10 Wortel") == nil, "-")
 local t1 = grid and grid:FindFirstChild("Tanaman_0", true)
 check("Tanaman_0 muncul di plot", t1 ~= nil, "-")
 local adaBuah = false

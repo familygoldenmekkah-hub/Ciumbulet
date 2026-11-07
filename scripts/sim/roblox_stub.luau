@@ -362,6 +362,7 @@ Enum = {
         TextXAlignment = makeEnum("TextXAlignment", { "Left", "Center", "Right" }),
         TextYAlignment = makeEnum("TextYAlignment", { "Top", "Center", "Bottom" }),
         SortOrder = makeEnum("SortOrder", { "LayoutOrder", "Name", "Custom" }),
+        UIFlexMode = makeEnum("UIFlexMode", { "None", "Grow", "Shrink", "Fill", "GrowShrink" }),
         AutomaticSize = makeEnum("AutomaticSize", { "None", "X", "Y", "XY" }),
         HorizontalAlignment = makeEnum("HorizontalAlignment", { "Left", "Center", "Right" }),
         VerticalAlignment = makeEnum("VerticalAlignment", { "Top", "Center", "Bottom" }),

@@ -37,7 +37,7 @@ local function near(player, index: number): boolean
         return (root.Position - p).Magnitude <= 30
 end
 
-local function payload(s: any, selesai: boolean?): any
+local function payload(s: any, selesai: boolean?, tuntas: any?): any
         local p: any = {
                 aktif = s ~= nil,
                 crop = s and s.cropId or nil,
@@ -47,14 +47,19 @@ local function payload(s: any, selesai: boolean?): any
                 totalSoal = s and math.ceil(s.jumlah / 10) or 0,
                 selesai = selesai == true,
         }
+        if tuntas then
+                p.selesaiTuntas = true
+                p.selesaiNama = tuntas.nama
+                p.selesaiHasil = tuntas.total
+        end
         if s and s.tertanam < s.jumlah and s.soal then
                 p.soal = { teks = s.soal.teks, nomor = math.floor(s.tertanam / 10) + 1 }
         end
         return p
 end
 
-local function sync(player, s: any, selesai: boolean?)
-        Net.get("TanamSync"):FireClient(player, payload(s, selesai))
+local function sync(player, s: any, selesai: boolean?, tuntas: any?)
+        Net.get("TanamSync"):FireClient(player, payload(s, selesai, tuntas))
 end
 
 function TanamService.syncTo(player)
@@ -104,7 +109,7 @@ function TanamService.start(player, cropId: any, jumlahRaw: any): (boolean, stri
         sesi[player.UserId] = s
         Plot.updateBoard(index)
         sync(player, s)
-        return true, "Sesi tanam " .. info.nama .. " mulai: " .. jumlah .. " plot. Jawab soal untuk membuka 10 plot."
+        return true, "Mulai tanam " .. info.nama
 end
 
 function TanamService.jawab(player, ans: any): (boolean, string)
@@ -114,8 +119,8 @@ function TanamService.jawab(player, ans: any): (boolean, string)
         end
         if s.tertanam >= s.jumlah then
                 sesi[player.UserId] = nil
-                sync(player, nil, true)
-                return true, "Sesi tanam sudah selesai."
+                sync(player, nil, true, { nama = s.nama, total = s.tertanam })
+                return true, "+" .. s.tertanam .. " " .. s.nama
         end
         local n = tonumber(ans)
         if type(n) ~= "number" or n ~= n then
@@ -124,14 +129,14 @@ function TanamService.jawab(player, ans: any): (boolean, string)
         end
         if n ~= s.soal.jawab then
                 sync(player, s)
-                return false, "Salah! Soal tertahan sampai jawabanmu benar."
+                return false, "salah"
         end
         local seeds = Tas.count(player, "benih", s.cropId)
         local batch = math.min(10, s.jumlah - s.tertanam, seeds)
         if batch <= 0 then
                 sesi[player.UserId] = nil
                 sync(player, s, true)
-                return true, "Benih habis. Sesi tanam dihentikan."
+                return true, "Benih habis"
         end
         local targets = Plot.scanTargets(s.index, s.cropId)
         local tanam = 0
@@ -153,16 +158,16 @@ function TanamService.jawab(player, ans: any): (boolean, string)
         if tanam == 0 then
                 sesi[player.UserId] = nil
                 sync(player, s, true)
-                return true, "Plot tidak tersedia lagi. Sesi dihentikan."
+                return true, "Plot tidak tersedia"
         end
         if s.tertanam >= s.jumlah then
                 sesi[player.UserId] = nil
-                sync(player, nil, true)
-                return true, "Benar! Sesi selesai — tertanam " .. s.tertanam .. " " .. s.nama .. ". Panen dengan tombol Punch!"
+                sync(player, nil, true, { nama = s.nama, total = s.tertanam })
+                return true, "+" .. s.tertanam .. " " .. s.nama
         end
         s.soal = SoalLogic.buat(rng, math.floor(s.tertanam / 10) + 1, s.used)
         sync(player, s)
-        return true, "Benar! " .. tanam .. " plot terisi. Soal berikutnya sudah menunggu."
+        return true, "+" .. tanam .. " " .. s.nama
 end
 
 function TanamService.batal(player): (boolean, string)
@@ -171,7 +176,7 @@ function TanamService.batal(player): (boolean, string)
         end
         sesi[player.UserId] = nil
         sync(player, nil, true)
-        return true, "Sesi tanam dibatalkan. Benih yang belum ditanam tetap di tas."
+        return true, "Tanam dibatalkan"
 end
 
 function TanamService.gabung(player, a: any, b: any): (boolean, string)

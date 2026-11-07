@@ -19,6 +19,79 @@ Skor per kriteria 0-10, dikali bobot. Total dihitung dari (skor x bobot) / 10.
 | 8 | Polish & UX (UI, suara, animasi, efek) | 10 | animasi kombat, BGM, partikel | UI rapi & responsif |
 | 9 | Originalitas 100% & aman hak cipta | 5 | - | - |
 
+## Skor v54 (versi LIVE #57, 7 Nov 2026) - REVISI UI & EKONOMI SATU PAKET: PAPAN TANAM TANPA TEKS KUIS + KOIN EMAS MICDA + SALDO AWAL 10.000
+
+Permintaan pemilik (paket lengkap): (1) Panel Papan Tanam disusun layout
+vertikal tanpa posisi manual, tombol Batalkan Sesi Tanam ber tempat sendiri
+di bawah Jawab (tinggi 44 px, tidak tertimpa), panel lebih tinggi/bisa
+discroll, sembunyikan tombol Punch & lompat selama panel terbuka, teks
+"Soal 1 dari 1 — tertanam 0/4" diganti progres sederhana "1/4" + bar
+progres; (2) HAPUS semua pesan gaya kuis ("Benar!", "Sesi selesai",
+"tertanam X ...", "Panen dengan tombol Punch!") beserta area pesan status;
+jawaban benar = tanaman muncul langsung dengan partikel kecil + suara
+pendek + panel menutup sendiri; jawaban salah = kolom input goyang + merah
+sebentar tanpa kalimat; notifikasi toast netral 2 detik "+10 Wortel"
+(jumlah dan nama saja); (3) Ikon "M" diganti koin emas bulat (gradasi +
+kilau + tepi gelap, tanpa huruf) sebagai komponen reusable di HUD, toko,
+jual, klaim, dan notifikasi, proporsional teks, tajam semua layar, tidak
+menggeser angka; (4) Saldo awal player baru = 10.000 Micda.
+
+Diterapkan di #54:
+
+A. **Panel Papan Tanam dibangun ulang tanpa posisi manual** — tab Tanam
+   kini UIListLayout vertikal (kepala -> daftar benih fleksibel UIFlexItem
+   Grow -> umpan balik -> baris angka -> Mulai Tanam); tampilan soal
+   menjadi ScrollingFrame vertikal (AutomaticCanvasSize, muat HP kecil
+   maupun besar) berisi baris progres (bar isi + "1/5"), soal, kolom
+   jawaban, Jawab, dan **Batalkan Sesi Tanam ukuran 44 px ber tempat
+   sendiri di bawah Jawab** — tidak ada lagi elemen bertumpuk; panel
+   tanam dinaikkan ke 760x620.
+B. **Pesan gaya kuis dibuang total** — soalFeedback dihapus; server kini
+   membalas jawaban dengan teks netral pendek ("+10 Wortel" / "salah");
+   "Benar!", "Sesi selesai — tertanam X. Panen dengan tombol Punch!"
+   lenyap dari kode; pesan mulai sesi pendek ("Mulai tanam Wortel").
+C. **Umpan balik bertindak, tidak bercerita** — jawaban salah: kolom
+   memerah (Merah) lalu pulih 0,55 dtk + denyut UIScale 0.96->1.02->1
+   (goyang); jawaban benar: tiap tanaman baru di lahan menyemburkan
+   partikel kecil (ParticleEmitter Emit 14) + suara pendek
+   (rbxasset engine, PlaybackSpeed 1,5), panel MENUTUP SENDIRI saat sesi
+   tuntas (TanamSync selesaiTuntas -> closePanel), notifikasi toast
+   netral toastSaja "+50 Wortel" hilang sendiri 2 detik, dilengkapi koin.
+D. **Komponen Shared/IkonKoin baru** — koin emas bulat 100% karya sendiri
+   (lingkaran gradasi emas, kilau putih, tepi gelap UIStroke, tanpa
+   huruf); dipakai di HUD saldo (mengganti kotak biru "M"), struk klaim
+   semai, baris hasil SEMAI TUNTAS, baris harga konfirmasi beli (toko),
+   baris pratinjau jual, dan toast netral; ukurannya proporsional teks
+   (ukuran(px) = 1,05x, minimum 12) dan tahan input rusak (NaN/nil/teks).
+E. **Sembunyikan tombol Punch & lompat** — selama panel tanam terbuka
+   TombolPunch + bayangan + JumpButton sistem disembunyikan, tampil lagi
+   saat panel tutup (otomatis maupun manual).
+F. **CropData.StartMoney 999.999.999.999.000 -> 10.000** (permintaan
+   pemilik); data pemain lama tidak disentuh; atap 1000 T & anti-cheat
+   tetap berjalan.
+G. **Pengujian**: offline 399 PASS / 0 FAIL (+3: IkonKoin, saldo 10 Rb,
+   ruang rekening baru), playtest 152 PASS / 0 FAIL (+11: koin HUD tanpa
+   huruf M, progres 1/1 tanpa gaya kuis, punch disembunyikan saat panel
+   terbuka, salah=merah tanpa kalimat & pulih, partikel+suara tanaman
+   baru, toast "+10 Wortel" muncul & hilang 2 dtk, panel tutup sendiri,
+   punch kembali, saldo 10.000/7.600), massa 122 PASS / 0 FAIL (+4:
+   progres 1/5, panel tutup sendiri, toast +50 muncul & hilang), luau-lsp
+   0 temuan, rojo build sukses. Publish #57.
+
+| # | Kriteria | Skor | Alasan |
+|---|----------|------|--------|
+| 1 Kombat | 0/10 | Belum ada monster/AI/bos. |
+| 2 Crafting | 4.5/10 | Tetap dari #51. |
+| 3 Stat & Progresi | 1/10 | Tanpa level (sesuai arah pemilik). |
+| 4 Ekonomi | 8/10 | Saldo awal 10.000 (permintaan pemilik); sistem ekonomi (anti-cheat, guard transaksi, HUD besar) tetap utuh. |
+| 5 Dunia & Peta | 7/10 | Tetap dari #51. |
+| 6 Multiplayer | 7/10 | Tetap dari #51. |
+| 7 Bertani | 10/10 | Alur tanam kini bersih tanpa teks kuis; massa 122 hijau. |
+| 8 Polish & UX | 10/10 | Panel tanam bebas tumpukan + koin emas reusable + toast netral 2 dtk + efek tanam bertindak. |
+| 9 Originalitas | 10/10 | IkonKoin digambar penuh dari Frame/Gradient/Stroke karya sendiri; suara dari rbxasset bawaan engine. |
+
+**TOTAL: 58.8/100** (bobot: 0+67.5+10+120+70+70+100+100+50 = 587.5/10 = 58.75)
+
 ## Skor v53 (versi LIVE #53, 7 Nov 2026) - SALDO AWAL 999,99 T + HUD SINGKATAN INDONESIA (Rb/Jt/M/T) + KETUK ANGKA PENUH
 
 Permintaan pemilik: user baru kini dapat 999 Triliun 999 Miliar 999 Juta 999
