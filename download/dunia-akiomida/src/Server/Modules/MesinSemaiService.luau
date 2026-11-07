@@ -5,6 +5,7 @@ local TweenService = game:GetService("TweenService")
 local CropData = require(ReplicatedStorage.Shared.CropData)
 local SemaiLogic = require(ReplicatedStorage.Shared.SemaiLogic)
 local MesinLogika = require(ReplicatedStorage.Shared.MesinLogika)
+local UangLogic = require(ReplicatedStorage.Shared.UangLogic)
 
 local MesinSemaiService = {}
 
@@ -496,12 +497,24 @@ function MesinSemaiService.klaim(player): (boolean, string, any)
         if #items > 0 and not Tas.canFitBatch(player, items) then
                 return false, "Tas penuh! Kosongkan slot dulu, lalu klaim lagi."
         end
+        if b.hasil.micda > 0 and Uang then
+                local ruang = Uang.RuangMicda(player)
+                if ruang < b.hasil.micda then
+                        return false, "Ruangan Micda rekeningmu tinggal " .. UangLogic.format(ruang) .. "! Isi micda lebih dulu, lalu klaim lagi."
+                end
+        end
         for _, it in ipairs(items) do
                 Tas.add(player, it.kind, it.id, it.count)
         end
         local okUang, msgUang = true, "ok"
         if b.hasil.micda > 0 and Uang then
                 okUang, msgUang = Uang.AddMicda(player, b.hasil.micda, "semai_hasil")
+                if not okUang then
+                        if b.hasil.benih > 0 then
+                                Tas.remove(player, "benih", b.crop, b.hasil.benih)
+                        end
+                        return false, "Micda ditunda: " .. tostring(msgUang)
+                end
         end
         local struk = {
                 crop = b.crop,

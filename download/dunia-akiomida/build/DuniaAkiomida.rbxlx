@@ -1981,119 +1981,130 @@ return UIStyle
           <string name="Name">UangLogic</string>
           <string name="Source"><![CDATA[local UangLogic = {}
 
-UangLogic.MaksAksi = 25000
-UangLogic.BatasPerMenit = 24
-UangLogic.JendelaDetik = 60
+UangLogic.MaksSaldo = 1000000000000000
 UangLogic.BatasLedger = 24
 
 UangLogic.Alasan = {
-        jual_hasil = true,
-        beli_benih = true,
-        semai_hasil = true,
-        hadiah = true,
+	jual_hasil = true,
+	beli_benih = true,
+	semai_hasil = true,
+	hadiah = true,
 }
 
 function UangLogic.baru(saldoAwal: number): any
-        return {
-                m = math.max(0, math.floor(tonumber(saldoAwal) or 0)),
-                ledger = {},
-                tick = {},
-        }
+	local m = math.max(0, math.floor(tonumber(saldoAwal) or 0))
+	if m > UangLogic.MaksSaldo then
+		m = UangLogic.MaksSaldo
+	end
+	return {
+		m = m,
+		ledger = {},
+	}
 end
 
 function UangLogic.sah(nilai: any): boolean
-        if type(nilai) ~= "number" or nilai ~= nilai or nilai == math.huge or nilai == -math.huge then
-                return false
-        end
-        if nilai <= 0 or nilai ~= math.floor(nilai) then
-                return false
-        end
-        return true
+	if type(nilai) ~= "number" or nilai ~= nilai or nilai == math.huge or nilai == -math.huge then
+		return false
+	end
+	if nilai <= 0 or nilai ~= math.floor(nilai) then
+		return false
+	end
+	return true
 end
 
 function UangLogic.alasanOk(reason: any): boolean
-        if type(reason) ~= "string" then
-                return false
-        end
-        return UangLogic.Alasan[reason] == true
+	if type(reason) ~= "string" then
+		return false
+	end
+	return UangLogic.Alasan[reason] == true
 end
 
-function UangLogic.bersihTick(st: any, now: number)
-        local i = 1
-        while i <= #st.tick do
-                if now - st.tick[i] > UangLogic.JendelaDetik then
-                        table.remove(st.tick, i)
-                else
-                        i += 1
-                end
-        end
-end
-
-local function catat(st: any, now: number, delta: number, reason: string, status: string)
-        table.insert(st.ledger, { t = math.floor(now), d = delta, r = reason, s = status })
-        while #st.ledger > UangLogic.BatasLedger do
-                table.remove(st.ledger, 1)
-        end
-end
-
-local function gerbang(st: any, amount: any, reason: any, now: number, arah: string): (boolean, string, any)
-        if not UangLogic.sah(amount) then
-                return false, "Jumlah Micda tidak sah.", nil
-        end
-        if not UangLogic.alasanOk(reason) then
-                return false, "Alasan transaksi tidak sah.", nil
-        end
-        if amount > UangLogic.MaksAksi then
-                return false, "Transaksi melebihi batas atas.", "lonjakan"
-        end
-        UangLogic.bersihTick(st, now)
-        if #st.tick >= UangLogic.BatasPerMenit then
-                return false, "Terlalu banyak transaksi. Tunggu sebentar.", "laju"
-        end
-        if arah == "keluar" and st.m < amount then
-                return false, "Micda tidak cukup.", nil
-        end
-        return true, "ok", nil
-end
-
-function UangLogic.tambah(st: any, amount: any, reason: any, now: number): (boolean, string)
-        local ok, msg, flag = gerbang(st, amount, reason, now, "masuk")
-        if not ok then
-                if flag then
-                        catat(st, now, 0, tostring(reason), "tolak_" .. flag)
-                end
-                return false, msg
-        end
-        st.m += amount
-        table.insert(st.tick, now)
-        catat(st, now, amount, reason, "ok")
-        return true, "ok"
-end
-
-function UangLogic.bayar(st: any, amount: any, reason: any, now: number): (boolean, string)
-        local ok, msg, flag = gerbang(st, amount, reason, now, "keluar")
-        if not ok then
-                if flag then
-                        catat(st, now, 0, tostring(reason), "tolak_" .. flag)
-                end
-                return false, msg
-        end
-        st.m -= amount
-        table.insert(st.tick, now)
-        catat(st, now, -amount, reason, "ok")
-        return true, "ok"
-end
-
-function UangLogic.ledgerOf(st: any): { any }
-        local out = {}
-        for _, l in ipairs(st.ledger) do
-                table.insert(out, { t = l.t, d = l.d, r = l.r, s = l.s })
-        end
-        return out
+function UangLogic.format(n: number): string
+	if type(n) ~= "number" or n ~= n or n == math.huge or n == -math.huge then
+		return tostring(n)
+	end
+	local neg = n < 0
+	local v = math.floor(math.abs(n))
+	local parts = {}
+	repeat
+		table.insert(parts, 1, string.format("%03d", v % 1000))
+		v = math.floor(v / 1000)
+	until v == 0
+	parts[1] = tostring(tonumber(parts[1]))
+	return (neg and "-" or "") .. table.concat(parts, ".")
 end
 
 function UangLogic.saldo(st: any): number
-        return st.m
+	if type(st) ~= "table" or type(st.m) ~= "number" then
+		return 0
+	end
+	return st.m
+end
+
+function UangLogic.ruangSisa(st: any): number
+	local sisa = UangLogic.MaksSaldo - UangLogic.saldo(st)
+	if sisa < 0 then
+		return 0
+	end
+	return sisa
+end
+
+local function catat(st: any, now: number, delta: number, reason: string)
+	table.insert(st.ledger, { t = math.floor(now), d = delta, r = reason, s = "ok" })
+	while #st.ledger > UangLogic.BatasLedger do
+		table.remove(st.ledger, 1)
+	end
+end
+
+local function gerbang(st: any, amount: any, reason: any, arah: string): (boolean, string)
+	if not UangLogic.sah(amount) then
+		return false, "Jumlah Micda tidak sah."
+	end
+	if not UangLogic.alasanOk(reason) then
+		return false, "Alasan transaksi tidak sah."
+	end
+	if arah == "masuk" then
+		local sisa = UangLogic.ruangSisa(st)
+		if sisa < 1 then
+			return false, "Rekening Micda sudah penuh! Batas maksimal " .. UangLogic.format(UangLogic.MaksSaldo) .. " Micda (1000 T)."
+		end
+		if amount > sisa then
+			return false, "Ruangan Micda tinggal " .. UangLogic.format(sisa) .. "! Lakukan dalam bagian lebih kecil."
+		end
+	else
+		if UangLogic.saldo(st) < amount then
+			return false, "Micda tidak cukup."
+		end
+	end
+	return true, "ok"
+end
+
+function UangLogic.tambah(st: any, amount: any, reason: any, now: number): (boolean, string)
+	local ok, msg = gerbang(st, amount, reason, "masuk")
+	if not ok then
+		return false, msg
+	end
+	st.m += amount
+	catat(st, now, amount, tostring(reason))
+	return true, "ok"
+end
+
+function UangLogic.bayar(st: any, amount: any, reason: any, now: number): (boolean, string)
+	local ok, msg = gerbang(st, amount, reason, "keluar")
+	if not ok then
+		return false, msg
+	end
+	st.m -= amount
+	catat(st, now, -amount, tostring(reason))
+	return true, "ok"
+end
+
+function UangLogic.ledgerOf(st: any): { any }
+	local out = {}
+	for _, l in ipairs(st.ledger) do
+		table.insert(out, { t = l.t, d = l.d, r = l.r, s = l.s })
+	end
+	return out
 end
 
 return UangLogic
@@ -2140,6 +2151,23 @@ local function notify(player: Player, title: string, msg: string)
 end
 
 CurrencyService.bind({ Data = DataService, Audit = AuditService })
+AuditService.bind({
+        Data = DataService,
+        Simpan = function(p: Player)
+                DataService.markDirty(p)
+                DataService.save(p)
+        end,
+})
+
+local function denganTransaksi(player: Player, fn)
+        AuditService.transaksiMulai(player)
+        local ok, a, b, c = pcall(fn)
+        AuditService.transaksiSelesai(player)
+        if not ok then
+                return false, "Terjadi galat. Coba lagi."
+        end
+        return a, b, c
+end
 
 local deps = {
         Land = LandService,
@@ -2342,26 +2370,34 @@ Net.get("DuniaAct").OnServerInvoke = function(player, action, arg)
 end
 
 Net.get("PlotAct").OnServerInvoke = function(player, idx, action)
-        if not RateLimit.allow(player.UserId, "punch", 10, 14) then
+        if not RateLimit.allow(player.UserId, "punch", 12, 18) then
                 return lajuDitolak(player, "punch")
         end
         if action == "punch" then
-                return PlotService.punch(player, idx)
+                return denganTransaksi(player, function()
+                        return PlotService.punch(player, idx)
+                end)
         end
         AuditService.catat(player, "argumen", "plot:" .. tostring(action))
         return false, "Aksi tidak dikenal."
 end
 
 Net.get("TanamAct").OnServerInvoke = function(player, action, a, b)
-        if not RateLimit.allow(player.UserId, "tanam", 3, 6) then
+        if not RateLimit.allow(player.UserId, "tanam", 6, 10) then
                 return lajuDitolak(player, "tanam")
         end
         if action == "start" then
-                return TanamService.start(player, a, b)
+                return denganTransaksi(player, function()
+                        return TanamService.start(player, a, b)
+                end)
         elseif action == "jawab" then
-                return TanamService.jawab(player, a)
+                return denganTransaksi(player, function()
+                        return TanamService.jawab(player, a)
+                end)
         elseif action == "gabung" then
-                return TanamService.gabung(player, a, b)
+                return denganTransaksi(player, function()
+                        return TanamService.gabung(player, a, b)
+                end)
         elseif action == "status" then
                 return true, TanamService.statusPayload(player)
         elseif action == "batal" then
@@ -2372,20 +2408,24 @@ Net.get("TanamAct").OnServerInvoke = function(player, action, a, b)
 end
 
 Net.get("GudangAct").OnServerInvoke = function(player, action, a, b)
-        if not RateLimit.allow(player.UserId, "gudang", 3, 6) then
+        if not RateLimit.allow(player.UserId, "gudang", 6, 10) then
                 return lajuDitolak(player, "gudang")
         end
         if action == "simpan" then
-                return GudangService.simpan(player, a, b)
+                return denganTransaksi(player, function()
+                        return GudangService.simpan(player, a, b)
+                end)
         elseif action == "ambil" then
-                return GudangService.ambil(player, a, b)
+                return denganTransaksi(player, function()
+                        return GudangService.ambil(player, a, b)
+                end)
         end
         AuditService.catat(player, "argumen", "gudang:" .. tostring(action))
         return false, "Aksi tidak dikenal."
 end
 
 Net.get("SemaiAct").OnServerInvoke = function(player, action, a, b)
-        if not RateLimit.allow(player.UserId, "semai", 6, 8) then
+        if not RateLimit.allow(player.UserId, "semai", 8, 12) then
                 return lajuDitolak(player, "semai")
         end
         local deny = ZonaService.mutationDeny(player)
@@ -2393,24 +2433,34 @@ Net.get("SemaiAct").OnServerInvoke = function(player, action, a, b)
                 return false, deny
         end
         if action == "atur" then
-                return MesinSemaiService.atur(player, a, b)
+                return denganTransaksi(player, function()
+                        return MesinSemaiService.atur(player, a, b)
+                end)
         elseif action == "tuas" then
-                return MesinSemaiService.tekan(player, a)
+                return denganTransaksi(player, function()
+                        return MesinSemaiService.tekan(player, a)
+                end)
         elseif action == "klaim" then
-                return MesinSemaiService.klaim(player)
+                return denganTransaksi(player, function()
+                        return MesinSemaiService.klaim(player)
+                end)
         end
         AuditService.catat(player, "argumen", "semai:" .. tostring(action))
         return false, "Aksi tidak dikenal."
 end
 
 Net.get("ShopAct").OnServerInvoke = function(player, action, a, b)
-        if not RateLimit.allow(player.UserId, "shop", 5, 10) then
+        if not RateLimit.allow(player.UserId, "shop", 8, 14) then
                 return lajuDitolak(player, "shop")
         end
         if action == "buy" then
-                return ShopService.buy(player, a)
+                return denganTransaksi(player, function()
+                        return ShopService.buy(player, a)
+                end)
         elseif action == "sell" then
-                return ShopService.sell(player, a, b)
+                return denganTransaksi(player, function()
+                        return ShopService.sell(player, a, b)
+                end)
         end
         AuditService.catat(player, "argumen", "shop:" .. tostring(action))
         return false, "Aksi tidak dikenal."
@@ -2436,8 +2486,9 @@ end
 
 DataService.startLoops()
 ZonaService.startLoops()
+CurrencyService.startIntegritas()
 
-print("[AKIOMIDA] Server-authoritative: CurrencyService, klaim atomik, kunci sesi, ledger siap.")
+print("[AKIOMIDA] Server-authoritative: ekonomi 1000T, deteksi anomali tanpa batas angka tetap, transaksi terjaga, kick aman-data siap.")
 ]]></string>
       </Properties>
       <Item class="Folder" referent="33">
@@ -2451,81 +2502,135 @@ print("[AKIOMIDA] Server-authoritative: CurrencyService, klaim atomik, kunci ses
 
 local clock = os.time
 
-local JENDELA = 300
-local BATAS_KICK = 20
-local insiden: { [number]: any } = {}
+local AMBANG = 100
+local JENDELA = 3600
 
-local JENIS = {
-        micda_tolak = true,
-        laju = true,
-        argumen = true,
-        jarak = true,
-        milik = true,
-        klaim_ganda = true,
-        drop_tidak_sah = true,
-        sesi_ganda = true,
+local Data: any = nil
+local Simpan: any = nil
+local eksekutor: any = nil
+
+local insiden: { [number]: { any } } = {}
+local transaksi: { [number]: number } = {}
+
+AuditService.Bobot = {
+	uang_korup = 100,
+	uang_lebih = 100,
+	sumber_tak_dikenal = 60,
+	sesi_anomali = 20,
 }
 
-function AuditService.setClock(fn)
-        clock = fn
+function AuditService.bind(deps)
+	Data = deps and deps.Data or nil
+	Simpan = deps and deps.Simpan or nil
 end
 
-local function bersih(userId: number, now: number)
-        local arr = insiden[userId]
-        if not arr then
-                return
-        end
-        local i = 1
-        while i <= #arr do
-                if now - arr[i].t > JENDELA then
-                        table.remove(arr, i)
-                else
-                        i += 1
-                end
-        end
+function AuditService.setClock(fn)
+	clock = fn
+end
+
+function AuditService.setEksekutor(fn)
+	eksekutor = fn
 end
 
 function AuditService.catat(player: Player, jenis: string, detail: string)
-        if type(jenis) ~= "string" or not JENIS[jenis] then
-                return
-        end
-        if not player or not player.UserId then
-                return
-        end
-        local now = clock()
-        local userId = player.UserId
-        local arr = insiden[userId]
-        if not arr then
-                arr = {}
-                insiden[userId] = arr
-        end
-        table.insert(arr, { t = now, k = jenis })
-        bersih(userId, now)
-        print(string.format("[AUDIT] user=%d jenis=%s detail=%s jumlah5m=%d", userId, jenis, tostring(detail):sub(1, 120), #arr))
-        if #arr >= BATAS_KICK then
-                local nama = player.Name
-                insiden[userId] = {}
-                print(string.format("[AUDIT] kick user=%d nama=%s pelanggaran berulang", userId, nama))
-                task.spawn(function()
-                        pcall(function()
-                                player:Kick("Aktivitas tidak sah terdeteksi berulang.")
-                        end)
-                end)
-        end
+	if type(jenis) ~= "string" or not player or not player.UserId then
+		return
+	end
+	print(string.format("[AUDIT] log user=%d jenis=%s detail=%s", player.UserId, jenis, tostring(detail):sub(1, 120)))
 end
 
-function AuditService.jumlah(userId: number): number
-        local arr = insiden[userId]
-        if not arr then
-                return 0
-        end
-        bersih(userId, clock())
-        arr = insiden[userId]
-        return arr and #arr or 0
+local function bersih(userId: number, now: number)
+	local arr = insiden[userId]
+	if not arr then
+		return
+	end
+	local i = 1
+	while i <= #arr do
+		if now - arr[i].t > JENDELA then
+			table.remove(arr, i)
+		else
+			i += 1
+		end
+	end
+end
+
+local function kickAmanInternal(player: Player, alasan: string)
+	local userId = player.UserId
+	local nama = player.Name
+	print(string.format("[AUDIT] kick-aman user=%d nama=%s alasan=%s", userId, nama, tostring(alasan):sub(1, 120)))
+	task.spawn(function()
+		if Simpan then
+			pcall(Simpan, player)
+		end
+		local t0 = clock()
+		while AuditService.sedangTransaksi(player) and clock() - t0 < 8 do
+			task.wait(0.2)
+		end
+		if Simpan then
+			pcall(Simpan, player)
+		end
+		pcall(function()
+			player:Kick("Aktivitas tidak mungkin terdeteksi. Data kamu sudah disimpan dengan aman.")
+		end)
+	end)
+end
+
+function AuditService.anomali(player: Player, jenis: string, detail: string): boolean
+	if type(jenis) ~= "string" or not player or not player.UserId then
+		return false
+	end
+	local bobot = AuditService.Bobot[jenis]
+	if not bobot then
+		return false
+	end
+	local userId = player.UserId
+	local now = clock()
+	bersih(userId, now)
+	local arr = insiden[userId]
+	if not arr then
+		arr = {}
+		insiden[userId] = arr
+	end
+	table.insert(arr, { t = now, b = bobot, k = jenis })
+	local total = 0
+	for _, e in ipairs(arr) do
+		total += e.b
+	end
+	print(string.format("[AUDIT] anomali user=%d jenis=%s detail=%s bobot=%d total=%d", userId, jenis, tostring(detail):sub(1, 120), bobot, total))
+	if total >= AMBANG then
+		insiden[userId] = {}
+		if eksekutor then
+			eksekutor(player, "anomali:" .. jenis)
+		else
+			kickAmanInternal(player, "anomali:" .. jenis)
+		end
+		return true
+	end
+	return false
+end
+
+function AuditService.transaksiMulai(player: Player)
+	if player and player.UserId then
+		transaksi[player.UserId] = (transaksi[player.UserId] or 0) + 1
+	end
+end
+
+function AuditService.transaksiSelesai(player: Player)
+	if player and player.UserId and transaksi[player.UserId] then
+		transaksi[player.UserId] = math.max(0, transaksi[player.UserId] - 1)
+	end
+end
+
+function AuditService.sedangTransaksi(player: Player): boolean
+	if not player or not player.UserId then
+		return false
+	end
+	return (transaksi[player.UserId] or 0) > 0
 end
 
 function AuditService.bersih(userId: number)
-        insiden[userId] = nil
+	insiden[userId] = nil
+	transaksi[userId] = nil
 end
 
 return AuditService
@@ -3348,7 +3453,8 @@ return BuildingKit
         <Item class="ModuleScript" referent="36">
           <Properties>
             <string name="Name">CurrencyService</string>
-            <string name="Source"><![CDATA[local ReplicatedStorage = game:GetService("ReplicatedStorage")
+            <string name="Source"><![CDATA[local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local UangLogic = require(ReplicatedStorage.Shared.UangLogic)
 
@@ -3358,66 +3464,103 @@ local Data, Audit
 local clock = os.time
 
 function CurrencyService.bind(deps)
-        Data = deps.Data
-        Audit = deps.Audit
+	Data = deps.Data
+	Audit = deps.Audit
 end
 
 function CurrencyService.setClock(fn)
-        clock = fn
+	clock = fn
 end
 
 local function st(player)
-        return Data.uangState(player)
+	return Data.uangState(player)
 end
 
 function CurrencyService.GetMicda(player: Player): number
-        local s = st(player)
-        if not s then
-                return 0
-        end
-        return UangLogic.saldo(s)
+	local s = st(player)
+	if not s then
+		return 0
+	end
+	return UangLogic.saldo(s)
+end
+
+function CurrencyService.RuangMicda(player: Player): number
+	local s = st(player)
+	if not s then
+		return 0
+	end
+	return UangLogic.ruangSisa(s)
 end
 
 function CurrencyService.AddMicda(player: Player, amountRaw: any, reason: any): (boolean, string)
-        local s = st(player)
-        if not s then
-                return false, "Data belum siap."
-        end
-        local ok, msg = UangLogic.tambah(s, amountRaw, reason, clock())
-        if not ok then
-                if Audit then
-                        Audit.catat(player, "micda_tolak", tostring(reason) .. "|" .. tostring(amountRaw))
-                end
-                return false, msg
-        end
-        Data.markDirty(player)
-        Data.push(player)
-        return true, "ok"
+	local s = st(player)
+	if not s then
+		return false, "Data belum siap."
+	end
+	local ok, msg = UangLogic.tambah(s, amountRaw, reason, clock())
+	if not ok then
+		if Audit then
+			Audit.catat(player, "micda_tolak", tostring(reason) .. "|" .. tostring(amountRaw))
+		end
+		return false, msg
+	end
+	Data.markDirty(player)
+	Data.push(player)
+	return true, "ok"
 end
 
 function CurrencyService.SpendMicda(player: Player, amountRaw: any, reason: any): (boolean, string)
-        local s = st(player)
-        if not s then
-                return false, "Data belum siap."
-        end
-        local ok, msg = UangLogic.bayar(s, amountRaw, reason, clock())
-        if not ok then
-                if Audit then
-                        Audit.catat(player, "micda_tolak", tostring(reason) .. "|" .. tostring(amountRaw))
-                end
-                return false, msg
-        end
-        Data.markDirty(player)
-        Data.push(player)
-        return true, "ok"
+	local s = st(player)
+	if not s then
+		return false, "Data belum siap."
+	end
+	local ok, msg = UangLogic.bayar(s, amountRaw, reason, clock())
+	if not ok then
+		if Audit then
+			Audit.catat(player, "micda_tolak", tostring(reason) .. "|" .. tostring(amountRaw))
+		end
+		return false, msg
+	end
+	Data.markDirty(player)
+	Data.push(player)
+	return true, "ok"
 end
 
 function CurrencyService.ledgerOf(player: Player): { any }
-        local s = st(player)
-        if not s then
-                return {}
-        end
-        return UangLogic.ledgerOf(s)
+	local s = st(player)
+	if not s then
+		return {}
+	end
+	return UangLogic.ledgerOf(s)
+end
+
+function CurrencyService.startIntegritas()
+	task.spawn(function()
+		while true do
+			task.wait(45)
+			for _, p in ipairs(Players:GetPlayers()) do
+				local s = st(p)
+				if s then
+					local m = UangLogic.saldo(s)
+					if m ~= m or m < 0 then
+						s.m = 0
+						Data.markDirty(p)
+						Data.push(p)
+						if Audit then
+							Audit.anomali(p, "uang_korup", "saldo " .. tostring(m))
+						end
+					elseif m > UangLogic.MaksSaldo then
+						s.m = UangLogic.MaksSaldo
+						Data.markDirty(p)
+						Data.push(p)
+						if Audit then
+							Audit.anomali(p, "uang_lebih", "saldo " .. UangLogic.format(m))
+						end
+					end
+				end
+			end
+		end
+	end)
 end
 
 return CurrencyService
@@ -3561,7 +3704,7 @@ function DataService.load(player: Player): (boolean, string?, number)
         end
         local tasBersih, dibuang = SanitasiTas.bersih(data.t, CropData.byId)
         cache[userId] = {
-                u = { m = data.u.m, ledger = type(data.u.ledger) == "table" and data.u.ledger or {}, tick = {} },
+                u = { m = data.u.m, ledger = type(data.u.ledger) == "table" and data.u.ledger or {} },
                 t = tasBersih,
                 dev = data.dev == true,
         }
@@ -4423,6 +4566,7 @@ local TweenService = game:GetService("TweenService")
 local CropData = require(ReplicatedStorage.Shared.CropData)
 local SemaiLogic = require(ReplicatedStorage.Shared.SemaiLogic)
 local MesinLogika = require(ReplicatedStorage.Shared.MesinLogika)
+local UangLogic = require(ReplicatedStorage.Shared.UangLogic)
 
 local MesinSemaiService = {}
 
@@ -4914,12 +5058,24 @@ function MesinSemaiService.klaim(player): (boolean, string, any)
         if #items > 0 and not Tas.canFitBatch(player, items) then
                 return false, "Tas penuh! Kosongkan slot dulu, lalu klaim lagi."
         end
+        if b.hasil.micda > 0 and Uang then
+                local ruang = Uang.RuangMicda(player)
+                if ruang < b.hasil.micda then
+                        return false, "Ruangan Micda rekeningmu tinggal " .. UangLogic.format(ruang) .. "! Isi micda lebih dulu, lalu klaim lagi."
+                end
+        end
         for _, it in ipairs(items) do
                 Tas.add(player, it.kind, it.id, it.count)
         end
         local okUang, msgUang = true, "ok"
         if b.hasil.micda > 0 and Uang then
                 okUang, msgUang = Uang.AddMicda(player, b.hasil.micda, "semai_hasil")
+                if not okUang then
+                        if b.hasil.benih > 0 then
+                                Tas.remove(player, "benih", b.crop, b.hasil.benih)
+                        end
+                        return false, "Micda ditunda: " .. tostring(msgUang)
+                end
         end
         local struk = {
                 crop = b.crop,
@@ -5705,6 +5861,7 @@ return RateLimit
 
 local CropData = require(ReplicatedStorage.Shared.CropData)
 local StrukBeli = require(ReplicatedStorage.Shared.StrukBeli)
+local UangLogic = require(ReplicatedStorage.Shared.UangLogic)
 
 local ShopService = {}
 
@@ -5799,9 +5956,20 @@ function ShopService.sell(player, cropId: any, count: any): (boolean, string)
         end
         local info = CropData.byId[cropId]
         local total = info.jual * n
-        Tas.remove(player, "hasil", cropId, n)
-        Uang.AddMicda(player, total, "jual_hasil")
-        return true, "Terjual " .. n .. " " .. info.nama .. " (+" .. total .. " Micda)."
+        local ruang = Uang and Uang.RuangMicda and Uang.RuangMicda(player) or math.huge
+        if total > ruang then
+                return false, "Ruangan Micda rekeningmu tinggal " .. UangLogic.format(ruang) .. "! Jual dalam bagian lebih kecil."
+        end
+        local diambil = Tas.remove(player, "hasil", cropId, n)
+        if diambil < 1 then
+                return false, "Hasil panen tidak bisa diambil dari tas."
+        end
+        local okUang = Uang and Uang.AddMicda(player, total, "jual_hasil")
+        if not okUang then
+                Tas.add(player, "hasil", cropId, diambil)
+                return false, "Penjualan ditunda sebentar. Barangmu dikembalikan utuh ke tas."
+        end
+        return true, "Terjual " .. diambil .. " " .. info.nama .. " (+" .. UangLogic.format(total) .. " Micda)."
 end
 
 return ShopService
@@ -7076,6 +7244,7 @@ local gui = mk("ScreenGui", {
         ResetOnSpawn = false,
         IgnoreGuiInset = true,
         ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+        DisplayOrder = 50,
 }, playerGui)
 
 local camera = Workspace.CurrentCamera
@@ -7232,6 +7401,7 @@ local panels = {}
 local currentPanel: string? = nil
 
 local zoomTersimpan: any? = nil
+local kameraTipeTersimpan: any? = nil
 
 local function kunciKamera()
         if zoomTersimpan then
@@ -7242,6 +7412,8 @@ local function kunciKamera()
         player.CameraMinZoomDistance = mn
         player.CameraMaxZoomDistance = mx
         zoomTersimpan = simpan
+        kameraTipeTersimpan = camera.CameraType
+        camera.CameraType = Enum.CameraType.Scriptable
 end
 
 local function bukaKamera()
@@ -7252,6 +7424,8 @@ local function bukaKamera()
         player.CameraMinZoomDistance = mn
         player.CameraMaxZoomDistance = mx
         zoomTersimpan = nil
+        camera.CameraType = kameraTipeTersimpan or Enum.CameraType.Custom
+        kameraTipeTersimpan = nil
 end
 
 local function closePanel()

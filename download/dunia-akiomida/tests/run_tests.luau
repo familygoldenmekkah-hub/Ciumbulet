@@ -789,7 +789,7 @@ do
         check("Input rusak aman", UIStyle.potong(nil) == "?" and UIStyle.potong(9) == "?", "-")
 end
 
-print("--- H: Keamanan Micda (server-authoritative, simulasi exploit) ---")
+print("--- H: Ekonomi raksasa tanpa batas angka tetap (server-authoritative) ---")
 do
         local UangLogic = require("./../src/Shared/UangLogic")
         local st = UangLogic.baru(900000)
@@ -807,27 +807,34 @@ do
         local a8 = UangLogic.tambah(st, "500", "jual_hasil", 100)
         check("Micda palsu/negatif/NaN/inf/tipe salah semua ditolak", not a1 and not a2 and not a3 and not a4 and not a5 and not a6 and not a7 and not a8, tostring(a1) .. tostring(a4))
         check("Saldo tidak berubah oleh percobaan ilegal", UangLogic.saldo(st) == 900050, tostring(UangLogic.saldo(st)))
-        local spike = UangLogic.tambah(st, UangLogic.MaksAksi + 1, "hadiah", 100)
-        check("Lonjakan saldo melebihi batas ditolak", not spike and UangLogic.saldo(st) == 900050, tostring(UangLogic.saldo(st)))
-        check("Ledger mencatat penolakan lonjakan", UangLogic.ledgerOf(st)[2] ~= nil and UangLogic.ledgerOf(st)[2].s == "tolak_lonjakan", tostring(UangLogic.ledgerOf(st)[2] and UangLogic.ledgerOf(st)[2].s))
-        local b1 = UangLogic.bayar(st, 999999999, "beli_benih", 100)
-        check("Bayar melebihi saldo ditolak, saldo tak minus", not b1 and UangLogic.saldo(st) == 900050, tostring(UangLogic.saldo(st)))
-        local b2 = UangLogic.bayar(st, 2400, "beli_benih", 101)
-        check("Bayar sah mengurangi saldo tepat", b2 and UangLogic.saldo(st) == 897650, tostring(UangLogic.saldo(st)))
-        check("Bayar dengan alasan asing ditolak", not UangLogic.bayar(st, 1, "curang", 101), "-")
+        local mega = UangLogic.tambah(st, 500000000000, "jual_hasil", 101)
+        check("Transaksi raksasa (500 M) DITERIMA - tidak ada lagi batas angka tetap", mega and UangLogic.saldo(st) == 900050 + 500000000000, tostring(UangLogic.saldo(st)))
+        check("Tidak ada lagi MaksAksi / BatasPerMenit di UangLogic", UangLogic.MaksAksi == nil and UangLogic.BatasPerMenit == nil and UangLogic.JendelaDetik == nil, "-")
         local st2 = UangLogic.baru(0)
-        local lajuOk, lajuTolak = 0, 0
-        for i = 1, UangLogic.BatasPerMenit + 3 do
-                local okL = UangLogic.tambah(st2, 1, "semai_hasil", i)
-                if okL then
+        local lajuOk = 0
+        for i = 1, 30 do
+                if UangLogic.tambah(st2, 1000000, "semai_hasil", i) then
                         lajuOk += 1
-                else
-                        lajuTolak += 1
                 end
         end
-        check("Batas transaksi per menit ditegakkan", lajuOk == UangLogic.BatasPerMenit and lajuTolak == 3, tostring(lajuOk) .. "/" .. tostring(lajuTolak))
-        local okLagi = UangLogic.tambah(st2, 1, "semai_hasil", UangLogic.JendelaDetik + 2)
-        check("Jendela laju terbuka lagi setelah 60 detik", okLagi, "-")
+        check("30 transaksi cepat berturut-turut semua lolos (aksi cepat bukan kecurangan)", lajuOk == 30, tostring(lajuOk))
+        check("Saldo 30 juta utuh", UangLogic.saldo(st2) == 30000000, tostring(UangLogic.saldo(st2)))
+        local tolakRuang = UangLogic.tambah(st2, UangLogic.MaksSaldo, "hadiah", 200)
+        check("Tambah melebihi ruang rekening ditolak dengan aturan ruang (bukan tuduhan kecurangan)", not tolakRuang and UangLogic.saldo(st2) == 30000000, tostring(UangLogic.saldo(st2)))
+        local penuh = UangLogic.baru(UangLogic.MaksSaldo)
+        local tolakPenuh = UangLogic.tambah(penuh, 1, "hadiah", 300)
+        check("Rekening 1000 T penuh: tambah 1 Micda lagi ditolak dengan pesan jelas", not tolakPenuh and UangLogic.saldo(penuh) == UangLogic.MaksSaldo, tostring(tolakPenuh))
+        check("Batas rekening = 1000 Triliun", UangLogic.MaksSaldo == 1000000000000000, tostring(UangLogic.MaksSaldo))
+        check("ruangSisa di rekening penuh = 0", UangLogic.ruangSisa(penuh) == 0, tostring(UangLogic.ruangSisa(penuh)))
+        check("ruangSisa menghitung ruang tersisa", UangLogic.ruangSisa(st2) == UangLogic.MaksSaldo - 30000000, "-")
+        check("Data lama melebihi batas dijepit saat dimuat", UangLogic.saldo(UangLogic.baru(2000000000000000)) == UangLogic.MaksSaldo, "-")
+        check("Format angka besar pakai titik ribuan", UangLogic.format(1000000000000000) == "1.000.000.000.000.000" and UangLogic.format(50) == "50" and UangLogic.format(2500000) == "2.500.000", UangLogic.format(1000000000000000))
+        check("Format aman untuk input rusak", UangLogic.format(0 / 0) ~= nil and UangLogic.format(-1250000) == "-1.250.000", UangLogic.format(-1250000))
+        local b1 = UangLogic.bayar(st, 999999999999, "beli_benih", 100)
+        check("Bayar melebihi saldo ditolak, saldo tak minus", not b1 and UangLogic.saldo(st) == 900050 + 500000000000, tostring(UangLogic.saldo(st)))
+        local b2 = UangLogic.bayar(st, 2400, "beli_benih", 101)
+        check("Bayar sah mengurangi saldo tepat", b2 and UangLogic.saldo(st) == 900050 + 500000000000 - 2400, tostring(UangLogic.saldo(st)))
+        check("Bayar dengan alasan asing ditolak", not UangLogic.bayar(st, 1, "curang", 101), "-")
         local st3 = UangLogic.baru(0)
         for i = 1, UangLogic.BatasLedger + 10 do
                 UangLogic.tambah(st3, 1, "semai_hasil", i)
@@ -835,6 +842,61 @@ do
         check("Ledger terpotong ke batas penyimpanan", #UangLogic.ledgerOf(st3) == UangLogic.BatasLedger, tostring(#UangLogic.ledgerOf(st3)))
         check("Whitelist alasan transaksi", UangLogic.alasanOk("jual_hasil") and UangLogic.alasanOk("beli_benih") and UangLogic.alasanOk("semai_hasil") and UangLogic.alasanOk("hadiah") and not UangLogic.alasanOk(" cheat "), "-")
 end
+
+print("--- H2: Audit baru - anomali dulu, bukan angka besar; kick aman-data ---")
+do
+        local AuditService = require("./../src/Server/Modules/AuditService")
+        local UangLogic = require("./../src/Shared/UangLogic")
+        local dikick, alasanKick = 0, ""
+        local pemain = {
+                UserId = 777,
+                Name = "PetaniHebat",
+                Kick = function(_, msg)
+                        dikick += 1
+                        alasanKick = msg
+                end,
+        }
+        local ditolak = 0
+        for i = 1, 40 do
+                AuditService.catat(pemain, "micda_tolak", "jual_hasil|" .. i)
+                AuditService.catat(pemain, "laju", "shop")
+                AuditService.catat(pemain, "argumen", "plot:hax")
+                AuditService.catat(pemain, "jarak", "drop 1")
+                AuditService.catat(pemain, "milik", "drop 2")
+                AuditService.catat(pemain, "klaim_ganda", "drop 3")
+                AuditService.catat(pemain, "drop_tidak_sah", "drop 4")
+                ditolak += 1
+        end
+        check("40x penolakan biasa (280 event) TIDAK pernah menendang siapa pun", dikick == 0, tostring(dikick))
+        local kickTerakhir = 0
+        AuditService.setEksekutor(function(p, a)
+                kickTerakhir += 1
+                alasanKick = a
+        end)
+        AuditService.setClock(function()
+                return 1000
+        end)
+        local kena = AuditService.anomali(pemain, "sumber_tak_dikenal", "tes bobot 60")
+        check("Anomali bobot 60 di bawah ambang belum menendang", not kena and dikick == 0 and kickTerakhir == 0, tostring(kickTerakhir))
+        kena = AuditService.anomali(pemain, "sumber_tak_dikenal", "tes bobot 60 kedua")
+        check("Anomali berulang mencapai ambang 100 -> kick aman dipicu", kena and kickTerakhir == 1 and string.find(alasanKick, "sumber_tak_dikenal", 1, true) ~= nil, tostring(kickTerakhir) .. "/" .. tostring(alasanKick))
+        local pemain2 = { UserId = 888, Name = "PetaniRajin", Kick = function() dikick += 1 end }
+        AuditService.anomali(pemain2, "uang_korup", "tes korup")
+        check("Anomali uang_korup (bobot 100) langsung mencapai ambang", kickTerakhir == 2, tostring(kickTerakhir))
+        AuditService.transaksiMulai(pemain2)
+        check("Sedang transaksi terdeteksi saat guard terbuka", AuditService.sedangTransaksi(pemain2), "-")
+        AuditService.transaksiMulai(pemain2)
+        AuditService.transaksiSelesai(pemain2)
+        check("Guard bertingkat: satu transaksi lagi masih jalan", AuditService.sedangTransaksi(pemain2), "-")
+        AuditService.transaksiSelesai(pemain2)
+        check("Guard tertutup rapih setelah semua transaksi selesai", not AuditService.sedangTransaksi(pemain2), "-")
+        check("Jenis anomali tak dikenal diabaikan", not AuditService.anomali(pemain2, "jenis_aneh", "tes"), "-")
+        AuditService.bersih(777)
+        AuditService.setEksekutor(nil)
+        AuditService.setClock(os.time)
+        check("Ledger uang mencatat tanpa status tolak_laju/lonjakan (semua tolak hanya log)", UangLogic.ledgerOf(UangLogic.baru(0))[1] == nil, "-")
+end
+
 
 print("--- I: Kunci sesi (anti-dua-server) ---")
 do

@@ -28,6 +28,23 @@ local function notify(player: Player, title: string, msg: string)
 end
 
 CurrencyService.bind({ Data = DataService, Audit = AuditService })
+AuditService.bind({
+        Data = DataService,
+        Simpan = function(p: Player)
+                DataService.markDirty(p)
+                DataService.save(p)
+        end,
+})
+
+local function denganTransaksi(player: Player, fn)
+        AuditService.transaksiMulai(player)
+        local ok, a, b, c = pcall(fn)
+        AuditService.transaksiSelesai(player)
+        if not ok then
+                return false, "Terjadi galat. Coba lagi."
+        end
+        return a, b, c
+end
 
 local deps = {
         Land = LandService,
@@ -230,26 +247,34 @@ Net.get("DuniaAct").OnServerInvoke = function(player, action, arg)
 end
 
 Net.get("PlotAct").OnServerInvoke = function(player, idx, action)
-        if not RateLimit.allow(player.UserId, "punch", 10, 14) then
+        if not RateLimit.allow(player.UserId, "punch", 12, 18) then
                 return lajuDitolak(player, "punch")
         end
         if action == "punch" then
-                return PlotService.punch(player, idx)
+                return denganTransaksi(player, function()
+                        return PlotService.punch(player, idx)
+                end)
         end
         AuditService.catat(player, "argumen", "plot:" .. tostring(action))
         return false, "Aksi tidak dikenal."
 end
 
 Net.get("TanamAct").OnServerInvoke = function(player, action, a, b)
-        if not RateLimit.allow(player.UserId, "tanam", 3, 6) then
+        if not RateLimit.allow(player.UserId, "tanam", 6, 10) then
                 return lajuDitolak(player, "tanam")
         end
         if action == "start" then
-                return TanamService.start(player, a, b)
+                return denganTransaksi(player, function()
+                        return TanamService.start(player, a, b)
+                end)
         elseif action == "jawab" then
-                return TanamService.jawab(player, a)
+                return denganTransaksi(player, function()
+                        return TanamService.jawab(player, a)
+                end)
         elseif action == "gabung" then
-                return TanamService.gabung(player, a, b)
+                return denganTransaksi(player, function()
+                        return TanamService.gabung(player, a, b)
+                end)
         elseif action == "status" then
                 return true, TanamService.statusPayload(player)
         elseif action == "batal" then
@@ -260,20 +285,24 @@ Net.get("TanamAct").OnServerInvoke = function(player, action, a, b)
 end
 
 Net.get("GudangAct").OnServerInvoke = function(player, action, a, b)
-        if not RateLimit.allow(player.UserId, "gudang", 3, 6) then
+        if not RateLimit.allow(player.UserId, "gudang", 6, 10) then
                 return lajuDitolak(player, "gudang")
         end
         if action == "simpan" then
-                return GudangService.simpan(player, a, b)
+                return denganTransaksi(player, function()
+                        return GudangService.simpan(player, a, b)
+                end)
         elseif action == "ambil" then
-                return GudangService.ambil(player, a, b)
+                return denganTransaksi(player, function()
+                        return GudangService.ambil(player, a, b)
+                end)
         end
         AuditService.catat(player, "argumen", "gudang:" .. tostring(action))
         return false, "Aksi tidak dikenal."
 end
 
 Net.get("SemaiAct").OnServerInvoke = function(player, action, a, b)
-        if not RateLimit.allow(player.UserId, "semai", 6, 8) then
+        if not RateLimit.allow(player.UserId, "semai", 8, 12) then
                 return lajuDitolak(player, "semai")
         end
         local deny = ZonaService.mutationDeny(player)
@@ -281,24 +310,34 @@ Net.get("SemaiAct").OnServerInvoke = function(player, action, a, b)
                 return false, deny
         end
         if action == "atur" then
-                return MesinSemaiService.atur(player, a, b)
+                return denganTransaksi(player, function()
+                        return MesinSemaiService.atur(player, a, b)
+                end)
         elseif action == "tuas" then
-                return MesinSemaiService.tekan(player, a)
+                return denganTransaksi(player, function()
+                        return MesinSemaiService.tekan(player, a)
+                end)
         elseif action == "klaim" then
-                return MesinSemaiService.klaim(player)
+                return denganTransaksi(player, function()
+                        return MesinSemaiService.klaim(player)
+                end)
         end
         AuditService.catat(player, "argumen", "semai:" .. tostring(action))
         return false, "Aksi tidak dikenal."
 end
 
 Net.get("ShopAct").OnServerInvoke = function(player, action, a, b)
-        if not RateLimit.allow(player.UserId, "shop", 5, 10) then
+        if not RateLimit.allow(player.UserId, "shop", 8, 14) then
                 return lajuDitolak(player, "shop")
         end
         if action == "buy" then
-                return ShopService.buy(player, a)
+                return denganTransaksi(player, function()
+                        return ShopService.buy(player, a)
+                end)
         elseif action == "sell" then
-                return ShopService.sell(player, a, b)
+                return denganTransaksi(player, function()
+                        return ShopService.sell(player, a, b)
+                end)
         end
         AuditService.catat(player, "argumen", "shop:" .. tostring(action))
         return false, "Aksi tidak dikenal."
@@ -324,5 +363,6 @@ end
 
 DataService.startLoops()
 ZonaService.startLoops()
+CurrencyService.startIntegritas()
 
-print("[AKIOMIDA] Server-authoritative: CurrencyService, klaim atomik, kunci sesi, ledger siap.")
+print("[AKIOMIDA] Server-authoritative: ekonomi 1000T, deteksi anomali tanpa batas angka tetap, transaksi terjaga, kick aman-data siap.")

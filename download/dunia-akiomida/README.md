@@ -1,7 +1,51 @@
 # DUNIA AKIOMIDA (Roblox)
 
-Status: LIVE di Roblox (**versionNumber 50**, 7 Nov 2026) — **SEMAI PANEN: PILIH
-ITEM -> ATUR JUMLAH + KAMERA PANEL DIKUNCI**:
+Status: LIVE di Roblox (**versionNumber 51**, 7 Nov 2026) — **ANTI-CHEAT
+EKONOMI: TANPA BATAS ANGKA TETAP, DETEKSI ANOMALI, KICK AMAN-DATA**:
+
+1. **AKAR KICK 267 DITEMUKAN & DIBUNUH** — AuditService lama menghitung
+   SEMUA penolakan (uang ditolak, laju, argumen, jarak, milik, klaim
+   ganda) dalam 5 menit dan menendang di 20 insiden; UangLogic lama
+   menolak transaksi > 25.000 Micda ("lonjakan") dan > 24 transaksi/menit
+   ("laju"). Player ekonomi cepat-kaya kena tolak beruntun lalu ditendang
+   salah ("Aktivitas tidak sah terdeteksi berulang" — persis screenshot).
+   Keduanya ditulis ulang total.
+2. **TANPA BATAS ANGKA TETAP (permintaan pemilik)** — batas transaksi
+   25.000 dan batas 24 transaksi/menit DIHAPUS: jual 500 M Micda atau 30
+   transaksi kilat berturut-turut kini sah (ada tes otomatisnya). Yang
+   dicurigai bukan lagi angka besar, hanya hal yang mustahil secara
+   logika. Satu-satunya atap: kapasitas rekening **1000 Triliun Micda**
+   (1.000.000.000.000.000) per user sesuai ketentuan pemilik — melewati
+   itu ditolak dengan aturan "ruang rekening" + pesan jelas, bukan
+   tuduhan kecurangan.
+3. **SERVER MENGHITUNG SEMUANYA** — client hanya mengirim aksi (id item +
+   jumlah); server memvalidasi stok tas nyata, isi mesin, harga, dan
+   whitelist sumber uang (jual_hasil/beli_benih/semai_hasil/hadiah).
+   Uang tidak pernah dikirim oleh client.
+4. **DETEKSI ANOMALI BERBOBOT** — penolakan biasa kini hanya LOG (280
+   penolakan pun tidak menendang siapa pun). Kick hanya lewat anomali
+   mustahil: saldo korup/negatif (bobot 100), rekening lewat 1000 T
+   (100), uang tanpa sumber sah (60), sesi anomali (20); ambang 100 per
+   jam. Sapuan integritas tiap 45 detik menjaga saldo tetap 0..1000 T.
+5. **KICK AMAN-DATA** — kalau kick terpaksa: data DISIMPAN dulu, tunggu
+   transaksi berjalan selesai (guard transaksi di semua remote
+   SemaiAct/ShopAct/GudangAct/TanamAct/PlotAct), simpan lagi, baru
+   menendang. Tidak ada uang/barang hilang atau dobel.
+6. **DUA BUG KEHILANGAN DATA DIBUNUH** — jual: dulu barang dihapus dulu
+   baru uang ditambah (kalau gagal, barang hangus); kini cek ruang
+   rekening dulu dan kalau gagal barang dikembalikan utuh. Klaim mesin:
+   cek ruang dulu; kalau micda gagal, benih dikembalikan dan isi mesin
+   tetap bisa diklaim ulang.
+7. **KAMERA MODAL DIPERKUAT (keluhan papan tanam)** — selama panel
+   terbuka kamera Scriptable: zoom, rotasi, pan, dan geser di luar
+   pop-up benar-benar mati di semua platform; joystick/jump terserap
+   supaya fokus tidak terpecah; semuanya dipulihkan persis saat panel
+   ditutup.
+8. **PENGUJIAN** — seksi H ditulis ulang (22 cek ekonomi raksasa) +
+   seksi H2 baru (8 cek audit & kick aman-data). Total tes offline 378
+   PASS / 0 FAIL, luau-lsp 0 TypeError, rojo build sukses. Publish #51.
+
+Isi v50 tetap (semai panen alur baru + kamera panel):
 
 1. **ALUR BARU MESIN SEMAI PERSIS SPESIFIKASI PEMILIK** — membuka mesin kini
    menampilkan DAFTAR hasil panen di tas (contoh: "Wortel x250, Tomat x10"),

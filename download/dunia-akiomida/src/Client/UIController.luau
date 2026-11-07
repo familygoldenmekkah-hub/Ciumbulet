@@ -85,6 +85,7 @@ local gui = mk("ScreenGui", {
         ResetOnSpawn = false,
         IgnoreGuiInset = true,
         ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+        DisplayOrder = 50,
 }, playerGui)
 
 local camera = Workspace.CurrentCamera
@@ -241,6 +242,7 @@ local panels = {}
 local currentPanel: string? = nil
 
 local zoomTersimpan: any? = nil
+local kameraTipeTersimpan: any? = nil
 
 local function kunciKamera()
         if zoomTersimpan then
@@ -251,6 +253,8 @@ local function kunciKamera()
         player.CameraMinZoomDistance = mn
         player.CameraMaxZoomDistance = mx
         zoomTersimpan = simpan
+        kameraTipeTersimpan = camera.CameraType
+        camera.CameraType = Enum.CameraType.Scriptable
 end
 
 local function bukaKamera()
@@ -261,6 +265,8 @@ local function bukaKamera()
         player.CameraMinZoomDistance = mn
         player.CameraMaxZoomDistance = mx
         zoomTersimpan = nil
+        camera.CameraType = kameraTipeTersimpan or Enum.CameraType.Custom
+        kameraTipeTersimpan = nil
 end
 
 local function closePanel()

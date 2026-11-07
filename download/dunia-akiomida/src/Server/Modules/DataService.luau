@@ -132,7 +132,7 @@ function DataService.load(player: Player): (boolean, string?, number)
         end
         local tasBersih, dibuang = SanitasiTas.bersih(data.t, CropData.byId)
         cache[userId] = {
-                u = { m = data.u.m, ledger = type(data.u.ledger) == "table" and data.u.ledger or {}, tick = {} },
+                u = { m = data.u.m, ledger = type(data.u.ledger) == "table" and data.u.ledger or {} },
                 t = tasBersih,
                 dev = data.dev == true,
         }

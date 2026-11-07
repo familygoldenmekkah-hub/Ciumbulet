@@ -2,6 +2,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local CropData = require(ReplicatedStorage.Shared.CropData)
 local StrukBeli = require(ReplicatedStorage.Shared.StrukBeli)
+local UangLogic = require(ReplicatedStorage.Shared.UangLogic)
 
 local ShopService = {}
 
@@ -96,9 +97,20 @@ function ShopService.sell(player, cropId: any, count: any): (boolean, string)
         end
         local info = CropData.byId[cropId]
         local total = info.jual * n
-        Tas.remove(player, "hasil", cropId, n)
-        Uang.AddMicda(player, total, "jual_hasil")
-        return true, "Terjual " .. n .. " " .. info.nama .. " (+" .. total .. " Micda)."
+        local ruang = Uang and Uang.RuangMicda and Uang.RuangMicda(player) or math.huge
+        if total > ruang then
+                return false, "Ruangan Micda rekeningmu tinggal " .. UangLogic.format(ruang) .. "! Jual dalam bagian lebih kecil."
+        end
+        local diambil = Tas.remove(player, "hasil", cropId, n)
+        if diambil < 1 then
+                return false, "Hasil panen tidak bisa diambil dari tas."
+        end
+        local okUang = Uang and Uang.AddMicda(player, total, "jual_hasil")
+        if not okUang then
+                Tas.add(player, "hasil", cropId, diambil)
+                return false, "Penjualan ditunda sebentar. Barangmu dikembalikan utuh ke tas."
+        end
+        return true, "Terjual " .. diambil .. " " .. info.nama .. " (+" .. UangLogic.format(total) .. " Micda)."
 end
 
 return ShopService

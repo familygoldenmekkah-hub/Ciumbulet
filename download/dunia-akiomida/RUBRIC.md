@@ -19,6 +19,90 @@ Skor per kriteria 0-10, dikali bobot. Total dihitung dari (skor x bobot) / 10.
 | 8 | Polish & UX (UI, suara, animasi, efek) | 10 | animasi kombat, BGM, partikel | UI rapi & responsif |
 | 9 | Originalitas 100% & aman hak cipta | 5 | - | - |
 
+## Skor v51 (versi LIVE #51, 7 Nov 2026) - ANTI-CHEAT EKONOMI: TANPA BATAS ANGKA TETAP, DETEKSI ANOMALI, KICK AMAN-DATA
+
+Permintaan pemilik (pesan langsung + screenshot kick 267 "Aktivitas tidak
+sah terdeteksi berulang"): ini game ekonomi — nominal besar dan aksi cepat
+adalah hal normal. Jangan pakai batas angka tetap; batas = rate x waktu x
+multiplier progres player. Server yang menghitung semuanya, client hanya
+kirim aksi. Deteksi anomali (lonjakan tak masuk akal, item tanpa sumber,
+transaksi mustahil), bukan angka besar. Sebelum kick, simpan data dulu dan
+jangan kick saat transaksi berjalan. Uang maksimal 1000 Triliun per user.
+
+Akar masalah yang ditemukan (jujur): AuditService lama menghitung SEMUA
+penolakan (micda_tolak, laju, argumen, jarak, milik, klaim_ganda) dalam
+jendela 5 menit dan menendang di 20 insiden; UangLogic lama menolak
+transaksi > 25.000 ("lonjakan") dan > 24 transaksi/menit ("laju"). Player
+ekonomi cepat-kaya memicu tolak beruntun lalu ditendang salah — persis
+kick 267 di screenshot. Dua sistem ini ditulis ulang total.
+
+Diterapkan di #51:
+
+A. **UangLogic v2 tanpa batas angka tetap**: MaksAksi 25.000 dan
+   BatasPerMenit 24 DIHAPUS — transaksi 500 M dan 30 transaksi cepat
+   berturut-turut kini sah (tes otomatis). Satu-satunya atap = kapasitas
+   rekening 1.000.000.000.000.000 Micda (1000 T) sesuai ketentuan
+   pemilik; melebihinya ditolak dengan aturan "ruang" + pesan jelas
+   (bukan tuduhan kecurangan), data lama melebihi batas dijepit saat
+   dimuat. UangLogic.format baru untuk pesan angka besar bertitik.
+B. **Server menghitung semuanya (sudah struktural, kini diperkuat)**:
+   client hanya mengirim aksi (id item + jumlah); server memvalidasi
+   terhadap stok tas nyata, isi mesin, harga CropData, dan whitelist
+   sumber (jual_hasil/beli_benih/semai_hasil/hadiah). Uang tidak pernah
+   dikirim client.
+C. **AuditService v2 deteksi anomali, bukan angka besar**: catat() kini
+   hanya LOG — 280 penolakan biasa pun tidak akan menendang siapa pun
+   (tes otomatis). Kick hanya lewat anomali() berbobot untuk hal yang
+   mustahil secara logika: uang_korup (saldo negatif/NaN, bobot 100),
+   uang_lebih (rekening lewat 1000 T, bobot 100), sumber_tak_dikenal
+   (60), sesi_anomali (20); ambang 100 dalam jendela 1 jam.
+D. **CurrencyService.startIntegritas()**: sapuan tiap 45 detik memastikan
+   saldo tidak pernah negatif/NaN/melebihi 1000 T — jika ya, diperbaiki,
+   data disimpan, dan anomali dicatat.
+E. **Kick aman-data**: kickAman menyimpan data DULU, menunggu transaksi
+   selesai (guard transaksiMulai/Selesai/sedangTransaksi, timeout 8 dtk),
+   menyimpan lagi, baru menendang. Pesan kick baru jujur: "Aktivitas
+   tidak mungkin terdeteksi. Data kamu sudah disimpan dengan aman."
+F. **Semua remote uang/barang dibungkus guard transaksi**: SemaiAct
+   (atur/tuas/klaim), ShopAct (buy/sell), GudangAct (simpan/ambil),
+   TanamAct (start/jawab/gabung), PlotAct (punch) — kick tidak pernah
+   memotong transaksi di tengah.
+G. **Dua bug kehilangan data dibunuh** (inti "aman untuk data"):
+   ShopService.sell dulu menghapus barang BARU menambah uang — kalau
+   tambah uang gagal, barang hilang. Kini cek ruang rekening dulu,
+   barang diambil, uang ditambah, dan kalau gagal barang DIKEMBALIKAN
+   utuh ("Penjualan ditunda sebentar. Barangmu dikembalikan utuh ke
+   tas."). MesinSemaiService.klaim sama: cek ruang dulu, kalau tambah
+   micda gagal benih dikembalikan dan isi mesin tidak hangus.
+H. **Rate limit tetap ada untuk spam remote** (bukan anti-cheat) dengan
+   anggaran lebih lega: punch 12/s, tanam/gudang 6/s, semai 8/s, shop
+   8/s, dunia 3/s — penolakannya hanya log, tidak pernah menendang.
+I. **Kamera modal diperkuat (keluhan papan tanam)**: selama panel terbuka
+   kamera kini CameraType Scriptable (rotasi, zoom, pan, dan drag luar
+   pop-up benar-benar mati di semua platform), dipulihkan persis saat
+   ditutup; ScreenGui DisplayOrder 50 menyerap sentuhan joystick/jump
+   selama modal terbuka supaya fokus tidak terpecah.
+J. **Pengujian**: seksi H ditulis ulang (22 cek ekonomi raksasa: 500 M
+   diterima, 30 transaksi cepat lolos, atap 1000 T, ruangSisa, format,
+   jepit data lama) + seksi H2 baru (8 cek audit: 280 tolak = 0 kick;
+   anomali bobot & ambang; guard bertingkat; eksekutor kick aman).
+   Total tes offline 378 PASS / 0 FAIL, luau-lsp 0 TypeError, rojo build
+   sukses. Publish #51.
+
+| # | Kriteria | Skor | Alasan |
+|---|----------|------|--------|
+| 1 Kombat | 0/10 | Belum ada monster/AI/bos. |
+| 2 Crafting | 4.5/10 | Rantai mesin semai tetap; guard transaksi kini membungkus semua aksi mesin. |
+| 3 Stat & Progresi | 1/10 | Tanpa level (sesuai arah pemilik); soal matematika tetap gerbang tanam. |
+| 4 Ekonomi | 8/10 | Ekonomi 1000 T tanpa batas angka tetap, deteksi anomali berbobot, guard transaksi, rollback jual/klaim — nominal besar kini sah dan aman. |
+| 5 Dunia & Peta | 7/10 | Tetap: drop rapi di atas tanah; belum: rumah, air, dungeon. |
+| 6 Multiplayer | 7/10 | Semua mutasi uang/barang server-authoritative + terjaga transaksi; tamu tidak bisa merusak; trade/party belum ada. |
+| 7 Bertani | 10/10 | Semai panen tetap sesuai spesifikasi; 20 cek seksi W tetap hijau. |
+| 8 Polish & UX | 10/10 | Kamera Scriptable + DisplayOrder 50: modal kini benar-benar memencungkan fokus (zoom, rotasi, drag luar, joystick). |
+| 9 Originalitas | 10/10 | UangLogic v2, AuditService v2, CurrencyService integritas — semua modul orisinal sendiri. |
+
+**TOTAL: 58.8/100** (bobot: 0+67.5+10+120+70+70+100+100+50 = 587.5/10 = 58.75)
+
 ## Skor v50 (versi LIVE #50, 7 Nov 2026) - SEMAI PANEN: PILIH ITEM -> ATUR JUMLAH + KAMERA PANEL DIKUNCI
 
 Permintaan pemilik (pesan langsung): "Waktu masuk papan tanam kan muncul.
