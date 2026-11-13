@@ -1,0 +1,28 @@
+# dependensi & hasil build
+node_modules/
+.next/
+out/
+build/
+
+# log
+dev.log
+server.log
+*.log
+
+# basis data lokal
+db/
+
+# lingkungan
+.env*
+!.env.example
+
+# sistem
+.DS_Store
+
+# berkas internal sesi (tidak bagian dari game)
+skills/
+.zscripts/
+agent-ctx/
+tool-results/
+download/
+upload/

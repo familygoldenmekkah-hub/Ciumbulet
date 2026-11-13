@@ -1,0 +1,3036 @@
+<roblox xmlns:xmime="http://schemas.microsoft.com/2003/10/Serialization/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
+	<Item class="Workspace" referent="RBXW">
+		<Properties>
+			<string name="Name">Workspace</string>
+		</Properties>
+	<Item class="Part" referent="RBX1">
+		<Properties>
+			<string name="Name">TanahDesa</string>
+			<bool name="Anchored">true</bool>
+			<Color3uint8 name="Color3uint8">4287020890</Color3uint8>
+			<Vector3 name="size"><X>240</X><Y>2</Y><Z>240</Z></Vector3>
+			<Coordinate3 name="CFrame">
+				<X>0</X>
+				<Y>-1</Y>
+				<Z>0</Z>
+				<R00>1</R00><R01>0</R01><R02>0</R02>
+				<R10>0</R10><R11>0</R11><R12>0</R12>
+				<R20>0</R20><R21>0</R21><R22>0</R22>
+			</Coordinate3>
+		</Properties>
+	</Item>
+	<Item class="Part" referent="RBX2">
+		<Properties>
+			<string name="Name">JalanUtama</string>
+			<bool name="Anchored">true</bool>
+			<bool name="CanCollide">false</bool>
+			<Color3uint8 name="Color3uint8">4292395146</Color3uint8>
+			<Vector3 name="size"><X>170</X><Y>0.4</Y><Z>12</Z></Vector3>
+			<Coordinate3 name="CFrame">
+				<X>0</X>
+				<Y>0.05</Y>
+				<Z>-60</Z>
+				<R00>1</R00><R01>0</R01><R02>0</R02>
+				<R10>0</R10><R11>0</R11><R12>0</R12>
+				<R20>0</R20><R21>0</R21><R22>0</R22>
+			</Coordinate3>
+		</Properties>
+	</Item>
+	<Item class="Part" referent="RBX3">
+		<Properties>
+			<string name="Name">JalanTengah</string>
+			<bool name="Anchored">true</bool>
+			<bool name="CanCollide">false</bool>
+			<Color3uint8 name="Color3uint8">4292395146</Color3uint8>
+			<Vector3 name="size"><X>12</X><Y>0.4</Y><Z>90</Z></Vector3>
+			<Coordinate3 name="CFrame">
+				<X>30</X>
+				<Y>0.05</Y>
+				<Z>-20</Z>
+				<R00>1</R00><R01>0</R01><R02>0</R02>
+				<R10>0</R10><R11>0</R11><R12>0</R12>
+				<R20>0</R20><R21>0</R21><R22>0</R22>
+			</Coordinate3>
+		</Properties>
+	</Item>
+	<Item class="Part" referent="RBX4">
+		<Properties>
+			<string name="Name">JalanSelatan</string>
+			<bool name="Anchored">true</bool>
+			<bool name="CanCollide">false</bool>
+			<Color3uint8 name="Color3uint8">4292395146</Color3uint8>
+			<Vector3 name="size"><X>140</X><Y>0.4</Y><Z>12</Z></Vector3>
+			<Coordinate3 name="CFrame">
+				<X>0</X>
+				<Y>0.05</Y>
+				<Z>40</Z>
+				<R00>1</R00><R01>0</R01><R02>0</R02>
+				<R10>0</R10><R11>0</R11><R12>0</R12>
+				<R20>0</R20><R21>0</R21><R22>0</R22>
+			</Coordinate3>
+		</Properties>
+	</Item>
+	<Item class="Part" referent="RBX5">
+		<Properties>
+			<string name="Name">Kolam</string>
+			<bool name="Anchored">true</bool>
+			<Color3uint8 name="Color3uint8">4284459207</Color3uint8>
+			<Vector3 name="size"><X>36</X><Y>1.2</Y><Z>30</Z></Vector3>
+			<Coordinate3 name="CFrame">
+				<X>78</X>
+				<Y>0.4</Y>
+				<Z>10</Z>
+				<R00>1</R00><R01>0</R01><R02>0</R02>
+				<R10>0</R10><R11>0</R11><R12>0</R12>
+				<R20>0</R20><R21>0</R21><R22>0</R22>
+			</Coordinate3>
+		</Properties>
+	</Item>
+	<Item class="Folder" referent="RBX6">
+		<Properties>
+			<string name="Name">Ladang</string>
+		</Properties>
+		<Item class="Part" referent="RBX7">
+			<Properties>
+				<string name="Name">Petak01</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4285177412</Color3uint8>
+				<Vector3 name="size"><X>10</X><Y>0.6</Y><Z>10</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-85</X>
+					<Y>0.3</Y>
+					<Z>-25</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+			<Item class="ProximityPrompt" referent="RBX8">
+				<Properties>
+					<string name="Name">Prompt</string>
+					<string name="ActionText">Gemburkan Tanah</string>
+					<string name="ObjectText">Petak Ladang</string>
+					<bool name="RequiresLineOfSight">false</bool>
+					<float name="MaxActivationDistance">8.0</float>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="Part" referent="RBX9">
+			<Properties>
+				<string name="Name">Petak02</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4285177412</Color3uint8>
+				<Vector3 name="size"><X>10</X><Y>0.6</Y><Z>10</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-73</X>
+					<Y>0.3</Y>
+					<Z>-25</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+			<Item class="ProximityPrompt" referent="RBX10">
+				<Properties>
+					<string name="Name">Prompt</string>
+					<string name="ActionText">Gemburkan Tanah</string>
+					<string name="ObjectText">Petak Ladang</string>
+					<bool name="RequiresLineOfSight">false</bool>
+					<float name="MaxActivationDistance">8.0</float>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="Part" referent="RBX11">
+			<Properties>
+				<string name="Name">Petak03</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4285177412</Color3uint8>
+				<Vector3 name="size"><X>10</X><Y>0.6</Y><Z>10</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-61</X>
+					<Y>0.3</Y>
+					<Z>-25</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+			<Item class="ProximityPrompt" referent="RBX12">
+				<Properties>
+					<string name="Name">Prompt</string>
+					<string name="ActionText">Gemburkan Tanah</string>
+					<string name="ObjectText">Petak Ladang</string>
+					<bool name="RequiresLineOfSight">false</bool>
+					<float name="MaxActivationDistance">8.0</float>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="Part" referent="RBX13">
+			<Properties>
+				<string name="Name">Petak04</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4285177412</Color3uint8>
+				<Vector3 name="size"><X>10</X><Y>0.6</Y><Z>10</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-49</X>
+					<Y>0.3</Y>
+					<Z>-25</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+			<Item class="ProximityPrompt" referent="RBX14">
+				<Properties>
+					<string name="Name">Prompt</string>
+					<string name="ActionText">Gemburkan Tanah</string>
+					<string name="ObjectText">Petak Ladang</string>
+					<bool name="RequiresLineOfSight">false</bool>
+					<float name="MaxActivationDistance">8.0</float>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="Part" referent="RBX15">
+			<Properties>
+				<string name="Name">Petak05</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4285177412</Color3uint8>
+				<Vector3 name="size"><X>10</X><Y>0.6</Y><Z>10</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-37</X>
+					<Y>0.3</Y>
+					<Z>-25</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+			<Item class="ProximityPrompt" referent="RBX16">
+				<Properties>
+					<string name="Name">Prompt</string>
+					<string name="ActionText">Gemburkan Tanah</string>
+					<string name="ObjectText">Petak Ladang</string>
+					<bool name="RequiresLineOfSight">false</bool>
+					<float name="MaxActivationDistance">8.0</float>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="Part" referent="RBX17">
+			<Properties>
+				<string name="Name">Petak06</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4285177412</Color3uint8>
+				<Vector3 name="size"><X>10</X><Y>0.6</Y><Z>10</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-25</X>
+					<Y>0.3</Y>
+					<Z>-25</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+			<Item class="ProximityPrompt" referent="RBX18">
+				<Properties>
+					<string name="Name">Prompt</string>
+					<string name="ActionText">Gemburkan Tanah</string>
+					<string name="ObjectText">Petak Ladang</string>
+					<bool name="RequiresLineOfSight">false</bool>
+					<float name="MaxActivationDistance">8.0</float>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="Part" referent="RBX19">
+			<Properties>
+				<string name="Name">Petak07</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4285177412</Color3uint8>
+				<Vector3 name="size"><X>10</X><Y>0.6</Y><Z>10</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-85</X>
+					<Y>0.3</Y>
+					<Z>-13</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+			<Item class="ProximityPrompt" referent="RBX20">
+				<Properties>
+					<string name="Name">Prompt</string>
+					<string name="ActionText">Gemburkan Tanah</string>
+					<string name="ObjectText">Petak Ladang</string>
+					<bool name="RequiresLineOfSight">false</bool>
+					<float name="MaxActivationDistance">8.0</float>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="Part" referent="RBX21">
+			<Properties>
+				<string name="Name">Petak08</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4285177412</Color3uint8>
+				<Vector3 name="size"><X>10</X><Y>0.6</Y><Z>10</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-73</X>
+					<Y>0.3</Y>
+					<Z>-13</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+			<Item class="ProximityPrompt" referent="RBX22">
+				<Properties>
+					<string name="Name">Prompt</string>
+					<string name="ActionText">Gemburkan Tanah</string>
+					<string name="ObjectText">Petak Ladang</string>
+					<bool name="RequiresLineOfSight">false</bool>
+					<float name="MaxActivationDistance">8.0</float>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="Part" referent="RBX23">
+			<Properties>
+				<string name="Name">Petak09</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4285177412</Color3uint8>
+				<Vector3 name="size"><X>10</X><Y>0.6</Y><Z>10</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-61</X>
+					<Y>0.3</Y>
+					<Z>-13</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+			<Item class="ProximityPrompt" referent="RBX24">
+				<Properties>
+					<string name="Name">Prompt</string>
+					<string name="ActionText">Gemburkan Tanah</string>
+					<string name="ObjectText">Petak Ladang</string>
+					<bool name="RequiresLineOfSight">false</bool>
+					<float name="MaxActivationDistance">8.0</float>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="Part" referent="RBX25">
+			<Properties>
+				<string name="Name">Petak10</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4285177412</Color3uint8>
+				<Vector3 name="size"><X>10</X><Y>0.6</Y><Z>10</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-49</X>
+					<Y>0.3</Y>
+					<Z>-13</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+			<Item class="ProximityPrompt" referent="RBX26">
+				<Properties>
+					<string name="Name">Prompt</string>
+					<string name="ActionText">Gemburkan Tanah</string>
+					<string name="ObjectText">Petak Ladang</string>
+					<bool name="RequiresLineOfSight">false</bool>
+					<float name="MaxActivationDistance">8.0</float>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="Part" referent="RBX27">
+			<Properties>
+				<string name="Name">Petak11</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4285177412</Color3uint8>
+				<Vector3 name="size"><X>10</X><Y>0.6</Y><Z>10</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-37</X>
+					<Y>0.3</Y>
+					<Z>-13</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+			<Item class="ProximityPrompt" referent="RBX28">
+				<Properties>
+					<string name="Name">Prompt</string>
+					<string name="ActionText">Gemburkan Tanah</string>
+					<string name="ObjectText">Petak Ladang</string>
+					<bool name="RequiresLineOfSight">false</bool>
+					<float name="MaxActivationDistance">8.0</float>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="Part" referent="RBX29">
+			<Properties>
+				<string name="Name">Petak12</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4285177412</Color3uint8>
+				<Vector3 name="size"><X>10</X><Y>0.6</Y><Z>10</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-25</X>
+					<Y>0.3</Y>
+					<Z>-13</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+			<Item class="ProximityPrompt" referent="RBX30">
+				<Properties>
+					<string name="Name">Prompt</string>
+					<string name="ActionText">Gemburkan Tanah</string>
+					<string name="ObjectText">Petak Ladang</string>
+					<bool name="RequiresLineOfSight">false</bool>
+					<float name="MaxActivationDistance">8.0</float>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="Part" referent="RBX31">
+			<Properties>
+				<string name="Name">Petak13</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4285177412</Color3uint8>
+				<Vector3 name="size"><X>10</X><Y>0.6</Y><Z>10</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-85</X>
+					<Y>0.3</Y>
+					<Z>-1</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+			<Item class="ProximityPrompt" referent="RBX32">
+				<Properties>
+					<string name="Name">Prompt</string>
+					<string name="ActionText">Gemburkan Tanah</string>
+					<string name="ObjectText">Petak Ladang</string>
+					<bool name="RequiresLineOfSight">false</bool>
+					<float name="MaxActivationDistance">8.0</float>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="Part" referent="RBX33">
+			<Properties>
+				<string name="Name">Petak14</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4285177412</Color3uint8>
+				<Vector3 name="size"><X>10</X><Y>0.6</Y><Z>10</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-73</X>
+					<Y>0.3</Y>
+					<Z>-1</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+			<Item class="ProximityPrompt" referent="RBX34">
+				<Properties>
+					<string name="Name">Prompt</string>
+					<string name="ActionText">Gemburkan Tanah</string>
+					<string name="ObjectText">Petak Ladang</string>
+					<bool name="RequiresLineOfSight">false</bool>
+					<float name="MaxActivationDistance">8.0</float>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="Part" referent="RBX35">
+			<Properties>
+				<string name="Name">Petak15</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4285177412</Color3uint8>
+				<Vector3 name="size"><X>10</X><Y>0.6</Y><Z>10</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-61</X>
+					<Y>0.3</Y>
+					<Z>-1</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+			<Item class="ProximityPrompt" referent="RBX36">
+				<Properties>
+					<string name="Name">Prompt</string>
+					<string name="ActionText">Gemburkan Tanah</string>
+					<string name="ObjectText">Petak Ladang</string>
+					<bool name="RequiresLineOfSight">false</bool>
+					<float name="MaxActivationDistance">8.0</float>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="Part" referent="RBX37">
+			<Properties>
+				<string name="Name">Petak16</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4285177412</Color3uint8>
+				<Vector3 name="size"><X>10</X><Y>0.6</Y><Z>10</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-49</X>
+					<Y>0.3</Y>
+					<Z>-1</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+			<Item class="ProximityPrompt" referent="RBX38">
+				<Properties>
+					<string name="Name">Prompt</string>
+					<string name="ActionText">Gemburkan Tanah</string>
+					<string name="ObjectText">Petak Ladang</string>
+					<bool name="RequiresLineOfSight">false</bool>
+					<float name="MaxActivationDistance">8.0</float>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="Part" referent="RBX39">
+			<Properties>
+				<string name="Name">Petak17</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4285177412</Color3uint8>
+				<Vector3 name="size"><X>10</X><Y>0.6</Y><Z>10</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-37</X>
+					<Y>0.3</Y>
+					<Z>-1</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+			<Item class="ProximityPrompt" referent="RBX40">
+				<Properties>
+					<string name="Name">Prompt</string>
+					<string name="ActionText">Gemburkan Tanah</string>
+					<string name="ObjectText">Petak Ladang</string>
+					<bool name="RequiresLineOfSight">false</bool>
+					<float name="MaxActivationDistance">8.0</float>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="Part" referent="RBX41">
+			<Properties>
+				<string name="Name">Petak18</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4285177412</Color3uint8>
+				<Vector3 name="size"><X>10</X><Y>0.6</Y><Z>10</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-25</X>
+					<Y>0.3</Y>
+					<Z>-1</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+			<Item class="ProximityPrompt" referent="RBX42">
+				<Properties>
+					<string name="Name">Prompt</string>
+					<string name="ActionText">Gemburkan Tanah</string>
+					<string name="ObjectText">Petak Ladang</string>
+					<bool name="RequiresLineOfSight">false</bool>
+					<float name="MaxActivationDistance">8.0</float>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="Part" referent="RBX43">
+			<Properties>
+				<string name="Name">Petak19</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4285177412</Color3uint8>
+				<Vector3 name="size"><X>10</X><Y>0.6</Y><Z>10</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-85</X>
+					<Y>0.3</Y>
+					<Z>11</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+			<Item class="ProximityPrompt" referent="RBX44">
+				<Properties>
+					<string name="Name">Prompt</string>
+					<string name="ActionText">Gemburkan Tanah</string>
+					<string name="ObjectText">Petak Ladang</string>
+					<bool name="RequiresLineOfSight">false</bool>
+					<float name="MaxActivationDistance">8.0</float>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="Part" referent="RBX45">
+			<Properties>
+				<string name="Name">Petak20</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4285177412</Color3uint8>
+				<Vector3 name="size"><X>10</X><Y>0.6</Y><Z>10</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-73</X>
+					<Y>0.3</Y>
+					<Z>11</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+			<Item class="ProximityPrompt" referent="RBX46">
+				<Properties>
+					<string name="Name">Prompt</string>
+					<string name="ActionText">Gemburkan Tanah</string>
+					<string name="ObjectText">Petak Ladang</string>
+					<bool name="RequiresLineOfSight">false</bool>
+					<float name="MaxActivationDistance">8.0</float>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="Part" referent="RBX47">
+			<Properties>
+				<string name="Name">Petak21</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4285177412</Color3uint8>
+				<Vector3 name="size"><X>10</X><Y>0.6</Y><Z>10</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-61</X>
+					<Y>0.3</Y>
+					<Z>11</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+			<Item class="ProximityPrompt" referent="RBX48">
+				<Properties>
+					<string name="Name">Prompt</string>
+					<string name="ActionText">Gemburkan Tanah</string>
+					<string name="ObjectText">Petak Ladang</string>
+					<bool name="RequiresLineOfSight">false</bool>
+					<float name="MaxActivationDistance">8.0</float>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="Part" referent="RBX49">
+			<Properties>
+				<string name="Name">Petak22</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4285177412</Color3uint8>
+				<Vector3 name="size"><X>10</X><Y>0.6</Y><Z>10</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-49</X>
+					<Y>0.3</Y>
+					<Z>11</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+			<Item class="ProximityPrompt" referent="RBX50">
+				<Properties>
+					<string name="Name">Prompt</string>
+					<string name="ActionText">Gemburkan Tanah</string>
+					<string name="ObjectText">Petak Ladang</string>
+					<bool name="RequiresLineOfSight">false</bool>
+					<float name="MaxActivationDistance">8.0</float>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="Part" referent="RBX51">
+			<Properties>
+				<string name="Name">Petak23</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4285177412</Color3uint8>
+				<Vector3 name="size"><X>10</X><Y>0.6</Y><Z>10</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-37</X>
+					<Y>0.3</Y>
+					<Z>11</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+			<Item class="ProximityPrompt" referent="RBX52">
+				<Properties>
+					<string name="Name">Prompt</string>
+					<string name="ActionText">Gemburkan Tanah</string>
+					<string name="ObjectText">Petak Ladang</string>
+					<bool name="RequiresLineOfSight">false</bool>
+					<float name="MaxActivationDistance">8.0</float>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="Part" referent="RBX53">
+			<Properties>
+				<string name="Name">Petak24</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4285177412</Color3uint8>
+				<Vector3 name="size"><X>10</X><Y>0.6</Y><Z>10</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-25</X>
+					<Y>0.3</Y>
+					<Z>11</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+			<Item class="ProximityPrompt" referent="RBX54">
+				<Properties>
+					<string name="Name">Prompt</string>
+					<string name="ActionText">Gemburkan Tanah</string>
+					<string name="ObjectText">Petak Ladang</string>
+					<bool name="RequiresLineOfSight">false</bool>
+					<float name="MaxActivationDistance">8.0</float>
+				</Properties>
+			</Item>
+		</Item>
+	</Item>
+	<Item class="Folder" referent="RBX55">
+		<Properties>
+			<string name="Name">Kayanu</string>
+		</Properties>
+		<Item class="Model" referent="RBX56">
+			<Properties>
+				<string name="Name">Kayanu01</string>
+			</Properties>
+			<Item class="Part" referent="RBX57">
+				<Properties>
+					<string name="Name">BatangKayanu01</string>
+					<bool name="Anchored">true</bool>
+					<Color3uint8 name="Color3uint8">4286206512</Color3uint8>
+					<Vector3 name="size"><X>2.4</X><Y>10</Y><Z>2.4</Z></Vector3>
+					<Coordinate3 name="CFrame">
+						<X>-105</X>
+						<Y>4</Y>
+						<Z>-70</Z>
+						<R00>1</R00><R01>0</R01><R02>0</R02>
+						<R10>0</R10><R11>0</R11><R12>0</R12>
+						<R20>0</R20><R21>0</R21><R22>0</R22>
+					</Coordinate3>
+				</Properties>
+				<Item class="ProximityPrompt" referent="RBX59">
+					<Properties>
+						<string name="Name">Prompt</string>
+						<string name="ActionText">Tebang</string>
+						<string name="ObjectText">Kayanu</string>
+						<bool name="RequiresLineOfSight">false</bool>
+						<float name="MaxActivationDistance">8.0</float>
+					</Properties>
+				</Item>
+			</Item>
+			<Item class="Part" referent="RBX58">
+				<Properties>
+					<string name="Name">TajukKayanu01</string>
+					<bool name="Anchored">true</bool>
+					<Color3uint8 name="Color3uint8">4282350906</Color3uint8>
+					<Vector3 name="size"><X>9</X><Y>9</Y><Z>9</Z></Vector3>
+					<Coordinate3 name="CFrame">
+						<X>-105</X>
+						<Y>13</Y>
+						<Z>-70</Z>
+						<R00>1</R00><R01>0</R01><R02>0</R02>
+						<R10>0</R10><R11>0</R11><R12>0</R12>
+						<R20>0</R20><R21>0</R21><R22>0</R22>
+					</Coordinate3>
+					<Token name="Shape">0</Token>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="Model" referent="RBX60">
+			<Properties>
+				<string name="Name">Kayanu02</string>
+			</Properties>
+			<Item class="Part" referent="RBX61">
+				<Properties>
+					<string name="Name">BatangKayanu02</string>
+					<bool name="Anchored">true</bool>
+					<Color3uint8 name="Color3uint8">4286206512</Color3uint8>
+					<Vector3 name="size"><X>2.4</X><Y>10</Y><Z>2.4</Z></Vector3>
+					<Coordinate3 name="CFrame">
+						<X>-75</X>
+						<Y>4</Y>
+						<Z>-75</Z>
+						<R00>1</R00><R01>0</R01><R02>0</R02>
+						<R10>0</R10><R11>0</R11><R12>0</R12>
+						<R20>0</R20><R21>0</R21><R22>0</R22>
+					</Coordinate3>
+				</Properties>
+				<Item class="ProximityPrompt" referent="RBX63">
+					<Properties>
+						<string name="Name">Prompt</string>
+						<string name="ActionText">Tebang</string>
+						<string name="ObjectText">Kayanu</string>
+						<bool name="RequiresLineOfSight">false</bool>
+						<float name="MaxActivationDistance">8.0</float>
+					</Properties>
+				</Item>
+			</Item>
+			<Item class="Part" referent="RBX62">
+				<Properties>
+					<string name="Name">TajukKayanu02</string>
+					<bool name="Anchored">true</bool>
+					<Color3uint8 name="Color3uint8">4282350906</Color3uint8>
+					<Vector3 name="size"><X>9</X><Y>9</Y><Z>9</Z></Vector3>
+					<Coordinate3 name="CFrame">
+						<X>-75</X>
+						<Y>13</Y>
+						<Z>-75</Z>
+						<R00>1</R00><R01>0</R01><R02>0</R02>
+						<R10>0</R10><R11>0</R11><R12>0</R12>
+						<R20>0</R20><R21>0</R21><R22>0</R22>
+					</Coordinate3>
+					<Token name="Shape">0</Token>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="Model" referent="RBX64">
+			<Properties>
+				<string name="Name">Kayanu03</string>
+			</Properties>
+			<Item class="Part" referent="RBX65">
+				<Properties>
+					<string name="Name">BatangKayanu03</string>
+					<bool name="Anchored">true</bool>
+					<Color3uint8 name="Color3uint8">4286206512</Color3uint8>
+					<Vector3 name="size"><X>2.4</X><Y>10</Y><Z>2.4</Z></Vector3>
+					<Coordinate3 name="CFrame">
+						<X>-40</X>
+						<Y>4</Y>
+						<Z>-80</Z>
+						<R00>1</R00><R01>0</R01><R02>0</R02>
+						<R10>0</R10><R11>0</R11><R12>0</R12>
+						<R20>0</R20><R21>0</R21><R22>0</R22>
+					</Coordinate3>
+				</Properties>
+				<Item class="ProximityPrompt" referent="RBX67">
+					<Properties>
+						<string name="Name">Prompt</string>
+						<string name="ActionText">Tebang</string>
+						<string name="ObjectText">Kayanu</string>
+						<bool name="RequiresLineOfSight">false</bool>
+						<float name="MaxActivationDistance">8.0</float>
+					</Properties>
+				</Item>
+			</Item>
+			<Item class="Part" referent="RBX66">
+				<Properties>
+					<string name="Name">TajukKayanu03</string>
+					<bool name="Anchored">true</bool>
+					<Color3uint8 name="Color3uint8">4282350906</Color3uint8>
+					<Vector3 name="size"><X>9</X><Y>9</Y><Z>9</Z></Vector3>
+					<Coordinate3 name="CFrame">
+						<X>-40</X>
+						<Y>13</Y>
+						<Z>-80</Z>
+						<R00>1</R00><R01>0</R01><R02>0</R02>
+						<R10>0</R10><R11>0</R11><R12>0</R12>
+						<R20>0</R20><R21>0</R21><R22>0</R22>
+					</Coordinate3>
+					<Token name="Shape">0</Token>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="Model" referent="RBX68">
+			<Properties>
+				<string name="Name">Kayanu04</string>
+			</Properties>
+			<Item class="Part" referent="RBX69">
+				<Properties>
+					<string name="Name">BatangKayanu04</string>
+					<bool name="Anchored">true</bool>
+					<Color3uint8 name="Color3uint8">4286206512</Color3uint8>
+					<Vector3 name="size"><X>2.4</X><Y>10</Y><Z>2.4</Z></Vector3>
+					<Coordinate3 name="CFrame">
+						<X>0</X>
+						<Y>4</Y>
+						<Z>-90</Z>
+						<R00>1</R00><R01>0</R01><R02>0</R02>
+						<R10>0</R10><R11>0</R11><R12>0</R12>
+						<R20>0</R20><R21>0</R21><R22>0</R22>
+					</Coordinate3>
+				</Properties>
+				<Item class="ProximityPrompt" referent="RBX71">
+					<Properties>
+						<string name="Name">Prompt</string>
+						<string name="ActionText">Tebang</string>
+						<string name="ObjectText">Kayanu</string>
+						<bool name="RequiresLineOfSight">false</bool>
+						<float name="MaxActivationDistance">8.0</float>
+					</Properties>
+				</Item>
+			</Item>
+			<Item class="Part" referent="RBX70">
+				<Properties>
+					<string name="Name">TajukKayanu04</string>
+					<bool name="Anchored">true</bool>
+					<Color3uint8 name="Color3uint8">4282350906</Color3uint8>
+					<Vector3 name="size"><X>9</X><Y>9</Y><Z>9</Z></Vector3>
+					<Coordinate3 name="CFrame">
+						<X>0</X>
+						<Y>13</Y>
+						<Z>-90</Z>
+						<R00>1</R00><R01>0</R01><R02>0</R02>
+						<R10>0</R10><R11>0</R11><R12>0</R12>
+						<R20>0</R20><R21>0</R21><R22>0</R22>
+					</Coordinate3>
+					<Token name="Shape">0</Token>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="Model" referent="RBX72">
+			<Properties>
+				<string name="Name">Kayanu05</string>
+			</Properties>
+			<Item class="Part" referent="RBX73">
+				<Properties>
+					<string name="Name">BatangKayanu05</string>
+					<bool name="Anchored">true</bool>
+					<Color3uint8 name="Color3uint8">4286206512</Color3uint8>
+					<Vector3 name="size"><X>2.4</X><Y>10</Y><Z>2.4</Z></Vector3>
+					<Coordinate3 name="CFrame">
+						<X>95</X>
+						<Y>4</Y>
+						<Z>-70</Z>
+						<R00>1</R00><R01>0</R01><R02>0</R02>
+						<R10>0</R10><R11>0</R11><R12>0</R12>
+						<R20>0</R20><R21>0</R21><R22>0</R22>
+					</Coordinate3>
+				</Properties>
+				<Item class="ProximityPrompt" referent="RBX75">
+					<Properties>
+						<string name="Name">Prompt</string>
+						<string name="ActionText">Tebang</string>
+						<string name="ObjectText">Kayanu</string>
+						<bool name="RequiresLineOfSight">false</bool>
+						<float name="MaxActivationDistance">8.0</float>
+					</Properties>
+				</Item>
+			</Item>
+			<Item class="Part" referent="RBX74">
+				<Properties>
+					<string name="Name">TajukKayanu05</string>
+					<bool name="Anchored">true</bool>
+					<Color3uint8 name="Color3uint8">4282350906</Color3uint8>
+					<Vector3 name="size"><X>9</X><Y>9</Y><Z>9</Z></Vector3>
+					<Coordinate3 name="CFrame">
+						<X>95</X>
+						<Y>13</Y>
+						<Z>-70</Z>
+						<R00>1</R00><R01>0</R01><R02>0</R02>
+						<R10>0</R10><R11>0</R11><R12>0</R12>
+						<R20>0</R20><R21>0</R21><R22>0</R22>
+					</Coordinate3>
+					<Token name="Shape">0</Token>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="Model" referent="RBX76">
+			<Properties>
+				<string name="Name">Kayanu06</string>
+			</Properties>
+			<Item class="Part" referent="RBX77">
+				<Properties>
+					<string name="Name">BatangKayanu06</string>
+					<bool name="Anchored">true</bool>
+					<Color3uint8 name="Color3uint8">4286206512</Color3uint8>
+					<Vector3 name="size"><X>2.4</X><Y>10</Y><Z>2.4</Z></Vector3>
+					<Coordinate3 name="CFrame">
+						<X>105</X>
+						<Y>4</Y>
+						<Z>-30</Z>
+						<R00>1</R00><R01>0</R01><R02>0</R02>
+						<R10>0</R10><R11>0</R11><R12>0</R12>
+						<R20>0</R20><R21>0</R21><R22>0</R22>
+					</Coordinate3>
+				</Properties>
+				<Item class="ProximityPrompt" referent="RBX79">
+					<Properties>
+						<string name="Name">Prompt</string>
+						<string name="ActionText">Tebang</string>
+						<string name="ObjectText">Kayanu</string>
+						<bool name="RequiresLineOfSight">false</bool>
+						<float name="MaxActivationDistance">8.0</float>
+					</Properties>
+				</Item>
+			</Item>
+			<Item class="Part" referent="RBX78">
+				<Properties>
+					<string name="Name">TajukKayanu06</string>
+					<bool name="Anchored">true</bool>
+					<Color3uint8 name="Color3uint8">4282350906</Color3uint8>
+					<Vector3 name="size"><X>9</X><Y>9</Y><Z>9</Z></Vector3>
+					<Coordinate3 name="CFrame">
+						<X>105</X>
+						<Y>13</Y>
+						<Z>-30</Z>
+						<R00>1</R00><R01>0</R01><R02>0</R02>
+						<R10>0</R10><R11>0</R11><R12>0</R12>
+						<R20>0</R20><R21>0</R21><R22>0</R22>
+					</Coordinate3>
+					<Token name="Shape">0</Token>
+				</Properties>
+			</Item>
+		</Item>
+	</Item>
+	<Item class="Folder" referent="RBX80">
+		<Properties>
+			<string name="Name">Batu</string>
+		</Properties>
+		<Item class="Model" referent="RBX81">
+			<Properties>
+				<string name="Name">Batuku01</string>
+			</Properties>
+			<Item class="Part" referent="RBX82">
+				<Properties>
+					<string name="Name">Batuk01</string>
+					<bool name="Anchored">true</bool>
+					<Color3uint8 name="Color3uint8">4288322196</Color3uint8>
+					<Vector3 name="size"><X>3.4</X><Y>3.4</Y><Z>3.4</Z></Vector3>
+					<Coordinate3 name="CFrame">
+						<X>-100</X>
+						<Y>1.6</Y>
+						<Z>20</Z>
+						<R00>1</R00><R01>0</R01><R02>0</R02>
+						<R10>0</R10><R11>0</R11><R12>0</R12>
+						<R20>0</R20><R21>0</R21><R22>0</R22>
+					</Coordinate3>
+					<Token name="Shape">0</Token>
+				</Properties>
+				<Item class="ProximityPrompt" referent="RBX83">
+					<Properties>
+						<string name="Name">Prompt</string>
+						<string name="ActionText">Pecahkan</string>
+						<string name="ObjectText">Batuku</string>
+						<bool name="RequiresLineOfSight">false</bool>
+						<float name="MaxActivationDistance">8.0</float>
+					</Properties>
+				</Item>
+			</Item>
+		</Item>
+		<Item class="Model" referent="RBX84">
+			<Properties>
+				<string name="Name">Batuku02</string>
+			</Properties>
+			<Item class="Part" referent="RBX85">
+				<Properties>
+					<string name="Name">Batuk02</string>
+					<bool name="Anchored">true</bool>
+					<Color3uint8 name="Color3uint8">4288322196</Color3uint8>
+					<Vector3 name="size"><X>3.4</X><Y>3.4</Y><Z>3.4</Z></Vector3>
+					<Coordinate3 name="CFrame">
+						<X>-60</X>
+						<Y>1.6</Y>
+						<Z>55</Z>
+						<R00>1</R00><R01>0</R01><R02>0</R02>
+						<R10>0</R10><R11>0</R11><R12>0</R12>
+						<R20>0</R20><R21>0</R21><R22>0</R22>
+					</Coordinate3>
+					<Token name="Shape">0</Token>
+				</Properties>
+				<Item class="ProximityPrompt" referent="RBX86">
+					<Properties>
+						<string name="Name">Prompt</string>
+						<string name="ActionText">Pecahkan</string>
+						<string name="ObjectText">Batuku</string>
+						<bool name="RequiresLineOfSight">false</bool>
+						<float name="MaxActivationDistance">8.0</float>
+					</Properties>
+				</Item>
+			</Item>
+		</Item>
+		<Item class="Model" referent="RBX87">
+			<Properties>
+				<string name="Name">Batuku03</string>
+			</Properties>
+			<Item class="Part" referent="RBX88">
+				<Properties>
+					<string name="Name">Batuk03</string>
+					<bool name="Anchored">true</bool>
+					<Color3uint8 name="Color3uint8">4288322196</Color3uint8>
+					<Vector3 name="size"><X>3.4</X><Y>3.4</Y><Z>3.4</Z></Vector3>
+					<Coordinate3 name="CFrame">
+						<X>60</X>
+						<Y>1.6</Y>
+						<Z>55</Z>
+						<R00>1</R00><R01>0</R01><R02>0</R02>
+						<R10>0</R10><R11>0</R11><R12>0</R12>
+						<R20>0</R20><R21>0</R21><R22>0</R22>
+					</Coordinate3>
+					<Token name="Shape">0</Token>
+				</Properties>
+				<Item class="ProximityPrompt" referent="RBX89">
+					<Properties>
+						<string name="Name">Prompt</string>
+						<string name="ActionText">Pecahkan</string>
+						<string name="ObjectText">Batuku</string>
+						<bool name="RequiresLineOfSight">false</bool>
+						<float name="MaxActivationDistance">8.0</float>
+					</Properties>
+				</Item>
+			</Item>
+		</Item>
+		<Item class="Model" referent="RBX90">
+			<Properties>
+				<string name="Name">Batuku04</string>
+			</Properties>
+			<Item class="Part" referent="RBX91">
+				<Properties>
+					<string name="Name">Batuk04</string>
+					<bool name="Anchored">true</bool>
+					<Color3uint8 name="Color3uint8">4288322196</Color3uint8>
+					<Vector3 name="size"><X>3.4</X><Y>3.4</Y><Z>3.4</Z></Vector3>
+					<Coordinate3 name="CFrame">
+						<X>100</X>
+						<Y>1.6</Y>
+						<Z>-60</Z>
+						<R00>1</R00><R01>0</R01><R02>0</R02>
+						<R10>0</R10><R11>0</R11><R12>0</R12>
+						<R20>0</R20><R21>0</R21><R22>0</R22>
+					</Coordinate3>
+					<Token name="Shape">0</Token>
+				</Properties>
+				<Item class="ProximityPrompt" referent="RBX92">
+					<Properties>
+						<string name="Name">Prompt</string>
+						<string name="ActionText">Pecahkan</string>
+						<string name="ObjectText">Batuku</string>
+						<bool name="RequiresLineOfSight">false</bool>
+						<float name="MaxActivationDistance">8.0</float>
+					</Properties>
+				</Item>
+			</Item>
+		</Item>
+	</Item>
+	<Item class="Model" referent="RBX93">
+		<Properties>
+			<string name="Name">Rumah</string>
+		</Properties>
+		<Item class="Part" referent="RBX94">
+			<Properties>
+				<string name="Name">DindingDepanKiriRumah</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4293911492</Color3uint8>
+				<Vector3 name="size"><X>9.0</X><Y>9</Y><Z>1</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-61.5</X>
+					<Y>4.5</Y>
+					<Z>-87.0</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+		</Item>
+		<Item class="Part" referent="RBX95">
+			<Properties>
+				<string name="Name">DindingDepanKananRumah</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4293911492</Color3uint8>
+				<Vector3 name="size"><X>9.0</X><Y>9</Y><Z>1</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-48.5</X>
+					<Y>4.5</Y>
+					<Z>-87.0</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+		</Item>
+		<Item class="Part" referent="RBX96">
+			<Properties>
+				<string name="Name">DindingBelakangRumah</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4293911492</Color3uint8>
+				<Vector3 name="size"><X>22</X><Y>9</Y><Z>1</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-55</X>
+					<Y>4.5</Y>
+					<Z>-103.0</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+		</Item>
+		<Item class="Part" referent="RBX97">
+			<Properties>
+				<string name="Name">DindingKiriRumah</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4293911492</Color3uint8>
+				<Vector3 name="size"><X>1</X><Y>9</Y><Z>16</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-66.0</X>
+					<Y>4.5</Y>
+					<Z>-95</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+		</Item>
+		<Item class="Part" referent="RBX98">
+			<Properties>
+				<string name="Name">DindingKananRumah</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4293911492</Color3uint8>
+				<Vector3 name="size"><X>1</X><Y>9</Y><Z>16</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-44.0</X>
+					<Y>4.5</Y>
+					<Z>-95</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+		</Item>
+		<Item class="Part" referent="RBX99">
+			<Properties>
+				<string name="Name">AtapRumah</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4291391306</Color3uint8>
+				<Vector3 name="size"><X>24</X><Y>1.6</Y><Z>18</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-55</X>
+					<Y>10.2</Y>
+					<Z>-95</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+		</Item>
+		<Item class="Part" referent="RBX100">
+			<Properties>
+				<string name="Name">PintuRumah</string>
+				<bool name="Anchored">true</bool>
+				<bool name="CanCollide">false</bool>
+				<Color3uint8 name="Color3uint8">4285219366</Color3uint8>
+				<Vector3 name="size"><X>4</X><Y>9</Y><Z>0.6</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-55</X>
+					<Y>4.5</Y>
+					<Z>-87.0</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+			<Item class="ProximityPrompt" referent="RBX101">
+				<Properties>
+					<string name="Name">Prompt</string>
+					<string name="ActionText">Istirahat</string>
+					<string name="ObjectText">Rumah</string>
+					<bool name="RequiresLineOfSight">false</bool>
+					<float name="MaxActivationDistance">8.0</float>
+				</Properties>
+			</Item>
+		</Item>
+	</Item>
+	<Item class="Model" referent="RBX102">
+		<Properties>
+			<string name="Name">Dapur</string>
+		</Properties>
+		<Item class="Part" referent="RBX103">
+			<Properties>
+				<string name="Name">DindingDepanKiriDapur</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4293911492</Color3uint8>
+				<Vector3 name="size"><X>5.0</X><Y>8</Y><Z>1</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-24.5</X>
+					<Y>4.0</Y>
+					<Z>-89.0</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+		</Item>
+		<Item class="Part" referent="RBX104">
+			<Properties>
+				<string name="Name">DindingDepanKananDapur</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4293911492</Color3uint8>
+				<Vector3 name="size"><X>5.0</X><Y>8</Y><Z>1</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-15.5</X>
+					<Y>4.0</Y>
+					<Z>-89.0</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+		</Item>
+		<Item class="Part" referent="RBX105">
+			<Properties>
+				<string name="Name">DindingBelakangDapur</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4293911492</Color3uint8>
+				<Vector3 name="size"><X>14</X><Y>8</Y><Z>1</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-20</X>
+					<Y>4.0</Y>
+					<Z>-101.0</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+		</Item>
+		<Item class="Part" referent="RBX106">
+			<Properties>
+				<string name="Name">DindingKiriDapur</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4293911492</Color3uint8>
+				<Vector3 name="size"><X>1</X><Y>8</Y><Z>12</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-27.0</X>
+					<Y>4.0</Y>
+					<Z>-95</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+		</Item>
+		<Item class="Part" referent="RBX107">
+			<Properties>
+				<string name="Name">DindingKananDapur</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4293911492</Color3uint8>
+				<Vector3 name="size"><X>1</X><Y>8</Y><Z>12</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-13.0</X>
+					<Y>4.0</Y>
+					<Z>-95</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+		</Item>
+		<Item class="Part" referent="RBX108">
+			<Properties>
+				<string name="Name">AtapDapur</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4287274602</Color3uint8>
+				<Vector3 name="size"><X>16</X><Y>1.6</Y><Z>14</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-20</X>
+					<Y>9.2</Y>
+					<Z>-95</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+		</Item>
+		<Item class="Part" referent="RBX109">
+			<Properties>
+				<string name="Name">PintuDapur</string>
+				<bool name="Anchored">true</bool>
+				<bool name="CanCollide">false</bool>
+				<Color3uint8 name="Color3uint8">4285219366</Color3uint8>
+				<Vector3 name="size"><X>4</X><Y>8</Y><Z>0.6</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-20</X>
+					<Y>4.0</Y>
+					<Z>-89.0</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+			<Item class="ProximityPrompt" referent="RBX110">
+				<Properties>
+					<string name="Name">Prompt</string>
+					<string name="ActionText">Masak</string>
+					<string name="ObjectText">Dapur</string>
+					<bool name="RequiresLineOfSight">false</bool>
+					<float name="MaxActivationDistance">8.0</float>
+				</Properties>
+			</Item>
+		</Item>
+	</Item>
+	<Item class="Model" referent="RBX111">
+		<Properties>
+			<string name="Name">Kios</string>
+		</Properties>
+		<Item class="Part" referent="RBX112">
+			<Properties>
+				<string name="Name">DindingDepanKiriKios</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4293911492</Color3uint8>
+				<Vector3 name="size"><X>8.0</X><Y>8</Y><Z>1</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>39.0</X>
+					<Y>4.0</Y>
+					<Z>-88.0</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+		</Item>
+		<Item class="Part" referent="RBX113">
+			<Properties>
+				<string name="Name">DindingDepanKananKios</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4293911492</Color3uint8>
+				<Vector3 name="size"><X>8.0</X><Y>8</Y><Z>1</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>51.0</X>
+					<Y>4.0</Y>
+					<Z>-88.0</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+		</Item>
+		<Item class="Part" referent="RBX114">
+			<Properties>
+				<string name="Name">DindingBelakangKios</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4293911492</Color3uint8>
+				<Vector3 name="size"><X>20</X><Y>8</Y><Z>1</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>45</X>
+					<Y>4.0</Y>
+					<Z>-102.0</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+		</Item>
+		<Item class="Part" referent="RBX115">
+			<Properties>
+				<string name="Name">DindingKiriKios</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4293911492</Color3uint8>
+				<Vector3 name="size"><X>1</X><Y>8</Y><Z>14</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>35.0</X>
+					<Y>4.0</Y>
+					<Z>-95</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+		</Item>
+		<Item class="Part" referent="RBX116">
+			<Properties>
+				<string name="Name">DindingKananKios</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4293911492</Color3uint8>
+				<Vector3 name="size"><X>1</X><Y>8</Y><Z>14</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>55.0</X>
+					<Y>4.0</Y>
+					<Z>-95</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+		</Item>
+		<Item class="Part" referent="RBX117">
+			<Properties>
+				<string name="Name">PintuKios</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4290271806</Color3uint8>
+				<Vector3 name="size"><X>22</X><Y>1.6</Y><Z>16</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>45</X>
+					<Y>9.2</Y>
+					<Z>-95</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+		</Item>
+		<Item class="Part" referent="RBX118">
+			<Properties>
+				<string name="Name">PintuKios</string>
+				<bool name="Anchored">true</bool>
+				<bool name="CanCollide">false</bool>
+				<Color3uint8 name="Color3uint8">4285219366</Color3uint8>
+				<Vector3 name="size"><X>4</X><Y>8</Y><Z>0.6</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>45</X>
+					<Y>4.0</Y>
+					<Z>-88.0</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+			<Item class="ProximityPrompt" referent="RBX119">
+				<Properties>
+					<string name="Name">Prompt</string>
+					<string name="ActionText">Buka Kios</string>
+					<string name="ObjectText">Kios</string>
+					<bool name="RequiresLineOfSight">false</bool>
+					<float name="MaxActivationDistance">8.0</float>
+				</Properties>
+			</Item>
+		</Item>
+	</Item>
+	<Item class="Model" referent="RBX120">
+		<Properties>
+			<string name="Name">Kandang</string>
+		</Properties>
+		<Item class="Part" referent="RBX121">
+			<Properties>
+				<string name="Name">DindingDepanKiriKandang</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4291336296</Color3uint8>
+				<Vector3 name="size"><X>6.0</X><Y>7</Y><Z>1</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-90.0</X>
+					<Y>3.5</Y>
+					<Z>61.0</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+		</Item>
+		<Item class="Part" referent="RBX122">
+			<Properties>
+				<string name="Name">DindingDepanKananKandang</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4291336296</Color3uint8>
+				<Vector3 name="size"><X>6.0</X><Y>7</Y><Z>1</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-80.0</X>
+					<Y>3.5</Y>
+					<Z>61.0</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+		</Item>
+		<Item class="Part" referent="RBX123">
+			<Properties>
+				<string name="Name">DindingBelakangKandang</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4291336296</Color3uint8>
+				<Vector3 name="size"><X>16</X><Y>7</Y><Z>1</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-85</X>
+					<Y>3.5</Y>
+					<Z>49.0</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+		</Item>
+		<Item class="Part" referent="RBX124">
+			<Properties>
+				<string name="Name">DindingKiriKandang</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4291336296</Color3uint8>
+				<Vector3 name="size"><X>1</X><Y>7</Y><Z>12</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-93.0</X>
+					<Y>3.5</Y>
+					<Z>55</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+		</Item>
+		<Item class="Part" referent="RBX125">
+			<Properties>
+				<string name="Name">DindingKananKandang</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4291336296</Color3uint8>
+				<Vector3 name="size"><X>1</X><Y>7</Y><Z>12</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-77.0</X>
+					<Y>3.5</Y>
+					<Z>55</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+		</Item>
+		<Item class="Part" referent="RBX126">
+			<Properties>
+				<string name="Name">AtapKandang</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4287274602</Color3uint8>
+				<Vector3 name="size"><X>18</X><Y>1.6</Y><Z>14</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-85</X>
+					<Y>8.2</Y>
+					<Z>55</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+		</Item>
+		<Item class="Part" referent="RBX127">
+			<Properties>
+				<string name="Name">PintuKandang</string>
+				<bool name="Anchored">true</bool>
+				<bool name="CanCollide">false</bool>
+				<Color3uint8 name="Color3uint8">4285219366</Color3uint8>
+				<Vector3 name="size"><X>4</X><Y>7</Y><Z>0.6</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>-85</X>
+					<Y>3.5</Y>
+					<Z>61.0</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+			<Item class="ProximityPrompt" referent="RBX128">
+				<Properties>
+					<string name="Name">Prompt</string>
+					<string name="ActionText">Kandang Ayumi</string>
+					<string name="ObjectText">Kandang</string>
+					<bool name="RequiresLineOfSight">false</bool>
+					<float name="MaxActivationDistance">8.0</float>
+				</Properties>
+			</Item>
+		</Item>
+	</Item>
+	<Item class="Model" referent="RBX129">
+		<Properties>
+			<string name="Name">Pondok</string>
+		</Properties>
+		<Item class="Part" referent="RBX130">
+			<Properties>
+				<string name="Name">DindingDepanKiriPondok</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4291864696</Color3uint8>
+				<Vector3 name="size"><X>6.0</X><Y>7</Y><Z>1</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>70.0</X>
+					<Y>3.5</Y>
+					<Z>61.0</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+		</Item>
+		<Item class="Part" referent="RBX131">
+			<Properties>
+				<string name="Name">DindingDepanKananPondok</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4291864696</Color3uint8>
+				<Vector3 name="size"><X>6.0</X><Y>7</Y><Z>1</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>80.0</X>
+					<Y>3.5</Y>
+					<Z>61.0</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+		</Item>
+		<Item class="Part" referent="RBX132">
+			<Properties>
+				<string name="Name">DindingBelakangPondok</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4291864696</Color3uint8>
+				<Vector3 name="size"><X>16</X><Y>7</Y><Z>1</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>75</X>
+					<Y>3.5</Y>
+					<Z>49.0</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+		</Item>
+		<Item class="Part" referent="RBX133">
+			<Properties>
+				<string name="Name">DindingKiriPondok</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4291864696</Color3uint8>
+				<Vector3 name="size"><X>1</X><Y>7</Y><Z>12</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>67.0</X>
+					<Y>3.5</Y>
+					<Z>55</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+		</Item>
+		<Item class="Part" referent="RBX134">
+			<Properties>
+				<string name="Name">DindingKananPondok</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4291864696</Color3uint8>
+				<Vector3 name="size"><X>1</X><Y>7</Y><Z>12</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>83.0</X>
+					<Y>3.5</Y>
+					<Z>55</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+		</Item>
+		<Item class="Part" referent="RBX135">
+			<Properties>
+				<string name="Name">AtapPondok</string>
+				<bool name="Anchored">true</bool>
+				<Color3uint8 name="Color3uint8">4287274602</Color3uint8>
+				<Vector3 name="size"><X>18</X><Y>1.6</Y><Z>14</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>75</X>
+					<Y>8.2</Y>
+					<Z>55</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+		</Item>
+		<Item class="Part" referent="RBX136">
+			<Properties>
+				<string name="Name">PintuPondok</string>
+				<bool name="Anchored">true</bool>
+				<bool name="CanCollide">false</bool>
+				<Color3uint8 name="Color3uint8">4285219366</Color3uint8>
+				<Vector3 name="size"><X>4</X><Y>7</Y><Z>0.6</Z></Vector3>
+				<Coordinate3 name="CFrame">
+					<X>75</X>
+					<Y>3.5</Y>
+					<Z>61.0</Z>
+					<R00>1</R00><R01>0</R01><R02>0</R02>
+					<R10>0</R10><R11>0</R11><R12>0</R12>
+					<R20>0</R20><R21>0</R21><R22>0</R22>
+				</Coordinate3>
+			</Properties>
+			<Item class="ProximityPrompt" referent="RBX137">
+				<Properties>
+					<string name="Name">Prompt</string>
+					<string name="ActionText">Pondok Sapiyu</string>
+					<string name="ObjectText">Pondok</string>
+					<bool name="RequiresLineOfSight">false</bool>
+					<float name="MaxActivationDistance">8.0</float>
+				</Properties>
+			</Item>
+		</Item>
+	</Item>
+	<Item class="Folder" referent="RBX138">
+		<Properties>
+			<string name="Name">HewanTernak</string>
+		</Properties>
+		<Item class="Model" referent="RBX139">
+			<Properties>
+				<string name="Name">Ayumi01</string>
+			</Properties>
+			<Item class="Part" referent="RBX140">
+				<Properties>
+					<string name="Name">BadanAyumi01</string>
+					<bool name="Anchored">true</bool>
+					<Color3uint8 name="Color3uint8">4294109912</Color3uint8>
+					<Vector3 name="size"><X>2.2</X><Y>1.8</Y><Z>2.8</Z></Vector3>
+					<Coordinate3 name="CFrame">
+						<X>-90</X>
+						<Y>1.4</Y>
+						<Z>40</Z>
+						<R00>1</R00><R01>0</R01><R02>0</R02>
+						<R10>0</R10><R11>0</R11><R12>0</R12>
+						<R20>0</R20><R21>0</R21><R22>0</R22>
+					</Coordinate3>
+					<Token name="Shape">0</Token>
+				</Properties>
+				<Item class="ProximityPrompt" referent="RBX142">
+					<Properties>
+						<string name="Name">Prompt</string>
+						<string name="ActionText">Beri Pakanu</string>
+						<string name="ObjectText">Ayumi</string>
+						<bool name="RequiresLineOfSight">false</bool>
+						<float name="MaxActivationDistance">8.0</float>
+					</Properties>
+				</Item>
+			</Item>
+			<Item class="Part" referent="RBX141">
+				<Properties>
+					<string name="Name">KepalaAyumi01</string>
+					<bool name="Anchored">true</bool>
+					<Color3uint8 name="Color3uint8">4294109912</Color3uint8>
+					<Vector3 name="size"><X>1.2</X><Y>1.2</Y><Z>1.2</Z></Vector3>
+					<Coordinate3 name="CFrame">
+						<X>-90</X>
+						<Y>2.4</Y>
+						<Z>41.6</Z>
+						<R00>1</R00><R01>0</R01><R02>0</R02>
+						<R10>0</R10><R11>0</R11><R12>0</R12>
+						<R20>0</R20><R21>0</R21><R22>0</R22>
+					</Coordinate3>
+					<Token name="Shape">0</Token>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="Model" referent="RBX143">
+			<Properties>
+				<string name="Name">Ayumi02</string>
+			</Properties>
+			<Item class="Part" referent="RBX144">
+				<Properties>
+					<string name="Name">BadanAyumi02</string>
+					<bool name="Anchored">true</bool>
+					<Color3uint8 name="Color3uint8">4294109912</Color3uint8>
+					<Vector3 name="size"><X>2.2</X><Y>1.8</Y><Z>2.8</Z></Vector3>
+					<Coordinate3 name="CFrame">
+						<X>-84</X>
+						<Y>1.4</Y>
+						<Z>43</Z>
+						<R00>1</R00><R01>0</R01><R02>0</R02>
+						<R10>0</R10><R11>0</R11><R12>0</R12>
+						<R20>0</R20><R21>0</R21><R22>0</R22>
+					</Coordinate3>
+					<Token name="Shape">0</Token>
+				</Properties>
+				<Item class="ProximityPrompt" referent="RBX146">
+					<Properties>
+						<string name="Name">Prompt</string>
+						<string name="ActionText">Beri Pakanu</string>
+						<string name="ObjectText">Ayumi</string>
+						<bool name="RequiresLineOfSight">false</bool>
+						<float name="MaxActivationDistance">8.0</float>
+					</Properties>
+				</Item>
+			</Item>
+			<Item class="Part" referent="RBX145">
+				<Properties>
+					<string name="Name">KepalaAyumi02</string>
+					<bool name="Anchored">true</bool>
+					<Color3uint8 name="Color3uint8">4294109912</Color3uint8>
+					<Vector3 name="size"><X>1.2</X><Y>1.2</Y><Z>1.2</Z></Vector3>
+					<Coordinate3 name="CFrame">
+						<X>-84</X>
+						<Y>2.4</Y>
+						<Z>44.6</Z>
+						<R00>1</R00><R01>0</R01><R02>0</R02>
+						<R10>0</R10><R11>0</R11><R12>0</R12>
+						<R20>0</R20><R21>0</R21><R22>0</R22>
+					</Coordinate3>
+					<Token name="Shape">0</Token>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="Model" referent="RBX147">
+			<Properties>
+				<string name="Name">Ayumi03</string>
+			</Properties>
+			<Item class="Part" referent="RBX148">
+				<Properties>
+					<string name="Name">BadanAyumi03</string>
+					<bool name="Anchored">true</bool>
+					<Color3uint8 name="Color3uint8">4294109912</Color3uint8>
+					<Vector3 name="size"><X>2.2</X><Y>1.8</Y><Z>2.8</Z></Vector3>
+					<Coordinate3 name="CFrame">
+						<X>-78</X>
+						<Y>1.4</Y>
+						<Z>39</Z>
+						<R00>1</R00><R01>0</R01><R02>0</R02>
+						<R10>0</R10><R11>0</R11><R12>0</R12>
+						<R20>0</R20><R21>0</R21><R22>0</R22>
+					</Coordinate3>
+					<Token name="Shape">0</Token>
+				</Properties>
+				<Item class="ProximityPrompt" referent="RBX150">
+					<Properties>
+						<string name="Name">Prompt</string>
+						<string name="ActionText">Beri Pakanu</string>
+						<string name="ObjectText">Ayumi</string>
+						<bool name="RequiresLineOfSight">false</bool>
+						<float name="MaxActivationDistance">8.0</float>
+					</Properties>
+				</Item>
+			</Item>
+			<Item class="Part" referent="RBX149">
+				<Properties>
+					<string name="Name">KepalaAyumi03</string>
+					<bool name="Anchored">true</bool>
+					<Color3uint8 name="Color3uint8">4294109912</Color3uint8>
+					<Vector3 name="size"><X>1.2</X><Y>1.2</Y><Z>1.2</Z></Vector3>
+					<Coordinate3 name="CFrame">
+						<X>-78</X>
+						<Y>2.4</Y>
+						<Z>40.6</Z>
+						<R00>1</R00><R01>0</R01><R02>0</R02>
+						<R10>0</R10><R11>0</R11><R12>0</R12>
+						<R20>0</R20><R21>0</R21><R22>0</R22>
+					</Coordinate3>
+					<Token name="Shape">0</Token>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="Model" referent="RBX151">
+			<Properties>
+				<string name="Name">Sapiyu01</string>
+			</Properties>
+			<Item class="Part" referent="RBX152">
+				<Properties>
+					<string name="Name">BadanSapiyu01</string>
+					<bool name="Anchored">true</bool>
+					<Color3uint8 name="Color3uint8">4294109400</Color3uint8>
+					<Vector3 name="size"><X>4.2</X><Y>2.8</Y><Z>6.5</Z></Vector3>
+					<Coordinate3 name="CFrame">
+						<X>70</X>
+						<Y>2.2</Y>
+						<Z>40</Z>
+						<R00>1</R00><R01>0</R01><R02>0</R02>
+						<R10>0</R10><R11>0</R11><R12>0</R12>
+						<R20>0</R20><R21>0</R21><R22>0</R22>
+					</Coordinate3>
+				</Properties>
+				<Item class="ProximityPrompt" referent="RBX154">
+					<Properties>
+						<string name="Name">Prompt</string>
+						<string name="ActionText">Beri Pakanu</string>
+						<string name="ObjectText">Sapiyu</string>
+						<bool name="RequiresLineOfSight">false</bool>
+						<float name="MaxActivationDistance">8.0</float>
+					</Properties>
+				</Item>
+			</Item>
+			<Item class="Part" referent="RBX153">
+				<Properties>
+					<string name="Name">KepalaSapiyu01</string>
+					<bool name="Anchored">true</bool>
+					<Color3uint8 name="Color3uint8">4294109400</Color3uint8>
+					<Vector3 name="size"><X>2</X><Y>2</Y><Z>2</Z></Vector3>
+					<Coordinate3 name="CFrame">
+						<X>70</X>
+						<Y>3</Y>
+						<Z>43.8</Z>
+						<R00>1</R00><R01>0</R01><R02>0</R02>
+						<R10>0</R10><R11>0</R11><R12>0</R12>
+						<R20>0</R20><R21>0</R21><R22>0</R22>
+					</Coordinate3>
+					<Token name="Shape">0</Token>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="Model" referent="RBX155">
+			<Properties>
+				<string name="Name">Sapiyu02</string>
+			</Properties>
+			<Item class="Part" referent="RBX156">
+				<Properties>
+					<string name="Name">BadanSapiyu02</string>
+					<bool name="Anchored">true</bool>
+					<Color3uint8 name="Color3uint8">4294109400</Color3uint8>
+					<Vector3 name="size"><X>4.2</X><Y>2.8</Y><Z>6.5</Z></Vector3>
+					<Coordinate3 name="CFrame">
+						<X>80</X>
+						<Y>2.2</Y>
+						<Z>43</Z>
+						<R00>1</R00><R01>0</R01><R02>0</R02>
+						<R10>0</R10><R11>0</R11><R12>0</R12>
+						<R20>0</R20><R21>0</R21><R22>0</R22>
+					</Coordinate3>
+				</Properties>
+				<Item class="ProximityPrompt" referent="RBX158">
+					<Properties>
+						<string name="Name">Prompt</string>
+						<string name="ActionText">Beri Pakanu</string>
+						<string name="ObjectText">Sapiyu</string>
+						<bool name="RequiresLineOfSight">false</bool>
+						<float name="MaxActivationDistance">8.0</float>
+					</Properties>
+				</Item>
+			</Item>
+			<Item class="Part" referent="RBX157">
+				<Properties>
+					<string name="Name">KepalaSapiyu02</string>
+					<bool name="Anchored">true</bool>
+					<Color3uint8 name="Color3uint8">4294109400</Color3uint8>
+					<Vector3 name="size"><X>2</X><Y>2</Y><Z>2</Z></Vector3>
+					<Coordinate3 name="CFrame">
+						<X>80</X>
+						<Y>3</Y>
+						<Z>46.8</Z>
+						<R00>1</R00><R01>0</R01><R02>0</R02>
+						<R10>0</R10><R11>0</R11><R12>0</R12>
+						<R20>0</R20><R21>0</R21><R22>0</R22>
+					</Coordinate3>
+					<Token name="Shape">0</Token>
+				</Properties>
+			</Item>
+		</Item>
+	</Item>
+	<Item class="SpawnLocation" referent="RBX159">
+		<Properties>
+			<string name="Name">TitikAwal</string>
+			<bool name="Anchored">true</bool>
+			<Color3uint8 name="Color3uint8">4294962355</Color3uint8>
+			<Vector3 name="size"><X>8</X><Y>0.8</Y><Z>8</Z></Vector3>
+			<Coordinate3 name="CFrame">
+				<X>0</X>
+				<Y>0.4</Y>
+				<Z>-35</Z>
+				<R00>1</R00><R01>0</R01><R02>0</R02>
+				<R10>0</R10><R11>0</R11><R12>0</R12>
+				<R20>0</R20><R21>0</R21><R22>0</R22>
+			</Coordinate3>
+		</Properties>
+	</Item>
+	</Item>
+	<Item class="Lighting" referent="RBXL">
+		<Properties>
+			<string name="Name">Lighting</string>
+			<float name="ClockTime">6</float>
+		</Properties>
+	</Item>
+	<Item class="ReplicatedStorage" referent="RBXR">
+		<Properties>
+			<string name="Name">ReplicatedStorage</string>
+		</Properties>
+		<Item class="ModuleScript" referent="RBXK">
+			<Properties>
+				<string name="Name">KonfigurasiMiodakali</string>
+				<ProtectedString name="Source">--!strict
+-- Miodakali — Konfigurasi (karya asli game Miodakali)
+-- Skema real-time ala permainan tani modern: tanaman tumbuh mengikuti
+-- waktu nyata, tenaga pulih bertahap, level petani membuka konten baru.
+local Konfig = {}
+
+Konfig.UangAwal = 150
+
+-- Tanaman ladang: tumbuh dalam DETIK NYATA (bukan hari tidur)
+Konfig.Tanaman = {
+        { nama = "Lumira", benih = "BenihLumira", hargaBenih = 12, hargaJual = 22, detikTumbuh = 60, levelButuh = 1, xpPanen = 2 },
+        { nama = "Beraka", benih = "BenihBeraka", hargaBenih = 28, hargaJual = 48, detikTumbuh = 180, levelButuh = 2, xpPanen = 3 },
+        { nama = "Terunu", benih = "BenihTerunu", hargaBenih = 45, hargaJual = 75, detikTumbuh = 300, levelButuh = 3, xpPanen = 4 },
+        { nama = "Makira", benih = "BenihMakira", hargaBenih = 70, hargaJual = 110, detikTumbuh = 600, levelButuh = 5, xpPanen = 6 },
+        { nama = "Kopanu", benih = "BenihKopanu", hargaBenih = 95, hargaJual = 150, detikTumbuh = 900, levelButuh = 6, xpPanen = 7 },
+        { nama = "Sundara", benih = "BenihSundara", hargaBenih = 140, hargaJual = 220, detikTumbuh = 1500, levelButuh = 8, xpPanen = 9 },
+}
+
+Konfig.HargaPakanu = 8
+Konfig.HargaPanyukan = 120
+Konfig.LevelPanyukan = 2
+
+-- Hasil lain yang bisa dijual di kios
+Konfig.HargaJualLain = {
+        TelurAyumi = 22,
+        SusuSapiyu = 60,
+        Balanu = 10,
+        Batuku = 12,
+        Ikana = 20,
+        Silara = 36,
+        Kiraya = 62,
+}
+
+-- Ternak kandang: dibeli, diberi Pakanu, hasil siap pada timer nyata
+Konfig.Ternak = {
+        Ayumi = { harga = 60, levelButuh = 1, detikProduksi = 120, hasil = "TelurAyumi" },
+        Sapiyu = { harga = 180, levelButuh = 4, detikProduksi = 300, hasil = "SusuSapiyu" },
+}
+
+-- Ekspansi lahan: petak awal terbuka, sisanya dibeli bertahap
+Konfig.PetakAwal = 3
+Konfig.BiayaPetak = function(keN: number)
+        return {
+                uang = 40 + 25 * keN,
+                balanu = 2 + math.floor(keN / 2),
+                batuku = 1 + math.floor(keN / 3),
+        }
+end
+
+-- Level petani: XP_BUTUH[i] = XP agar naik dari level i ke i+1
+Konfig.XPButuh = { 30, 50, 80, 120, 180, 260, 330, 450, 600, 800, 1000, 1250, 1500, 1800, 2200 }
+
+Konfig.EnergiMaksDasar = 100
+Konfig.EnergiPerLevel = 5
+Konfig.RegenTenagaDetik = 12 -- pulih 1 tenaga tiap N detik nyata
+Konfig.RespawnDetik = 150 -- pohon &amp; batu tumbuh kembali (detik nyata)
+
+Konfig.BiayaTenaga = {
+        gembur = 2,
+        tanam = 1,
+        panen = 1,
+        tebang = 5,
+        pecah = 5,
+        pakanu = 1,
+        ambil = 1,
+}
+
+Konfig.XpAksi = {
+        gembur = 1,
+        tanam = 1,
+        tebang = 3,
+        pecah = 3,
+        pakanu = 1,
+        ambil = 3,
+}
+
+-- Rantai tugas pembuka
+Konfig.Tugas = {
+        { id = "tanam", teks = "Tanam Benih Lumira di petak kebun", uang = 20, xp = 5 },
+        { id = "panen", teks = "Panen Lumira yang sudah matang", uang = 25, xp = 10 },
+        { id = "jual", teks = "Jual hasil panen di Kios Desa", uang = 30, xp = 10 },
+        { id = "beli", teks = "Beli 3 benih apa pun di Kios", uang = 20, xp = 5 },
+        { id = "tebas", teks = "Tebas Kayanu dengan Kapura", uang = 25, xp = 10 },
+        { id = "tambang", teks = "Pecah Batuku dengan Giliuk", uang = 25, xp = 10 },
+        { id = "ternak", teks = "Beli Ayumi di kandang &amp; beri Pakanu", uang = 40, xp = 15 },
+        { id = "petak", teks = "Perluas kebun: beli petak baru", uang = 30, xp = 15 },
+        { id = "masak", teks = "Masak di Dapur Desa (segera hadir)", uang = 40, xp = 15 },
+        { id = "pancing", teks = "Pancing ikan di Kolam", uang = 50, xp = 20 },
+        { id = "lv3", teks = "Capai Level 3 Petani", uang = 60, xp = 0 },
+}
+
+return Konfig
+</ProtectedString>
+			</Properties>
+		</Item>
+		<Item class="RemoteEvent" referent="RBXE">
+			<Properties>
+				<string name="Name">KiosEvent</string>
+			</Properties>
+		</Item>
+	</Item>
+	<Item class="StarterGui" referent="RBXG">
+		<Properties>
+			<string name="Name">StarterGui</string>
+		</Properties>
+		<Item class="ScreenGui" referent="RBXS">
+			<Properties>
+				<string name="Name">KiosGui</string>
+				<bool name="Enabled">false</bool>
+			</Properties>
+			<Item class="LocalScript" referent="RBXLG">
+				<Properties>
+					<string name="Name">KiosKlien</string>
+					<ProtectedString name="Source">--!strict
+-- Miodakali — Antarmuka Kios Desa (klien)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local StarterGui = game:GetService("StarterGui")
+
+local Konfig = require(ReplicatedStorage:WaitForChild("KonfigurasiMiodakali"))
+local KiosEvent = ReplicatedStorage:WaitForChild("KiosEvent")
+local player = Players.LocalPlayer
+
+local gui = script.Parent :: ScreenGui
+
+local frame = Instance.new("Frame")
+frame.Name = "Kotak"
+frame.Size = UDim2.fromScale(0.42, 0.62)
+frame.Position = UDim2.fromScale(0.29, 0.19)
+frame.BackgroundColor3 = Color3.fromRGB(38, 30, 20)
+frame.BackgroundTransparency = 0.08
+frame.Visible = false
+frame.Parent = gui
+
+local sudut = Instance.new("UICorner")
+sudut.CornerRadius = UDim.new(0, 14)
+sudut.Parent = frame
+
+local judul = Instance.new("TextLabel")
+judul.Name = "Judul"
+judul.Size = UDim2.fromScale(1, 0.1)
+judul.BackgroundTransparency = 1
+judul.TextColor3 = Color3.fromRGB(255, 233, 184)
+judul.TextScaled = true
+judul.Font = Enum.Font.GothamBold
+judul.Text = "KIOS DESA — Pak Dalu"
+judul.Parent = frame
+
+local daftar = Instance.new("ScrollingFrame")
+daftar.Name = "Daftar"
+daftar.Size = UDim2.fromScale(0.92, 0.78)
+daftar.Position = UDim2.fromScale(0.04, 0.12)
+daftar.BackgroundTransparency = 1
+daftar.BorderSizePixel = 0
+daftar.CanvasSize = UDim2.new(0, 0, 0, 0)
+daftar.AutomaticCanvasSize = Enum.AutomaticSize.Y
+daftar.Parent = frame
+
+local tata = Instance.new("UIListLayout")
+tata.Padding = UDim.new(0, 6)
+tata.SortOrder = Enum.SortOrder.LayoutOrder
+tata.Parent = daftar
+
+local info = Instance.new("TextLabel")
+info.Name = "Info"
+info.Size = UDim2.fromScale(0.92, 0.07)
+info.Position = UDim2.fromScale(0.04, 0.91)
+info.BackgroundTransparency = 1
+info.TextColor3 = Color3.fromRGB(200, 190, 160)
+info.TextScaled = true
+info.Text = "Tanaman tumbuh waktu nyata · naik level untuk buka benih baru"
+info.Parent = frame
+
+local tombolTutup = Instance.new("TextButton")
+tombolTutup.Size = UDim2.fromScale(0.14, 0.08)
+tombolTutup.Position = UDim2.fromScale(0.83, 0.01)
+tombolTutup.TextColor3 = Color3.fromRGB(255, 120, 100)
+tombolTutup.BackgroundTransparency = 1
+tombolTutup.TextScaled = true
+tombolTutup.Font = Enum.Font.GothamBold
+tombolTutup.Text = "Tutup"
+tombolTutup.Parent = frame
+tombolTutup.Activated:Connect(function()
+        frame.Visible = false
+end)
+
+local function baris(teks: string, urutan: number, saatTekan: () -&gt; ())
+        local b = Instance.new("TextButton")
+        b.Size = UDim2.fromScale(1, 0)
+        b.AutomaticSize = Enum.AutomaticSize.Y
+        b.BackgroundColor3 = Color3.fromRGB(58, 48, 34)
+        b.TextColor3 = Color3.fromRGB(255, 233, 184)
+        b.TextScaled = true
+        b.Font = Enum.Font.Gotham
+        b.Text = teks
+        b.AutoButtonColor = true
+        b.LayoutOrder = urutan
+        b.Parent = daftar
+        local sud = Instance.new("UICorner")
+        sud.CornerRadius = UDim.new(0, 8)
+        sud.Parent = b
+        b.Activated:Connect(saatTekan)
+end
+
+local urutan = 0
+local player = Players.LocalPlayer
+
+local function labelLevel(lb: number): string
+        local lv = player:FindFirstChild("leaderstats")
+        local nilai = lv and lv:FindFirstChild("LevelPetani")
+        local sekarang = nilai and nilai:IsA("IntValue") and nilai.Value or 1
+        return if sekarang &gt;= lb then "" else "  [Level " .. lb .. "]"
+end
+
+for _, t in Konfig.Tanaman :: {any} do
+        urutan += 1
+        local nama = t.benih
+        local menit = math.floor(t.detikTumbuh / 60)
+        local ket = if t.detikTumbuh &lt; 60 then (t.detikTumbuh .. " dtk") else (menit .. " mnt")
+        baris(
+                "Beli "
+                        .. nama
+                        .. "  ("
+                        .. t.hargaBenih
+                        .. " Kirupi · "
+                        .. ket
+                        .. ")"
+                        .. labelLevel(t.levelButuh),
+                urutan,
+                function()
+                        KiosEvent:FireServer("beli", nama, 1)
+                end
+        )
+end
+urutan += 1
+baris("Beli Pakanu  (" .. Konfig.HargaPakanu .. " Kirupi)", urutan, function()
+        KiosEvent:FireServer("beli", "Pakanu", 1)
+end)
+urutan += 1
+baris(
+        "Beli Panyukan  (" .. Konfig.HargaPanyukan .. " Kirupi)" .. labelLevel(Konfig.LevelPanyukan),
+        urutan,
+        function()
+                KiosEvent:FireServer("beli", "Panyukan", 1)
+        end
+)
+
+for _, t in Konfig.Tanaman :: {any} do
+        urutan += 1
+        local nama = t.nama
+        local harga = t.hargaJual
+        baris("Jual " .. nama .. "  (+" .. harga .. ")", urutan, function()
+                KiosEvent:FireServer("jual", nama, 1)
+        end)
+end
+for nama, harga in Konfig.HargaJualLain :: {any} do
+        urutan += 1
+        baris("Jual " .. nama .. "  (+" .. harga .. ")", urutan, function()
+                KiosEvent:FireServer("jual", nama, 1)
+        end)
+end
+
+KiosEvent.OnClientEvent:Connect(function()
+        frame.Visible = not frame.Visible
+end)
+</ProtectedString>
+				</Properties>
+			</Item>
+		</Item>
+	</Item>
+	<Item class="ServerScriptService" referent="RBXV">
+		<Properties>
+			<string name="Name">ServerScriptService</string>
+		</Properties>
+		<Item class="Script" referent="RBXM">
+			<Properties>
+				<string name="Name">MiodakaliUtama</string>
+				<ProtectedString name="Source">--!strict
+-- Miodakali — Sistem Utama (server)
+-- Skema real-time ala permainan tani modern: tanaman tumbuh mengikuti
+-- waktu nyata (tanpa siram/tidur), tenaga pulih bertahap, XP &amp; level petani,
+-- ekspansi petak kebun, ternak ber-timer di kandang, tebang &amp; tambang dengan
+-- respawn waktu nyata, kios beli-jual, dan rantai tugas pembuka.
+-- Seluruh nama &amp; sistem adalah karya asli Miodakali.
+
+local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
+local Lighting = game:GetService("Lighting")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Konfig = require(ReplicatedStorage:WaitForChild("KonfigurasiMiodakali"))
+local KiosEvent = ReplicatedStorage:WaitForChild("KiosEvent")
+
+-- ============================== PEMAIN ==============================
+
+type DataPemain = {
+	kirupi: IntValue,
+	tenaga: IntValue,
+	level: IntValue,
+	pengalaman: IntValue,
+	kantong: Folder,
+	tugasIdx: IntValue,
+	statistik: Folder,
+	regenTerakhir: number,
+}
+
+local dataPemain: {[Player]: DataPemain} = {}
+
+local function statKantong(d: DataPemain, nama: string): IntValue
+	local nilai = d.kantong:FindFirstChild(nama)
+	if nilai and nilai:IsA("IntValue") then
+		return nilai
+	end
+	local baru = Instance.new("IntValue")
+	baru.Name = nama
+	baru.Value = 0
+	baru.Parent = d.kantong
+	return baru
+end
+
+local function milik(player: Player, nama: string): number
+	local d = dataPemain[player]
+	if not d then
+		return 0
+	end
+	return statKantong(d, nama).Value
+end
+
+local function beri(player: Player, nama: string, delta: number)
+	local d = dataPemain[player]
+	if not d then
+		return
+	end
+	local nilai = statKantong(d, nama)
+	nilai.Value = math.max(0, nilai.Value + delta)
+end
+
+local function levelDariXp(xp: number): number
+	local level = 1
+	local sisa = math.max(0, math.floor(xp))
+	while level &lt;= #Konfig.XPButuh and sisa &gt;= Konfig.XPButuh[level] do
+		sisa -= Konfig.XPButuh[level]
+		level += 1
+	end
+	return level
+end
+
+local function levelPemain(player: Player): number
+	local d = dataPemain[player]
+	return d and d.level.Value or 1
+end
+
+local function energiMaks(player: Player): number
+	return Konfig.EnergiMaksDasar + (levelPemain(player) - 1) * Konfig.EnergiPerLevel
+end
+
+local function pakaiTenaga(player: Player, biaya: number): boolean
+	local d = dataPemain[player]
+	if not d then
+		return false
+	end
+	if d.tenaga.Value &lt; biaya then
+		return false
+	end
+	d.tenaga.Value -= biaya
+	return true
+end
+
+local function terapkanXp(player: Player, jumlah: number)
+	local d = dataPemain[player]
+	if not d then
+		return
+	end
+	d.pengalaman.Value += math.max(0, math.floor(jumlah))
+	local baru = levelDariXp(d.pengalaman.Value)
+	if baru &gt; d.level.Value then
+		d.level.Value = baru
+		d.tenaga.Value = math.min(energiMaks(player), d.tenaga.Value + 20)
+	end
+end
+
+-- ============================== TUGAS ==============================
+
+local function syaratTugas(player: Player, id: string): boolean
+	local d = dataPemain[player]
+	if not d then
+		return false
+	end
+	local fungsi: {[string]: () -&gt; boolean} = {
+		tanam = function()
+			return statKantong(d, "StatTanam").Value &gt;= 1
+		end,
+		panen = function()
+			return statKantong(d, "StatPanen").Value &gt;= 1
+		end,
+		jual = function()
+			return statKantong(d, "StatJual").Value &gt;= 1
+		end,
+		beli = function()
+			return statKantong(d, "StatBeliBenih").Value &gt;= 3
+		end,
+		tebas = function()
+			return statKantong(d, "StatTebas").Value &gt;= 1
+		end,
+		tambang = function()
+			return statKantong(d, "StatTambang").Value &gt;= 1
+		end,
+		ternak = function()
+			return statKantong(d, "StatPakanu").Value &gt;= 1
+		end,
+		petak = function()
+			return statKantong(d, "StatPetak").Value &gt;= 1
+		end,
+		masak = function()
+			return true -- dapur menyusul di kerangka berikutnya
+		end,
+		pancing = function()
+			return statKantong(d, "StatPancing").Value &gt;= 1
+		end,
+		lv3 = function()
+			return levelPemain(player) &gt;= 3
+		end,
+	}
+	local cek = fungsi[id]
+	return cek and cek() or true
+end
+
+local function cekTugas(player: Player)
+	local d = dataPemain[player]
+	if not d then
+		return
+	end
+	while d.tugasIdx.Value &lt;= #Konfig.Tugas do
+		local t = Konfig.Tugas[d.tugasIdx.Value]
+		if not syaratTugas(player, t.id) then
+			break
+		end
+		d.tugasIdx.Value += 1
+		beri(player, "Kirupi", t.uang)
+		terapkanXp(player, t.xp)
+	end
+end
+
+Players.PlayerAdded:Connect(function(player)
+	local leader = Instance.new("Folder")
+	leader.Name = "leaderstats"
+	leader.Parent = player
+
+	local kirupi = Instance.new("IntValue")
+	kirupi.Name = "Kirupi"
+	kirupi.Value = Konfig.UangAwal
+	kirupi.Parent = leader
+
+	local level = Instance.new("IntValue")
+	level.Name = "LevelPetani"
+	level.Value = 1
+	level.Parent = leader
+
+	local kantong = Instance.new("Folder")
+	kantong.Name = "Kantong"
+	kantong.Parent = player
+
+	local tenaga = Instance.new("IntValue")
+	tenaga.Name = "Tenaga"
+	tenaga.Value = Konfig.EnergiMaksDasar
+	tenaga.Parent = player
+
+	local pengalaman = Instance.new("IntValue")
+	pengalaman.Name = "Pengalaman"
+	pengalaman.Parent = player
+
+	local tugasIdx = Instance.new("IntValue")
+	tugasIdx.Name = "TugasKe"
+	tugasIdx.Value = 0
+	tugasIdx.Parent = player
+
+	local statistik = Instance.new("Folder")
+	statistik.Name = "Statistik"
+	statistik.Parent = player
+	for _, k in { "StatTanam", "StatPanen", "StatJual", "StatBeliBenih", "StatTebas", "StatTambang", "StatPakanu", "StatPetak", "StatPancing" } do
+		local v = Instance.new("IntValue")
+		v.Name = k
+		v.Parent = statistik
+	end
+
+	local d: DataPemain = {
+		kirupi = kirupi,
+		tenaga = tenaga,
+		level = level,
+		pengalaman = pengalaman,
+		kantong = kantong,
+		tugasIdx = tugasIdx,
+		statistik = statistik,
+		regenTerakhir = os.clock(),
+	}
+	dataPemain[player] = d
+
+	-- benih awal ala permainan tani modern: 3 petak &amp; 3 benih
+	beri(player, "BenihLumira", 3)
+
+	kirupi.Changed:Connect(function()
+		cekTugas(player)
+	end)
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+	dataPemain[player] = nil
+end)
+
+-- Pemulihan tenaga waktu-nyata
+task.spawn(function()
+	while true do
+		task.wait(1)
+		for player, d in dataPemain do
+			local maks = Konfig.EnergiMaksDasar + (d.level.Value - 1) * Konfig.EnergiPerLevel
+			if d.tenaga.Value &lt; maks then
+				local lewat = os.clock() - d.regenTerakhir
+				if lewat &gt;= Konfig.RegenTenagaDetik then
+					local pulih = math.floor(lewat / Konfig.RegenTenagaDetik)
+					d.tenaga.Value = math.min(maks, d.tenaga.Value + pulih)
+					d.regenTerakhir += pulih * Konfig.RegenTenagaDetik
+				end
+			else
+				d.regenTerakhir = os.clock()
+			end
+		end
+	end
+end)
+
+-- ============================== LADANG ==============================
+
+type Petak = {
+	part: Part,
+	prompt: ProximityPrompt,
+	buka: boolean,
+	tanaman: string?, -- nama hasil
+	tanamAt: number?,
+	matang: boolean,
+}
+
+local petakList: {Petak} = {}
+
+local function defTanaman(nama: string): any
+	for _, t in Konfig.Tanaman :: {any} do
+		if t.nama == nama then
+			return t
+		end
+	end
+	return nil
+end
+
+local function petakDibeli(): number
+	local n = 0
+	for _, p in petakList do
+		if p.buka then
+			n += 1
+		end
+	end
+	return math.max(0, n - Konfig.PetakAwal)
+end
+
+local function segarkanPromptPetak(p: Petak)
+	if not p.buka then
+		local biaya = Konfig.BiayaPetak(petakDibeli())
+		p.prompt.ActionText = ("Beli Petak (%d Kirupi + %d Balanu + %d Batuku)"):format(biaya.uang, biaya.balanu, biaya.batuku)
+		p.prompt.ObjectText = "Ekspansi Kebun"
+		return
+	end
+	if p.tanaman then
+		if p.matang then
+			p.prompt.ActionText = "Panen " .. p.tanaman
+		else
+			local def = defTanaman(p.tanaman)
+			local sisa = def and math.ceil(def.detikTumbuh - (os.clock() - (p.tanamAt or 0))) or 0
+			p.prompt.ActionText = ("%s matang dalam %d dtk"):format(p.tanaman, math.max(0, sisa))
+		end
+		p.prompt.ObjectText = "Petak Ladang"
+	elseif p.part.Color == Color3.fromRGB(163, 113, 75) then
+		p.prompt.ActionText = "Tanam Benih"
+		p.prompt.ObjectText = "Petak Ladang"
+	else
+		p.prompt.ActionText = "Gemburkan Tanah"
+		p.prompt.ObjectText = "Petak Ladang"
+	end
+end
+
+local function perbaruiWarna(p: Petak)
+	if not p.buka then
+		p.part.Color = Color3.fromRGB(96, 138, 62)
+		p.part.Material = Enum.Material.Grass
+		return
+	end
+	p.part.Material = Enum.Material.Ground
+	if p.tanaman then
+		if p.matang then
+			p.part.Color = Color3.fromRGB(214, 176, 66)
+		else
+			p.part.Color = Color3.fromRGB(150, 102, 66)
+		end
+	elseif p.part.Color == Color3.fromRGB(163, 113, 75) or p.part.Color == Color3.fromRGB(214, 176, 66) then
+		p.part.Color = Color3.fromRGB(163, 113, 75)
+	else
+		p.part.Color = Color3.fromRGB(106, 158, 68)
+	end
+end
+
+local ladangFolder = Workspace:WaitForChild("Ladang")
+local urutan = 0
+for _, anak in ladangFolder:GetChildren() do
+	if anak:IsA("BasePart") then
+		local prompt = anak:FindFirstChildWhichIsA("ProximityPrompt")
+		if prompt then
+			urutan += 1
+			local p: Petak = {
+				part = anak,
+				prompt = prompt,
+				buka = urutan &lt;= Konfig.PetakAwal,
+				tanaman = nil,
+				tanamAt = nil,
+				matang = false,
+			}
+			table.insert(petakList, p)
+			perbaruiWarna(p)
+			segarkanPromptPetak(p)
+			prompt.Triggered:Connect(function(player)
+				if not p.buka then
+					local biaya = Konfig.BiayaPetak(petakDibeli())
+					if
+						milik(player, "Kirupi") &gt;= biaya.uang
+						and milik(player, "Balanu") &gt;= biaya.balanu
+						and milik(player, "Batuku") &gt;= biaya.batuku
+					then
+						beri(player, "Kirupi", -biaya.uang)
+						beri(player, "Balanu", -biaya.balanu)
+						beri(player, "Batuku", -biaya.batuku)
+						beri(player, "StatPetak", 1)
+						p.buka = true
+						perbaruiWarna(p)
+						segarkanPromptPetak(p)
+						cekTugas(player)
+					end
+					return
+				end
+				if p.tanaman then
+					if p.matang then
+						local def = defTanaman(p.tanaman)
+						if def and pakaiTenaga(player, Konfig.BiayaTenaga.panen) then
+							beri(player, p.tanaman or "", 1)
+							beri(player, "StatPanen", 1)
+							terapkanXp(player, def.xpPanen)
+							p.tanaman = nil
+							p.tanamAt = nil
+							p.matang = false
+							cekTugas(player)
+						end
+					end
+					perbaruiWarna(p)
+					segarkanPromptPetak(p)
+					return
+				end
+				if p.part.Color == Color3.fromRGB(163, 113, 75) then
+					-- tanah sudah gembur: tanam benih level tertinggi yang dimiliki
+					local pilihan = nil
+					for _, t in Konfig.Tanaman :: {any} do
+						if milik(player, t.benih) &gt; 0 and levelPemain(player) &gt;= t.levelButuh then
+							if not pilihan or t.hargaBenih &gt; pilihan.hargaBenih then
+								pilihan = t
+							end
+						end
+					end
+					if pilihan and pakaiTenaga(player, Konfig.BiayaTenaga.tanam) then
+						beri(player, pilihan.benih, -1)
+						p.tanaman = pilihan.nama
+						p.tanamAt = os.clock()
+						p.matang = false
+						beri(player, "StatTanam", 1)
+						terapkanXp(player, Konfig.XpAksi.tanam)
+						cekTugas(player)
+					end
+				else
+					if pakaiTenaga(player, Konfig.BiayaTenaga.gembur) then
+						p.part.Color = Color3.fromRGB(163, 113, 75)
+						terapkanXp(player, Konfig.XpAksi.gembur)
+					end
+				end
+				perbaruiWarna(p)
+				segarkanPromptPetak(p)
+			end)
+		end
+	end
+end
+
+-- Pertumbuhan waktu-nyata: periksa tiap detik
+task.spawn(function()
+	while true do
+		task.wait(1)
+		for _, p in petakList do
+			if p.tanaman and not p.matang and p.tanamAt then
+				local def = defTanaman(p.tanaman)
+				if def and os.clock() - p.tanamAt &gt;= def.detikTumbuh then
+					p.matang = true
+					perbaruiWarna(p)
+				end
+			end
+			segarkanPromptPetak(p)
+		end
+	end
+end)
+
+-- ============================== KANDANG TERNAK ==============================
+
+type SlotTernak = {
+	model: Model,
+	prompt: ProximityPrompt,
+	jenis: string, -- "Ayumi" | "Sapiyu"
+	jenisAktif: string?, -- nil = kosong (bisa dibeli)
+	siapAt: number?,
+	bagian: {BasePart},
+}
+
+local slotList: {SlotTernak} = {}
+
+local ternakFolder = Workspace:FindFirstChild("HewanTernak")
+if ternakFolder then
+	for _, model in ternakFolder:GetChildren() do
+		if model:IsA("Model") then
+			local prompt = model:FindFirstChildWhichIsA("ProximityPrompt", true)
+			if prompt then
+				local jenis = if string.find(string.lower(model.Name), "ayumi") then "Ayumi" else "Sapiyu"
+				local bagian: {BasePart} = {}
+				for _, b in model:GetDescendants() do
+					if b:IsA("BasePart") then
+						table.insert(bagian, b)
+					end
+				end
+				local s: SlotTernak = {
+					model = model,
+					prompt = prompt,
+					jenis = jenis,
+					jenisAktif = nil,
+					siapAt = nil,
+					bagian = bagian,
+				}
+				table.insert(slotList, s)
+			end
+		end
+	end
+end
+
+local function segarkanPromptTernak(s: SlotTernak)
+	local def = Konfig.Ternak[s.jenis] :: any
+	if not s.jenisAktif then
+		s.prompt.ActionText = ("Beli %s (%d Kirupi)"):format(s.jenis, def.harga)
+		s.prompt.ObjectText = "Kandang — slot kosong"
+	elseif s.siapAt and os.clock() &gt;= s.siapAt then
+		s.prompt.ActionText = "Ambil " .. def.hasil
+		s.prompt.ObjectText = s.jenis
+	elseif s.siapAt then
+		s.prompt.ActionText = ("%s — siap %d dtk lagi"):format(s.jenis, math.ceil(s.siapAt - os.clock()))
+		s.prompt.ObjectText = s.jenis
+	else
+		s.prompt.ActionText = "Beri Pakanu (" .. s.jenis .. ")"
+		s.prompt.ObjectText = s.jenis
+	end
+end
+
+local function tampakTernak(s: SlotTernak, ada: boolean)
+	for _, b in s.bagian do
+		b.Transparency = if ada then 0 else 1
+		b.CanCollide = ada
+	end
+end
+
+for _, s in slotList do
+	tampakTernak(s, false)
+	segarkanPromptTernak(s)
+	s.prompt.Triggered:Connect(function(player)
+		local def = Konfig.Ternak[s.jenis] :: any
+		if not s.jenisAktif then
+			if levelPemain(player) &lt; def.levelButuh then
+				s.prompt.ActionText = ("%s terbuka di Level %d"):format(s.jenis, def.levelButuh)
+				task.wait(1.2)
+				segarkanPromptTernak(s)
+				return
+			end
+			if milik(player, "Kirupi") &gt;= def.harga then
+				beri(player, "Kirupi", -def.harga)
+				s.jenisAktif = s.jenis
+				s.siapAt = nil
+				tampakTernak(s, true)
+				segarkanPromptTernak(s)
+			end
+			return
+		end
+		if s.siapAt and os.clock() &gt;= s.siapAt then
+			if pakaiTenaga(player, Konfig.BiayaTenaga.ambil) then
+				beri(player, def.hasil, 1)
+				terapkanXp(player, Konfig.XpAksi.ambil)
+				s.siapAt = nil
+				cekTugas(player)
+			end
+			segarkanPromptTernak(s)
+			return
+		end
+		if not s.siapAt then
+			if milik(player, "Pakanu") &gt; 0 and pakaiTenaga(player, Konfig.BiayaTenaga.pakanu) then
+				beri(player, "Pakanu", -1)
+				s.siapAt = os.clock() + def.detikProduksi
+				beri(player, "StatPakanu", 1)
+				terapkanXp(player, Konfig.XpAksi.pakanu)
+				cekTugas(player)
+			else
+				s.prompt.ActionText = "Butuh Pakanu — beli di Kios!"
+				task.wait(1.2)
+			end
+			segarkanPromptTernak(s)
+		end
+	end)
+end
+
+-- Timer ternak waktu-nyata
+task.spawn(function()
+	while true do
+		task.wait(1)
+		for _, s in slotList do
+			segarkanPromptTernak(s)
+		end
+	end
+end)
+
+-- ============================== POHON &amp; BATU ==============================
+
+type Sumber = {
+	prompt: ProximityPrompt,
+	bagian: {BasePart},
+	hidup: boolean,
+	nyawa: number,
+	respawnAt: number,
+	jenis: string, -- "kayanu" | "batuku"
+}
+
+local sumberList: {Sumber} = {}
+
+for namaFolder, jenis in { Kayanu = "kayanu", Batu = "batuku" } :: {any} do
+	local f = Workspace:FindFirstChild(namaFolder)
+	if f then
+		for _, model in f:GetChildren() do
+			if model:IsA("Model") then
+				local prompt = model:FindFirstChildWhichIsA("ProximityPrompt", true)
+				if prompt then
+					local s: Sumber = {
+						prompt = prompt,
+						bagian = {},
+						hidup = true,
+						nyawa = 3,
+						respawnAt = 0,
+						jenis = jenis,
+					}
+					for _, b in model:GetDescendants() do
+						if b:IsA("BasePart") then
+							table.insert(s.bagian, b)
+						end
+					end
+					table.insert(sumberList, s)
+					prompt.ObjectText = if jenis == "kayanu" then "Kayanu" else "Batuku"
+					prompt.ActionText = if jenis == "kayanu" then "Tebang" else "Pecahkan"
+				end
+			end
+		end
+	end
+end
+
+for _, s in sumberList do
+	s.prompt.Triggered:Connect(function(player)
+		if not s.hidup then
+			return
+		end
+		local biaya = if s.jenis == "kayanu" then Konfig.BiayaTenaga.tebang else Konfig.BiayaTenaga.pecah
+		if not pakaiTenaga(player, biaya) then
+			return
+		end
+		terapkanXp(player, if s.jenis == "kayanu" then Konfig.XpAksi.tebang else Konfig.XpAksi.pecah)
+		s.nyawa -= 1
+		if s.nyawa &lt;= 0 then
+			s.hidup = false
+			s.respawnAt = os.clock() + Konfig.RespawnDetik
+			for _, b in s.bagian do
+				b.Transparency = 1
+				b.CanCollide = false
+			end
+			beri(player, if s.jenis == "kayanu" then "Balanu" else "Batuku", 2)
+			beri(player, if s.jenis == "kayanu" then "StatTebas" else "StatTambang", 1)
+			s.prompt.Enabled = false
+			cekTugas(player)
+		else
+			s.prompt.ActionText = string.format(
+				"%s (%d lagi)",
+				if s.jenis == "kayanu" then "Tebang" else "Pecahkan",
+				s.nyawa
+			)
+		end
+	end)
+end
+
+-- Respawn pohon &amp; batu waktu-nyata
+task.spawn(function()
+	while true do
+		task.wait(1)
+		for _, s in sumberList do
+			if not s.hidup and s.respawnAt &gt; 0 and os.clock() &gt;= s.respawnAt then
+				s.hidup = true
+				s.nyawa = 3
+				s.respawnAt = 0
+				for _, b in s.bagian do
+					b.Transparency = 0
+					b.CanCollide = true
+				end
+				s.prompt.Enabled = true
+				s.prompt.ActionText = if s.jenis == "kayanu" then "Tebang" else "Pecahkan"
+			end
+		end
+	end
+end)
+
+-- ============================== KIOS DESA ==============================
+
+local pintuKios = Workspace:FindFirstChild("PintuKios", true)
+if pintuKios then
+	local prompt = pintuKios:FindFirstChildWhichIsA("ProximityPrompt")
+	if prompt then
+		prompt.Triggered:Connect(function(player)
+			KiosEvent:FireClient(player)
+		end)
+	end
+end
+
+KiosEvent.OnServerEvent:Connect(function(player, aksi: string, nama: string, jumlah: number)
+	if typeof(aksi) ~= "string" or typeof(nama) ~= "string" or typeof(jumlah) ~= "number" then
+		return
+	end
+	jumlah = math.floor(math.max(1, jumlah))
+	local d = dataPemain[player]
+	if not d then
+		return
+	end
+
+	if aksi == "beli" then
+		local harga = nil
+		local levelButuh = 1
+		if nama == "Pakanu" then
+			harga = Konfig.HargaPakanu
+		elseif nama == "Panyukan" then
+			harga = Konfig.HargaPanyukan
+			levelButuh = Konfig.LevelPanyukan
+		else
+			for _, t in Konfig.Tanaman :: {any} do
+				if t.benih == nama then
+					harga = t.hargaBenih
+					levelButuh = t.levelButuh
+					break
+				end
+			end
+		end
+		if harga and levelPemain(player) &gt;= levelButuh then
+			local total = harga * jumlah
+			if milik(player, "Kirupi") &gt;= total then
+				beri(player, "Kirupi", -total)
+				beri(player, nama, jumlah)
+				if string.sub(nama, 1, 5) == "Benih" then
+					beri(player, "StatBeliBenih", jumlah)
+					cekTugas(player)
+				end
+			end
+		end
+	elseif aksi == "jual" then
+		local harga = nil
+		for _, t in Konfig.Tanaman :: {any} do
+			if t.nama == nama then
+				harga = t.hargaJual
+				break
+			end
+		end
+		if not harga then
+			harga = Konfig.HargaJualLain[nama]
+		end
+		if harga and milik(player, nama) &gt;= jumlah then
+			beri(player, nama, -jumlah)
+			beri(player, "Kirupi", harga * jumlah)
+			beri(player, "StatJual", jumlah)
+			cekTugas(player)
+		end
+	end
+end)
+
+-- ============================== PENCAHAYAAN HARIAN SANTAI ==============================
+
+-- Pencahayaan mengikuti jam dunia nyata (skema real-time, tanpa tidur)
+task.spawn(function()
+	while true do
+		local jam = (os.time() % 86400) / 3600 -- 0..24 UTC
+		Lighting.ClockTime = (jam + 7) % 24 -- geser ke waktu Indonesia barat
+		task.wait(30)
+	end
+end)
+</ProtectedString>
+			</Properties>
+		</Item>
+	</Item>
+	<Item class="StarterPlayer" referent="RBXP">
+		<Properties>
+			<string name="Name">StarterPlayer</string>
+		</Properties>
+		<Item class="StarterPlayerScripts" referent="RBXPS">
+			<Properties>
+				<string name="Name">StarterPlayerScripts</string>
+			</Properties>
+		</Item>
+	</Item>
+</roblox>
